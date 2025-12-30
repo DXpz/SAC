@@ -10,6 +10,7 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import BandejaCasos from './pages/BandejaCasos';
 import CaseDetail from './pages/CaseDetail';
+import NuevoCaso from './pages/NuevoCaso';
 import Unauthorized from './pages/Unauthorized';
 import GerenteDashboard from './pages/GerenteDashboard';
 import SupervisorPanel from './pages/SupervisorPanel';
@@ -81,6 +82,7 @@ const App: React.FC = () => {
                 
                 {/* Casos */}
                 <Route path="casos" element={<BandejaCasos />} />
+                <Route path="casos/nuevo" element={<NuevoCaso />} />
                 <Route path="casos/:id" element={<CaseDetail />} />
 
                 {/* Supervisor & Gerencia */}

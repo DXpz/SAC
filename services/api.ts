@@ -1,7 +1,7 @@
 
 import { Case, CaseStatus, KPI, User, Role, Cliente, Categoria } from '../types';
 import { MOCK_CASOS, MOCK_AGENTES, MOCK_USERS, MOCK_CLIENTES, MOCK_CATEGORIAS } from './mockData';
-import { API_CONFIG, CASES_WEBHOOK_URL } from '../config';
+import { API_CONFIG, CASES_WEBHOOK_URL, CLIENTS_WEBHOOK_URL } from '../config';
 
 // Inicializar datos en localStorage si no existen
 const initStorage = () => {
@@ -13,9 +13,10 @@ const initStorage = () => {
   }
 };
 
-// Helper para llamadas al webhook de casos en n8n
+// Helper genérico para llamadas a webhooks de n8n
 // Usa el JWT almacenado (cuando exista) y respeta el timeout global
-const callCasesWebhook = async <T = any>(
+const callWebhookGeneric = async <T = any>(
+  url: string,
   method: 'GET' | 'POST',
   body?: unknown
 ): Promise<T> => {
@@ -37,7 +38,16 @@ const callCasesWebhook = async <T = any>(
   }
 
   try {
-    const response = await fetch(CASES_WEBHOOK_URL, {
+    console.log(`🌐 [callWebhookGeneric] Iniciando ${method} a ${url}`);
+    console.log(`📋 [callWebhookGeneric] Headers:`, headers);
+    if (body) {
+      const bodyString = JSON.stringify(body);
+      console.log(`📤 [callWebhookGeneric] Body (primeros 500 chars):`, bodyString.substring(0, 500));
+      console.log(`📏 [callWebhookGeneric] Tamaño del body:`, bodyString.length, 'bytes');
+    }
+    
+    const startTime = Date.now();
+    const response = await fetch(url, {
       method,
       mode: 'cors',
       credentials: 'omit',
@@ -47,14 +57,31 @@ const callCasesWebhook = async <T = any>(
     });
 
     clearTimeout(timeoutId);
+    const duration = Date.now() - startTime;
+
+    console.log(`📥 [callWebhookGeneric] Respuesta recibida (${duration}ms):`, {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
+      headers: Object.fromEntries(response.headers.entries())
+    });
 
     if (!response.ok) {
       // Intentar extraer mensaje de error del backend
       let errorMessage = `Error ${response.status}: ${response.statusText}`;
+      let errorBody = null;
       try {
-        const errorBody = await response.json();
-        if (errorBody?.message) {
-          errorMessage = errorBody.message;
+        const text = await response.text();
+        console.error('❌ [callWebhookGeneric] Cuerpo de error (texto):', text);
+        try {
+          errorBody = JSON.parse(text);
+          console.error('❌ [callWebhookGeneric] Cuerpo de error (JSON):', errorBody);
+          if (errorBody?.message) {
+            errorMessage = errorBody.message;
+          }
+        } catch {
+          // No es JSON, usar el texto
+          errorMessage = text || errorMessage;
         }
       } catch {
         // ignorar error de parseo
@@ -64,18 +91,69 @@ const callCasesWebhook = async <T = any>(
 
     // Algunos flujos podrían responder 204 sin cuerpo
     if (response.status === 204) {
+      console.log('ℹ️ [callWebhookGeneric] Respuesta 204 (sin contenido)');
       return undefined as unknown as T;
     }
 
-    const data = (await response.json()) as T;
+    const text = await response.text();
+    console.log('📄 [callWebhookGeneric] Respuesta (texto, primeros 1000 chars):', text.substring(0, 1000));
+    
+    let data: T;
+    try {
+      data = JSON.parse(text) as T;
+      console.log('✅ [callWebhookGeneric] Respuesta parseada (JSON):', JSON.stringify(data, null, 2).substring(0, 1000));
+    } catch (parseError) {
+      console.warn('⚠️ [callWebhookGeneric] No se pudo parsear como JSON, retornando texto');
+      console.warn('⚠️ [callWebhookGeneric] Error de parseo:', parseError);
+      data = text as unknown as T;
+    }
+    
     return data;
   } catch (error: any) {
+    console.error('❌ [callWebhookGeneric] Error capturado:', error);
+    console.error('❌ [callWebhookGeneric] Tipo:', typeof error);
+    console.error('❌ [callWebhookGeneric] Nombre:', error?.name);
     if (error.name === 'AbortError') {
-      throw new Error('Timeout al comunicarse con el backend de casos (n8n).');
+      throw new Error('Timeout al comunicarse con el backend (n8n).');
     }
     // Re-lanzamos para que la capa superior pueda hacer fallback a mock/localStorage
     throw error;
   }
+};
+
+// Helper para llamadas al webhook de casos en n8n
+const callCasesWebhook = async <T = any>(
+  method: 'GET' | 'POST',
+  body?: unknown
+): Promise<T> => {
+  console.log(`🌐 [callCasesWebhook] ${method} ${CASES_WEBHOOK_URL}`);
+  if (body) {
+    console.log('📤 [callCasesWebhook] Body a enviar:', JSON.stringify(body, null, 2));
+    console.log('📏 [callCasesWebhook] Tamaño del body:', JSON.stringify(body).length, 'bytes');
+  }
+  
+  try {
+    const result = await callWebhookGeneric<T>(CASES_WEBHOOK_URL, method, body);
+    console.log('✅ [callCasesWebhook] Respuesta recibida exitosamente');
+    console.log('📥 [callCasesWebhook] Datos de respuesta:', result);
+    return result;
+  } catch (error: any) {
+    console.error('❌ [callCasesWebhook] Error en la petición:', error);
+    console.error('❌ [callCasesWebhook] Mensaje:', error?.message);
+    console.error('❌ [callCasesWebhook] Stack:', error?.stack);
+    if (error?.response) {
+      console.error('❌ [callCasesWebhook] Response del error:', error.response);
+    }
+    throw error;
+  }
+};
+
+// Helper para llamadas al webhook de clientes en n8n
+const callClientsWebhook = async <T = any>(
+  method: 'GET' | 'POST',
+  body?: unknown
+): Promise<T> => {
+  return callWebhookGeneric<T>(CLIENTS_WEBHOOK_URL, method, body);
 };
 
 // Helpers para construir el payload estándar esperado por n8n
@@ -368,23 +446,305 @@ export const api = {
   },
 
   async getCases(): Promise<Case[]> {
-    // Por ahora el listado de casos se hace solo desde localStorage / mocks.
-    // n8n se utiliza únicamente para CREATE / UPDATE hasta que se defina el contrato de lectura.
-    initStorage();
-    const data = localStorage.getItem('intelfon_cases');
-    const cases = data ? JSON.parse(data) : [];
-
-    // Si es agente, solo ve sus casos
     const user = this.getUser();
-    if (user?.role === 'AGENTE') {
-      // Filtrar por ID de agente demo '1' o nombre
-      return cases.filter((c: any) => 
-        (c.agenteAsignado?.idAgente === '1') || 
-        (c.agentId === '1') ||
-        (c.agentName === user.name)
-      );
+    
+    // Intentar obtener casos desde n8n
+    try {
+      const response = await callCasesWebhook<any>('POST', {
+        action: 'case.read',
+        actor: buildActorPayload(user),
+        data: {
+          // Sin case_id para obtener todos los casos
+        },
+      });
+
+      // Log detallado de la respuesta para debugging
+      console.log('🔍 Respuesta completa de n8n para case.read:', {
+        response,
+        type: typeof response,
+        isArray: Array.isArray(response),
+        isNull: response === null,
+        isUndefined: response === undefined,
+        isEmpty: response === null || response === undefined || (Array.isArray(response) && response.length === 0) || (typeof response === 'object' && Object.keys(response).length === 0),
+        keys: response && typeof response === 'object' && !Array.isArray(response) ? Object.keys(response) : null,
+        stringified: JSON.stringify(response).substring(0, 1000)
+      });
+
+      // Función helper para mapear un caso de n8n/Google Sheets al formato Case
+      const mapCase = (c: any): Case => {
+        // Manejar formato de Google Sheets (columnas directas) o formato JSON anidado
+        const caseId = c.case_id || c.idCaso || c.id || c.ticket_number || c.ticketNumber || '';
+        
+        // Fecha de creación - puede venir en formato dd/MM/yyyy desde Google Sheets
+        let createdAt = c.created_at || c.createdAt || c.fecha_creacion || new Date().toISOString();
+        if (typeof createdAt === 'string' && createdAt.includes('/')) {
+          // Convertir formato dd/MM/yyyy a ISO
+          const [day, month, year] = createdAt.split('/');
+          createdAt = new Date(`${year}-${month}-${day}`).toISOString();
+        }
+        
+        const createdDate = new Date(createdAt);
+        const now = new Date();
+        const diasAbierto = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        // Obtener información del agente (desde Google Sheets o formato JSON)
+        const agenteId = c.agente_user_id || c.agente_asignado?.user_id || c.agenteAsignado?.idAgente || c.agent_id || c.agentId || '';
+        const agenteEmail = c.agente_email || c.agente_asignado?.email || c.agenteAsignado?.email || '';
+        const agenteName = c.agente_nombre || c.agente_asignado?.nombre || c.agenteAsignado?.nombre || agenteEmail || 'Sin asignar';
+
+        // Obtener información de la categoría
+        const categoriaId = String(c.categoria_id || c.categoria?.categoria_id || c.category?.id || '');
+        let categoriaNombre = c.categoria?.nombre || c.category?.name || c.category_name || c.category || 'General';
+        let categoriaSla = c.categoria?.slaDias || c.categoria?.sla_dias || c.category?.sla || 5;
+        
+        // Si no tenemos nombre de categoría, usar un valor por defecto
+        if (!categoriaNombre || categoriaNombre === 'General') {
+          categoriaNombre = 'General';
+          categoriaSla = 5;
+        }
+
+        // Obtener información del cliente
+        const clienteId = c.cliente_id || c.cliente?.cliente_id || c.client?.idCliente || c.client_id || c.clientId || '';
+        let clienteNombre = c.cliente?.nombre_empresa || c.cliente?.nombreEmpresa || c.client?.nombre || c.client_name || c.clientName || '';
+        let clienteEmail = c.email_cliente || c.cliente?.email || c.client?.email || c.client_email || c.clientEmail || '';
+        let clienteTelefono = c.telefono_cliente || c.cliente?.telefono || c.client?.phone || c.client_phone || c.clientPhone || '';
+        let clienteContacto = c.cliente?.contacto_principal || c.cliente?.contactoPrincipal || c.client?.contacto || '';
+        
+        // Si no tenemos datos del cliente, usar valores por defecto
+        if (!clienteNombre && clienteId) {
+          clienteNombre = `Cliente ${clienteId}`;
+        }
+
+        // Calcular si el SLA está vencido
+        const slaDias = categoriaSla;
+        const slaExpired = diasAbierto > slaDias;
+
+        return {
+          id: caseId,
+          ticketNumber: caseId,
+          clientId: clienteId,
+          clientName: clienteNombre,
+          category: categoriaNombre,
+          origin: c.canal_origen || c.canalOrigen || c.origin || c.channel || 'Web',
+          subject: c.asunto || c.subject || '',
+          description: c.descripcion || c.description || '',
+          status: c.estado || c.status || CaseStatus.NUEVO,
+          priority: c.prioridad || c.priority || 'Media',
+          agentId: String(agenteId),
+          agentName: agenteName,
+          createdAt: createdAt,
+          slaExpired: slaExpired,
+          history: c.historial || c.history || [],
+          clientEmail: clienteEmail,
+          clientPhone: clienteTelefono,
+          diasAbierto: diasAbierto,
+          agenteAsignado: {
+            idAgente: String(agenteId),
+            nombre: agenteName,
+            email: agenteEmail,
+            estado: 'Activo' as any,
+            ordenRoundRobin: 0,
+            ultimoCasoAsignado: '',
+            casosActivos: 0,
+          },
+          categoria: {
+            idCategoria: String(categoriaId || ''),
+            nombre: categoriaNombre,
+            slaDias: categoriaSla,
+            diasAlertaSupervisor: Math.floor(categoriaSla * 0.7),
+            diasAlertaGerente: Math.floor(categoriaSla * 0.9),
+            activa: true,
+          },
+          cliente: {
+            idCliente: clienteId,
+            nombreEmpresa: clienteNombre,
+            contactoPrincipal: clienteContacto,
+            email: clienteEmail,
+            telefono: clienteTelefono,
+            pais: c.cliente?.pais || c.client?.country || 'El Salvador',
+            estado: c.cliente?.estado || c.client?.state || 'Activo',
+          },
+        };
+      };
+
+      // Intentar diferentes formatos de respuesta de n8n
+      // El workflow de n8n lee de Google Sheets, así que puede venir como array directo
+      // o dentro de alguna propiedad
+      let casesArray: any[] = [];
+
+      // Verificar si la respuesta es solo un objeto de confirmación (problema conocido del workflow)
+      if (response?.ok === "true" || response?.ok === true || (response && Object.keys(response).length === 1 && response.ok)) {
+        const errorMsg = `El workflow de n8n está devolviendo solo {"ok": "true"} en lugar de los datos de casos.
+
+SOLUCIÓN REQUERIDA EN N8N:
+1. Abre el workflow "[JROMERO] CASOS - APP SAC" en n8n
+2. Localiza el nodo "Respond to Webhook2" (conectado después de "TODOS LOS CASOS")
+3. Cambia la configuración:
+   - En lugar de: responseBody = {"ok": "true"}
+   - Usa: responseBody = {{ $json }} (para devolver todos los datos)
+   O mejor aún, configura el nodo para usar "Respond with All Incoming Items" o devolver $json.json si los datos vienen en esa propiedad
+
+Respuesta recibida: ${JSON.stringify(response)}`;
+        console.error(errorMsg);
+        throw new Error(errorMsg);
+      }
+
+      if (Array.isArray(response)) {
+        // Caso 1: Array directo de casos (formato más común de Google Sheets)
+        // Verificar si el primer elemento tiene estructura de caso o es un wrapper
+        if (response.length > 0) {
+          const firstItem = response[0];
+          
+          // Caso 1a: Array de objetos con propiedad 'data' que contiene los casos
+          // Formato: [{data: [caso1, caso2, ...]}]
+          if (firstItem?.data && Array.isArray(firstItem.data)) {
+            console.log('📦 Formato detectado: Array con objetos que tienen propiedad "data"');
+            // Extraer todos los casos de todos los objetos en el array
+            casesArray = response.flatMap((item: any) => item.data || []);
+          }
+          // Caso 1b: Array directo de casos
+          // Formato: [caso1, caso2, ...]
+          else if (firstItem?.case_id || firstItem?.row_number !== undefined) {
+            console.log('📦 Formato detectado: Array directo de casos');
+            casesArray = response;
+          }
+          // Caso 1c: Array de objetos con otras propiedades anidadas
+          else {
+            console.log('📦 Formato detectado: Array de objetos, intentando extraer casos...');
+            // Intentar extraer de propiedades comunes
+            const allCases: any[] = [];
+            response.forEach((item: any) => {
+              if (Array.isArray(item.data)) {
+                allCases.push(...item.data);
+              } else if (Array.isArray(item.cases)) {
+                allCases.push(...item.cases);
+              } else if (Array.isArray(item.result)) {
+                allCases.push(...item.result);
+              } else if (item.case_id || item.row_number !== undefined) {
+                // Es un caso individual
+                allCases.push(item);
+              }
+            });
+            casesArray = allCases;
+          }
+        } else {
+          // Array vacío
+          casesArray = [];
+        }
+      } else if (response?.cases && Array.isArray(response.cases)) {
+        // Si viene dentro de una propiedad 'cases'
+        casesArray = response.cases;
+      } else if (response?.data && Array.isArray(response.data)) {
+        // Si viene dentro de una propiedad 'data'
+        casesArray = response.data;
+      } else if (response?.result && Array.isArray(response.result)) {
+        // Si viene dentro de una propiedad 'result'
+        casesArray = response.result;
+      } else if (response?.rows && Array.isArray(response.rows)) {
+        // Formato alternativo de Google Sheets
+        casesArray = response.rows;
+      } else if (response?.values && Array.isArray(response.values)) {
+        // Otro formato posible de Google Sheets
+        casesArray = response.values;
+      } else if (response?.json && Array.isArray(response.json)) {
+        // Formato cuando n8n devuelve los datos en response.json (común en workflows)
+        casesArray = response.json;
+      } else if (response?.body && Array.isArray(response.body)) {
+        // Formato alternativo con body
+        casesArray = response.body;
+      }
+
+      if (casesArray.length > 0) {
+        console.log(`✅ Se encontraron ${casesArray.length} casos en la respuesta de n8n`);
+        const mappedCases = casesArray.map(mapCase);
+        
+        // Si es agente, filtrar solo sus casos
+        if (user?.role === 'AGENTE') {
+          const userAgentId = String((user as any).user_id ?? user.id);
+          const filteredCases = mappedCases.filter(c => 
+            c.agentId === userAgentId ||
+            c.agentName === user.name ||
+            c.agenteAsignado.idAgente === userAgentId
+          );
+          console.log(`📋 Casos filtrados para agente ${user.name}: ${filteredCases.length} de ${mappedCases.length}`);
+          return filteredCases;
+        }
+        
+        // Retornar casos directamente desde n8n (sin guardar en localStorage)
+        console.log(`📋 Retornando ${mappedCases.length} casos sin filtrar`);
+        return mappedCases;
+      }
+
+      // Si casesArray está vacío, puede ser que:
+      // 1. No hay casos en Google Sheets
+      // 2. El workflow no está devolviendo los datos correctamente
+      // 3. El formato de respuesta no es el esperado
+      console.warn('⚠️ No se encontraron casos en la respuesta. casesArray está vacío.', {
+        responseType: typeof response,
+        isArray: Array.isArray(response),
+        responseKeys: response && typeof response === 'object' && !Array.isArray(response) ? Object.keys(response) : null,
+        responseValue: response,
+        responseStringified: JSON.stringify(response).substring(0, 500)
+      });
+      
+      // Si la respuesta existe pero está vacía, puede ser que:
+      // - No hay casos en Google Sheets (retornar array vacío)
+      // - El workflow devolvió un objeto vacío o null
+      if (response !== null && response !== undefined) {
+        // Si es un array vacío, simplemente no hay casos
+        if (Array.isArray(response) && response.length === 0) {
+          console.log('ℹ️ La respuesta es un array vacío. No hay casos en el sistema.');
+          return [];
+        }
+        
+        // Si es un objeto vacío
+        if (typeof response === 'object' && !Array.isArray(response) && Object.keys(response).length === 0) {
+          console.log('ℹ️ La respuesta es un objeto vacío. No hay casos en el sistema.');
+          return [];
+        }
+        
+        // Si tiene propiedades pero no encontramos casos, puede ser formato desconocido
+        console.warn('⚠️ La respuesta tiene contenido pero no se pudo extraer casos. Formato desconocido.');
+      }
+
+      // Si la respuesta no tiene el formato esperado, lanzar error con más detalles
+      const responseInfo = {
+        response,
+        responseType: typeof response,
+        isArray: Array.isArray(response),
+        isNull: response === null,
+        isUndefined: response === undefined,
+        keys: response && typeof response === 'object' && !Array.isArray(response) ? Object.keys(response) : null,
+        stringified: JSON.stringify(response).substring(0, 500),
+        hasOk: response?.ok !== undefined,
+        okValue: response?.ok
+      };
+      
+      console.error('Respuesta de n8n no tiene el formato esperado para casos:', responseInfo);
+      
+      let errorDetails = `Formato de respuesta no válido desde el servidor.\n\n`;
+      errorDetails += `ANÁLISIS DE LA RESPUESTA:\n`;
+      errorDetails += `- Tipo: ${responseInfo.responseType}\n`;
+      errorDetails += `- Es array: ${responseInfo.isArray}\n`;
+      errorDetails += `- Es null: ${responseInfo.isNull}\n`;
+      errorDetails += `- Es undefined: ${responseInfo.isUndefined}\n`;
+      if (responseInfo.keys) {
+        errorDetails += `- Propiedades encontradas: ${responseInfo.keys.join(', ')}\n`;
+      }
+      if (responseInfo.hasOk) {
+        errorDetails += `- Tiene propiedad "ok": ${responseInfo.okValue}\n`;
+      }
+      errorDetails += `\nRESPUESTA RECIBIDA (primeros 500 caracteres):\n${responseInfo.stringified}\n\n`;
+      errorDetails += `SOLUCIÓN REQUERIDA EN N8N:\n`;
+      errorDetails += `El nodo "Respond to Webhook2" debe devolver los datos del nodo "TODOS LOS CASOS".\n`;
+      errorDetails += `Configura el nodo para devolver $json o $json.json en lugar de {"ok": "true"}`;
+      
+      throw new Error(errorDetails);
+    } catch (err) {
+      console.error('Error al obtener casos desde n8n:', err);
+      // No usar fallback local, lanzar el error para que el componente lo maneje
+      throw err;
     }
-    return cases;
   },
 
   async getCasoById(id: string): Promise<Case | undefined> {
@@ -398,18 +758,14 @@ export const api = {
     // 1) Notificar cambio de estado a n8n usando el contrato CRUD.UPDATE
     try {
       await callCasesWebhook('POST', {
-        CRUD: {
-          UPDATE: {
-            action: 'case.update',
-            actor: buildActorPayload(user),
-            data: {
-              case_id: id,
-              patch: {
-                estado: status,
-                descripcion: detail || `Cambio de estado a ${status}`,
-                ...(extra?.resolucion ? { resolucion: extra.resolucion } : {}),
-              },
-            },
+        action: 'case.update',
+        actor: buildActorPayload(user),
+        data: {
+          case_id: id,
+          patch: {
+            estado: status,
+            descripcion: detail || `Cambio de estado a ${status}`,
+            ...(extra?.resolucion ? { resolucion: extra.resolucion } : {}),
           },
         },
       });
@@ -443,12 +799,16 @@ export const api = {
   async createCase(caseData: any): Promise<boolean> {
     const user = this.getUser();
 
-    console.log('[api.createCase] Enviando nuevo caso', caseData, user);
+    console.log('🔵 ========== [api.createCase] INICIANDO ==========');
+    console.log('📦 Datos recibidos del formulario:', JSON.stringify(caseData, null, 2));
+    console.log('👤 Usuario:', JSON.stringify(user, null, 2));
 
     // Buscar la categoría seleccionada
     const categoriaSeleccionada = caseData.categoriaId 
       ? MOCK_CATEGORIAS.find(cat => cat.idCategoria === caseData.categoriaId)
       : null;
+
+    console.log('📂 Categoría seleccionada:', categoriaSeleccionada);
 
     // Determinar categoria_id y nombre para el JSON
     const categoriaId = categoriaSeleccionada 
@@ -456,35 +816,65 @@ export const api = {
       : DEFAULT_CATEGORY.categoria_id;
     const categoriaNombre = categoriaSeleccionada?.nombre || DEFAULT_CATEGORY.nombre;
 
+    console.log('📂 Categoría procesada:', { categoriaId, categoriaNombre });
+
+    // Construir el payload completo para n8n
+    const actorPayload = buildActorPayload(user);
+    const n8nPayload = {
+      action: 'case.create',
+      actor: actorPayload,
+      data: {
+        cliente: {
+          cliente_id: caseData.clienteId || `CL-${Date.now()}`,
+          nombre_empresa: caseData.clientName,
+          contacto_principal: caseData.contactName || caseData.clientName,
+          email: caseData.clientEmail,
+          telefono: caseData.phone || '',
+        },
+        categoria: {
+          categoria_id: categoriaId,
+          nombre: categoriaNombre,
+        },
+        canal_origen: caseData.contactChannel || caseData.canalOrigen || 'Web',
+        canal_notificacion: caseData.notificationChannel || caseData.contactChannel || 'Email',
+        asunto: caseData.subject,
+        descripcion: caseData.description,
+      },
+    };
+
+    console.log('📤 ========== PAYLOAD COMPLETO PARA N8N ==========');
+    console.log('URL del webhook:', CASES_WEBHOOK_URL);
+    console.log('Payload JSON:', JSON.stringify(n8nPayload, null, 2));
+    console.log('Payload tamaño:', JSON.stringify(n8nPayload).length, 'bytes');
+
     // 1) Intentar crear el caso en el backend n8n usando el contrato CRUD.CREATE (no bloquea la creación local)
     try {
-      await callCasesWebhook('POST', {
-        CRUD: {
-          CREATE: {
-            action: 'case.create',
-            actor: buildActorPayload(user),
-            data: {
-              cliente: {
-                cliente_id: caseData.clienteId || `CL-${Date.now()}`,
-                nombre_empresa: caseData.clientName,
-                contacto_principal: caseData.contactName || caseData.clientName,
-                email: caseData.clientEmail,
-                telefono: caseData.phone || '',
-              },
-              categoria: {
-                categoria_id: categoriaId,
-                nombre: categoriaNombre,
-              },
-              canal_origen: caseData.contactChannel || caseData.canalOrigen || 'Web',
-              canal_notificacion: 'Email',
-              asunto: caseData.subject,
-              descripcion: caseData.description,
-            },
-          },
-        },
-      });
-    } catch (err) {
-      console.warn('Error al crear caso en n8n, usando modo local como fallback.', err);
+      console.log('🌐 Enviando petición POST a n8n...');
+      const startTime = Date.now();
+      
+      const response = await callCasesWebhook('POST', n8nPayload);
+      
+      const duration = Date.now() - startTime;
+      console.log(`✅ ========== RESPUESTA DE N8N (${duration}ms) ==========`);
+      console.log('Respuesta recibida:', JSON.stringify(response, null, 2));
+      console.log('Tipo de respuesta:', typeof response);
+      console.log('Es array:', Array.isArray(response));
+      
+      if (response && typeof response === 'object') {
+        console.log('Propiedades de la respuesta:', Object.keys(response));
+      }
+      
+      console.log('✅ Caso enviado exitosamente a n8n');
+    } catch (err: any) {
+      console.error('❌ ========== ERROR AL ENVIAR A N8N ==========');
+      console.error('Error completo:', err);
+      console.error('Tipo de error:', typeof err);
+      console.error('Mensaje:', err?.message);
+      console.error('Stack:', err?.stack);
+      if (err?.response) {
+        console.error('Response del error:', err.response);
+      }
+      console.warn('⚠️ Error al crear caso en n8n, usando modo local como fallback.');
     }
 
     // 2) Crear siempre el caso en local (modo demo / sin backend disponible)
@@ -560,11 +950,58 @@ export const api = {
     return data ? JSON.parse(data) : MOCK_AGENTES;
   },
 
-  // Obtener lista de clientes (por ahora mock, luego se conectará con n8n)
+  // Obtener lista de clientes desde n8n
   async getClientes(): Promise<Cliente[]> {
-    // TODO: Cuando esté listo el flujo de n8n, aquí se hará POST al webhook con action: "client.list"
-    // Por ahora retornamos datos mock
-    return MOCK_CLIENTES;
+    const user = this.getUser();
+    
+    try {
+      const response = await callClientsWebhook<any>('POST', {
+        action: 'case.list_client',
+        actor: buildActorPayload(user),
+        data: {
+          client: 'all',
+        },
+      });
+
+      // Función helper para mapear un cliente al formato Cliente
+      const mapCliente = (c: any): Cliente => ({
+        idCliente: c.cliente_id || c.idCliente || c.id || '',
+        nombreEmpresa: c.nombre_empresa || c.nombreEmpresa || c.nombre || '',
+        contactoPrincipal: c.contacto_principal || c.contactoPrincipal || c.contacto || '',
+        email: c.email || '',
+        telefono: c.telefono || c.phone || '',
+        pais: c.pais || c.country || 'El Salvador',
+        estado: c.estado || c.state || 'Activo',
+      });
+
+      // Intentar diferentes formatos de respuesta de n8n
+      let clientesArray: any[] = [];
+
+      if (Array.isArray(response)) {
+        // Si la respuesta es directamente un array
+        clientesArray = response;
+      } else if (response?.clients && Array.isArray(response.clients)) {
+        // Si viene dentro de una propiedad 'clients'
+        clientesArray = response.clients;
+      } else if (response?.data && Array.isArray(response.data)) {
+        // Si viene dentro de una propiedad 'data'
+        clientesArray = response.data;
+      } else if (response?.result && Array.isArray(response.result)) {
+        // Si viene dentro de una propiedad 'result'
+        clientesArray = response.result;
+      }
+
+      if (clientesArray.length > 0) {
+        return clientesArray.map(mapCliente);
+      }
+
+      // Si la respuesta no tiene el formato esperado, usar fallback
+      console.warn('Respuesta de n8n no tiene el formato esperado, usando datos mock', response);
+      return MOCK_CLIENTES;
+    } catch (err) {
+      console.warn('Error al obtener clientes desde n8n, usando datos mock como fallback.', err);
+      return MOCK_CLIENTES;
+    }
   },
 
   // Obtener cliente por ID (para autocompletar campos)

@@ -149,6 +149,15 @@
   }
 }
 
+@keyframes redPulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
 .animate-in {
   animation-duration: 300ms;
   animation-timing-function: ease-out;

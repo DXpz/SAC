@@ -17,3 +17,9 @@ export const API_CONFIG = {
 export const CASES_WEBHOOK_URL =
   import.meta.env.VITE_CASES_WEBHOOK_URL || '/api/casos';
 
+// Webhook específico para gestión de CLIENTES en n8n
+// En desarrollo apunta a un endpoint relativo que pasa por el proxy de Vite
+// En producción puedes sobreescribirlo con la URL completa del webhook de n8n
+export const CLIENTS_WEBHOOK_URL =
+  import.meta.env.VITE_CLIENTS_WEBHOOK_URL || '/api/clientes';
+

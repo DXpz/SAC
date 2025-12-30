@@ -145,7 +145,7 @@ const CaseDetail: React.FC = () => {
                    </>
                  ) : (
                    <>
-                     <CheckCircle2 className="w-5 h-5" style={{color: 'var(--color-accent-blue)'}} /> Acciones Disponibles
+                 <CheckCircle2 className="w-5 h-5" style={{color: 'var(--color-accent-blue)'}} /> Acciones Disponibles
                    </>
                  )}
                </h3>
@@ -161,32 +161,32 @@ const CaseDetail: React.FC = () => {
                    </p>
                  </div>
                ) : validTransitions.length > 0 ? (
-                 <div className="flex flex-wrap gap-3">
+               <div className="flex flex-wrap gap-3">
                    {validTransitions.map(st => (
-                     <button
-                       key={st}
+                        <button
+                          key={st}
                        disabled={transitionLoading || !canPerformAction}
                        onClick={() => handleActionClick(st)}
                        className="px-6 py-3 rounded-xl bg-gradient-brand-blue text-white text-xs font-semibold tracking-normal transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl hover:-translate-y-0.5 disabled:hover:translate-y-0"
-                       style={{background: 'linear-gradient(to right, var(--color-accent-blue), var(--color-accent-blue-2))'}}
-                       onMouseEnter={(e) => {
-                         if (!e.currentTarget.disabled) {
-                           e.currentTarget.style.background = 'linear-gradient(to right, var(--color-brand-blue), var(--color-accent-blue))';
-                         }
-                       }}
-                       onMouseLeave={(e) => {
-                         e.currentTarget.style.background = 'linear-gradient(to right, var(--color-accent-blue), var(--color-accent-blue-2))';
-                       }}
-                     >
-                       {st}
-                     </button>
+                          style={{background: 'linear-gradient(to right, var(--color-accent-blue), var(--color-accent-blue-2))'}}
+                          onMouseEnter={(e) => {
+                            if (!e.currentTarget.disabled) {
+                              e.currentTarget.style.background = 'linear-gradient(to right, var(--color-brand-blue), var(--color-accent-blue))';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'linear-gradient(to right, var(--color-accent-blue), var(--color-accent-blue-2))';
+                          }}
+                        >
+                          {st}
+                        </button>
                    ))}
                  </div>
-               ) : (
-                 <div className="w-full p-4 bg-slate-100 rounded-xl border border-slate-200">
+                 ) : (
+                   <div className="w-full p-4 bg-slate-100 rounded-xl border border-slate-200">
                    <p className="text-slate-500 text-sm font-medium text-center">No hay acciones disponibles para este estado ({caso.status}).</p>
-                 </div>
-               )}
+                   </div>
+                 )}
             </div>
           </section>
         </div>

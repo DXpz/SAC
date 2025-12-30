@@ -25,6 +25,13 @@ export default defineConfig(({ mode }) => {
             secure: true,
             rewrite: () => '/webhook/97a6c0f7-ea50-4542-b99e-710b96b58652',
           },
+          // Clientes (lista) - webhook para obtener lista de clientes
+          '/api/clientes': {
+            target: 'https://n8n.red.com.sv',
+            changeOrigin: true,
+            secure: true,
+            rewrite: () => '/webhook/b30aeff4-1d3a-4b40-b8da-141b4e1fc5b6',
+          },
         },
       },
       plugins: [react()],

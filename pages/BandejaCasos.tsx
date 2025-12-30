@@ -2,81 +2,98 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import { Case, CaseStatus, Cliente, Categoria, Channel } from '../types';
+import { Case, CaseStatus, Cliente } from '../types';
 import { STATE_COLORS } from '../constants';
-import { Search, Plus, Filter, ChevronRight, X } from 'lucide-react';
+import { Search, Plus, Filter, ChevronRight, RefreshCw, X } from 'lucide-react';
 
 const BandejaCasos: React.FC = () => {
   const [casos, setCasos] = useState<Case[]>([]);
   const [filtered, setFiltered] = useState<Case[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [showModal, setShowModal] = useState(false);
   const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [categorias, setCategorias] = useState<Categoria[]>([]);
-  
-  const [newCase, setNewCase] = useState({
-    clienteId: '',
-    categoriaId: '',
-    contactChannel: Channel.WEB,
-    subject: '',
-    description: '',
-    clientName: '',
-    contactName: '',
-    phone: '',
-    email: '',
-  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   const navigate = useNavigate();
 
   useEffect(() => {
-    loadCasos();
     loadClientes();
-    loadCategorias();
+    loadCasos();
   }, []);
+
+  // Enriquecer casos cuando se actualice la lista de clientes
+  useEffect(() => {
+    if (clientes.length > 0 && casos.length > 0) {
+      const casosEnriquecidos = casos.map(caso => {
+        // Buscar el cliente completo en la lista de clientes
+        const clienteCompleto = clientes.find(cli => cli.idCliente === caso.clientId || cli.idCliente === (caso as any).cliente?.idCliente);
+        
+        if (clienteCompleto && caso.clientName !== clienteCompleto.nombreEmpresa) {
+          return {
+            ...caso,
+            clientName: clienteCompleto.nombreEmpresa,
+            clientId: clienteCompleto.idCliente,
+            cliente: clienteCompleto,
+          };
+        }
+        
+        return caso;
+      });
+      
+      // Solo actualizar si hay cambios
+      const hasChanges = casosEnriquecidos.some((caso, idx) => 
+        caso.clientName !== casos[idx].clientName || caso.clientId !== casos[idx].clientId
+      );
+      
+      if (hasChanges) {
+        setCasos(casosEnriquecidos);
+      }
+    }
+  }, [clientes]);
 
   const loadClientes = async () => {
     const data = await api.getClientes();
     setClientes(data);
   };
 
-  const loadCategorias = async () => {
-    const data = await api.getCategorias();
-    setCategorias(data);
-  };
-
-  const handleClienteChange = async (clienteId: string) => {
-    if (!clienteId) {
-      // Si se limpia el selector, limpiar campos relacionados
-      setNewCase({
-        ...newCase,
-        clienteId: '',
-        clientName: '',
-        contactName: '',
-        phone: '',
-        email: '',
-        contactChannel: Channel.WEB,
-      });
-      return;
-    }
-
-    // Buscar cliente y autocompletar campos
-    const cliente = await api.getClienteById(clienteId);
-    if (cliente) {
-      setNewCase({
-        ...newCase,
-        clienteId: cliente.idCliente,
-        clientName: cliente.nombreEmpresa,
-        contactName: cliente.contactoPrincipal,
-        phone: cliente.telefono,
-        email: cliente.email,
-      });
-    }
-  };
-
   const loadCasos = async () => {
-    const data = await api.getCases();
-    setCasos([...data]);
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await api.getCases();
+      
+      // Enriquecer casos con datos completos del cliente desde la lista de clientes
+      const casosEnriquecidos = data.map(caso => {
+        // Buscar el cliente completo en la lista de clientes usando el clientId
+        const clienteCompleto = clientes.find(cli => 
+          cli.idCliente === caso.clientId || 
+          cli.idCliente === (caso as any).cliente?.idCliente ||
+          cli.idCliente === caso.clientId?.replace('CL', 'CL0000') // Normalizar formato de ID
+        );
+        
+        if (clienteCompleto) {
+          return {
+            ...caso,
+            clientName: clienteCompleto.nombreEmpresa,
+            clientId: clienteCompleto.idCliente,
+            cliente: clienteCompleto,
+          };
+        }
+        
+        return caso;
+      });
+      
+      setCasos([...casosEnriquecidos]);
+      setLastUpdate(new Date());
+    } catch (err: any) {
+      console.error('Error al cargar casos:', err);
+      setError(err.message || 'Error al cargar los casos desde el servidor. Por favor, intenta nuevamente.');
+      setCasos([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -96,29 +113,6 @@ const BandejaCasos: React.FC = () => {
     setFiltered(result);
   }, [searchTerm, statusFilter, casos]);
 
-  const handleCreateCase = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await api.createCase({
-        clienteId: newCase.clienteId,
-        categoriaId: newCase.categoriaId,
-        contactChannel: newCase.contactChannel,
-        subject: newCase.subject,
-        description: newCase.description,
-        clientName: newCase.clientName,
-        contactName: newCase.contactName,
-        phone: newCase.phone,
-        clientEmail: newCase.email,
-        status: CaseStatus.NUEVO,
-        createdAt: new Date().toISOString(),
-      });
-      setShowModal(false);
-      setNewCase({ clienteId: '', categoriaId: '', contactChannel: Channel.WEB, subject: '', description: '', clientName: '', contactName: '', phone: '', email: '' });
-      loadCasos();
-    } catch (err) {
-      alert('Error al crear el caso');
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -128,7 +122,8 @@ const BandejaCasos: React.FC = () => {
           borderColor: 'rgba(226, 232, 240, 0.5)'
         }}
       >
-        <div className="relative flex-1 w-full max-w-md">
+        <div className="flex items-center gap-4 flex-1">
+          <div className="relative flex-1 w-full max-w-md">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5 pointer-events-none" />
           <input
             type="text"
@@ -149,9 +144,41 @@ const BandejaCasos: React.FC = () => {
               e.target.style.boxShadow = '';
             }}
           />
+          </div>
+          {lastUpdate && !loading && (
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Actualizado: {lastUpdate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+          )}
         </div>
         
         <div className="flex gap-3 w-full md:w-auto">
+          <button
+            onClick={loadCasos}
+            disabled={loading}
+            className="px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all border shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              color: 'var(--color-accent-gray)',
+              borderColor: 'rgba(226, 232, 240, 0.5)',
+              backgroundColor: 'white'
+            }}
+            onMouseEnter={(e) => {
+              if (!loading) {
+                e.currentTarget.style.backgroundColor = 'rgba(226, 232, 240, 0.3)';
+                e.currentTarget.style.borderColor = 'var(--color-brand-red)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!loading) {
+                e.currentTarget.style.backgroundColor = 'white';
+                e.currentTarget.style.borderColor = 'rgba(226, 232, 240, 0.5)';
+              }
+            }}
+            title="Actualizar casos"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
           <div className="relative group">
             <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-accent-gray w-5 h-5 pointer-events-none transition-colors" style={{color: 'var(--color-accent-gray)'}} />
             <select
@@ -173,7 +200,7 @@ const BandejaCasos: React.FC = () => {
             </select>
           </div>
           <button 
-            onClick={() => setShowModal(true)}
+            onClick={() => navigate('/app/casos/nuevo')}
             className="text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
             style={{background: 'linear-gradient(to right, var(--color-brand-red), var(--color-accent-red))'}}
             onMouseEnter={(e) => {
@@ -188,13 +215,37 @@ const BandejaCasos: React.FC = () => {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="bg-white rounded-2xl shadow-lg border-2 border-slate-200/50 p-16 text-center">
+          <div className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin mx-auto mb-4" style={{borderColor: 'var(--color-brand-red)'}}></div>
+          <h3 className="text-lg font-bold text-slate-800 mb-2">Cargando casos...</h3>
+          <p className="text-slate-500 text-sm">Obteniendo datos desde el servidor</p>
+        </div>
+      ) : error ? (
+        <div className="bg-white rounded-2xl shadow-lg border-2 border-red-200/50 p-16 text-center">
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <X className="w-10 h-10 text-red-500" />
+          </div>
+          <h3 className="text-lg font-bold text-red-800 mb-2">Error al cargar casos</h3>
+          <p className="text-red-600 text-sm mb-4">{error}</p>
+          <button
+            onClick={loadCasos}
+            className="px-6 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors"
+          >
+            Reintentar
+          </button>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-lg border-2 border-slate-200/50 p-16 text-center">
           <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Search className="w-10 h-10 text-slate-400" />
           </div>
           <h3 className="text-lg font-bold text-slate-800 mb-2">No se encontraron casos</h3>
-          <p className="text-slate-500 text-sm">Intenta ajustar los filtros de búsqueda</p>
+          <p className="text-slate-500 text-sm">
+            {casos.length === 0 
+              ? 'No hay casos registrados en el sistema'
+              : 'Intenta ajustar los filtros de búsqueda'}
+          </p>
         </div>
       ) : (
         <div className="bg-white rounded-2xl shadow-lg border-2 border-slate-200/50 overflow-hidden">
@@ -237,7 +288,14 @@ const BandejaCasos: React.FC = () => {
                       <span className="text-sm font-semibold text-slate-900 group-hover:text-slate-700 transition-colors">{caso.ticketNumber || (caso as any).idCaso}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm font-semibold text-slate-800">{caso.clientName || caso.cliente?.nombreEmpresa}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded-md border border-slate-200">
+                          {caso.clientId || caso.cliente?.idCliente || 'N/A'}
+                        </span>
+                        <span className="text-sm font-semibold text-slate-800">
+                          {caso.clientName || caso.cliente?.nombreEmpresa || 'Sin nombre'}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center text-xs font-semibold px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg border border-slate-200">
@@ -258,184 +316,6 @@ const BandejaCasos: React.FC = () => {
                 ))}
               </tbody>
             </table>
-          </div>
-        </div>
-      )}
-
-      {showModal && (
-        <div className="fixed inset-0 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300" style={{backgroundColor: 'rgba(20, 84, 120, 0.6)'}}>
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden transform animate-in zoom-in-95 scale-in duration-300 border border-slate-200/50 max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-gradient-to-r from-slate-50 to-white sticky top-0 bg-white z-10">
-              <div>
-                <h3 className="text-2xl font-semibold text-slate-900">Crear Nuevo Caso SAC</h3>
-                <p className="text-xs text-slate-500 mt-1 font-medium">Completa los datos del caso</p>
-              </div>
-              <button 
-                onClick={() => setShowModal(false)} 
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <form onSubmit={handleCreateCase} className="p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Columna Izquierda */}
-                <div className="space-y-5">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600 tracking-normal mb-2">Cliente <span className="text-red-500">*</span></label>
-                    <select
-                      required
-                      value={newCase.clienteId}
-                      onChange={(e) => handleClienteChange(e.target.value)}
-                      className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition-all bg-slate-50 focus:bg-white font-medium appearance-none cursor-pointer"
-                    >
-                      <option value="">Seleccione un cliente...</option>
-                      {clientes.map((cliente) => (
-                        <option key={cliente.idCliente} value={cliente.idCliente}>
-                          {cliente.idCliente} - {cliente.nombreEmpresa}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600 tracking-normal mb-2">Empresa / Cliente</label>
-                    <input 
-                      type="text" required 
-                      className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition-all bg-slate-50 focus:bg-white font-medium"
-                      placeholder="Nombre de la empresa"
-                      value={newCase.clientName}
-                      onChange={e => setNewCase({...newCase, clientName: e.target.value})}
-                      readOnly={!!newCase.clienteId}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-slate-600 tracking-normal mb-2">Contacto Principal</label>
-                      <input 
-                        type="text"
-                        className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition-all bg-slate-50 focus:bg-white font-medium"
-                        placeholder="Nombre contacto"
-                        value={newCase.contactName}
-                        onChange={e => setNewCase({...newCase, contactName: e.target.value})}
-                        readOnly={!!newCase.clienteId}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-600 tracking-normal mb-2">Teléfono</label>
-                      <input 
-                        type="tel"
-                        className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition-all bg-slate-50 focus:bg-white font-medium"
-                        placeholder="+50370000000"
-                        value={newCase.phone}
-                        onChange={e => setNewCase({...newCase, phone: e.target.value})}
-                        readOnly={!!newCase.clienteId}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600 tracking-normal mb-2">Email Cliente</label>
-                    <input 
-                      type="email" required 
-                      className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition-all bg-slate-50 focus:bg-white font-medium"
-                      placeholder="cliente@empresa.com"
-                      value={newCase.email}
-                      onChange={e => setNewCase({...newCase, email: e.target.value})}
-                      readOnly={!!newCase.clienteId}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600 tracking-normal mb-2">Medio de Contacto <span className="text-red-500">*</span></label>
-                    <select
-                      required
-                      value={newCase.contactChannel}
-                      onChange={(e) => setNewCase({...newCase, contactChannel: e.target.value as Channel})}
-                      className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition-all bg-slate-50 focus:bg-white font-medium appearance-none cursor-pointer"
-                    >
-                      <option value={Channel.WEB}>Web</option>
-                      <option value={Channel.EMAIL}>Email</option>
-                      <option value={Channel.WHATSAPP}>WhatsApp</option>
-                      <option value={Channel.TELEFONO}>Teléfono</option>
-                      <option value={Channel.REDES_SOCIALES}>Redes Sociales</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Columna Derecha */}
-                <div className="space-y-5">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600 tracking-normal mb-2">Categoría <span className="text-red-500">*</span></label>
-                    <select
-                      required
-                      value={newCase.categoriaId}
-                      onChange={(e) => setNewCase({...newCase, categoriaId: e.target.value})}
-                      className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition-all bg-slate-50 focus:bg-white font-medium appearance-none cursor-pointer"
-                    >
-                      <option value="">Seleccione una categoría...</option>
-                      {categorias.length > 0 ? (
-                        categorias.map((categoria) => (
-                          <option key={categoria.idCategoria} value={categoria.idCategoria}>
-                            {categoria.nombre} — SLA {categoria.slaDias} días
-                          </option>
-                        ))
-                      ) : (
-                        <option value="" disabled>Cargando categorías...</option>
-                      )}
-                    </select>
-                    {categorias.length === 0 && (
-                      <p className="text-xs text-slate-400 mt-1">Cargando categorías...</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-black text-slate-600 uppercase tracking-wider mb-2">Asunto <span className="text-red-500">*</span></label>
-                    <input 
-                      type="text" required 
-                      className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition-all bg-slate-50 focus:bg-white font-medium"
-                      placeholder="Resumen del caso"
-                      value={newCase.subject}
-                      onChange={e => setNewCase({...newCase, subject: e.target.value})}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-black text-slate-600 uppercase tracking-wider mb-2">Descripción <span className="text-red-500">*</span></label>
-                    <textarea 
-                      required rows={8}
-                      className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition-all bg-slate-50 focus:bg-white font-medium resize-none"
-                      placeholder="Detalles del caso..."
-                      value={newCase.description}
-                      onChange={e => setNewCase({...newCase, description: e.target.value})}
-                    ></textarea>
-                  </div>
-                </div>
-              </div>
-              <div className="pt-2 flex gap-3">
-                <button 
-                  type="button" 
-                  onClick={() => setShowModal(false)} 
-                  className="flex-1 py-3.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-all border border-slate-200"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit" 
-                  className="flex-1 py-3.5 bg-gradient-brand-blue text-white text-sm font-bold rounded-xl transition-all shadow-brand-blue-lg"
-                  style={{background: 'linear-gradient(to right, var(--color-accent-blue), var(--color-accent-blue-2))'}}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'linear-gradient(to right, var(--color-brand-blue), var(--color-accent-blue))';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'linear-gradient(to right, var(--color-accent-blue), var(--color-accent-blue-2))';
-                  }}
-                >
-                  Registrar Caso
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}
