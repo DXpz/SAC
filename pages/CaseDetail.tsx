@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import { Case, CaseStatus } from '../types';
+import { Case, CaseStatus, Cliente } from '../types';
 import { STATE_TRANSITIONS, STATE_COLORS } from '../constants';
 import { ArrowLeft, MessageSquare, User, Building2, Phone, Mail, CheckCircle2, Clock, X, AlertTriangle, Lock } from 'lucide-react';
 
@@ -10,6 +10,7 @@ const CaseDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [caso, setCaso] = useState<Case | null>(null);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [transitionLoading, setTransitionLoading] = useState(false);
   
   const [showResueltoModal, setShowResueltoModal] = useState(false);
@@ -19,8 +20,40 @@ const CaseDetail: React.FC = () => {
   const [formDetail, setFormDetail] = useState('');
 
   useEffect(() => {
+    loadClientes();
     if (id) loadCaso(id);
   }, [id]);
+
+  // Enriquecer caso con datos del cliente cuando se carguen los clientes
+  useEffect(() => {
+    if (caso && clientes.length > 0) {
+      const clienteCompleto = clientes.find(cli => 
+        cli.idCliente === caso.clientId || 
+        cli.idCliente === (caso as any).cliente?.idCliente ||
+        cli.idCliente === caso.clientId?.replace('CL', 'CL0000') // Normalizar formato de ID
+      );
+      
+      if (clienteCompleto) {
+        setCaso({
+          ...caso,
+          clientName: clienteCompleto.nombreEmpresa,
+          clientId: clienteCompleto.idCliente,
+          clientEmail: clienteCompleto.email || caso.clientEmail,
+          clientPhone: clienteCompleto.telefono || caso.clientPhone,
+          cliente: clienteCompleto,
+        });
+      }
+    }
+  }, [clientes, caso?.clientId]);
+
+  const loadClientes = async () => {
+    try {
+      const data = await api.getClientes();
+      setClientes(data);
+    } catch (err) {
+      console.error('Error al cargar clientes:', err);
+    }
+  };
 
   const loadCaso = async (caseId: string) => {
     const data = await api.getCasoById(caseId);
@@ -31,12 +64,16 @@ const CaseDetail: React.FC = () => {
   const isCaseClosed = caso?.status === CaseStatus.CERRADO;
 
   // Validar si se puede realizar una acción
+  // Nota: El SLA vencido (slaExpired) NO bloquea el cambio de estado, solo los casos cerrados están bloqueados
+  // Esto aplica para todos los usuarios: agentes, supervisores y gerentes
   const canPerformAction = !isCaseClosed && !transitionLoading;
 
   const handleStateChange = async (newState: string, extraData?: any) => {
     if (!caso) return;
     
-    // Validación: no permitir acciones en casos cerrados
+    // Validación: solo bloquear acciones en casos cerrados
+    // Nota: Los casos vencidos (slaExpired) SÍ pueden cambiar de estado
+    // Esto aplica para todos los usuarios, incluyendo agentes
     if (isCaseClosed) {
       alert('No se pueden realizar acciones en un caso cerrado.');
       return;
@@ -44,7 +81,8 @@ const CaseDetail: React.FC = () => {
 
     setTransitionLoading(true);
     try {
-      await api.updateCaseStatus(caso.id, newState, `Transición a ${newState}`, extraData);
+      const detail = extraData?.detalle || extraData?.resolucion || `Transición a ${newState}`;
+      await api.updateCaseStatus(caso.id, newState, detail, extraData);
       setShowResueltoModal(false);
       setShowPendienteModal(false);
       setShowConfirmModal(false);
@@ -82,144 +120,224 @@ const CaseDetail: React.FC = () => {
 
   const confirmAction = () => {
     if (pendingAction) {
-      handleStateChange(pendingAction.state);
+      // Si es CERRADO, el mensaje es obligatorio
+      if (pendingAction.state === CaseStatus.CERRADO && !formDetail.trim()) {
+        return;
+      }
+      handleStateChange(pendingAction.state, pendingAction.state === CaseStatus.CERRADO ? { detalle: formDetail } : undefined);
     }
   };
 
   if (!caso) return (
     <div className="min-h-[400px] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-            <div className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin" style={{borderColor: 'var(--color-accent-blue)'}}></div>
-            <p className="text-slate-400 font-medium tracking-normal text-xs">Cargando Detalle...</p>
+            <div className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin" style={{borderColor: '#c8151b'}}></div>
+            <p className="font-medium tracking-normal text-xs" style={{color: '#94a3b8'}}>Cargando Detalle...</p>
         </div>
     </div>
   );
 
-  const validTransitions = STATE_TRANSITIONS[caso.status as CaseStatus] || [];
+  // Normalizar el estado para que coincida con el enum CaseStatus
+  const normalizeStatus = (status: string | CaseStatus): CaseStatus => {
+    const statusStr = String(status).trim();
+    // Buscar coincidencia exacta o por valor del enum
+    const statusValues = Object.values(CaseStatus);
+    const matchedStatus = statusValues.find(s => {
+      const sNormalized = s.toLowerCase().replace(/\s+/g, '');
+      const statusNormalized = statusStr.toLowerCase().replace(/\s+/g, '');
+      return s === statusStr || s.toLowerCase() === statusStr.toLowerCase() || sNormalized === statusNormalized;
+    });
+    return (matchedStatus as CaseStatus) || (status as CaseStatus);
+  };
+
+  const normalizedStatus = normalizeStatus(caso.status);
+  const validTransitions = STATE_TRANSITIONS[normalizedStatus] || [];
+  
+  // Debug: si no hay transiciones, verificar el estado
+  if (validTransitions.length === 0 && !isCaseClosed) {
+    console.log('Estado del caso:', caso.status, 'Estado normalizado:', normalizedStatus, 'Transiciones disponibles:', Object.keys(STATE_TRANSITIONS));
+  }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-20">
+    <div className="max-w-7xl mx-auto space-y-5 pb-20">
       <button 
         onClick={() => navigate(-1)}
-        className="flex items-center text-slate-600 hover:text-slate-900 font-bold transition-colors mb-2 group px-4 py-2 rounded-xl hover:bg-slate-100"
+        className="flex items-center gap-2 text-sm font-semibold transition-all mb-1 group px-3 py-2 rounded-lg"
+        style={{color: '#64748b'}}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.color = '#475569';
+          e.currentTarget.style.backgroundColor = '#f1f5f9';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.color = '#64748b';
+          e.currentTarget.style.backgroundColor = 'transparent';
+        }}
       >
-        <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" /> Volver
+        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> Volver
       </button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <section className="bg-white rounded-2xl shadow-sm border-2 border-slate-200/50 overflow-hidden">
-            <div className="p-8 border-b-2 border-slate-100 bg-gradient-to-r from-slate-50 to-white flex justify-between items-start">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-4 flex-wrap">
-                  <span className="text-4xl font-semibold text-slate-900 tracking-tight">{caso.ticketNumber}</span>
-                  <span className={`px-4 py-2 rounded-full text-xs font-semibold border-2 shadow-sm ${STATE_COLORS[caso.status as CaseStatus]}`}>
-                    {caso.status}
-                  </span>
-                </div>
-                <h1 className="text-2xl font-semibold text-slate-900 leading-tight">{caso.subject}</h1>
-              </div>
-              <div className="text-right ml-4">
-                <p className="text-xs text-slate-500 font-medium mb-2">Estado SLA</p>
-                <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 shadow-sm ${caso.slaExpired ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
-                  <Clock className={`w-5 h-5 ${caso.slaExpired ? 'text-red-600' : 'text-green-600'}`} />
-                  <span className="text-lg font-semibold">{caso.slaExpired ? 'Vencido' : 'En tiempo'}</span>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Columna Principal - Información del Caso */}
+        <div className="lg:col-span-2 space-y-5">
+          {/* Header del Caso */}
+          <section className="rounded-xl border overflow-hidden shadow-sm" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+            <div className="p-6 border-b" style={{borderColor: 'rgba(148, 163, 184, 0.15)', backgroundColor: '#f8fafc'}}>
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-3 flex-wrap">
+                    <span className="text-xl font-bold tracking-tight" style={{color: '#0f172a'}}>{caso.ticketNumber}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span 
+                        className="text-xs font-semibold uppercase tracking-wide"
+                        style={{
+                          color: (() => {
+                            const status = caso.status as CaseStatus;
+                            if (status === CaseStatus.NUEVO) return '#2563eb';
+                            if (status === CaseStatus.EN_PROCESO) return '#d97706';
+                            if (status === CaseStatus.PENDIENTE_CLIENTE) return '#9333ea';
+                            if (status === CaseStatus.ESCALADO) return '#dc2626';
+                            if (status === CaseStatus.RESUELTO) return '#16a34a';
+                            if (status === CaseStatus.CERRADO) return '#64748b';
+                            return '#475569';
+                          })()
+                        }}
+                      >
+                        {caso.status}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5" style={{color: caso.slaExpired ? '#dc2626' : '#16a34a'}} />
+                      <span 
+                        className="text-xs font-semibold"
+                        style={{color: caso.slaExpired ? '#dc2626' : '#16a34a'}}
+                      >
+                        {caso.slaExpired ? 'Vencido' : 'En tiempo'}
+                      </span>
+                    </div>
+                  </div>
+                  <h1 className="text-lg font-bold leading-snug" style={{color: '#0f172a'}}>{caso.subject}</h1>
                 </div>
               </div>
             </div>
 
-            <div className="p-8">
-              <h3 className="text-sm font-semibold text-slate-700 tracking-normal mb-4 flex items-center gap-2">
-                <MessageSquare className="w-5 h-5" style={{color: 'var(--color-accent-blue)'}} /> Descripción del Caso
-              </h3>
-              <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 p-6 rounded-2xl border-2 border-slate-200 text-slate-700 leading-relaxed font-medium shadow-sm">
-                {caso.description}
+            {/* Descripción */}
+            <div className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-2 rounded-lg" style={{backgroundColor: '#eff6ff'}}>
+                  <MessageSquare className="w-4 h-4" style={{color: '#107ab4'}} />
+                </div>
+                <h3 className="text-sm font-bold uppercase tracking-wide" style={{color: '#475569'}}>Descripción del Caso</h3>
+              </div>
+              <div className="p-5 rounded-lg border leading-relaxed" style={{backgroundColor: '#f8fafc', borderColor: 'rgba(148, 163, 184, 0.2)', color: '#475569'}}>
+                <p className="text-sm font-medium">{caso.description}</p>
               </div>
             </div>
 
-            <div className="p-8 border-t-2 border-slate-100 bg-gradient-to-r from-slate-50/30 to-slate-100/30">
-               <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider mb-5 flex items-center gap-2">
-                 {isCaseClosed ? (
-                   <>
-                     <Lock className="w-5 h-5 text-slate-400" /> Acciones Bloqueadas
-                   </>
-                 ) : (
-                   <>
-                 <CheckCircle2 className="w-5 h-5" style={{color: 'var(--color-accent-blue)'}} /> Acciones Disponibles
-                   </>
-                 )}
-               </h3>
+            {/* Acciones */}
+            <div className="p-6 border-t" style={{borderColor: 'rgba(148, 163, 184, 0.15)', backgroundColor: '#ffffff'}}>
+              <div className="flex items-center gap-2 mb-4">
+                {isCaseClosed ? (
+                  <>
+                    <div className="p-2 rounded-lg" style={{backgroundColor: '#f1f5f9'}}>
+                      <Lock className="w-4 h-4" style={{color: '#64748b'}} />
+                    </div>
+                    <h3 className="text-sm font-bold uppercase tracking-wide" style={{color: '#64748b'}}>Acciones Bloqueadas</h3>
+                  </>
+                ) : (
+                  <>
+                    <div className="p-2 rounded-lg" style={{backgroundColor: '#eff6ff'}}>
+                      <CheckCircle2 className="w-4 h-4" style={{color: '#107ab4'}} />
+                    </div>
+                    <h3 className="text-sm font-bold uppercase tracking-wide" style={{color: '#0f172a'}}>Acciones Disponibles</h3>
+                  </>
+                )}
+              </div>
                
-               {isCaseClosed ? (
-                 <div className="w-full p-6 bg-gradient-to-r from-slate-100 to-slate-200 rounded-xl border-2 border-slate-300">
-                   <div className="flex items-center gap-3 mb-2">
-                     <Lock className="w-6 h-6 text-slate-500" />
-                     <p className="text-slate-700 text-sm font-bold">Caso Cerrado</p>
-                   </div>
-                   <p className="text-slate-600 text-sm font-medium ml-9">
-                     Este caso ha sido cerrado y no se pueden realizar más acciones sobre él.
-                   </p>
-                 </div>
-               ) : validTransitions.length > 0 ? (
-               <div className="flex flex-wrap gap-3">
-                   {validTransitions.map(st => (
-                        <button
-                          key={st}
-                       disabled={transitionLoading || !canPerformAction}
-                       onClick={() => handleActionClick(st)}
-                       className="px-6 py-3 rounded-xl bg-gradient-brand-blue text-white text-xs font-semibold tracking-normal transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl hover:-translate-y-0.5 disabled:hover:translate-y-0"
-                          style={{background: 'linear-gradient(to right, var(--color-accent-blue), var(--color-accent-blue-2))'}}
-                          onMouseEnter={(e) => {
-                            if (!e.currentTarget.disabled) {
-                              e.currentTarget.style.background = 'linear-gradient(to right, var(--color-brand-blue), var(--color-accent-blue))';
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'linear-gradient(to right, var(--color-accent-blue), var(--color-accent-blue-2))';
-                          }}
-                        >
-                          {st}
-                        </button>
-                   ))}
-                 </div>
-                 ) : (
-                   <div className="w-full p-4 bg-slate-100 rounded-xl border border-slate-200">
-                   <p className="text-slate-500 text-sm font-medium text-center">No hay acciones disponibles para este estado ({caso.status}).</p>
-                   </div>
-                 )}
+              {isCaseClosed ? (
+                <div className="p-5 rounded-lg border-2" style={{backgroundColor: '#f8fafc', borderColor: 'rgba(148, 163, 184, 0.3)'}}>
+                  <div className="flex items-start gap-3">
+                    <Lock className="w-5 h-5 mt-0.5" style={{color: '#64748b'}} />
+                    <div>
+                      <p className="text-sm font-bold mb-1" style={{color: '#475569'}}>Caso Cerrado</p>
+                      <p className="text-xs font-medium" style={{color: '#94a3b8'}}>
+                        Este caso ha sido cerrado y no se pueden realizar más acciones sobre él.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : validTransitions.length > 0 ? (
+                <div className="flex flex-wrap gap-2.5">
+                  {validTransitions.map(st => (
+                    <button
+                      key={st}
+                      disabled={transitionLoading || !canPerformAction}
+                      onClick={() => handleActionClick(st)}
+                      className="px-4 py-2.5 rounded-lg text-xs font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:hover:translate-y-0"
+                      style={{backgroundColor: '#c8151b'}}
+                      onMouseEnter={(e) => {
+                        if (!e.currentTarget.disabled) {
+                          e.currentTarget.style.backgroundColor = '#dc2626';
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#c8151b';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                      }}
+                    >
+                      {st}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 rounded-lg border text-center" style={{backgroundColor: '#f8fafc', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+                  <p className="text-xs font-medium" style={{color: '#94a3b8'}}>No hay acciones disponibles para este estado ({caso.status}).</p>
+                </div>
+              )}
             </div>
           </section>
         </div>
 
-        <div className="space-y-6">
-          <section className="bg-white rounded-2xl shadow-sm border-2 border-slate-200/50 p-6">
-            <div className="flex items-center gap-2 mb-5">
-              <Building2 className="w-5 h-5" style={{color: 'var(--color-accent-blue)'}} />
-              <h3 className="text-sm font-black text-slate-700 uppercase tracking-wider">Información del Cliente</h3>
+        {/* Columna Lateral - Información Adicional */}
+        <div className="space-y-5">
+          {/* Información del Cliente */}
+          <section className="rounded-xl border p-5 shadow-sm" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2 rounded-lg" style={{backgroundColor: '#eff6ff'}}>
+                <Building2 className="w-4 h-4" style={{color: '#107ab4'}} />
+              </div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold uppercase tracking-wide" style={{color: '#0f172a'}}>Cliente</h3>
+                <span className="text-sm font-semibold" style={{color: '#475569'}}>
+                  {caso.clientName || caso.cliente?.nombreEmpresa || 'Sin cliente'}
+                </span>
+              </div>
             </div>
-            <p className="text-slate-900 font-semibold text-xl mb-5">{caso.clientName}</p>
-            <div className="space-y-3">
-                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-                  <Mail className="w-4 h-4 text-slate-500"/>
-                  <p className="text-sm text-slate-700 font-medium">{caso.clientEmail}</p>
-                </div>
-                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-                  <Phone className="w-4 h-4 text-slate-500"/>
-                  <p className="text-sm text-slate-700 font-medium">{caso.clientPhone}</p>
-                </div>
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-3 p-3 rounded-lg border" style={{backgroundColor: '#f8fafc', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+                <Mail className="w-4 h-4" style={{color: '#64748b'}}/>
+                <p className="text-xs font-medium" style={{color: '#475569'}}>{caso.clientEmail || 'No disponible'}</p>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg border" style={{backgroundColor: '#f8fafc', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+                <Phone className="w-4 h-4" style={{color: '#64748b'}}/>
+                <p className="text-xs font-medium" style={{color: '#475569'}}>{caso.clientPhone || caso.cliente?.telefono || 'No disponible'}</p>
+              </div>
             </div>
           </section>
 
-          <section className="bg-white rounded-2xl shadow-sm border-2 border-slate-200/50 p-6">
-            <div className="flex items-center gap-2 mb-5">
-              <User className="w-5 h-5 text-slate-600" />
-              <h3 className="text-sm font-black text-slate-700 uppercase tracking-wider">Agente Asignado</h3>
-            </div>
-            <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-xl border border-slate-200">
-              <div className="w-12 h-12 rounded-xl bg-gradient-brand-blue flex items-center justify-center text-white font-semibold text-lg shadow-brand-blue-lg">
-                {caso.agentName.charAt(0)}
+          {/* Agente Asignado */}
+          <section className="rounded-xl border p-5 shadow-sm" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2 rounded-lg" style={{backgroundColor: '#f1f5f9'}}>
+                <User className="w-4 h-4" style={{color: '#64748b'}} />
               </div>
-              <p className="text-base font-bold text-slate-800">{caso.agentName}</p>
+              <h3 className="text-sm font-bold uppercase tracking-wide" style={{color: '#0f172a'}}>Agente Asignado</h3>
+            </div>
+            <div className="flex items-center gap-3 p-4 rounded-lg border" style={{backgroundColor: '#f8fafc', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm" style={{backgroundColor: '#c8151b'}}>
+                {caso.agentName.charAt(0).toUpperCase()}
+              </div>
+              <p className="text-sm font-bold" style={{color: '#0f172a'}}>{caso.agentName}</p>
             </div>
           </section>
         </div>
@@ -227,53 +345,119 @@ const CaseDetail: React.FC = () => {
 
       {/* Modal de Confirmación Genérico */}
       {showConfirmModal && pendingAction && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200/50 transform animate-in zoom-in-95 duration-200">
-            <div className="p-6 text-white flex justify-between items-center" style={{background: 'linear-gradient(to right, var(--color-accent-blue-2), var(--color-accent-blue-3))'}}>
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="w-6 h-6" />
-                <h3 className="font-semibold text-lg">Confirmar Acción</h3>
-              </div>
+        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4 z-50" style={{backgroundColor: 'rgba(15, 23, 42, 0.5)'}}>
+          <div className="rounded-xl w-full max-w-sm overflow-hidden shadow-2xl border transform animate-in fade-in zoom-in" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+            <div className="p-4 border-b flex justify-between items-center" style={{borderColor: 'rgba(148, 163, 184, 0.15)'}}>
+              <h3 className="font-bold text-sm" style={{color: '#0f172a'}}>
+                {pendingAction.state === CaseStatus.CERRADO ? 'Cerrar Caso' : 'Cambiar Estado'}
+              </h3>
               <button 
                 onClick={() => {
                   setShowConfirmModal(false);
                   setPendingAction(null);
+                  setFormDetail('');
                 }}
-                className="p-1 hover:bg-white/20 rounded-lg transition-colors"
+                className="p-1.5 rounded-lg transition-colors"
+                style={{color: '#64748b'}}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f1f5f9';
+                  e.currentTarget.style.color = '#475569';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = '#64748b';
+                }}
               >
-                <X className="w-6 h-6"/>
+                <X className="w-4 h-4"/>
               </button>
             </div>
-            <div className="p-8 space-y-5">
-              <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-4">
-                <p className="text-slate-800 font-semibold text-sm mb-2">¿Estás seguro de cambiar el estado del caso?</p>
-                <p className="text-slate-600 text-sm">
-                  El caso pasará de <span className="font-bold">{caso.status}</span> a <span className="font-bold">{pendingAction.label}</span>.
-                </p>
-              </div>
-              <div className="flex gap-3">
+            <div className="p-5 space-y-4">
+              <p className="text-xs font-medium leading-relaxed" style={{color: '#64748b'}}>
+                {pendingAction.state === CaseStatus.CERRADO 
+                  ? 'El caso se cerrará permanentemente. Esta acción no se puede deshacer.'
+                  : `¿Cambiar estado a "${pendingAction.label}"?`
+                }
+              </p>
+              {pendingAction.state === CaseStatus.CERRADO && (
+                <div>
+                  <label className="block text-xs font-bold mb-2" style={{color: '#475569'}}>
+                    Motivo del cierre <span className="text-red-500">*</span>
+                  </label>
+                  <textarea 
+                    className="w-full h-24 p-3 rounded-lg border outline-none focus:ring-2 transition-all text-xs resize-none"
+                    style={{
+                      backgroundColor: '#f8fafc',
+                      borderColor: formDetail.trim() ? 'rgba(148, 163, 184, 0.3)' : 'rgba(220, 38, 38, 0.4)',
+                      color: '#0f172a'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#107ab4';
+                      e.target.style.backgroundColor = '#ffffff';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(16, 122, 180, 0.1)';
+                    }}
+                    onBlur={(e) => {
+                      if (!formDetail.trim()) {
+                        e.target.style.borderColor = 'rgba(220, 38, 38, 0.5)';
+                      } else {
+                        e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                      }
+                      e.target.style.backgroundColor = '#f8fafc';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                    placeholder="Describe el motivo del cierre..."
+                    value={formDetail}
+                    onChange={e => {
+                      setFormDetail(e.target.value);
+                      const textarea = e.target;
+                      if (e.target.value.trim()) {
+                        textarea.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                      } else {
+                        textarea.style.borderColor = 'rgba(220, 38, 38, 0.4)';
+                      }
+                    }}
+                    required
+                  />
+                </div>
+              )}
+              <div className="flex gap-2.5 pt-2">
                 <button 
                   type="button"
                   onClick={() => {
                     setShowConfirmModal(false);
                     setPendingAction(null);
+                    setFormDetail('');
                   }}
-                  className="flex-1 py-3.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-all border border-slate-200"
+                  className="flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all border"
+                  style={{
+                    color: '#475569',
+                    borderColor: 'rgba(148, 163, 184, 0.3)',
+                    backgroundColor: 'transparent'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f1f5f9';
+                    e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                  }}
                 >
                   Cancelar
                 </button>
                 <button 
                   onClick={confirmAction}
-                  disabled={transitionLoading}
-                  className="flex-1 py-3.5 text-white font-semibold rounded-xl transition-all shadow-lg disabled:opacity-50"
-                  style={{background: 'linear-gradient(to right, var(--color-accent-blue-2), var(--color-accent-blue-3))'}}
+                  disabled={transitionLoading || (pendingAction.state === CaseStatus.CERRADO && !formDetail.trim())}
+                  className="flex-1 py-2.5 text-xs font-semibold text-white rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{backgroundColor: '#c8151b'}}
                   onMouseEnter={(e) => {
                     if (!e.currentTarget.disabled) {
-                      e.currentTarget.style.background = 'linear-gradient(to right, var(--color-accent-blue), var(--color-accent-blue-2))';
+                      e.currentTarget.style.backgroundColor = '#dc2626';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
                     }
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'linear-gradient(to right, var(--color-accent-blue-2), var(--color-accent-blue-3))';
+                    e.currentTarget.style.backgroundColor = '#c8151b';
+                    e.currentTarget.style.transform = 'translateY(0)';
                   }}
                 >
                   {transitionLoading ? 'Procesando...' : 'Confirmar'}
@@ -286,130 +470,155 @@ const CaseDetail: React.FC = () => {
 
       {/* Modal de Resolución */}
       {showResueltoModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-            <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200/50 transform animate-in zoom-in-95 duration-200">
-                <div className="p-6 text-white flex justify-between items-center" style={{background: 'linear-gradient(to right, var(--color-accent-blue-2), var(--color-accent-blue-3))'}}>
-                    <h3 className="font-semibold text-lg">Registrar Resolución</h3>
-                    <button 
-                      onClick={() => {
-                        setShowResueltoModal(false);
-                        setFormDetail('');
-                      }}
-                      className="p-1 hover:bg-white/20 rounded-lg transition-colors"
-                    >
-                      <X className="w-6 h-6"/>
-                    </button>
-                </div>
-                <div className="p-8 space-y-5">
-                    <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
-                      <p className="text-slate-700 text-sm font-medium">
-                        Para marcar el caso como <span className="font-bold">Resuelto</span>, debes describir la solución implementada.
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-600 tracking-normal mb-2">Solución Brindada <span className="text-red-500">*</span></label>
-                      <textarea 
-                          className="w-full h-32 p-4 rounded-xl border-2 border-slate-200 outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all bg-slate-50 focus:bg-white font-medium resize-none"
-                          placeholder="Describe la solución implementada..."
-                          value={formDetail}
-                          onChange={e => setFormDetail(e.target.value)}
-                          required
-                      ></textarea>
-                    </div>
-                    <div className="flex gap-3">
-                      <button 
-                        type="button"
-                        onClick={() => {
-                          setShowResueltoModal(false);
-                          setFormDetail('');
-                        }}
-                        className="flex-1 py-3.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-all border border-slate-200"
-                      >
-                        Cancelar
-                      </button>
-                      <button 
-                        onClick={() => handleStateChange(CaseStatus.RESUELTO, { resolucion: formDetail })}
-                        disabled={transitionLoading || !formDetail.trim()}
-                        className="flex-1 py-3.5 text-white font-semibold rounded-xl transition-all shadow-lg disabled:opacity-50"
-                        style={{background: 'linear-gradient(to right, var(--color-accent-blue-2), var(--color-accent-blue-3))'}}
-                        onMouseEnter={(e) => {
-                          if (!e.currentTarget.disabled) {
-                            e.currentTarget.style.background = 'linear-gradient(to right, var(--color-accent-blue), var(--color-accent-blue-2))';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'linear-gradient(to right, var(--color-accent-blue-2), var(--color-accent-blue-3))';
-                        }}
-                      >
-                        {transitionLoading ? 'Procesando...' : 'Confirmar Resolución'}
-                      </button>
-                    </div>
-                </div>
+        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4 z-50" style={{backgroundColor: 'rgba(15, 23, 42, 0.5)'}}>
+          <div className="rounded-xl w-full max-w-sm overflow-hidden shadow-2xl border transform" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+            <div className="p-4 border-b flex justify-between items-center" style={{borderColor: 'rgba(148, 163, 184, 0.15)'}}>
+              <h3 className="font-bold text-sm" style={{color: '#0f172a'}}>Marcar como Resuelto</h3>
+              <button 
+                onClick={() => {
+                  setShowResueltoModal(false);
+                  setFormDetail('');
+                }}
+                className="p-1.5 rounded-lg transition-colors"
+                style={{color: '#64748b'}}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f1f5f9';
+                  e.currentTarget.style.color = '#475569';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = '#64748b';
+                }}
+              >
+                <X className="w-4 h-4"/>
+              </button>
             </div>
+            <div className="p-5 space-y-4">
+              <p className="text-xs font-medium leading-relaxed" style={{color: '#64748b'}}>
+                El caso se marcará como resuelto y quedará disponible para cierre.
+              </p>
+              <div className="flex gap-2.5 pt-2">
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setShowResueltoModal(false);
+                    setFormDetail('');
+                  }}
+                  className="flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all border"
+                  style={{
+                    color: '#475569',
+                    borderColor: 'rgba(148, 163, 184, 0.3)',
+                    backgroundColor: 'transparent'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f1f5f9';
+                    e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={() => handleStateChange(CaseStatus.RESUELTO, { resolucion: 'Caso marcado como resuelto' })}
+                  disabled={transitionLoading}
+                  className="flex-1 py-2.5 text-xs font-semibold text-white rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{backgroundColor: '#c8151b'}}
+                  onMouseEnter={(e) => {
+                    if (!e.currentTarget.disabled) {
+                      e.currentTarget.style.backgroundColor = '#dc2626';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#c8151b';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  {transitionLoading ? 'Procesando...' : 'Confirmar'}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
       {/* Modal de Pendiente Cliente */}
       {showPendienteModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-            <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200/50 transform animate-in zoom-in-95 duration-200">
-                <div className="p-6 text-white flex justify-between items-center" style={{background: 'linear-gradient(to right, var(--color-accent-blue-2), var(--color-accent-blue-3))'}}>
-                    <h3 className="font-semibold text-lg">Marcar como Pendiente Cliente</h3>
-                    <button 
-                      onClick={() => {
-                        setShowPendienteModal(false);
-                        setFormDetail('');
-                      }}
-                      className="p-1 hover:bg-white/20 rounded-lg transition-colors"
-                    >
-                      <X className="w-6 h-6"/>
-                    </button>
-                </div>
-                <div className="p-8 space-y-5">
-                    <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-4">
-                      <p className="text-slate-700 text-sm font-medium">
-                        El caso quedará en espera de respuesta del cliente. Puedes agregar un mensaje opcional.
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-600 tracking-normal mb-2">Mensaje (Opcional)</label>
-                      <textarea 
-                          className="w-full h-32 p-4 rounded-xl border-2 border-slate-200 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all bg-slate-50 focus:bg-white font-medium resize-none"
-                          placeholder="Detalle sobre qué se espera del cliente..."
-                          value={formDetail}
-                          onChange={e => setFormDetail(e.target.value)}
-                      ></textarea>
-                    </div>
-                    <div className="flex gap-3">
-                      <button 
-                        type="button"
-                        onClick={() => {
-                          setShowPendienteModal(false);
-                          setFormDetail('');
-                        }}
-                        className="flex-1 py-3.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-all border border-slate-200"
-                      >
-                        Cancelar
-                      </button>
-                      <button 
-                        onClick={() => handleStateChange(CaseStatus.PENDIENTE_CLIENTE, { detalle: formDetail || 'Caso marcado como pendiente de respuesta del cliente' })}
-                        disabled={transitionLoading}
-                        className="flex-1 py-3.5 text-white font-semibold rounded-xl transition-all shadow-lg disabled:opacity-50"
-                        style={{background: 'linear-gradient(to right, var(--color-accent-blue-2), var(--color-accent-blue-3))'}}
-                        onMouseEnter={(e) => {
-                          if (!e.currentTarget.disabled) {
-                            e.currentTarget.style.background = 'linear-gradient(to right, var(--color-accent-blue), var(--color-accent-blue-2))';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'linear-gradient(to right, var(--color-accent-blue-2), var(--color-accent-blue-3))';
-                        }}
-                      >
-                        {transitionLoading ? 'Procesando...' : 'Confirmar'}
-                      </button>
-                    </div>
-                </div>
+        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4 z-50" style={{backgroundColor: 'rgba(15, 23, 42, 0.5)'}}>
+          <div className="rounded-xl w-full max-w-sm overflow-hidden shadow-2xl border transform" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+            <div className="p-4 border-b flex justify-between items-center" style={{borderColor: 'rgba(148, 163, 184, 0.15)'}}>
+              <h3 className="font-bold text-sm" style={{color: '#0f172a'}}>Pendiente Cliente</h3>
+              <button 
+                onClick={() => {
+                  setShowPendienteModal(false);
+                  setFormDetail('');
+                }}
+                className="p-1.5 rounded-lg transition-colors"
+                style={{color: '#64748b'}}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f1f5f9';
+                  e.currentTarget.style.color = '#475569';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = '#64748b';
+                }}
+              >
+                <X className="w-4 h-4"/>
+              </button>
             </div>
+            <div className="p-5 space-y-4">
+              <p className="text-xs font-medium leading-relaxed" style={{color: '#64748b'}}>
+                El caso quedará en espera de respuesta del cliente.
+              </p>
+              <div className="flex gap-2.5 pt-2">
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setShowPendienteModal(false);
+                    setFormDetail('');
+                  }}
+                  className="flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all border"
+                  style={{
+                    color: '#475569',
+                    borderColor: 'rgba(148, 163, 184, 0.3)',
+                    backgroundColor: 'transparent'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f1f5f9';
+                    e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={() => handleStateChange(CaseStatus.PENDIENTE_CLIENTE, { detalle: 'Caso marcado como pendiente de respuesta del cliente' })}
+                  disabled={transitionLoading}
+                  className="flex-1 py-2.5 text-xs font-semibold text-white rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{backgroundColor: '#c8151b'}}
+                  onMouseEnter={(e) => {
+                    if (!e.currentTarget.disabled) {
+                      e.currentTarget.style.backgroundColor = '#dc2626';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#c8151b';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  {transitionLoading ? 'Procesando...' : 'Confirmar'}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

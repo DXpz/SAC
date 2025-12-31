@@ -250,7 +250,6 @@ const Login: React.FC = () => {
                   required
                   value={email}
                   onChange={handleEmailChange}
-                  onBlur={handleEmailBlur}
                   placeholder="ejemplo@intelfon.com"
                   className={`w-full pl-12 pr-4 py-4 rounded-2xl border text-white placeholder:text-slate-500 focus:outline-none transition-all font-medium ${
                     emailError ? 'border-red-500' : emailTouched && validateEmail(email) ? 'border-green-500' : 'border-slate-600'
@@ -300,7 +299,6 @@ const Login: React.FC = () => {
                   required
                   value={password}
                   onChange={handlePasswordChange}
-                  onBlur={handlePasswordBlur}
                   placeholder="••••••••"
                   className={`w-full pl-12 pr-12 py-4 rounded-2xl border text-white placeholder:text-slate-500 focus:outline-none transition-all font-medium ${
                     passwordError ? 'border-red-500' : passwordTouched && validatePassword(password) ? 'border-green-500' : 'border-slate-600'

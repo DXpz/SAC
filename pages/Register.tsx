@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import { UserPlus, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
+import { UserPlus, Loader2, AlertCircle, ArrowLeft, ChevronRight } from 'lucide-react';
 
 const Register: React.FC = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [pais, setPais] = useState('El Salvador');
+  const [rol, setRol] = useState<'AGENTE' | 'SUPERVISOR' | 'GERENTE'>('AGENTE');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -24,15 +26,19 @@ const Register: React.FC = () => {
       return;
     }
 
-    if (password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres.');
+    if (password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres.');
       setLoading(false);
       return;
     }
 
     try {
       // Crear cuenta y almacenarla en n8n
-      const user = await api.createAccount(email, password, name);
+      const user = await api.createAccount(email, password, name, {
+        pais: pais,
+        rol: rol,
+        estado: 'ACTIVO'
+      });
       
       // Si llegamos aquí, el usuario fue creado y almacenado exitosamente en n8n
       // Mostrar mensaje de éxito antes de redirigir
@@ -58,109 +64,301 @@ const Register: React.FC = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="bg-white rounded-2xl shadow-lg p-8 border border-slate-200/50 animate-in fade-in slide-in-from-top">
-        <div className="flex items-center gap-4 mb-8">
-          <button
-            onClick={() => navigate('/app/agentes')}
-            className="p-2 rounded-xl hover:bg-slate-100 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5 text-slate-600" />
-          </button>
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-brand-blue flex items-center justify-center shadow-brand-blue-lg">
-              <UserPlus className="w-6 h-6 text-white" />
+    <div className="w-full h-full flex flex-col space-y-5">
+      <button 
+        onClick={() => navigate('/app/agentes')}
+        className="flex items-center gap-2 text-xs font-bold transition-all px-4 py-2 rounded-xl group"
+        style={{color: '#64748b'}}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.color = '#475569';
+          e.currentTarget.style.backgroundColor = '#f8fafc';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.color = '#64748b';
+          e.currentTarget.style.backgroundColor = 'transparent';
+        }}
+      >
+        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+        Volver a Gestión de Agentes
+      </button>
+
+      {error && (
+        <div className="mb-5 p-4 rounded-xl flex items-start gap-3 border-2 animate-in slide-in-from-top duration-300" style={{
+          backgroundColor: 'rgba(220, 38, 38, 0.1)',
+          borderColor: 'rgba(220, 38, 38, 0.3)',
+          color: '#dc2626'
+        }}>
+          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" style={{color: '#dc2626'}} />
+          <p className="text-xs font-semibold" style={{color: '#dc2626'}}>{error}</p>
+        </div>
+      )}
+
+      {/* Formulario */}
+      <div className="rounded-3xl shadow-xl border overflow-hidden flex-1 flex flex-col" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'}}>
+        <form onSubmit={handleRegister} className="p-6 flex-1 flex flex-col">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1">
+            {/* Columna Izquierda */}
+            <div className="space-y-5">
+              <h2 className="text-sm font-semibold mb-3 pb-2 border-b" style={{color: '#1e293b', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+                Información Personal
+              </h2>
+
+              <div>
+                <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>
+                  Nombre Completo <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Juan Pérez"
+                  className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
+                  style={{
+                    backgroundColor: '#f8fafc',
+                    borderColor: 'rgba(148, 163, 184, 0.3)',
+                    color: '#1e293b',
+                    '--tw-ring-color': 'var(--color-accent-blue)',
+                    '--tw-ring-opacity': '0.2'
+                  } as React.CSSProperties & { '--tw-ring-color': string, '--tw-ring-opacity': string }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = 'var(--color-accent-blue)';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
+                    e.target.style.backgroundColor = '#ffffff';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                    e.target.style.boxShadow = '';
+                    e.target.style.backgroundColor = '#f8fafc';
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>
+                  Correo <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="usuario@intelfon.com"
+                  className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
+                  style={{
+                    backgroundColor: '#f8fafc',
+                    borderColor: 'rgba(148, 163, 184, 0.3)',
+                    color: '#1e293b',
+                    '--tw-ring-color': 'var(--color-accent-blue)',
+                    '--tw-ring-opacity': '0.2'
+                  } as React.CSSProperties & { '--tw-ring-color': string, '--tw-ring-opacity': string }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = 'var(--color-accent-blue)';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
+                    e.target.style.backgroundColor = '#ffffff';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                    e.target.style.boxShadow = '';
+                    e.target.style.backgroundColor = '#f8fafc';
+                  }}
+                />
+              </div>
+
+              <div className="relative">
+                <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>
+                  País <span className="text-red-500">*</span>
+                </label>
+                <select
+                  required
+                  value={pais}
+                  onChange={(e) => setPais(e.target.value)}
+                  className="w-full pl-3 pr-10 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md appearance-none cursor-pointer"
+                  style={{
+                    backgroundColor: '#f8fafc',
+                    borderColor: 'rgba(148, 163, 184, 0.3)',
+                    color: '#1e293b',
+                    '--tw-ring-color': 'var(--color-accent-blue)',
+                    '--tw-ring-opacity': '0.2'
+                  } as React.CSSProperties & { '--tw-ring-color': string, '--tw-ring-opacity': string }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = 'var(--color-accent-blue)';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
+                    e.target.style.backgroundColor = '#ffffff';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                    e.target.style.boxShadow = '';
+                    e.target.style.backgroundColor = '#f8fafc';
+                  }}
+                >
+                  <option value="El Salvador">El Salvador</option>
+                  <option value="Guatemala">Guatemala</option>
+                </select>
+                <ChevronRight className="absolute right-3 top-9 w-4 h-4 pointer-events-none transition-all duration-200" style={{color: '#64748b', transform: 'rotate(90deg)'}} />
+              </div>
             </div>
-            <div>
-              <h2 className="text-2xl font-semibold text-slate-900">Crear Nueva Cuenta</h2>
-              <p className="text-sm text-slate-500 font-normal">Registrar nuevo colaborador en el sistema</p>
+
+            {/* Columna Derecha */}
+            <div className="space-y-5">
+              <h2 className="text-sm font-semibold mb-3 pb-2 border-b" style={{color: '#1e293b', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+                Credenciales de Acceso
+              </h2>
+
+              <div>
+                <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>
+                  Contraseña <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  minLength={8}
+                  className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
+                  style={{
+                    backgroundColor: '#f8fafc',
+                    borderColor: 'rgba(148, 163, 184, 0.3)',
+                    color: '#1e293b',
+                    '--tw-ring-color': 'var(--color-accent-blue)',
+                    '--tw-ring-opacity': '0.2'
+                  } as React.CSSProperties & { '--tw-ring-color': string, '--tw-ring-opacity': string }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = 'var(--color-accent-blue)';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
+                    e.target.style.backgroundColor = '#ffffff';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                    e.target.style.boxShadow = '';
+                    e.target.style.backgroundColor = '#f8fafc';
+                  }}
+                />
+                <p className="text-xs mt-1.5" style={{color: '#94a3b8'}}>Mínimo 8 caracteres</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>
+                  Confirmar Contraseña <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  minLength={8}
+                  className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
+                  style={{
+                    backgroundColor: '#f8fafc',
+                    borderColor: 'rgba(148, 163, 184, 0.3)',
+                    color: '#1e293b',
+                    '--tw-ring-color': 'var(--color-accent-blue)',
+                    '--tw-ring-opacity': '0.2'
+                  } as React.CSSProperties & { '--tw-ring-color': string, '--tw-ring-opacity': string }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = 'var(--color-accent-blue)';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
+                    e.target.style.backgroundColor = '#ffffff';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                    e.target.style.boxShadow = '';
+                    e.target.style.backgroundColor = '#f8fafc';
+                  }}
+                />
+              </div>
+
+              <div className="relative">
+                <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>
+                  Rol <span className="text-red-500">*</span>
+                </label>
+                <select
+                  required
+                  value={rol}
+                  onChange={(e) => setRol(e.target.value as 'AGENTE' | 'SUPERVISOR' | 'GERENTE')}
+                  className="w-full pl-3 pr-10 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md appearance-none cursor-pointer"
+                  style={{
+                    backgroundColor: '#f8fafc',
+                    borderColor: 'rgba(148, 163, 184, 0.3)',
+                    color: '#1e293b',
+                    '--tw-ring-color': 'var(--color-accent-blue)',
+                    '--tw-ring-opacity': '0.2'
+                  } as React.CSSProperties & { '--tw-ring-color': string, '--tw-ring-opacity': string }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = 'var(--color-accent-blue)';
+                    e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
+                    e.target.style.backgroundColor = '#ffffff';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                    e.target.style.boxShadow = '';
+                    e.target.style.backgroundColor = '#f8fafc';
+                  }}
+                >
+                  <option value="AGENTE">Agente</option>
+                  <option value="SUPERVISOR">Supervisor</option>
+                  <option value="GERENTE">Gerente</option>
+                </select>
+                <ChevronRight className="absolute right-3 top-9 w-4 h-4 pointer-events-none transition-all duration-200" style={{color: '#64748b', transform: 'rotate(90deg)'}} />
+              </div>
             </div>
           </div>
-        </div>
 
-        <form onSubmit={handleRegister} className="space-y-6">
-          {error && (
-            <div className="bg-accent-red/10 text-brand-red p-4 rounded-2xl flex items-start gap-3 border-2 border-accent-red/20 animate-in slide-in-from-top duration-300">
-              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-brand-red" />
-              <p className="text-sm font-normal tracking-normal text-brand-red">{error}</p>
-            </div>
-          )}
-
-            <div className="space-y-2">
-              <label className="block text-sm font-normal text-accent-gray tracking-normal ml-1 mb-2">Nombre Completo</label>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Juan Pérez"
-                className="w-full px-5 py-4 rounded-2xl border border-accent-light bg-accent-light focus:outline-none focus:ring-4 focus:ring-accent-blue/20 focus:border-accent-blue focus:bg-white transition-all font-normal text-base placeholder:text-slate-400"
-                style={{'--tw-ring-color': 'var(--color-accent-blue)'} as React.CSSProperties}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-normal text-accent-gray tracking-normal ml-1 mb-2">Correo Institucional</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="usuario@intelfon.com"
-                className="w-full px-5 py-4 rounded-2xl border border-accent-light bg-accent-light focus:outline-none focus:ring-4 focus:ring-accent-blue/20 focus:border-accent-blue focus:bg-white transition-all font-normal text-base placeholder:text-slate-400"
-                style={{'--tw-ring-color': 'var(--color-accent-blue)'} as React.CSSProperties}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-normal text-accent-gray tracking-normal ml-1 mb-2">Contraseña</label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                minLength={6}
-                className="w-full px-5 py-4 rounded-2xl border border-accent-light bg-accent-light focus:outline-none focus:ring-4 focus:ring-accent-blue/20 focus:border-accent-blue focus:bg-white transition-all font-normal text-base placeholder:text-slate-400"
-                style={{'--tw-ring-color': 'var(--color-accent-blue)'} as React.CSSProperties}
-              />
-              <p className="text-xs text-accent-gray ml-1">Mínimo 6 caracteres</p>
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-normal text-accent-gray tracking-normal ml-1 mb-2">Confirmar Contraseña</label>
-              <input
-                type="password"
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
-                minLength={6}
-                className="w-full px-5 py-4 rounded-2xl border border-accent-light bg-accent-light focus:outline-none focus:ring-4 focus:ring-accent-blue/20 focus:border-accent-blue focus:bg-white transition-all font-normal text-base placeholder:text-slate-400"
-                style={{'--tw-ring-color': 'var(--color-accent-blue)'} as React.CSSProperties}
-              />
-            </div>
-
-          <div className="flex gap-4 pt-4">
+          {/* Botones de acción */}
+          <div className="mt-5 pt-4 border-t flex gap-3" style={{borderColor: 'rgba(148, 163, 184, 0.2)'}}>
             <button
               type="button"
               onClick={() => navigate('/app/agentes')}
-              className="flex-1 px-6 py-3 border-2 border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-all"
+              className="flex-1 py-2 text-xs font-bold rounded-lg transition-all border-2 shadow-sm hover:shadow-md"
+              style={{
+                color: '#475569',
+                borderColor: 'rgba(148, 163, 184, 0.4)',
+                backgroundColor: '#ffffff'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#f8fafc';
+                e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.6)';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#ffffff';
+                e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.4)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 btn-brand font-semibold py-3 rounded-xl transition-all flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed group tracking-normal"
+              className="flex-1 py-2 text-xs font-bold rounded-lg transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg"
+              style={{
+                background: 'linear-gradient(135deg, var(--color-brand-red), var(--color-accent-red))',
+                color: '#ffffff',
+                boxShadow: '0 4px 14px rgba(200, 21, 27, 0.25)'
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, var(--color-accent-red), var(--color-brand-red))';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(200, 21, 27, 0.35)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, var(--color-brand-red), var(--color-accent-red))';
+                e.currentTarget.style.boxShadow = '0 4px 14px rgba(200, 21, 27, 0.25)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
             >
               {loading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin mx-auto" />
               ) : (
-                <>
+                <span className="flex items-center justify-center gap-2">
                   Crear Cuenta
-                  <UserPlus className="w-4 h-4 ml-2 group-hover:scale-110 transition-transform" />
-                </>
+                  <UserPlus className="w-4 h-4" />
+                </span>
               )}
             </button>
           </div>

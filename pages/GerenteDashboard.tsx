@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { api } from '../services/api';
 import { Case, CaseStatus, KPI } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
-import { TrendingUp, Users, Clock, ThumbsUp, ArrowUp, ArrowDown, RefreshCw, Info, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { TrendingUp, Users, Clock, ThumbsUp, ArrowUp, ArrowDown, Info, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 type PeriodFilter = 'hoy' | 'semana' | 'mes';
 
@@ -10,7 +10,6 @@ const GerenteDashboard: React.FC = () => {
   const [casos, setCasos] = useState<Case[]>([]);
   const [kpis, setKpis] = useState<KPI>({ totalCases: 0, slaCompliance: 0, csatScore: 0 });
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('hoy');
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [loading, setLoading] = useState(true);
   const [hoveredKPI, setHoveredKPI] = useState<string | null>(null);
 
@@ -31,7 +30,9 @@ const GerenteDashboard: React.FC = () => {
       ]);
       setCasos(casosData);
       setKpis(kpisData);
-      setLastUpdate(new Date());
+      // Guardar en localStorage para que Layout pueda mostrarlo en el header
+      const updateTime = new Date();
+      localStorage.setItem('bandeja_last_update', updateTime.toISOString());
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -41,11 +42,13 @@ const GerenteDashboard: React.FC = () => {
 
   // Filtrar casos críticos usando la misma lógica que Alertas Críticas
   const casosCriticos = useMemo(() => {
-    return casos.filter(c => 
-      c.diasAbierto >= c.categoria.slaDias || 
-      c.status === CaseStatus.ESCALADO ||
-      (c.categoria.slaDias - c.diasAbierto <= 1 && c.diasAbierto > 0)
-    );
+    return casos.filter(c => {
+      // Validar que categoria existe antes de acceder a slaDias
+      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5; // Default 5 días
+      return c.diasAbierto >= slaDias || 
+        c.status === CaseStatus.ESCALADO ||
+        (slaDias - c.diasAbierto <= 1 && c.diasAbierto > 0);
+    });
   }, [casos]);
 
   const filteredCasos = useMemo(() => {
@@ -67,7 +70,10 @@ const GerenteDashboard: React.FC = () => {
 
   // Usar datos reales de casos críticos
   const abiertos = casos.filter(c => c.status !== CaseStatus.CERRADO && c.status !== CaseStatus.RESUELTO).length;
-  const vencidos = casosCriticos.filter(c => c.diasAbierto >= c.categoria.slaDias).length;
+  const vencidos = casosCriticos.filter(c => {
+    const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
+    return c.diasAbierto >= slaDias;
+  }).length;
   const escalados = casosCriticos.filter(c => c.status === CaseStatus.ESCALADO).length;
   
   // Calcular variaciones (mock - valores simulados)
@@ -149,9 +155,13 @@ const GerenteDashboard: React.FC = () => {
   // Generar insights automáticos usando datos reales de casos críticos
   const insights = useMemo(() => {
     const insightsList: string[] = [];
-    const casosFueraSLA = casosCriticos.filter(c => c.diasAbierto >= c.categoria.slaDias);
+    const casosFueraSLA = casosCriticos.filter(c => {
+      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
+      return c.diasAbierto >= slaDias;
+    });
     const casosVencen24h = casosCriticos.filter(c => {
-      const diasRestantes = c.categoria.slaDias - c.diasAbierto;
+      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
+      const diasRestantes = slaDias - c.diasAbierto;
       return diasRestantes > 0 && diasRestantes <= 1;
     });
     
@@ -190,18 +200,18 @@ const GerenteDashboard: React.FC = () => {
     <div
       className="p-6 rounded-2xl border shadow-sm flex items-center justify-between relative group"
       style={{
-        backgroundColor: isHighlighted ? 'rgba(220, 38, 38, 0.1)' : 'rgba(30, 41, 59, 0.4)',
-        borderColor: isHighlighted ? 'rgba(220, 38, 38, 0.3)' : 'rgba(148, 163, 184, 0.15)'
+        backgroundColor: isHighlighted ? 'rgba(220, 38, 38, 0.1)' : '#ffffff',
+        borderColor: isHighlighted ? 'rgba(220, 38, 38, 0.3)' : 'rgba(148, 163, 184, 0.2)'
       }}
       onMouseEnter={() => setHoveredKPI(label)}
       onMouseLeave={() => setHoveredKPI(null)}
     >
       <div className="flex-1">
         <div className="flex items-center gap-2 mb-1">
-          <p className="text-sm font-bold uppercase tracking-widest" style={{color: '#94a3b8'}}>{label}</p>
+          <p className="text-sm font-bold uppercase tracking-widest" style={{color: '#64748b'}}>{label}</p>
           {tooltip && (
             <div className="relative">
-              <Info className="w-3.5 h-3.5" style={{color: '#94a3b8'}} />
+              <Info className="w-3.5 h-3.5" style={{color: '#64748b'}} />
               {hoveredKPI === label && (
                 <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-slate-900 text-white text-xs rounded-lg shadow-lg whitespace-nowrap z-50">
                   {tooltip}
@@ -211,7 +221,7 @@ const GerenteDashboard: React.FC = () => {
             </div>
           )}
         </div>
-        <h3 className="text-3xl font-black mt-1" style={{color: color.includes('red') ? '#ef4444' : color.includes('green') ? '#22c55e' : color.includes('slate') ? '#ffffff' : '#ffffff'}}>{value}</h3>
+        <h3 className="text-2xl font-black mt-1" style={{color: color.includes('red') ? '#ef4444' : color.includes('green') ? '#22c55e' : color.includes('slate') ? '#1e293b' : '#1e293b'}}>{value}</h3>
         <div className="mt-2 flex items-center gap-2">
           {variation.isPositive && !variation.isNegative && (
             <ArrowUp className={`w-3 h-3 ${label === 'Excedidos SLA' ? 'text-red-600' : 'text-green-600'}`} />
@@ -228,7 +238,7 @@ const GerenteDashboard: React.FC = () => {
           </span>
         </div>
         {variation.percent && (
-          <p className="text-xs mt-0.5" style={{color: '#94a3b8'}}>{variation.percent}</p>
+          <p className="text-xs mt-0.5" style={{color: '#64748b'}}>{variation.percent}</p>
         )}
         {isHighlighted && vencidos > 0 && (
           <p className="text-xs font-semibold mt-2" style={{color: '#f87171'}}>
@@ -236,8 +246,8 @@ const GerenteDashboard: React.FC = () => {
           </p>
         )}
       </div>
-      <div className="p-3 rounded-xl" style={{backgroundColor: bg === 'bg-slate-900' ? 'rgb(15, 23, 42)' : bg === 'bg-red-50' ? 'rgba(220, 38, 38, 0.15)' : bg === 'bg-green-50' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(30, 41, 59, 0.6)'}}>
-        <Icon className="w-6 h-6" style={{color: bg === 'bg-slate-900' ? '#ffffff' : color.includes('red') ? '#ef4444' : color.includes('green') ? '#22c55e' : '#ffffff'}} />
+      <div className="p-3 rounded-xl" style={{backgroundColor: bg === 'bg-slate-900' ? 'rgb(15, 23, 42)' : bg === 'bg-red-50' ? 'rgba(220, 38, 38, 0.15)' : bg === 'bg-green-50' ? 'rgba(34, 197, 94, 0.15)' : '#f1f5f9'}}>
+        <Icon className="w-6 h-6" style={{color: bg === 'bg-slate-900' ? '#ffffff' : color.includes('red') ? '#ef4444' : color.includes('green') ? '#22c55e' : 'rgb(15, 23, 42)'}} />
       </div>
     </div>
   );
@@ -248,7 +258,7 @@ const GerenteDashboard: React.FC = () => {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div></div>
           <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 rounded-xl border p-1" style={{backgroundColor: 'rgba(30, 41, 59, 0.4)', borderColor: 'rgba(148, 163, 184, 0.15)'}}>
+          <div className="flex items-center gap-2 rounded-xl border p-1" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
             {(['hoy', 'semana', 'mes'] as PeriodFilter[]).map((period) => (
               <button
                 key={period}
@@ -256,11 +266,11 @@ const GerenteDashboard: React.FC = () => {
                 className="px-4 py-2 rounded-lg text-sm font-semibold transition-all"
                 style={{
                   backgroundColor: periodFilter === period ? 'rgb(15, 23, 42)' : 'transparent',
-                  color: periodFilter === period ? '#ffffff' : '#cbd5e1'
+                  color: periodFilter === period ? '#ffffff' : '#475569'
                 }}
                 onMouseEnter={(e) => {
                   if (periodFilter !== period) {
-                    e.currentTarget.style.backgroundColor = 'rgba(30, 41, 59, 0.6)';
+                    e.currentTarget.style.backgroundColor = '#f1f5f9';
                   }
                 }}
                 onMouseLeave={(e) => {
@@ -272,29 +282,6 @@ const GerenteDashboard: React.FC = () => {
                 {period === 'hoy' ? 'Hoy' : period === 'semana' ? 'Semana' : 'Mes'}
               </button>
             ))}
-          </div>
-          <div className="flex items-center gap-2 text-xs" style={{color: '#94a3b8'}}>
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Actualizado: {lastUpdate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
-            <button
-              onClick={loadData}
-              disabled={loading}
-              className="p-1.5 rounded-lg transition-colors disabled:opacity-50"
-              style={{color: '#94a3b8'}}
-              onMouseEnter={(e) => {
-                if (!loading) {
-                  e.currentTarget.style.color = '#cbd5e1';
-                  e.currentTarget.style.backgroundColor = 'rgba(30, 41, 59, 0.4)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = '#94a3b8';
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-              title="Actualizar"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            </button>
           </div>
         </div>
       </div>
@@ -342,14 +329,14 @@ const GerenteDashboard: React.FC = () => {
 
       {/* Resumen Ejecutivo */}
       {insights.length > 0 && (
-        <div className="p-6 rounded-2xl border shadow-sm" style={{backgroundColor: 'rgba(30, 41, 59, 0.4)', borderColor: 'rgba(148, 163, 184, 0.15)'}}>
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2" style={{color: '#ffffff'}}>
+        <div className="p-6 rounded-2xl border shadow-sm" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+          <h3 className="text-base font-bold mb-4 flex items-center gap-2" style={{color: '#1e293b'}}>
             <CheckCircle2 className="w-5 h-5" style={{color: '#94a3b8'}} />
             Resumen Ejecutivo
           </h3>
           <ul className="space-y-2">
             {insights.map((insight, idx) => (
-              <li key={idx} className="flex items-center gap-2 text-sm" style={{color: '#cbd5e1'}}>
+              <li key={idx} className="flex items-center gap-2 text-sm" style={{color: '#475569'}}>
                 <div className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: '#94a3b8'}}></div>
                 {insight}
               </li>
@@ -361,10 +348,10 @@ const GerenteDashboard: React.FC = () => {
       {/* Gráficas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Distribución por Estado */}
-        <div className="p-6 rounded-2xl border shadow-sm" style={{backgroundColor: 'rgba(30, 41, 59, 0.4)', borderColor: 'rgba(148, 163, 184, 0.15)'}}>
+        <div className="p-6 rounded-2xl border shadow-sm" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold" style={{color: '#ffffff'}}>Distribución por Estado</h3>
-            <div className="text-xs font-medium" style={{color: '#94a3b8'}}>
+            <h3 className="text-base font-bold" style={{color: '#1e293b'}}>Distribución por Estado</h3>
+            <div className="text-xs font-medium" style={{color: '#64748b'}}>
               Total: {totalCasos} casos
             </div>
           </div>
@@ -389,9 +376,9 @@ const GerenteDashboard: React.FC = () => {
                     if (active && payload && payload.length) {
                       const data = payload[0].payload;
                       return (
-                        <div className="p-3 rounded-lg shadow-lg border" style={{backgroundColor: 'rgba(30, 41, 59, 0.95)', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
-                          <p className="font-semibold" style={{color: '#ffffff'}}>{data.name}</p>
-                          <p className="text-sm" style={{color: '#cbd5e1'}}>
+                        <div className="p-3 rounded-lg shadow-lg border" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+                  <p className="font-semibold" style={{color: '#1e293b'}}>{data.name}</p>
+                  <p className="text-sm" style={{color: '#475569'}}>
                             {data.value} caso{data.value !== 1 ? 's' : ''} ({data.percent}%)
                           </p>
                         </div>
@@ -410,30 +397,30 @@ const GerenteDashboard: React.FC = () => {
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
             {chartDataWithPercent.map((item, idx) => (
-              <div key={idx} className="flex items-center justify-between p-2 rounded-lg" style={{backgroundColor: 'rgba(30, 41, 59, 0.6)'}}>
+              <div key={idx} className="flex items-center justify-between p-2 rounded-lg" style={{backgroundColor: '#f8fafc'}}>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded" style={{ backgroundColor: COLORS[idx] }}></div>
-                  <span className="font-medium" style={{color: '#cbd5e1'}}>{item.name}</span>
+                  <span className="font-medium" style={{color: '#475569'}}>{item.name}</span>
                 </div>
-                <span className="font-bold" style={{color: '#ffffff'}}>{item.value} ({item.percent}%)</span>
+                <span className="font-bold" style={{color: '#1e293b'}}>{item.value} ({item.percent}%)</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Cumplimiento de SLA */}
-        <div className="p-6 rounded-2xl border shadow-sm" style={{backgroundColor: 'rgba(30, 41, 59, 0.4)', borderColor: 'rgba(148, 163, 184, 0.15)'}}>
-          <h3 className="text-lg font-bold mb-6" style={{color: '#ffffff'}}>Cumplimiento de SLA</h3>
+        <div className="p-6 rounded-2xl border shadow-sm" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+          <h3 className="text-base font-bold mb-6" style={{color: '#1e293b'}}>Cumplimiento de SLA</h3>
           <div className="h-64 flex flex-col justify-center items-center">
             <div className={`relative w-48 h-48 rounded-full border-[12px] flex flex-col items-center justify-center`} style={{
               borderColor: slaStatus === 'en_cumplimiento' ? '#22c55e' : slaStatus === 'riesgo' ? '#f59e0b' : '#ef4444'
             }}>
-              <span className="text-4xl font-black" style={{color: '#ffffff'}}>{kpis.slaCompliance}%</span>
-              <span className="text-xs font-bold uppercase tracking-tighter mt-1" style={{color: '#94a3b8'}}>On Target</span>
+              <span className="text-4xl font-black" style={{color: '#1e293b'}}>{kpis.slaCompliance}%</span>
+              <span className="text-xs font-bold uppercase tracking-tighter mt-1" style={{color: '#64748b'}}>On Target</span>
             </div>
             <div className="mt-6 text-center space-y-2">
-              <p className="text-sm" style={{color: '#94a3b8'}}>
-                Objetivo: <span className="font-bold" style={{color: '#ffffff'}}>{slaObjective}%</span>
+              <p className="text-sm" style={{color: '#64748b'}}>
+                Objetivo: <span className="font-bold" style={{color: '#1e293b'}}>{slaObjective}%</span>
               </p>
               <p className="text-sm font-semibold" style={{
                 color: slaStatus === 'en_cumplimiento' ? '#22c55e' :
@@ -442,7 +429,7 @@ const GerenteDashboard: React.FC = () => {
                 {slaText}
               </p>
               {slaStatus !== 'en_cumplimiento' && (
-                <p className="text-xs mt-1" style={{color: '#94a3b8'}}>
+                <p className="text-xs mt-1" style={{color: '#64748b'}}>
                   {kpis.slaCompliance < slaObjective 
                     ? `Faltan ${(slaObjective - kpis.slaCompliance).toFixed(1)}% para alcanzar el objetivo`
                     : ''}

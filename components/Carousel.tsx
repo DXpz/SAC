@@ -70,14 +70,38 @@ const Carousel: React.FC<CarouselProps> = ({
         <>
           <button
             onClick={prevSlide}
-            className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-700 rounded-full p-2 shadow-lg hover:shadow-xl transition-all duration-200 z-10 hover:scale-110"
+            className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full p-2 shadow-lg hover:shadow-xl transition-all duration-200 z-10 hover:scale-110"
+            style={{
+              backgroundColor: '#ffffff',
+              color: '#1e293b',
+              borderColor: 'rgba(148, 163, 184, 0.2)',
+              border: '1px solid'
+            }}
+            onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f8fafc';
+            }}
+            onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#ffffff';
+            }}
             aria-label="Slide anterior"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
           <button
             onClick={nextSlide}
-            className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-700 rounded-full p-2 shadow-lg hover:shadow-xl transition-all duration-200 z-10 hover:scale-110"
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-2 shadow-lg hover:shadow-xl transition-all duration-200 z-10 hover:scale-110"
+            style={{
+              backgroundColor: '#ffffff',
+              color: '#1e293b',
+              borderColor: 'rgba(148, 163, 184, 0.2)',
+              border: '1px solid'
+            }}
+            onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f8fafc';
+            }}
+            onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#ffffff';
+            }}
             aria-label="Slide siguiente"
           >
             <ChevronRight className="w-5 h-5" />
@@ -91,11 +115,22 @@ const Carousel: React.FC<CarouselProps> = ({
             <button
               key={index}
               onClick={() => goToSlide(index)}
-              className={`h-2 rounded-full transition-all duration-300 ${
-                index === currentIndex
-                  ? 'w-8 bg-white shadow-lg'
-                  : 'w-2 bg-white/50 hover:bg-white/75'
-              }`}
+              className="h-2 rounded-full transition-all duration-300"
+              style={{
+                width: index === currentIndex ? '2rem' : '0.5rem',
+                backgroundColor: index === currentIndex ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.5)',
+                boxShadow: index === currentIndex ? '0 4px 6px -1px rgba(0, 0, 0, 0.3)' : 'none'
+              }}
+              onMouseEnter={(e) => {
+                if (index !== currentIndex) {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.75)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (index !== currentIndex) {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+                }
+              }}
               aria-label={`Ir al slide ${index + 1}`}
             />
           ))}

@@ -32,6 +32,20 @@ export default defineConfig(({ mode }) => {
             secure: true,
             rewrite: () => '/webhook/b30aeff4-1d3a-4b40-b8da-141b4e1fc5b6',
           },
+          // Agentes (gestión de agentes) - webhook para almacenar/actualizar agentes
+          '/api/agentes': {
+            target: 'https://n8n.red.com.sv',
+            changeOrigin: true,
+            secure: true,
+            rewrite: () => '/webhook-test/d804c804-9841-41f7-bc4b-66d2edeed53b',
+          },
+          // Round Robin (asignación de agentes) - webhook para Round Robin
+          '/api/round-robin': {
+            target: 'https://n8n.red.com.sv',
+            changeOrigin: true,
+            secure: true,
+            rewrite: () => '/webhook-test/case-create-round-robin',
+          },
         },
       },
       plugins: [react()],

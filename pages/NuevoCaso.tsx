@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { CaseStatus, Cliente, Categoria, Channel } from '../types';
-import { Search, X, Building2, User, Phone, Mail, ArrowLeft } from 'lucide-react';
+import { Search, X, Building2, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import Toast, { ToastType } from '../components/Toast';
 
 const NuevoCaso: React.FC = () => {
@@ -11,13 +11,14 @@ const NuevoCaso: React.FC = () => {
   const [clienteSearchTerm, setClienteSearchTerm] = useState('');
   const [showClienteDropdown, setShowClienteDropdown] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [loading, setLoading] = useState(false);
   
   const [newCase, setNewCase] = useState({
     clienteId: '',
     categoriaId: '',
-    contactChannel: Channel.WEB,
-    notificationChannel: Channel.EMAIL,
+    contactChannel: '' as Channel | '',
+    notificationChannel: '' as Channel | '',
     subject: '',
     description: '',
     clientName: '',
@@ -31,6 +32,9 @@ const NuevoCaso: React.FC = () => {
   useEffect(() => {
     loadClientes();
     loadCategorias();
+    // Guardar hora de actualización para mostrar en el header
+    const updateTime = new Date();
+    localStorage.setItem('bandeja_last_update', updateTime.toISOString());
   }, []);
 
   // Cerrar dropdown al hacer clic fuera
@@ -96,8 +100,8 @@ const NuevoCaso: React.FC = () => {
       contactName: '',
       phone: '',
       email: '',
-      contactChannel: Channel.WEB,
-      notificationChannel: Channel.EMAIL,
+      contactChannel: '' as Channel | '',
+      notificationChannel: '' as Channel | '',
     });
     setClienteSearchTerm('');
     setShowClienteDropdown(false);
@@ -107,7 +111,7 @@ const NuevoCaso: React.FC = () => {
     e.preventDefault();
     
     // Validaciones básicas
-    if (!newCase.clientName || !newCase.email || !newCase.subject || !newCase.description || !newCase.categoriaId) {
+    if (!newCase.clientName || !newCase.email || !newCase.subject || !newCase.description || !newCase.categoriaId || !newCase.contactChannel || !newCase.notificationChannel) {
       setToast({ message: 'Por favor, completa todos los campos requeridos (marcados con *)', type: 'warning' });
       return;
     }
@@ -144,10 +148,11 @@ const NuevoCaso: React.FC = () => {
 
       if (result) {
         console.log('✅ ========== CASO CREADO EXITOSAMENTE ==========');
-        setToast({ message: 'Caso creado exitosamente', type: 'success' });
+        setShowSuccessAnimation(true);
         setTimeout(() => {
+          setShowSuccessAnimation(false);
           navigate('/app/casos');
-        }, 1500);
+        }, 2000);
       } else {
         console.error('❌ Error: api.createCase retornó false');
         setToast({ message: 'Error al crear el caso. Por favor, intenta nuevamente.', type: 'error' });
@@ -164,37 +169,42 @@ const NuevoCaso: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="max-w-7xl mx-auto px-6 py-8">
+    <div>
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => navigate('/app/casos')}
-            className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-4 transition-colors font-medium"
+            className="flex items-center gap-2 mb-3 transition-colors font-medium"
+            style={{color: '#64748b'}}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = '#475569';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = '#94a3b8';
+            }}
           >
             <ArrowLeft className="w-5 h-5" />
             Volver a Bandeja de Casos
           </button>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Crear Nuevo Caso SAC</h1>
-          <p className="text-slate-600">Completa todos los campos requeridos para registrar un nuevo caso</p>
         </div>
 
         {/* Formulario */}
-        <div className="bg-white rounded-2xl shadow-lg border-2 border-slate-200/50 overflow-hidden">
-          <form onSubmit={handleCreateCase} className="p-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="rounded-3xl shadow-xl border overflow-hidden" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'}}>
+          <form onSubmit={handleCreateCase} className="p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Columna Izquierda */}
-              <div className="space-y-6">
-                <h2 className="text-xl font-semibold text-slate-800 mb-4 pb-2 border-b border-slate-200">
+              <div className="space-y-5">
+                <h2 className="text-sm font-semibold mb-3 pb-2 border-b" style={{color: '#1e293b', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
                   Información del Cliente
                 </h2>
 
                 <div className="relative cliente-selector-container">
-                  <label className="block text-sm font-semibold text-slate-700 tracking-normal mb-2">
+                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>
                     Cliente <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5 pointer-events-none" />
+                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none" style={{color: '#94a3b8'}} />
                     <input
                       type="text"
                       required
@@ -206,15 +216,39 @@ const NuevoCaso: React.FC = () => {
                           handleClienteClear();
                         }
                       }}
-                      onFocus={() => setShowClienteDropdown(true)}
+                      onFocus={(e) => {
+                        setShowClienteDropdown(true);
+                        e.target.style.borderColor = 'var(--color-accent-blue)';
+                        e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
+                        e.target.style.backgroundColor = '#ffffff';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                        e.target.style.boxShadow = '';
+                        e.target.style.backgroundColor = '#f8fafc';
+                      }}
                       placeholder="Buscar cliente por ID, nombre, email o teléfono..."
-                      className="w-full pl-12 pr-10 py-3.5 border-2 border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition-all bg-slate-50 focus:bg-white font-medium text-sm"
+                      className="w-full pl-11 pr-9 py-3 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
+                      style={{
+                        backgroundColor: '#f8fafc',
+                        borderColor: 'rgba(148, 163, 184, 0.3)',
+                        color: '#1e293b',
+                        '--tw-ring-color': 'var(--color-accent-blue)',
+                        '--tw-ring-opacity': '0.2'
+                      } as React.CSSProperties & { '--tw-ring-color': string, '--tw-ring-opacity': string }}
                     />
                     {newCase.clienteId && (
                       <button
                         type="button"
                         onClick={handleClienteClear}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
+                        style={{color: '#64748b'}}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = '#475569';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = '#94a3b8';
+                        }}
                       >
                         <X className="w-5 h-5" />
                       </button>
@@ -223,9 +257,9 @@ const NuevoCaso: React.FC = () => {
                   
                   {/* Dropdown de resultados */}
                   {showClienteDropdown && filteredClientes.length > 0 && (
-                    <div className="absolute z-30 w-full mt-2 bg-white border-2 border-slate-200 rounded-xl shadow-2xl max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
-                      <div className="p-2 bg-slate-50 border-b border-slate-200 sticky top-0">
-                        <p className="text-xs font-semibold text-slate-600">
+                    <div className="absolute z-30 w-full mt-2 rounded-xl shadow-2xl max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200 border" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+                      <div className="p-2 border-b sticky top-0" style={{backgroundColor: '#f8fafc', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+                        <p className="text-xs font-semibold" style={{color: '#475569'}}>
                           {filteredClientes.length} {filteredClientes.length === 1 ? 'cliente encontrado' : 'clientes encontrados'}
                         </p>
                       </div>
@@ -233,36 +267,30 @@ const NuevoCaso: React.FC = () => {
                         <div
                           key={cliente.idCliente}
                           onClick={() => handleClienteSelect(cliente)}
-                          className="p-4 hover:bg-gradient-to-r hover:from-slate-50 hover:to-white cursor-pointer border-b border-slate-100 last:border-b-0 transition-all group"
+                          className="p-4 cursor-pointer border-b last:border-b-0 transition-all group"
+                          style={{
+                            borderColor: 'rgba(148, 163, 184, 0.1)',
+                            backgroundColor: 'transparent'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#f8fafc';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
                         >
                           <div className="flex items-start gap-3">
-                            <div className="p-2.5 bg-gradient-to-br from-slate-100 to-slate-50 rounded-xl group-hover:from-slate-200 group-hover:to-slate-100 transition-all shadow-sm">
-                              <Building2 className="w-5 h-5 text-slate-700" />
+                            <div className="p-2.5 rounded-xl transition-all shadow-sm" style={{backgroundColor: '#f1f5f9'}}>
+                              <Building2 className="w-5 h-5" style={{color: '#475569'}} />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                <span className="text-sm font-bold text-slate-900 group-hover:text-slate-700 transition-colors">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-bold transition-colors" style={{color: '#1e293b'}}>
                                   {cliente.nombreEmpresa}
                                 </span>
-                                <span className="text-xs font-bold text-white bg-slate-600 px-2 py-1 rounded-md shadow-sm">
+                                <span className="text-xs font-bold px-2 py-1 rounded-md shadow-sm" style={{backgroundColor: '#e2e8f0', color: '#475569'}}>
                                   {cliente.idCliente}
                                 </span>
-                              </div>
-                              <div className="space-y-1.5">
-                                <div className="flex items-center gap-2 text-xs text-slate-600">
-                                  <User className="w-4 h-4 text-slate-400" />
-                                  <span className="font-medium">{cliente.contactoPrincipal}</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-xs text-slate-600">
-                                  <Mail className="w-4 h-4 text-slate-400" />
-                                  <span className="truncate font-medium">{cliente.email}</span>
-                                </div>
-                                {cliente.telefono && (
-                                  <div className="flex items-center gap-2 text-xs text-slate-600">
-                                    <Phone className="w-4 h-4 text-slate-400" />
-                                    <span className="font-medium">{cliente.telefono}</span>
-                                  </div>
-                                )}
                               </div>
                             </div>
                           </div>
@@ -272,22 +300,37 @@ const NuevoCaso: React.FC = () => {
                   )}
                   
                   {showClienteDropdown && clienteSearchTerm && filteredClientes.length === 0 && (
-                    <div className="absolute z-30 w-full mt-2 bg-white border-2 border-slate-200 rounded-xl shadow-2xl p-8 text-center animate-in fade-in slide-in-from-top-2 duration-200">
-                      <div className="text-slate-300 mb-3">
+                    <div className="absolute z-30 w-full mt-2 rounded-xl shadow-2xl p-8 text-center animate-in fade-in slide-in-from-top-2 duration-200 border" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+                      <div className="mb-3" style={{color: '#64748b'}}>
                         <Search className="w-12 h-12 mx-auto" />
                       </div>
-                      <p className="text-sm font-bold text-slate-700 mb-1">No se encontraron clientes</p>
-                      <p className="text-xs text-slate-500">Intenta buscar por ID, nombre de empresa, contacto, email o teléfono</p>
+                      <p className="text-sm font-bold mb-1" style={{color: '#1e293b'}}>No se encontraron clientes</p>
+                      <p className="text-xs" style={{color: '#94a3b8'}}>Intenta buscar por ID, nombre de empresa, contacto, email o teléfono</p>
                     </div>
                   )}
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 tracking-normal mb-2">Empresa / Cliente</label>
+                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>Empresa / Cliente</label>
                   <input 
                     type="text" 
                     required 
-                    className="w-full px-4 py-3.5 border-2 border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition-all bg-slate-50 focus:bg-white font-medium text-sm"
+                    className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
+                    style={{
+                      backgroundColor: '#f8fafc',
+                      borderColor: 'rgba(148, 163, 184, 0.3)',
+                      color: '#1e293b'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = 'var(--color-accent-blue)';
+                      e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
+                      e.target.style.backgroundColor = '#f1f5f9';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                      e.target.style.boxShadow = '';
+                      e.target.style.backgroundColor = '#f8fafc';
+                    }}
                     placeholder="Nombre de la empresa"
                     value={newCase.clientName}
                     onChange={e => setNewCase({...newCase, clientName: e.target.value})}
@@ -296,20 +339,50 @@ const NuevoCaso: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 tracking-normal mb-2">Contacto Principal</label>
+                    <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>Contacto Principal</label>
                     <input 
                       type="text"
-                      className="w-full px-4 py-3.5 border-2 border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition-all bg-slate-50 focus:bg-white font-medium text-sm"
+                      className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
+                      style={{
+                        backgroundColor: '#f8fafc',
+                        borderColor: 'rgba(148, 163, 184, 0.3)',
+                        color: '#1e293b'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = 'var(--color-accent-blue)';
+                        e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
+                        e.target.style.backgroundColor = '#ffffff';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                        e.target.style.boxShadow = '';
+                        e.target.style.backgroundColor = '#f8fafc';
+                      }}
                       placeholder="Nombre contacto"
                       value={newCase.contactName}
                       onChange={e => setNewCase({...newCase, contactName: e.target.value})}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 tracking-normal mb-2">Teléfono</label>
+                    <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>Teléfono</label>
                     <input 
                       type="tel"
-                      className="w-full px-4 py-3.5 border-2 border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition-all bg-slate-50 focus:bg-white font-medium text-sm"
+                      className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
+                      style={{
+                        backgroundColor: '#f8fafc',
+                        borderColor: 'rgba(148, 163, 184, 0.3)',
+                        color: '#1e293b'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = 'var(--color-accent-blue)';
+                        e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
+                        e.target.style.backgroundColor = '#ffffff';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                        e.target.style.boxShadow = '';
+                        e.target.style.backgroundColor = '#f8fafc';
+                      }}
                       placeholder="+50370000000"
                       value={newCase.phone}
                       onChange={e => setNewCase({...newCase, phone: e.target.value})}
@@ -318,11 +391,26 @@ const NuevoCaso: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 tracking-normal mb-2">Email Cliente <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>Email Cliente <span className="text-red-500">*</span></label>
                   <input 
                     type="email" 
                     required 
-                    className="w-full px-4 py-3.5 border-2 border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition-all bg-slate-50 focus:bg-white font-medium text-sm"
+                    className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
+                    style={{
+                      backgroundColor: '#f8fafc',
+                      borderColor: 'rgba(148, 163, 184, 0.3)',
+                      color: '#1e293b'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = 'var(--color-accent-blue)';
+                      e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
+                      e.target.style.backgroundColor = '#f1f5f9';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                      e.target.style.boxShadow = '';
+                      e.target.style.backgroundColor = '#f8fafc';
+                    }}
                     placeholder="cliente@empresa.com"
                     value={newCase.email}
                     onChange={e => setNewCase({...newCase, email: e.target.value})}
@@ -330,13 +418,25 @@ const NuevoCaso: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 tracking-normal mb-2">Medio de Contacto (Primer Contacto) <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>Medio de Contacto (Primer Contacto) <span className="text-red-500">*</span></label>
                   <select
                     required
                     value={newCase.contactChannel}
                     onChange={(e) => setNewCase({...newCase, contactChannel: e.target.value as Channel})}
-                    className="w-full px-4 py-3.5 border-2 border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition-all bg-slate-50 focus:bg-white font-medium text-sm appearance-none cursor-pointer"
+                    className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs appearance-none cursor-pointer shadow-sm hover:shadow-md"
+                    style={{
+                      backgroundColor: '#f8fafc',
+                      borderColor: 'rgba(148, 163, 184, 0.3)',
+                      color: newCase.contactChannel ? '#475569' : '#94a3b8'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#ffffff';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f8fafc';
+                    }}
                   >
+                    <option value="" disabled>Seleccionar una opción</option>
                     <option value={Channel.WEB}>Web</option>
                     <option value={Channel.EMAIL}>Email</option>
                     <option value={Channel.WHATSAPP}>WhatsApp</option>
@@ -346,13 +446,25 @@ const NuevoCaso: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 tracking-normal mb-2">Canal de Notificación (Contacto Posterior) <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>Canal de Notificación (Contacto Posterior) <span className="text-red-500">*</span></label>
                   <select
                     required
                     value={newCase.notificationChannel}
                     onChange={(e) => setNewCase({...newCase, notificationChannel: e.target.value as Channel})}
-                    className="w-full px-4 py-3.5 border-2 border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition-all bg-slate-50 focus:bg-white font-medium text-sm appearance-none cursor-pointer"
+                    className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs appearance-none cursor-pointer shadow-sm hover:shadow-md"
+                    style={{
+                      backgroundColor: '#f8fafc',
+                      borderColor: 'rgba(148, 163, 184, 0.3)',
+                      color: newCase.notificationChannel ? '#475569' : '#94a3b8'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#ffffff';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f8fafc';
+                    }}
                   >
+                    <option value="" disabled>Seleccionar una opción</option>
                     <option value={Channel.EMAIL}>Email</option>
                     <option value={Channel.WHATSAPP}>WhatsApp</option>
                     <option value={Channel.TELEFONO}>Teléfono</option>
@@ -363,18 +475,29 @@ const NuevoCaso: React.FC = () => {
               </div>
 
               {/* Columna Derecha */}
-              <div className="space-y-6">
-                <h2 className="text-xl font-semibold text-slate-800 mb-4 pb-2 border-b border-slate-200">
+              <div className="space-y-5">
+                <h2 className="text-sm font-semibold mb-3 pb-2 border-b" style={{color: '#1e293b', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
                   Detalles del Caso
                 </h2>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 tracking-normal mb-2">Categoría <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>Categoría <span className="text-red-500">*</span></label>
                   <select
                     required
                     value={newCase.categoriaId}
                     onChange={(e) => setNewCase({...newCase, categoriaId: e.target.value})}
-                    className="w-full px-4 py-3.5 border-2 border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition-all bg-slate-50 focus:bg-white font-medium text-sm appearance-none cursor-pointer"
+                    className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs appearance-none cursor-pointer shadow-sm hover:shadow-md"
+                    style={{
+                      backgroundColor: '#f8fafc',
+                      borderColor: 'rgba(148, 163, 184, 0.3)',
+                      color: '#475569'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#ffffff';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f8fafc';
+                    }}
                   >
                     <option value="">Seleccione una categoría...</option>
                     {categorias.length > 0 ? (
@@ -388,16 +511,31 @@ const NuevoCaso: React.FC = () => {
                     )}
                   </select>
                   {categorias.length === 0 && (
-                    <p className="text-xs text-slate-400 mt-1">Cargando categorías...</p>
+                    <p className="text-xs mt-1" style={{color: '#64748b'}}>Cargando categorías...</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">Asunto <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-black uppercase tracking-wider mb-1.5" style={{color: '#475569'}}>Asunto <span className="text-red-500">*</span></label>
                   <input 
                     type="text" 
                     required 
-                    className="w-full px-4 py-3.5 border-2 border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition-all bg-slate-50 focus:bg-white font-medium text-sm"
+                    className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
+                    style={{
+                      backgroundColor: '#f8fafc',
+                      borderColor: 'rgba(148, 163, 184, 0.3)',
+                      color: '#1e293b'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = 'var(--color-accent-blue)';
+                      e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
+                      e.target.style.backgroundColor = '#f1f5f9';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                      e.target.style.boxShadow = '';
+                      e.target.style.backgroundColor = '#f8fafc';
+                    }}
                     placeholder="Resumen del caso"
                     value={newCase.subject}
                     onChange={e => setNewCase({...newCase, subject: e.target.value})}
@@ -405,11 +543,26 @@ const NuevoCaso: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">Descripción <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-black uppercase tracking-wider mb-1.5" style={{color: '#475569'}}>Descripción <span className="text-red-500">*</span></label>
                   <textarea 
                     required 
                     rows={12}
-                    className="w-full px-4 py-3.5 border-2 border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition-all bg-slate-50 focus:bg-white font-medium text-sm resize-none"
+                    className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs resize-none shadow-sm hover:shadow-md"
+                    style={{
+                      backgroundColor: '#f8fafc',
+                      borderColor: 'rgba(148, 163, 184, 0.3)',
+                      color: '#1e293b'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = 'var(--color-accent-blue)';
+                      e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
+                      e.target.style.backgroundColor = '#f1f5f9';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                      e.target.style.boxShadow = '';
+                      e.target.style.backgroundColor = '#f8fafc';
+                    }}
                     placeholder="Detalles completos del caso..."
                     value={newCase.description}
                     onChange={e => setNewCase({...newCase, description: e.target.value})}
@@ -419,18 +572,50 @@ const NuevoCaso: React.FC = () => {
             </div>
 
             {/* Botones de acción */}
-            <div className="mt-8 pt-6 border-t border-slate-200 flex gap-4">
+            <div className="mt-5 pt-4 border-t flex gap-3" style={{borderColor: 'rgba(148, 163, 184, 0.2)'}}>
               <button 
                 type="button" 
                 onClick={() => navigate('/app/casos')}
-                className="flex-1 py-4 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-all border-2 border-slate-200"
+                className="flex-1 py-2 text-xs font-bold rounded-lg transition-all border-2 shadow-sm hover:shadow-md"
+                style={{
+                  color: '#475569',
+                  borderColor: 'rgba(148, 163, 184, 0.4)',
+                  backgroundColor: '#ffffff'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f8fafc';
+                  e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.6)';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#ffffff';
+                  e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.4)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
               >
                 Cancelar
               </button>
               <button 
                 type="submit" 
                 disabled={loading}
-                className="flex-1 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 py-2 text-xs font-bold rounded-lg transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg"
+                style={{
+                  background: 'linear-gradient(135deg, var(--color-brand-red), var(--color-accent-red))',
+                  color: '#ffffff',
+                  boxShadow: '0 4px 14px rgba(200, 21, 27, 0.25)'
+                }}
+                onMouseEnter={(e) => {
+                  if (!loading) {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, var(--color-accent-red), var(--color-brand-red))';
+                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(200, 21, 27, 0.35)';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, var(--color-brand-red), var(--color-accent-red))';
+                  e.currentTarget.style.boxShadow = '0 4px 14px rgba(200, 21, 27, 0.25)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
               >
                 {loading ? 'Registrando...' : 'Registrar Caso'}
               </button>
@@ -439,7 +624,7 @@ const NuevoCaso: React.FC = () => {
         </div>
       </div>
 
-      {/* Toast Notification */}
+      {/* Toast Notification para errores */}
       {toast && (
         <Toast
           message={toast.message}
@@ -447,6 +632,136 @@ const NuevoCaso: React.FC = () => {
           onClose={() => setToast(null)}
         />
       )}
+
+      {/* Animación de éxito a pantalla completa */}
+      {showSuccessAnimation && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{
+            backgroundColor: 'rgba(15, 23, 42, 0.7)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            animation: 'fadeIn 0.3s ease-out'
+          }}
+        >
+          <div 
+            className="flex flex-col items-center justify-center"
+            style={{
+              animation: 'scaleInBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+            }}
+          >
+            {/* Icono de check animado */}
+            <div
+              className="relative mb-6"
+              style={{
+                animation: 'checkMark 0.5s ease-out 0.3s both'
+              }}
+            >
+              <div
+                className="w-24 h-24 rounded-full flex items-center justify-center"
+                style={{
+                  background: 'linear-gradient(135deg, var(--color-brand-red), var(--color-accent-red))',
+                  boxShadow: '0 20px 60px rgba(200, 21, 27, 0.4)'
+                }}
+              >
+                <CheckCircle2 
+                  className="w-14 h-14 text-white" 
+                  style={{
+                    strokeWidth: 2.5
+                  }}
+                />
+              </div>
+              {/* Anillo de expansión */}
+              <div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  border: '3px solid var(--color-brand-red)',
+                  animation: 'ringExpand 0.8s ease-out 0.2s',
+                  opacity: 0
+                }}
+              />
+            </div>
+            
+            {/* Mensaje */}
+            <h2
+              className="text-2xl font-bold mb-2"
+              style={{
+                color: '#ffffff',
+                animation: 'fadeInUp 0.5s ease-out 0.4s both'
+              }}
+            >
+              ¡Caso creado exitosamente!
+            </h2>
+            <p
+              className="text-base"
+              style={{
+                color: 'rgba(255, 255, 255, 0.8)',
+                animation: 'fadeInUp 0.5s ease-out 0.5s both'
+              }}
+            >
+              Redirigiendo a la bandeja de casos...
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Estilos de animación inline */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes scaleInBounce {
+          0% {
+            transform: scale(0);
+            opacity: 0;
+          }
+          50% {
+            transform: scale(1.1);
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes checkMark {
+          0% {
+            transform: scale(0);
+            opacity: 0;
+          }
+          50% {
+            transform: scale(1.2);
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes ringExpand {
+          0% {
+            transform: scale(1);
+            opacity: 0.8;
+          }
+          100% {
+            transform: scale(1.5);
+            opacity: 0;
+          }
+        }
+        
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 };
