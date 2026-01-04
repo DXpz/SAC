@@ -37,7 +37,7 @@ export default defineConfig(({ mode }) => {
             target: 'https://n8n.red.com.sv',
             changeOrigin: true,
             secure: true,
-            rewrite: () => '/webhook-test/d804c804-9841-41f7-bc4b-66d2edeed53b',
+            rewrite: () => '/webhook/d804c804-9841-41f7-bc4b-66d2edeed53b',
           },
           // Round Robin (asignación de agentes) - webhook para Round Robin
           '/api/round-robin': {

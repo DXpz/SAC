@@ -44,7 +44,7 @@ interface AgentWebhookResponse {
 const getActor = (): Actor | null => {
   try {
     const userStr = localStorage.getItem('intelfon_user');
-    const userEmail = localStorage.getItem('intelfon_user_email');
+    const userEmail = sessionStorage.getItem('intelfon_user_email');
     
     if (!userStr) {
       return null;
@@ -242,47 +242,26 @@ const callRoundRobinWebhook = async (payload: AgentWebhookPayload): Promise<Agen
 
 /**
  * Obtiene todos los agentes con información de Round Robin
+ * DESHABILITADO: Ya no se usa el webhook de round robin
  */
 export const getAgents = async (): Promise<Agente[]> => {
-  try {
-    const actor = getActor();
-    
-    // El actor es opcional para leer agentes, pero si existe lo incluimos
-    const payload: AgentWebhookPayload = {
-      action: 'agents.read',
-      ...(actor && { actor })
-    };
-    
-    const response = await callRoundRobinWebhook(payload);
-    
-    // Si el webhook retornó error (como 404), retornar array vacío para que la app use fallback
-    if (response.error || !response.success) {
-      console.warn('⚠️ Webhook de Round Robin no disponible o retornó error. Usando fallback local.');
-      return [];
-    }
-    
-    // Mapear la respuesta a un array de Agente
-    if (response.agents || response.agentes || Array.isArray(response)) {
-      return mapWebhookResponseToAgents(response);
-    }
-    
-    // Si no hay agentes, retornar array vacío
-    return [];
-  } catch (error: any) {
-    // Si hay un error (excepto 404 que ya se maneja arriba), loguear y retornar vacío
-    console.warn('⚠️ Error al obtener agentes desde Round Robin webhook:', error.message || error);
-    return [];
-  }
+  // Webhook de round robin deshabilitado - retornar array vacío
+  console.warn('⚠️ Webhook de Round Robin deshabilitado. Usar api.getAgentes() en su lugar.');
+  return [];
 };
 
 /**
  * Actualiza el estado de un agente (activo/inactivo/vacaciones)
+ * DESHABILITADO: Ya no se usa el webhook de round robin
  */
 export const updateAgentStatus = async (
   agenteId: string,
   activo: boolean,
   vacaciones: boolean = false
 ): Promise<boolean> => {
+  // Webhook de round robin deshabilitado
+  console.warn('⚠️ Webhook de Round Robin deshabilitado. updateAgentStatus no disponible.');
+  return false;
   const actor = getActor();
   
   if (!actor) {
@@ -310,56 +289,15 @@ export const updateAgentStatus = async (
 
 /**
  * Crea un nuevo agente en el sistema
+ * DESHABILITADO: Ya no se usa el webhook de round robin
  */
 export const createAgent = async (
   nombre: string,
   email: string,
   pais: string
 ): Promise<boolean> => {
-  const actor = getActor();
-  
-  if (!actor) {
-    throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
-  }
-  
-  if (!nombre || !nombre.trim()) {
-    throw new Error('El nombre es requerido.');
-  }
-  
-  if (!email || !email.trim()) {
-    throw new Error('El correo electrónico es requerido.');
-  }
-  
-  // Validar formato de email
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email.trim())) {
-    throw new Error('Formato de correo electrónico inválido.');
-  }
-  
-  if (!pais || !pais.trim()) {
-    throw new Error('El país es requerido.');
-  }
-  
-  const payload: AgentWebhookPayload = {
-    action: 'agent.create',
-    actor: {
-      user_id: actor.user_id,
-      email: actor.email,
-      role: actor.role || 'GERENTE'
-    },
-    data: {
-      nombre: nombre.trim(),
-      email: email.trim().toLowerCase(),
-      pais: pais.trim(),
-      rol: 'AGENTE',
-      estado: 'ACTIVO'
-    }
-  };
-  
-  console.log('📤 Creando agente con payload:', payload);
-  
-  const response = await callRoundRobinWebhook(payload);
-  
-  return response.success !== false && !response.error;
+  // Webhook de round robin deshabilitado
+  console.warn('⚠️ Webhook de Round Robin deshabilitado. Usar api.createAccount() en su lugar.');
+  return false;
 };
 

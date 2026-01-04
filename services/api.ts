@@ -4,7 +4,6 @@ import { MOCK_CASOS, MOCK_AGENTES, MOCK_USERS, MOCK_CLIENTES, MOCK_CATEGORIAS } 
 import { API_CONFIG, CASES_WEBHOOK_URL, CLIENTS_WEBHOOK_URL } from '../config';
 import { emailService } from './emailService';
 import * as caseService from './caseService';
-import * as roundRobinService from './roundRobinService';
 
 // Sistema de caché simple para evitar llamadas redundantes
 interface CacheEntry {
@@ -13,7 +12,7 @@ interface CacheEntry {
   promise?: Promise<any>;
 }
 
-const CACHE_DURATION = 5000; // 5 segundos de caché
+const CACHE_DURATION = 0; // Sin caché para agentes (siempre recalcular round robin)
 const cache: {
   cases?: CacheEntry;
   clientes?: CacheEntry;
@@ -414,6 +413,9 @@ const authenticateWithWebhook = async (email: string, password: string): Promise
   // Almacenar el token JWT para futuras peticiones
   localStorage.setItem('intelfon_token', data.token);
   
+  // Guardar el email usado para login en sessionStorage (se limpia al cerrar sesión)
+  sessionStorage.setItem('intelfon_user_email', email.trim().toLowerCase());
+  
   // Almacenar información del usuario EXACTAMENTE como viene del webhook
   // NO se permite sobrescribir con mapeos locales - todo debe venir del webhook
   const user: User = {
@@ -455,6 +457,9 @@ const authenticateDemo = (email: string): User => {
 
   // Generar un token demo simple
   const demoToken = `demo-token-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  
+  // Guardar el email usado para login en sessionStorage (se limpia al cerrar sesión)
+  sessionStorage.setItem('intelfon_user_email', emailLower);
   
   localStorage.setItem('intelfon_token', demoToken);
   localStorage.setItem('intelfon_user', JSON.stringify(user));
@@ -506,6 +511,7 @@ export const api = {
       // Limpiar cualquier dato previo en caso de error
       localStorage.removeItem('intelfon_user');
       localStorage.removeItem('intelfon_token');
+      sessionStorage.removeItem('intelfon_user_email');
       
       // Mejorar el mensaje de error para indicar claramente si el usuario no está almacenado
       const errorMessage = error.message || 'Error de autenticación';
@@ -521,8 +527,8 @@ export const api = {
 
   async getCases(): Promise<Case[]> {
     return getCachedOrFetch('cases', async () => {
-      const user = this.getUser();
-      
+    const user = this.getUser();
+    
       // Intentar obtener casos usando el nuevo caseService (conecta con n8n)
       try {
         const cases = await caseService.getCases();
@@ -533,7 +539,7 @@ export const api = {
         // No usar localStorage como fallback, lanzar el error
         console.error('❌ Error al obtener casos desde caseService:', err);
         throw err;
-      }
+          }
     });
   },
 
@@ -547,7 +553,7 @@ export const api = {
     } catch (err) {
       console.warn('⚠️ Error al obtener caso desde caseService, usando método legacy:', err);
     }
-    
+
     // Fallback: buscar en la lista de casos
     const cases = await this.getCases();
     return cases.find(c => c.id === id || c.idCaso === id || c.ticketNumber === id);
@@ -566,19 +572,19 @@ export const api = {
       console.warn('⚠️ Error al actualizar caso en caseService, intentando método legacy:', err);
       
       // Fallback: Notificar cambio de estado a n8n usando el contrato CRUD.UPDATE
-      try {
-        await callCasesWebhook('POST', {
-          action: 'case.update',
-          actor: buildActorPayload(user),
-          data: {
-            case_id: id,
-            patch: {
-              estado: status,
-              descripcion: detail || `Cambio de estado a ${status}`,
-              ...(extra?.resolucion ? { resolucion: extra.resolucion } : {}),
-            },
+    try {
+      await callCasesWebhook('POST', {
+        action: 'case.update',
+        actor: buildActorPayload(user),
+        data: {
+          case_id: id,
+          patch: {
+            estado: status,
+            descripcion: detail || `Cambio de estado a ${status}`,
+            ...(extra?.resolucion ? { resolucion: extra.resolucion } : {}),
           },
-        });
+        },
+      });
       } catch (err2) {
         console.warn('Error al actualizar caso en n8n, aplicando cambio solo en local.', err2);
       }
@@ -629,7 +635,19 @@ export const api = {
         ...caseData
       });
       
-      console.log('✅ Caso creado exitosamente usando caseService:', newCase);
+      console.log('✅ Caso creado exitosamente usando caseService');
+      console.log('📋 Caso retornado completo:', JSON.stringify(newCase, null, 2));
+      console.log('🔍 Agente en el caso retornado:', {
+        agentId: newCase.agentId,
+        agentName: newCase.agentName,
+        tieneAgenteAsignado: !!newCase.agenteAsignado,
+        agenteAsignado: newCase.agenteAsignado ? {
+          idAgente: newCase.agenteAsignado.idAgente,
+          nombre: newCase.agenteAsignado.nombre,
+          email: newCase.agenteAsignado.email
+        } : null
+      });
+      
       // Limpiar caché de casos para forzar actualización
       clearCache('cases');
       return true;
@@ -637,67 +655,67 @@ export const api = {
       console.warn('⚠️ Error al crear caso en caseService, intentando método legacy:', err);
       
       // Fallback: Método legacy
-      // Buscar la categoría seleccionada
-      const categoriaSeleccionada = caseData.categoriaId 
-        ? MOCK_CATEGORIAS.find(cat => cat.idCategoria === caseData.categoriaId)
-        : null;
+    // Buscar la categoría seleccionada
+    const categoriaSeleccionada = caseData.categoriaId 
+      ? MOCK_CATEGORIAS.find(cat => cat.idCategoria === caseData.categoriaId)
+      : null;
 
-      console.log('📂 Categoría seleccionada:', categoriaSeleccionada);
+    console.log('📂 Categoría seleccionada:', categoriaSeleccionada);
 
-      // Determinar categoria_id y nombre para el JSON
-      const categoriaId = categoriaSeleccionada 
-        ? (typeof categoriaSeleccionada.idCategoria === 'string' ? parseInt(categoriaSeleccionada.idCategoria) || 1 : categoriaSeleccionada.idCategoria)
-        : DEFAULT_CATEGORY.categoria_id;
-      const categoriaNombre = categoriaSeleccionada?.nombre || DEFAULT_CATEGORY.nombre;
+    // Determinar categoria_id y nombre para el JSON
+    const categoriaId = categoriaSeleccionada 
+      ? (typeof categoriaSeleccionada.idCategoria === 'string' ? parseInt(categoriaSeleccionada.idCategoria) || 1 : categoriaSeleccionada.idCategoria)
+      : DEFAULT_CATEGORY.categoria_id;
+    const categoriaNombre = categoriaSeleccionada?.nombre || DEFAULT_CATEGORY.nombre;
 
-      console.log('📂 Categoría procesada:', { categoriaId, categoriaNombre });
+    console.log('📂 Categoría procesada:', { categoriaId, categoriaNombre });
 
-      // Construir el payload completo para n8n
-      const actorPayload = buildActorPayload(user);
-      const n8nPayload = {
-        action: 'case.create',
-        actor: actorPayload,
-        data: {
-          cliente: {
-            cliente_id: caseData.clienteId || `CL-${Date.now()}`,
-            nombre_empresa: caseData.clientName,
-            contacto_principal: caseData.contactName || caseData.clientName,
-            email: caseData.clientEmail,
-            telefono: caseData.phone || '',
-          },
-          categoria: {
-            categoria_id: categoriaId,
-            nombre: categoriaNombre,
-          },
-          canal_origen: caseData.contactChannel || caseData.canalOrigen || 'Web',
-          canal_notificacion: caseData.notificationChannel || caseData.contactChannel || 'Email',
-          asunto: caseData.subject,
-          descripcion: caseData.description,
+    // Construir el payload completo para n8n
+    const actorPayload = buildActorPayload(user);
+    const n8nPayload = {
+      action: 'case.create',
+      actor: actorPayload,
+      data: {
+        cliente: {
+          cliente_id: caseData.clienteId || `CL-${Date.now()}`,
+          nombre_empresa: caseData.clientName,
+          contacto_principal: caseData.contactName || caseData.clientName,
+          email: caseData.clientEmail,
+          telefono: caseData.phone || '',
         },
-      };
+        categoria: {
+          categoria_id: categoriaId,
+          nombre: categoriaNombre,
+        },
+        canal_origen: caseData.contactChannel || caseData.canalOrigen || 'Web',
+        canal_notificacion: caseData.notificationChannel || caseData.contactChannel || 'Email',
+        asunto: caseData.subject,
+        descripcion: caseData.description,
+      },
+    };
 
       console.log('📤 ========== PAYLOAD COMPLETO PARA N8N (LEGACY) ==========');
-      console.log('URL del webhook:', CASES_WEBHOOK_URL);
-      console.log('Payload JSON:', JSON.stringify(n8nPayload, null, 2));
-      console.log('Payload tamaño:', JSON.stringify(n8nPayload).length, 'bytes');
+    console.log('URL del webhook:', CASES_WEBHOOK_URL);
+    console.log('Payload JSON:', JSON.stringify(n8nPayload, null, 2));
+    console.log('Payload tamaño:', JSON.stringify(n8nPayload).length, 'bytes');
 
       // Intentar crear el caso en el backend n8n usando el contrato CRUD.CREATE (no bloquea la creación local)
-      try {
+    try {
         console.log('🌐 Enviando petición POST a n8n (legacy)...');
-        const startTime = Date.now();
-        
-        const response = await callCasesWebhook('POST', n8nPayload);
-        
-        const duration = Date.now() - startTime;
-        console.log(`✅ ========== RESPUESTA DE N8N (${duration}ms) ==========`);
-        console.log('Respuesta recibida:', JSON.stringify(response, null, 2));
-        console.log('Tipo de respuesta:', typeof response);
-        console.log('Es array:', Array.isArray(response));
-        
-        if (response && typeof response === 'object') {
-          console.log('Propiedades de la respuesta:', Object.keys(response));
-        }
-        
+      const startTime = Date.now();
+      
+      const response = await callCasesWebhook('POST', n8nPayload);
+      
+      const duration = Date.now() - startTime;
+      console.log(`✅ ========== RESPUESTA DE N8N (${duration}ms) ==========`);
+      console.log('Respuesta recibida:', JSON.stringify(response, null, 2));
+      console.log('Tipo de respuesta:', typeof response);
+      console.log('Es array:', Array.isArray(response));
+      
+      if (response && typeof response === 'object') {
+        console.log('Propiedades de la respuesta:', Object.keys(response));
+      }
+      
         console.log('✅ Caso enviado exitosamente a n8n (legacy)');
       } catch (err2: any) {
         console.error('❌ ========== ERROR AL ENVIAR A N8N (LEGACY) ==========');
@@ -707,8 +725,8 @@ export const api = {
         console.error('Stack:', err2?.stack);
         if (err2?.response) {
           console.error('Response del error:', err2.response);
-        }
-        console.warn('⚠️ Error al crear caso en n8n, usando modo local como fallback.');
+      }
+      console.warn('⚠️ Error al crear caso en n8n, usando modo local como fallback.');
       }
     }
 
@@ -810,86 +828,295 @@ export const api = {
 
   async getAgentes(): Promise<any[]> {
     return getCachedOrFetch('agentes', async () => {
-      // Intentar obtener agentes usando el nuevo roundRobinService (conecta con n8n)
-      try {
-        const agents = await roundRobinService.getAgents();
-        if (agents && agents.length > 0) {
-          console.log(`✅ Obtenidos ${agents.length} agentes desde roundRobinService (n8n)`);
-          // Guardar en localStorage como cache
-          localStorage.setItem('intelfon_agents', JSON.stringify(agents));
-          return agents;
-        }
-      } catch (err: any) {
-        // Si es error 404, CORS o Timeout, usar fallback local directamente
-        if (err?.message?.includes('404') || err?.message?.includes('CORS') || err?.message?.includes('Timeout')) {
-          console.warn('⚠️ Error de conexión con n8n (404/CORS/Timeout), usando fallback local:', err.message);
-        } else {
-          console.warn('⚠️ Error al obtener agentes desde roundRobinService, usando fallback local:', err);
-        }
-      }
+      const currentUser = this.getUser();
       
-      // Fallback: usar datos locales
-      initStorage();
-      const data = localStorage.getItem('intelfon_agents');
-      return data ? JSON.parse(data) : MOCK_AGENTES;
+      if (!currentUser) {
+        // Si no hay usuario, usar datos locales
+    initStorage();
+    const data = localStorage.getItem('intelfon_agents');
+    return data ? JSON.parse(data) : MOCK_AGENTES;
+      }
+
+      const actor = buildActorPayload(currentUser);
+
+      // Construir el payload según el formato del webhook de agentes
+      const payload = {
+        action: 'agent.read',
+        actor: {
+          user_id: Number(actor.user_id) || 0,
+          email: actor.email,
+          role: actor.role
+        },
+        data: {
+          agent_id: 'all'
+        }
+      };
+
+      console.log('📤 Consultando agentes con payload:', JSON.stringify(payload, null, 2));
+
+      // Llamar al webhook de agentes
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
+
+      try {
+        const response = await fetch(API_CONFIG.WEBHOOK_AGENTES_URL, {
+          method: 'POST',
+          mode: 'cors',
+          credentials: 'omit',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          if (response.status === 0) {
+            throw new Error('Error de CORS: El servidor no está permitiendo peticiones desde este origen.');
+          }
+          const errorText = await response.text();
+          let errorData;
+          try {
+            errorData = JSON.parse(errorText);
+          } catch {
+            errorData = { message: errorText || `Error ${response.status}: ${response.statusText}` };
+          }
+          throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        console.log('📥 Respuesta del webhook de agentes (agent.read):', result);
+
+        // Verificar si hay error en la respuesta
+        if (result.error === true) {
+          throw new Error(result.message || 'Error al obtener los agentes');
+        }
+
+        // Mapear la respuesta a un array de agentes
+        // El webhook puede retornar diferentes formatos:
+        // 1. { agents: [...] } o { agentes: [...] }
+        // 2. Array directo de agentes
+        // 3. [{ data: [...] }] - estructura anidada
+        // 4. { data: [...] } - estructura con data
+        let agents: any[] = [];
+        
+        if (result.agents) {
+          agents = result.agents;
+        } else if (result.agentes) {
+          agents = result.agentes;
+        } else if (result.data && Array.isArray(result.data)) {
+          agents = result.data;
+        } else if (Array.isArray(result)) {
+          // Si es un array, puede ser directamente agentes o [{ data: [...] }]
+          if (result.length > 0 && result[0]?.data && Array.isArray(result[0].data)) {
+            // Formato: [{ data: [...] }]
+            agents = result[0].data;
+          } else {
+            // Formato: [agente1, agente2, ...]
+            agents = result;
+          }
+        }
+        
+        console.log('📋 Agentes extraídos:', agents);
+        
+        if (Array.isArray(agents) && agents.length > 0) {
+          // Mapear los agentes al formato esperado por el frontend
+          let mappedAgents = agents.map((agente: any) => {
+            // Determinar el estado: el webhook puede retornar "ACTIVO", "INACTIVO", "VACACIONES"
+            let estado: 'Activo' | 'Inactivo' | 'Vacaciones' = 'Inactivo';
+            const estadoRaw = agente.estado || agente.state || '';
+            if (estadoRaw.toUpperCase() === 'ACTIVO' || estadoRaw === 'Activo') {
+              estado = 'Activo';
+            } else if (estadoRaw.toUpperCase() === 'VACACIONES' || estadoRaw === 'Vacaciones') {
+              estado = 'Vacaciones';
+            } else {
+              estado = 'Inactivo';
+            }
+            
+            // Parsear fecha del último caso asignado (puede venir en formato DD/MM/YYYY)
+            let ultimoCasoAsignado = agente.ultimo_caso_asignado || agente.ultimoCasoAsignado || new Date().toISOString();
+            if (ultimoCasoAsignado && typeof ultimoCasoAsignado === 'string' && ultimoCasoAsignado.includes('/')) {
+              // Formato DD/MM/YYYY
+              const [day, month, year] = ultimoCasoAsignado.split('/');
+              if (day && month && year) {
+                ultimoCasoAsignado = new Date(`${year}-${month}-${day}`).toISOString();
+              }
+            }
+            
+            // Mapear campos del webhook al formato Agente
+            return {
+              idAgente: agente.id_agente || agente.idAgente || agente.id || '',
+              nombre: agente.nombre || agente.name || '',
+              email: agente.email || '',
+              estado: estado,
+              ordenRoundRobin: 999, // Se calculará después
+              ultimoCasoAsignado: ultimoCasoAsignado,
+              casosActivos: agente.casos_activos !== undefined ? agente.casos_activos : (agente.casosActivos || agente.casos_asignados || 0)
+            };
+          }).filter((agente: any) => agente.idAgente); // Filtrar agentes sin ID
+          
+          // Calcular el orden Round Robin en el frontend
+          // Lógica: 1. Menor cantidad de casos activos = mayor prioridad
+          //         2. Si hay empate, el que tenga el caso más antiguo (fecha más antigua) = mayor prioridad
+          try {
+            const casos = await this.getCases();
+            
+            // Contar casos activos por agente y obtener fecha del último caso
+            const agentesConCasos = mappedAgents.map(agente => {
+              const casosAgente = casos.filter(c => 
+                (c.agenteAsignado?.idAgente === agente.idAgente || c.agentId === agente.idAgente) &&
+                c.status !== CaseStatus.RESUELTO && c.status !== CaseStatus.CERRADO
+              );
+              
+              const casosActivos = casosAgente.length;
+              
+              // Obtener la fecha del caso más antiguo (último caso asignado)
+              let fechaUltimoCaso = new Date(agente.ultimoCasoAsignado);
+              if (casosAgente.length > 0) {
+                const fechasCasos = casosAgente
+                  .map(c => new Date(c.createdAt))
+                  .filter(d => !isNaN(d.getTime()));
+                
+                if (fechasCasos.length > 0) {
+                  // La fecha más antigua (menor timestamp)
+                  fechaUltimoCaso = new Date(Math.min(...fechasCasos.map(d => d.getTime())));
+                }
+              }
+              
+              return {
+                ...agente,
+                casosActivos: casosActivos, // Usar casos reales del sistema
+                ultimoCasoAsignado: fechaUltimoCaso.toISOString(),
+                _fechaUltimoCaso: fechaUltimoCaso.getTime() // Para ordenamiento
+              };
+            });
+            
+            // Separar agentes activos de inactivos
+            const agentesActivos = agentesConCasos.filter(a => a.estado === 'Activo');
+            const agentesInactivos = agentesConCasos.filter(a => a.estado !== 'Activo');
+            
+            // Ordenar solo los agentes activos por casos activos (menor primero), luego por fecha más antigua
+            agentesActivos.sort((a, b) => {
+              // Ordenar por casos activos (menor cantidad primero)
+              if (a.casosActivos !== b.casosActivos) {
+                return a.casosActivos - b.casosActivos; // Menor cantidad = mayor prioridad
+              }
+              
+              // Si tienen la misma cantidad de casos, ordenar por fecha más antigua primero
+              return a._fechaUltimoCaso - b._fechaUltimoCaso;
+            });
+            
+            // Asignar orden round robin (1, 2, 3, ...) solo a agentes activos
+            const agentesActivosConOrden = agentesActivos.map((agente, index) => ({
+              ...agente,
+              ordenRoundRobin: index + 1
+            }));
+            
+            // Asignar orden 999 a agentes inactivos
+            const agentesInactivosConOrden = agentesInactivos.map(agente => ({
+              ...agente,
+              ordenRoundRobin: 999
+            }));
+            
+            // Combinar: primero activos ordenados, luego inactivos
+            mappedAgents = [...agentesActivosConOrden, ...agentesInactivosConOrden];
+            
+            console.log('✅ Orden Round Robin calculado:', mappedAgents.map(a => ({
+              nombre: a.nombre,
+              orden: a.ordenRoundRobin,
+              casosActivos: a.casosActivos,
+              ultimoCaso: a.ultimoCasoAsignado
+            })));
+          } catch (error) {
+            console.warn('⚠️ Error calculando orden Round Robin, usando valores del webhook:', error);
+            // Si falla, mantener los valores originales
+          }
+          
+          console.log('✅ Agentes mapeados:', mappedAgents);
+          
+          // Guardar en localStorage como cache
+          localStorage.setItem('intelfon_agents', JSON.stringify(mappedAgents));
+          return mappedAgents;
+        }
+
+        // Si no hay agentes, usar fallback local
+        console.warn('⚠️ No se recibieron agentes del webhook, usando fallback local');
+        initStorage();
+        const data = localStorage.getItem('intelfon_agents');
+        return data ? JSON.parse(data) : MOCK_AGENTES;
+      } catch (err: any) {
+        console.warn('⚠️ Error al obtener agentes desde webhook, usando fallback local:', err.message || err);
+        // Fallback: usar datos locales
+        initStorage();
+        const data = localStorage.getItem('intelfon_agents');
+        return data ? JSON.parse(data) : MOCK_AGENTES;
+      }
     });
   },
 
   // Obtener lista de clientes desde n8n
   async getClientes(): Promise<Cliente[]> {
     return getCachedOrFetch('clientes', async () => {
-      const user = this.getUser();
-      
-      try {
-        const response = await callClientsWebhook<any>('POST', {
-          action: 'case.list_client',
-          actor: buildActorPayload(user),
-          data: {
-            client: 'all',
-          },
-        });
+    const user = this.getUser();
+    
+    try {
+      const response = await callClientsWebhook<any>('POST', {
+        action: 'case.list_client',
+        actor: buildActorPayload(user),
+        data: {
+          client: 'all',
+        },
+      });
 
-        // Función helper para mapear un cliente al formato Cliente
-        const mapCliente = (c: any): Cliente => ({
-          idCliente: c.cliente_id || c.idCliente || c.id || '',
-          nombreEmpresa: c.nombre_empresa || c.nombreEmpresa || c.nombre || '',
-          contactoPrincipal: c.contacto_principal || c.contactoPrincipal || c.contacto || '',
-          email: c.email || '',
-          telefono: c.telefono || c.phone || '',
-          pais: c.pais || c.country || 'El Salvador',
-          estado: c.estado || c.state || 'Activo',
-        });
+      // Función helper para mapear un cliente al formato Cliente
+      const mapCliente = (c: any): Cliente => ({
+        idCliente: c.cliente_id || c.idCliente || c.id || '',
+        nombreEmpresa: c.nombre_empresa || c.nombreEmpresa || c.nombre || '',
+        contactoPrincipal: c.contacto_principal || c.contactoPrincipal || c.contacto || 'N/A',
+        email: c.email || c.correo || 'sin-email@cliente.com',
+        telefono: c.telefono || c.phone || c.tel || 'N/A',
+        pais: c.pais || c.country || 'El Salvador',
+        estado: c.estado || c.state || c.status || 'ACTIVO',
+      });
 
-        // Intentar diferentes formatos de respuesta de n8n
-        let clientesArray: any[] = [];
+      // Intentar diferentes formatos de respuesta de n8n
+      let clientesArray: any[] = [];
 
-        if (Array.isArray(response)) {
-          // Si la respuesta es directamente un array
-          clientesArray = response;
-        } else if (response?.clients && Array.isArray(response.clients)) {
-          // Si viene dentro de una propiedad 'clients'
-          clientesArray = response.clients;
-        } else if (response?.data && Array.isArray(response.data)) {
-          // Si viene dentro de una propiedad 'data'
-          clientesArray = response.data;
-        } else if (response?.result && Array.isArray(response.result)) {
-          // Si viene dentro de una propiedad 'result'
-          clientesArray = response.result;
+      if (Array.isArray(response)) {
+        // Verificar si el primer elemento tiene una propiedad 'data'
+        if (response.length > 0 && response[0]?.data && Array.isArray(response[0].data)) {
+          clientesArray = response[0].data;
+        } else {
+        // Si la respuesta es directamente un array
+        clientesArray = response;
         }
+      } else if (response?.clients && Array.isArray(response.clients)) {
+        // Si viene dentro de una propiedad 'clients'
+        clientesArray = response.clients;
+      } else if (response?.data && Array.isArray(response.data)) {
+        // Si viene dentro de una propiedad 'data'
+        clientesArray = response.data;
+      } else if (response?.result && Array.isArray(response.result)) {
+        // Si viene dentro de una propiedad 'result'
+        clientesArray = response.result;
+      }
 
-        if (clientesArray.length > 0) {
+      if (clientesArray.length > 0) {
           const mapped = clientesArray.map(mapCliente);
           console.log(`✅ Obtenidos ${mapped.length} clientes desde n8n`);
           return mapped;
-        }
-
-        // Si la respuesta no tiene el formato esperado, usar fallback
-        console.warn('Respuesta de n8n no tiene el formato esperado, usando datos mock', response);
-        return MOCK_CLIENTES;
-      } catch (err) {
-        console.warn('Error al obtener clientes desde n8n, usando datos mock como fallback.', err);
-        return MOCK_CLIENTES;
       }
+
+      // Si la respuesta no tiene el formato esperado, usar fallback
+      console.warn('Respuesta de n8n no tiene el formato esperado, usando datos mock', response);
+      return MOCK_CLIENTES;
+    } catch (err) {
+      console.warn('Error al obtener clientes desde n8n, usando datos mock como fallback.', err);
+      return MOCK_CLIENTES;
+    }
     });
   },
 
@@ -921,6 +1148,7 @@ export const api = {
   logout() {
     localStorage.removeItem('intelfon_user');
     localStorage.removeItem('intelfon_token');
+    sessionStorage.removeItem('intelfon_user_email');
     window.location.href = '#/login';
   },
 
@@ -1049,7 +1277,7 @@ export const api = {
     if (!emailRegex.test(email.trim())) {
       throw new Error('Formato de correo electrónico inválido');
     }
-
+    
     // Obtener el usuario actual (actor)
     const currentUser = this.getUser();
     if (!currentUser) {
@@ -1070,7 +1298,7 @@ export const api = {
       data: {
         agent_id: '', // Vacío para crear nuevo agente
         nombre: name.trim(),
-        email: email.trim().toLowerCase(),
+      email: email.trim().toLowerCase(),
         pais: additionalData?.pais || 'El Salvador',
         rol: additionalData?.rol || 'AGENTE',
         estado: additionalData?.estado || 'ACTIVO',
@@ -1079,14 +1307,13 @@ export const api = {
     };
 
     console.log('📤 Creando agente con payload:', JSON.stringify(payload, null, 2));
-
-    // Llamar al webhook de Round Robin (que también maneja la creación de agentes)
-    // El webhook de agentes no está registrado, así que usamos el de Round Robin
+    
+    // Llamar al webhook de agentes
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
 
     try {
-      const response = await fetch(API_CONFIG.WEBHOOK_ROUND_ROBIN_URL, {
+      const response = await fetch(API_CONFIG.WEBHOOK_AGENTES_URL, {
         method: 'POST',
         mode: 'cors',
         credentials: 'omit',
@@ -1115,24 +1342,24 @@ export const api = {
       }
 
       const result = await response.json();
-      console.log('📥 Respuesta del webhook de Round Robin (crear agente):', result);
+      console.log('📥 Respuesta del webhook de agentes:', result);
 
       // Verificar si hay error en la respuesta
       if (result.error === true) {
         throw new Error(result.message || 'Error al crear el agente');
-      }
+    }
 
       // El webhook puede retornar el agente creado o un mensaje de éxito
       // Si retorna el agente, usarlo; si no, crear un objeto básico
       const agentData = result.agent || result.data || result;
       
       // Crear un objeto User desde los datos del agente
-      const user: User = {
+    const user: User = {
         id: agentData.agent_id || agentData.id || `agent-${Date.now()}`,
         name: agentData.nombre || name.trim(),
         role: (agentData.rol || 'AGENTE') as Role,
         avatar: agentData.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(name.trim())}&background=0f172a&color=fff`
-      };
+    };
 
       // Validar que el rol sea válido
       if (!['AGENTE', 'SUPERVISOR', 'GERENTE'].includes(user.role)) {
@@ -1142,7 +1369,7 @@ export const api = {
       // No almacenar el token ni el usuario en localStorage porque esto es para crear agentes, no para autenticarse
       // El agente creado aparecerá en la lista de agentes cuando se recargue
 
-      return user;
+    return user;
     } catch (error: any) {
       clearTimeout(timeoutId);
       

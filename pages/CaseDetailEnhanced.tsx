@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { Case, CaseStatus, Cliente } from '../types';
 import { STATE_TRANSITIONS, STATE_COLORS } from '../constants';
-import { ArrowLeft, MessageSquare, User, Building2, Phone, Mail, CheckCircle2, Clock, X, AlertTriangle, Lock, History, Users, TrendingUp, AlertCircle } from 'lucide-react';
+import { ArrowLeft, MessageSquare, User, Building2, Phone, Mail, CheckCircle2, Clock, X, AlertTriangle, Lock, History, Send, Users, TrendingUp } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 const CaseDetail: React.FC = () => {
@@ -11,7 +11,6 @@ const CaseDetail: React.FC = () => {
   const navigate = useNavigate();
   const [caso, setCaso] = useState<Case | null>(null);
   const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [agentes, setAgentes] = useState<any[]>([]);
   const [transitionLoading, setTransitionLoading] = useState(false);
   const { theme } = useTheme();
   
@@ -20,16 +19,34 @@ const CaseDetail: React.FC = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<{ state: CaseStatus; label: string } | null>(null);
   const [formDetail, setFormDetail] = useState('');
-  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
-  const [showErrorAnimation, setShowErrorAnimation] = useState(false);
+  const [comment, setComment] = useState('');
 
   useEffect(() => {
-    const initializeData = async () => {
-      await Promise.all([loadClientes(), loadAgentes()]);
-      if (id) await loadCaso(id);
-    };
-    initializeData();
+    loadClientes();
+    if (id) loadCaso(id);
   }, [id]);
+
+  // Enriquecer caso con datos del cliente cuando se carguen los clientes
+  useEffect(() => {
+    if (caso && clientes.length > 0) {
+      const clienteCompleto = clientes.find(cli => 
+        cli.idCliente === caso.clientId || 
+        cli.idCliente === (caso as any).cliente?.idCliente ||
+        cli.idCliente === caso.clientId?.replace('CL', 'CL0000') // Normalizar formato de ID
+      );
+      
+      if (clienteCompleto) {
+        setCaso({
+          ...caso,
+          clientName: clienteCompleto.nombreEmpresa,
+          clientId: clienteCompleto.idCliente,
+          clientEmail: clienteCompleto.email || caso.clientEmail,
+          clientPhone: clienteCompleto.telefono || caso.clientPhone,
+          cliente: clienteCompleto,
+        });
+      }
+    }
+  }, [clientes, caso?.clientId]);
 
   const loadClientes = async () => {
     try {
@@ -40,280 +57,9 @@ const CaseDetail: React.FC = () => {
     }
   };
 
-  const loadAgentes = async () => {
-    try {
-      const data = await api.getAgentes();
-      setAgentes(data);
-    } catch (err) {
-      console.error('Error al cargar agentes:', err);
-    }
-  };
-
-  // Enriquecer nombres desde webhooks de clientes y agentes
-  // IMPORTANTE: Solo enriquecer si faltan datos, NO sobrescribir datos existentes
-  useEffect(() => {
-    if (caso && (clientes.length > 0 || agentes.length > 0)) {
-      let updated = false;
-      const casoActualizado = { ...caso };
-
-      // Enriquecer con cliente completo SOLO si falta el nombre
-      if (clientes.length > 0 && casoActualizado.clientId) {
-        const cliente = clientes.find(c => c.idCliente === casoActualizado.clientId);
-        if (cliente) {
-          // Solo actualizar si falta el nombre o el objeto cliente completo
-          if (!casoActualizado.clientName || casoActualizado.clientName === 'Sin cliente') {
-            casoActualizado.clientName = cliente.nombreEmpresa;
-            updated = true;
-          }
-          if (!casoActualizado.cliente) {
-            casoActualizado.cliente = cliente;
-            updated = true;
-          }
-          // Preservar email y teléfono del caso si existen
-          if (casoActualizado.clientEmail && !cliente.email) {
-            // Mantener el email del caso
-          } else if (!casoActualizado.clientEmail && cliente.email) {
-            casoActualizado.clientEmail = cliente.email;
-            updated = true;
-          }
-          if (casoActualizado.clientPhone && !cliente.telefono) {
-            // Mantener el teléfono del caso
-          } else if (!casoActualizado.clientPhone && cliente.telefono) {
-            casoActualizado.clientPhone = cliente.telefono;
-            updated = true;
-          }
-        }
-      }
-
-      // Enriquecer con agente completo SOLO si falta
-      if (agentes.length > 0 && casoActualizado.agentId) {
-        const agente = agentes.find(a => a.idAgente === casoActualizado.agentId);
-        if (agente) {
-          // Solo actualizar si falta el nombre o el objeto agente
-          if (!casoActualizado.agentName || casoActualizado.agentName === 'Sin asignar') {
-            casoActualizado.agentName = agente.nombre;
-            updated = true;
-          }
-          if (!casoActualizado.agenteAsignado) {
-            casoActualizado.agenteAsignado = agente;
-            updated = true;
-          }
-        }
-      }
-
-      if (updated) {
-        setCaso(casoActualizado);
-      }
-    }
-  }, [caso?.id, clientes, agentes]);
-
-  // Función para normalizar el estado del caso
-  const normalizeStatus = (status: string | CaseStatus | undefined): CaseStatus => {
-    if (!status) return CaseStatus.NUEVO;
-    const statusStr = String(status).trim();
-    
-    // Mapa de posibles valores que puede devolver el webhook
-    const statusMap: Record<string, CaseStatus> = {
-      'nuevo': CaseStatus.NUEVO,
-      'en proceso': CaseStatus.EN_PROCESO,
-      'en_proceso': CaseStatus.EN_PROCESO,
-      'pendiente cliente': CaseStatus.PENDIENTE_CLIENTE,
-      'pendiente_cliente': CaseStatus.PENDIENTE_CLIENTE,
-      'escalado': CaseStatus.ESCALADO,
-      'resuelto': CaseStatus.RESUELTO,
-      'cerrado': CaseStatus.CERRADO,
-    };
-    
-    // Buscar coincidencia exacta primero
-    const statusLower = statusStr.toLowerCase().trim();
-    if (statusMap[statusLower]) {
-      return statusMap[statusLower];
-    }
-    
-    // Buscar coincidencia exacta con los valores del enum
-    const statusValues = Object.values(CaseStatus);
-    const exactMatch = statusValues.find(s => s === statusStr);
-    if (exactMatch) {
-      return exactMatch;
-    }
-    
-    // Buscar coincidencia por valor normalizado
-    const matchedStatus = statusValues.find(s => {
-      const sNormalized = s.toLowerCase().replace(/\s+/g, '').replace(/_/g, '');
-      const statusNormalized = statusLower.replace(/\s+/g, '').replace(/_/g, '');
-      return sNormalized === statusNormalized;
-    });
-    
-    if (matchedStatus) {
-      return matchedStatus;
-    }
-    
-    // Si no se encuentra, intentar usar el valor directamente si es un CaseStatus válido
-    if (statusValues.includes(statusStr as CaseStatus)) {
-      return statusStr as CaseStatus;
-    }
-    
-    // Fallback: retornar NUEVO si no se puede determinar
-    console.warn('⚠️ No se pudo normalizar el estado:', statusStr, 'usando NUEVO como fallback');
-    return CaseStatus.NUEVO;
-  };
-
   const loadCaso = async (caseId: string) => {
     const data = await api.getCasoById(caseId);
-    if (data) {
-      console.log('📥 Caso recibido del webhook:', {
-        id: data.id,
-        clientId: data.clientId,
-        clientName: data.clientName,
-        clientEmail: data.clientEmail,
-        clientPhone: data.clientPhone,
-        agentId: data.agentId,
-        agentName: data.agentName,
-        agenteAsignado: data.agenteAsignado,
-        status: data.status
-      });
-      
-      // Si ya tenemos un caso cargado, preservar TODA la información crítica
-      // IMPORTANTE: El estado (status) debe venir del webhook para que los botones se actualicen correctamente
-      if (caso) {
-        // Preservar información del cliente (si el webhook no la trae completa)
-        // Convertir a string y verificar antes de usar .trim()
-        const dataClientNameStr = data.clientName ? String(data.clientName).trim() : '';
-        const casoClientNameStr = caso.clientName ? String(caso.clientName).trim() : '';
-        if (casoClientNameStr && (!dataClientNameStr || dataClientNameStr === '')) {
-          data.clientName = caso.clientName;
-        }
-        
-        const dataClientEmailStr = data.clientEmail ? String(data.clientEmail).trim() : '';
-        const casoClientEmailStr = caso.clientEmail ? String(caso.clientEmail).trim() : '';
-        if (casoClientEmailStr && (!dataClientEmailStr || dataClientEmailStr === '')) {
-          data.clientEmail = caso.clientEmail;
-        }
-        // clientPhone puede venir como número del webhook, convertir a string si es necesario
-        const dataClientPhoneStr = data.clientPhone ? String(data.clientPhone).trim() : '';
-        const casoClientPhoneStr = caso.clientPhone ? String(caso.clientPhone).trim() : '';
-        if (casoClientPhoneStr && (!dataClientPhoneStr || dataClientPhoneStr === '')) {
-          data.clientPhone = caso.clientPhone;
-        } else if (data.clientPhone && typeof data.clientPhone !== 'string') {
-          // Convertir a string si viene como número
-          data.clientPhone = String(data.clientPhone);
-        }
-        if (caso.cliente && !data.cliente) {
-          data.cliente = caso.cliente;
-        }
-        // clientId también puede necesitar conversión
-        const dataClientIdStr = data.clientId ? String(data.clientId).trim() : '';
-        const casoClientIdStr = caso.clientId ? String(caso.clientId).trim() : '';
-        if (casoClientIdStr && (!dataClientIdStr || dataClientIdStr === '')) {
-          data.clientId = caso.clientId;
-        }
-        
-        // Preservar información del agente
-        if (caso.agenteAsignado && !data.agenteAsignado) {
-          data.agenteAsignado = caso.agenteAsignado;
-        }
-        // agentName y agentId también pueden necesitar conversión
-        const dataAgentNameStr = data.agentName ? String(data.agentName).trim() : '';
-        const casoAgentNameStr = caso.agentName ? String(caso.agentName).trim() : '';
-        if (casoAgentNameStr && (!dataAgentNameStr || dataAgentNameStr === '')) {
-          data.agentName = caso.agentName;
-        }
-        
-        const dataAgentIdStr = data.agentId ? String(data.agentId).trim() : '';
-        const casoAgentIdStr = caso.agentId ? String(caso.agentId).trim() : '';
-        if (casoAgentIdStr && (!dataAgentIdStr || dataAgentIdStr === '')) {
-          data.agentId = caso.agentId;
-        }
-        
-        // Preservar categoría
-        if (caso.categoria && !data.categoria) {
-          data.categoria = caso.categoria;
-        }
-        // category también puede necesitar conversión
-        const dataCategoryStr = data.category ? String(data.category).trim() : '';
-        const casoCategoryStr = caso.category ? String(caso.category).trim() : '';
-        if (casoCategoryStr && (!dataCategoryStr || dataCategoryStr === '')) {
-          data.category = caso.category;
-        }
-        if (caso.categoriaId && !data.categoriaId) {
-          data.categoriaId = caso.categoriaId;
-        }
-        
-        // Preservar historial (combinar si hay nuevo historial del webhook)
-        if (caso.history && caso.history.length > 0) {
-          // Si el webhook trae historial nuevo, combinarlo, sino mantener el existente
-          if (data.history && Array.isArray(data.history) && data.history.length > 0) {
-            // Combinar historiales, evitando duplicados
-            const existingIds = new Set(caso.history.map(h => h.fechaHora + h.detalle));
-            const newHistory = data.history.filter(h => !existingIds.has(h.fechaHora + h.detalle));
-            data.history = [...caso.history, ...newHistory];
-          } else {
-            data.history = caso.history;
-          }
-        }
-        
-        // Preservar otros campos importantes
-        // subject, description, ticketNumber, id también pueden necesitar conversión
-        const dataSubjectStr = data.subject ? String(data.subject).trim() : '';
-        const casoSubjectStr = caso.subject ? String(caso.subject).trim() : '';
-        if (casoSubjectStr && (!dataSubjectStr || dataSubjectStr === '')) {
-          data.subject = caso.subject;
-        }
-        
-        const dataDescriptionStr = data.description ? String(data.description).trim() : '';
-        const casoDescriptionStr = caso.description ? String(caso.description).trim() : '';
-        if (casoDescriptionStr && (!dataDescriptionStr || dataDescriptionStr === '')) {
-          data.description = caso.description;
-        }
-        
-        const dataTicketNumberStr = data.ticketNumber ? String(data.ticketNumber).trim() : '';
-        const casoTicketNumberStr = caso.ticketNumber ? String(caso.ticketNumber).trim() : '';
-        if (casoTicketNumberStr && (!dataTicketNumberStr || dataTicketNumberStr === '')) {
-          data.ticketNumber = caso.ticketNumber;
-        }
-        
-        const dataIdStr = data.id ? String(data.id).trim() : '';
-        const casoIdStr = caso.id ? String(caso.id).trim() : '';
-        if (casoIdStr && (!dataIdStr || dataIdStr === '')) {
-          data.id = caso.id;
-        }
-        if (caso.createdAt && !data.createdAt) {
-          data.createdAt = caso.createdAt;
-        }
-      }
-      
-      // IMPORTANTE: El estado debe venir del webhook para actualizar los botones
-      // Normalizar el estado para asegurar que sea válido
-      let finalStatus: CaseStatus;
-      if (data.status) {
-        finalStatus = normalizeStatus(data.status);
-      } else if (caso?.status) {
-        // Si el webhook no trae estado, usar el del caso anterior
-        finalStatus = normalizeStatus(caso.status);
-      } else {
-        finalStatus = CaseStatus.NUEVO;
-      }
-      
-      // Asegurar que el estado normalizado se asigne al objeto
-      data.status = finalStatus;
-      
-      const transitions = STATE_TRANSITIONS[finalStatus] || [];
-      
-      console.log('📊 Estado del caso después de preservar datos:', {
-        statusOriginalDelWebhook: data.status,
-        statusNormalizado: finalStatus,
-        statusAnterior: caso?.status,
-        tieneStatus: !!data.status,
-        validTransitions: transitions,
-        transitionsCount: transitions.length,
-        estadoEnTransitions: finalStatus in STATE_TRANSITIONS,
-        allStatusValues: Object.values(CaseStatus),
-        stateTransitionsKeys: Object.keys(STATE_TRANSITIONS)
-      });
-      
-      console.log('✅ Mostrando caso con datos preservados del caso anterior');
-      setCaso(data);
-    }
+    if (data) setCaso(data);
   };
 
   // Validar si el caso está cerrado
@@ -333,38 +79,15 @@ const CaseDetail: React.FC = () => {
     setTransitionLoading(true);
     try {
       const detail = extraData?.detalle || extraData?.resolucion || `Transición a ${newState}`;
-      
-      // Actualizar el caso en el backend
       await api.updateCaseStatus(caso.id, newState, detail, extraData);
-      
-      // Cerrar modales
       setShowResueltoModal(false);
       setShowPendienteModal(false);
       setShowConfirmModal(false);
       setPendingAction(null);
       setFormDetail('');
-      
-      // Mostrar animación de éxito
-      setShowSuccessAnimation(true);
-      setTimeout(() => {
-        setShowSuccessAnimation(false);
-      }, 2000);
-      
-      // Recargar el caso completo desde el webhook (el mismo que siempre usamos)
-      // loadCaso ya tiene lógica para preservar datos si el webhook devuelve datos incompletos
-      console.log('🔄 Recargando caso desde el webhook después de actualizar estado...');
       await loadCaso(caso.id);
-      
-      console.log('✅ Caso recargado desde el webhook con el nuevo estado');
-      
     } catch (err) {
-      console.error('❌ Error al actualizar el estado del caso:', err);
-      
-      // Mostrar animación de error
-      setShowErrorAnimation(true);
-      setTimeout(() => {
-        setShowErrorAnimation(false);
-      }, 3000);
+      alert('Error al actualizar el estado del caso.');
     } finally {
       setTransitionLoading(false);
     }
@@ -374,9 +97,6 @@ const CaseDetail: React.FC = () => {
     if (isCaseClosed) {
       return;
     }
-
-    // Limpiar el comentario anterior
-    setFormDetail('');
 
     if (newState === CaseStatus.RESUELTO) {
       setShowResueltoModal(true);
@@ -394,11 +114,10 @@ const CaseDetail: React.FC = () => {
 
   const confirmAction = () => {
     if (pendingAction) {
-      // Validar que el comentario esté presente para TODOS los cambios de estado
-      if (!formDetail.trim()) {
+      if (pendingAction.state === CaseStatus.CERRADO && !formDetail.trim()) {
         return;
       }
-      handleStateChange(pendingAction.state, { detalle: formDetail });
+      handleStateChange(pendingAction.state, pendingAction.state === CaseStatus.CERRADO ? { detalle: formDetail } : undefined);
     }
   };
 
@@ -411,33 +130,19 @@ const CaseDetail: React.FC = () => {
     </div>
   );
 
-  // Normalizar el estado y obtener las transiciones válidas
+  const normalizeStatus = (status: string | CaseStatus): CaseStatus => {
+    const statusStr = String(status).trim();
+    const statusValues = Object.values(CaseStatus);
+    const matchedStatus = statusValues.find(s => {
+      const sNormalized = s.toLowerCase().replace(/\s+/g, '');
+      const statusNormalized = statusStr.toLowerCase().replace(/\s+/g, '');
+      return s === statusStr || s.toLowerCase() === statusStr.toLowerCase() || sNormalized === statusNormalized;
+    });
+    return (matchedStatus as CaseStatus) || (status as CaseStatus);
+  };
+
   const normalizedStatus = normalizeStatus(caso.status);
   const validTransitions = STATE_TRANSITIONS[normalizedStatus] || [];
-  
-  // Debug: Log para verificar las transiciones (siempre mostrar para debug)
-  console.log('🔍 Debug botones de estado:', {
-    casoStatus: caso.status,
-    tipoStatus: typeof caso.status,
-    normalizedStatus,
-    validTransitions,
-    transitionsCount: validTransitions.length,
-    stateTransitionsKeys: Object.keys(STATE_TRANSITIONS),
-    estadoEnTransitions: normalizedStatus in STATE_TRANSITIONS,
-    estadoExacto: STATE_TRANSITIONS[normalizedStatus],
-    todosLosEstados: Object.values(CaseStatus)
-  });
-  
-  // Si no hay transiciones, intentar usar el estado directamente sin normalizar
-  if (validTransitions.length === 0 && caso.status) {
-    const directTransitions = STATE_TRANSITIONS[caso.status as CaseStatus] || [];
-    if (directTransitions.length > 0) {
-      console.warn('⚠️ No se encontraron transiciones con estado normalizado, usando estado directo:', {
-        estadoDirecto: caso.status,
-        transicionesDirectas: directTransitions
-      });
-    }
-  }
 
   // Calcular información SLA
   const createdDate = new Date(caso.createdAt);
@@ -528,7 +233,7 @@ const CaseDetail: React.FC = () => {
           <section className="rounded-xl border overflow-hidden shadow-sm" style={{...styles.card}}>
             <div className="p-6 border-b" style={{...styles.cardHeader}}>
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-              <div className="flex-1">
+                <div className="flex-1">
                   <div className="flex items-center gap-3 mb-3 flex-wrap">
                     <span className="text-xl font-bold tracking-tight" style={{color: styles.text.primary}}>{caso.ticketNumber}</span>
                     <div className="flex items-center gap-1.5">
@@ -552,8 +257,8 @@ const CaseDetail: React.FC = () => {
                           })()
                         }}
                       >
-                    {caso.status}
-                  </span>
+                        {caso.status}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5" style={{color: caso.slaExpired ? '#dc2626' : '#16a34a'}} />
@@ -678,8 +383,8 @@ const CaseDetail: React.FC = () => {
                     <div>
                       <p className="text-sm font-bold mb-1" style={{color: styles.text.secondary}}>Caso Cerrado</p>
                       <p className="text-xs font-medium" style={{color: styles.text.tertiary}}>
-                     Este caso ha sido cerrado y no se pueden realizar más acciones sobre él.
-                   </p>
+                        Este caso ha sido cerrado y no se pueden realizar más acciones sobre él.
+                      </p>
                     </div>
                   </div>
                  </div>
@@ -713,77 +418,96 @@ const CaseDetail: React.FC = () => {
                    </div>
                  )}
             </div>
+          </section>
 
-            {/* Historial del Caso - Siempre visible */}
-            <div className="p-6 border-t" style={{borderColor: styles.cardHeader.borderColor}}>
-              <div className="flex items-center gap-3 mb-5">
-                <div className="p-2 rounded-lg" style={{backgroundColor: '#eff6ff'}}>
-                  <History className="w-4 h-4" style={{color: '#107ab4'}} />
+          {/* Historial del Caso */}
+          {caso.history && caso.history.length > 0 && (
+            <section className="rounded-xl border overflow-hidden shadow-sm" style={{...styles.card}}>
+              <div className="p-6">
+                <div className="flex items-center gap-2 mb-6">
+                  <div className="p-2 rounded-lg" style={{backgroundColor: '#eff6ff'}}>
+                    <History className="w-4 h-4" style={{color: '#107ab4'}} />
+                  </div>
+                  <h3 className="text-sm font-bold uppercase tracking-wide" style={{color: styles.text.primary}}>Historial del Caso</h3>
                 </div>
-                <h3 className="text-sm font-bold uppercase tracking-wide" style={{color: styles.text.primary}}>Historial del Caso</h3>
-              </div>
-              
-              {caso.history && caso.history.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-4 relative before:absolute before:left-[15px] before:top-3 before:bottom-3 before:w-0.5 before:rounded-full" style={{
+                  '--before-bg': theme === 'dark' ? 'linear-gradient(to bottom, rgba(148, 163, 184, 0.4), rgba(148, 163, 184, 0.2))' : 'linear-gradient(to bottom, rgba(148, 163, 184, 0.4), rgba(148, 163, 184, 0.2))'
+                } as React.CSSProperties}>
                   {caso.history.map((entry, idx) => (
-                    <div key={idx} className="relative pl-12 border-l-2" style={{borderColor: 'rgba(59, 130, 246, 0.2)'}}>
+                    <div key={idx} className="relative pl-10">
                       <div 
-                        className="absolute left-[-24px] top-2 w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg border-4"
-                        style={{
-                          backgroundColor: theme === 'dark' ? '#3b82f6' : '#107ab4',
-                          borderColor: styles.card.backgroundColor
-                        }}
+                        className="absolute left-0 top-1 w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-sm"
+                        style={{backgroundColor: '#3b82f6'}}
                       >
-                        <CheckCircle2 className="w-5 h-5" />
+                        <CheckCircle2 className="w-4 h-4" />
                       </div>
                       <div 
-                        className="p-4 rounded-lg border transition-all ml-4"
+                        className="p-4 rounded-lg border transition-all"
                         style={{
                           backgroundColor: styles.input.backgroundColor,
                           borderColor: styles.input.borderColor
                         }}
                       >
-                        <div className="flex items-start justify-between gap-3 mb-2">
-                          <div className="flex-1">
-                            <p className="text-sm font-bold mb-1" style={{color: styles.text.primary}}>
-                              {entry.detalle}
-                            </p>
-                            <p className="text-xs font-medium" style={{color: styles.text.secondary}}>
-                              Por: {entry.usuario}
-                            </p>
-                          </div>
-                          <p className="text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap" style={{
-                            color: styles.text.tertiary,
-                            backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.1)'
-                          }}>
-                            {new Date(entry.fechaHora).toLocaleString('es-ES', { 
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </p>
-                        </div>
+                        <p className="text-xs font-medium mb-2" style={{color: styles.text.tertiary}}>
+                          {new Date(entry.fechaHora).toLocaleString('es-ES', { 
+                            dateStyle: 'short', 
+                            timeStyle: 'short' 
+                          })}
+                        </p>
+                        <p className="text-sm font-semibold leading-relaxed mb-1" style={{color: styles.text.primary}}>
+                          {entry.detalle}
+                        </p>
+                        <p className="text-xs font-medium" style={{color: styles.text.secondary}}>
+                          Por: {entry.usuario}
+                        </p>
                       </div>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-8">
-                  <div className="p-4 rounded-full mb-3" style={{backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.1)'}}>
-                    <History className="w-8 h-8" style={{color: styles.text.tertiary}} />
-                  </div>
-                  <p className="text-sm font-medium" style={{color: styles.text.tertiary}}>El caso creado</p>
-                  <p className="text-xs" style={{color: styles.text.tertiary}}>
-                    Caso CASO-0003 fue creado
-                  </p>
-                  <p className="text-xs mt-1" style={{color: styles.text.tertiary}}>Por: Sistema</p>
-                   </div>
-                 )}
+              </div>
+            </section>
+          )}
+
+          {/* Comentarios y Notas */}
+          <section className="rounded-xl border overflow-hidden shadow-sm" style={{...styles.card}}>
+            <div className="p-6">
+              <div className="flex items-center gap-2 mb-6">
+                <div className="p-2 rounded-lg" style={{backgroundColor: '#eff6ff'}}>
+                  <MessageSquare className="w-4 h-4" style={{color: '#107ab4'}} />
+                </div>
+                <h3 className="text-sm font-bold uppercase tracking-wide" style={{color: styles.text.primary}}>Comentarios y Notas</h3>
+              </div>
+              
+              {/* Estado vacío */}
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="p-4 rounded-full mb-4" style={{backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.1)'}}>
+                  <MessageSquare className="w-8 h-8" style={{color: styles.text.tertiary}} />
+                </div>
+                <p className="text-sm font-medium" style={{color: styles.text.tertiary}}>No hay comentarios aún</p>
+              </div>
+
+              {/* Formulario de comentarios (deshabilitado por ahora) */}
+              {/* <div className="mt-4">
+                <textarea 
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="Agregar un comentario..."
+                  className="w-full p-3 rounded-lg border resize-none text-sm"
+                  style={{...styles.input}}
+                  rows={3}
+                />
+                <div className="mt-2 flex justify-end">
+                  <button 
+                    className="px-4 py-2 rounded-lg text-xs font-semibold text-white flex items-center gap-2"
+                    style={{backgroundColor: '#c8151b'}}
+                  >
+                    <Send className="w-3 h-3" />
+                    Enviar
+                  </button>
+                </div>
+              </div> */}
             </div>
           </section>
-
         </div>
 
         {/* Columna Lateral */}
@@ -821,15 +545,71 @@ const CaseDetail: React.FC = () => {
               </div>
               <h3 className="text-sm font-bold uppercase tracking-wide" style={{color: styles.text.primary}}>Agente Asignado</h3>
             </div>
-            <div className="flex items-center gap-3 p-4 rounded-lg border" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
+            <div className="flex items-center gap-3 p-4 rounded-lg border mb-4" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
               <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm" style={{backgroundColor: '#c8151b'}}>
-                {(caso.agenteAsignado?.nombre || caso.agentName || 'N/A').charAt(0).toUpperCase()}
+                {caso.agentName.charAt(0).toUpperCase()}
               </div>
-              <p className="text-sm font-bold" style={{color: styles.text.primary}}>
-                {caso.agenteAsignado?.nombre || caso.agentName || 'Sin asignar'}
-              </p>
+              <p className="text-sm font-bold" style={{color: styles.text.primary}}>{caso.agentName}</p>
             </div>
 
+            {/* Métricas del Agente */}
+            {caso.agenteAsignado && (
+              <div className="space-y-3 mt-4">
+                <div className="p-3 rounded-lg" style={{backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.2)'}}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-blue-600" />
+                      <p className="text-xs font-medium text-blue-600">Casos Activos</p>
+                    </div>
+                    <p className="text-xl font-bold text-blue-600">{caso.agenteAsignado.casosActivos || 0}</p>
+                  </div>
+                </div>
+
+                {/* Puedes agregar más métricas si están disponibles */}
+                <div className="p-3 rounded-lg" style={{backgroundColor: theme === 'dark' ? 'rgba(220, 38, 38, 0.1)' : 'rgba(220, 38, 38, 0.05)', border: '1px solid rgba(220, 38, 38, 0.2)'}}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-red-600" />
+                      <p className="text-xs font-medium text-red-600">Casos Críticos</p>
+                    </div>
+                    <p className="text-xl font-bold text-red-600">0</p>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-lg" style={{backgroundColor: theme === 'dark' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)', border: '1px solid rgba(34, 197, 94, 0.2)'}}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-green-600" />
+                      <p className="text-xs font-medium text-green-600">% Cumplimiento SLA</p>
+                    </div>
+                    <p className="text-xl font-bold text-green-600">95%</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Botón Reasignar */}
+            <button 
+              className="w-full mt-4 py-2.5 rounded-lg text-xs font-semibold transition-all border"
+              style={{
+                backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : '#ffffff',
+                borderColor: 'rgba(59, 130, 246, 0.4)',
+                color: '#3b82f6'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.05)';
+                e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.6)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : '#ffffff';
+                e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+              }}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <Users className="w-4 h-4" />
+                Reasignar
+              </div>
+            </button>
           </section>
         </div>
       </div>
@@ -869,48 +649,47 @@ const CaseDetail: React.FC = () => {
                   : `¿Cambiar estado a "${pendingAction.label}"?`
                 }
               </p>
-              <div>
-                <label className="block text-xs font-bold mb-2" style={{color: styles.text.secondary}}>
-                  Comentario <span className="text-red-500">*</span>
-                </label>
-                <textarea 
-                  className="w-full h-24 p-3 rounded-lg border outline-none focus:ring-2 transition-all text-xs resize-none"
-                  style={{
-                    backgroundColor: styles.input.backgroundColor,
-                    borderColor: formDetail.trim() ? styles.input.borderColor : 'rgba(220, 38, 38, 0.4)',
-                    color: styles.input.color
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#107ab4';
-                    e.target.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#ffffff';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(16, 122, 180, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    if (!formDetail.trim()) {
-                      e.target.style.borderColor = 'rgba(220, 38, 38, 0.5)';
-                    } else {
-                      e.target.style.borderColor = styles.input.borderColor;
-                    }
-                    e.target.style.backgroundColor = styles.input.backgroundColor;
-                    e.target.style.boxShadow = 'none';
-                  }}
-                  placeholder={pendingAction.state === CaseStatus.CERRADO 
-                    ? "Describe el motivo del cierre..."
-                    : "Describe el motivo del cambio de estado..."
-                  }
-                  value={formDetail}
-                  onChange={e => {
-                    setFormDetail(e.target.value);
-                    const textarea = e.target;
-                    if (e.target.value.trim()) {
-                      textarea.style.borderColor = styles.input.borderColor;
-                    } else {
-                      textarea.style.borderColor = 'rgba(220, 38, 38, 0.4)';
-                    }
-                  }}
-                  required
-                />
+              {pendingAction.state === CaseStatus.CERRADO && (
+                <div>
+                  <label className="block text-xs font-bold mb-2" style={{color: '#475569'}}>
+                    Motivo del cierre <span className="text-red-500">*</span>
+                  </label>
+                  <textarea 
+                    className="w-full h-24 p-3 rounded-lg border outline-none focus:ring-2 transition-all text-xs resize-none"
+                    style={{
+                      backgroundColor: '#f8fafc',
+                      borderColor: formDetail.trim() ? 'rgba(148, 163, 184, 0.3)' : 'rgba(220, 38, 38, 0.4)',
+                      color: '#0f172a'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#107ab4';
+                      e.target.style.backgroundColor = '#ffffff';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(16, 122, 180, 0.1)';
+                    }}
+                    onBlur={(e) => {
+                      if (!formDetail.trim()) {
+                        e.target.style.borderColor = 'rgba(220, 38, 38, 0.5)';
+                      } else {
+                        e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                      }
+                      e.target.style.backgroundColor = '#f8fafc';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                    placeholder="Describe el motivo del cierre..."
+                    value={formDetail}
+                    onChange={e => {
+                      setFormDetail(e.target.value);
+                      const textarea = e.target;
+                      if (e.target.value.trim()) {
+                        textarea.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                      } else {
+                        textarea.style.borderColor = 'rgba(220, 38, 38, 0.4)';
+                      }
+                    }}
+                    required
+                  />
               </div>
+              )}
               <div className="flex gap-2.5 pt-2">
                 <button 
                   type="button"
@@ -938,7 +717,7 @@ const CaseDetail: React.FC = () => {
                 </button>
                 <button 
                   onClick={confirmAction}
-                  disabled={transitionLoading || !formDetail.trim()}
+                  disabled={transitionLoading || (pendingAction.state === CaseStatus.CERRADO && !formDetail.trim())}
                   className="flex-1 py-2.5 text-xs font-semibold text-white rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{backgroundColor: '#c8151b'}}
                   onMouseEnter={(e) => {
@@ -985,48 +764,9 @@ const CaseDetail: React.FC = () => {
                     </button>
                 </div>
             <div className="p-5 space-y-4">
-              <p className="text-xs font-medium leading-relaxed" style={{color: styles.text.tertiary}}>
+              <p className="text-xs font-medium leading-relaxed" style={{color: '#64748b'}}>
                 El caso se marcará como resuelto y quedará disponible para cierre.
               </p>
-              <div>
-                <label className="block text-xs font-bold mb-2" style={{color: styles.text.secondary}}>
-                  Comentario <span className="text-red-500">*</span>
-                </label>
-                <textarea 
-                  className="w-full h-24 p-3 rounded-lg border outline-none focus:ring-2 transition-all text-xs resize-none"
-                  style={{
-                    backgroundColor: styles.input.backgroundColor,
-                    borderColor: formDetail.trim() ? styles.input.borderColor : 'rgba(220, 38, 38, 0.4)',
-                    color: styles.input.color
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#107ab4';
-                    e.target.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#ffffff';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(16, 122, 180, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    if (!formDetail.trim()) {
-                      e.target.style.borderColor = 'rgba(220, 38, 38, 0.5)';
-                    } else {
-                      e.target.style.borderColor = styles.input.borderColor;
-                    }
-                    e.target.style.backgroundColor = styles.input.backgroundColor;
-                    e.target.style.boxShadow = 'none';
-                  }}
-                  placeholder="Describe la resolución del caso..."
-                  value={formDetail}
-                  onChange={e => {
-                    setFormDetail(e.target.value);
-                    const textarea = e.target;
-                    if (e.target.value.trim()) {
-                      textarea.style.borderColor = styles.input.borderColor;
-                    } else {
-                      textarea.style.borderColor = 'rgba(220, 38, 38, 0.4)';
-                    }
-                  }}
-                  required
-                />
-              </div>
               <div className="flex gap-2.5 pt-2">
                       <button 
                         type="button"
@@ -1052,11 +792,8 @@ const CaseDetail: React.FC = () => {
                         Cancelar
                       </button>
                       <button 
-                  onClick={() => {
-                    if (!formDetail.trim()) return;
-                    handleStateChange(CaseStatus.RESUELTO, { detalle: formDetail });
-                  }}
-                  disabled={transitionLoading || !formDetail.trim()}
+                  onClick={() => handleStateChange(CaseStatus.RESUELTO, { resolucion: 'Caso marcado como resuelto' })}
+                  disabled={transitionLoading}
                   className="flex-1 py-2.5 text-xs font-semibold text-white rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{backgroundColor: '#c8151b'}}
                         onMouseEnter={(e) => {
@@ -1103,48 +840,9 @@ const CaseDetail: React.FC = () => {
                     </button>
                 </div>
             <div className="p-5 space-y-4">
-              <p className="text-xs font-medium leading-relaxed" style={{color: styles.text.tertiary}}>
+              <p className="text-xs font-medium leading-relaxed" style={{color: '#64748b'}}>
                 El caso quedará en espera de respuesta del cliente.
               </p>
-              <div>
-                <label className="block text-xs font-bold mb-2" style={{color: styles.text.secondary}}>
-                  Comentario <span className="text-red-500">*</span>
-                </label>
-                <textarea 
-                  className="w-full h-24 p-3 rounded-lg border outline-none focus:ring-2 transition-all text-xs resize-none"
-                  style={{
-                    backgroundColor: styles.input.backgroundColor,
-                    borderColor: formDetail.trim() ? styles.input.borderColor : 'rgba(220, 38, 38, 0.4)',
-                    color: styles.input.color
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#107ab4';
-                    e.target.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#ffffff';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(16, 122, 180, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    if (!formDetail.trim()) {
-                      e.target.style.borderColor = 'rgba(220, 38, 38, 0.5)';
-                    } else {
-                      e.target.style.borderColor = styles.input.borderColor;
-                    }
-                    e.target.style.backgroundColor = styles.input.backgroundColor;
-                    e.target.style.boxShadow = 'none';
-                  }}
-                  placeholder="Describe por qué el caso queda pendiente del cliente..."
-                  value={formDetail}
-                  onChange={e => {
-                    setFormDetail(e.target.value);
-                    const textarea = e.target;
-                    if (e.target.value.trim()) {
-                      textarea.style.borderColor = styles.input.borderColor;
-                    } else {
-                      textarea.style.borderColor = 'rgba(220, 38, 38, 0.4)';
-                    }
-                  }}
-                  required
-                />
-              </div>
               <div className="flex gap-2.5 pt-2">
                       <button 
                         type="button"
@@ -1170,11 +868,8 @@ const CaseDetail: React.FC = () => {
                         Cancelar
                       </button>
                       <button 
-                  onClick={() => {
-                    if (!formDetail.trim()) return;
-                    handleStateChange(CaseStatus.PENDIENTE_CLIENTE, { detalle: formDetail });
-                  }}
-                        disabled={transitionLoading || !formDetail.trim()}
+                  onClick={() => handleStateChange(CaseStatus.PENDIENTE_CLIENTE, { detalle: 'Caso marcado como pendiente de respuesta del cliente' })}
+                        disabled={transitionLoading}
                   className="flex-1 py-2.5 text-xs font-semibold text-white rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{backgroundColor: '#c8151b'}}
                         onMouseEnter={(e) => {
@@ -1195,198 +890,6 @@ const CaseDetail: React.FC = () => {
             </div>
         </div>
       )}
-
-      {/* Animación de éxito a pantalla completa */}
-      {showSuccessAnimation && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{
-            backgroundColor: 'rgba(15, 23, 42, 0.7)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            animation: 'fadeIn 0.3s ease-out'
-          }}
-        >
-          <div 
-            className="flex flex-col items-center justify-center"
-            style={{
-              animation: 'scaleInBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
-            }}
-          >
-            {/* Icono de check animado */}
-            <div
-              className="relative mb-6"
-              style={{
-                animation: 'checkMark 0.5s ease-out 0.3s both'
-              }}
-            >
-              <div
-                className="w-24 h-24 rounded-full flex items-center justify-center"
-                style={{
-                  background: 'linear-gradient(135deg, #c8151b, #dc2626)',
-                  boxShadow: '0 20px 60px rgba(200, 21, 27, 0.4)'
-                }}
-              >
-                <CheckCircle2 
-                  className="w-14 h-14 text-white" 
-                  style={{
-                    strokeWidth: 2.5
-                  }}
-                />
-              </div>
-              {/* Anillo de expansión */}
-              <div
-                className="absolute inset-0 rounded-full"
-                style={{
-                  border: '3px solid #c8151b',
-                  animation: 'ringExpand 0.8s ease-out 0.2s',
-                  opacity: 0
-                }}
-              />
-            </div>
-            
-            {/* Mensaje */}
-            <h2
-              className="text-2xl font-bold mb-2"
-              style={{
-                color: '#ffffff',
-                animation: 'fadeInUp 0.5s ease-out 0.4s both'
-              }}
-            >
-              ¡Estado actualizado exitosamente!
-            </h2>
-          </div>
-        </div>
-      )}
-
-      {/* Animación de error a pantalla completa */}
-      {showErrorAnimation && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{
-            backgroundColor: 'rgba(0, 0, 0, 0.9)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            animation: 'fadeIn 0.3s ease-out'
-          }}
-        >
-          <div 
-            className="flex flex-col items-center justify-center"
-            style={{
-              animation: 'scaleInBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
-            }}
-          >
-            {/* Icono de error animado */}
-            <div
-              className="relative"
-              style={{
-                animation: 'errorPop 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.3s both'
-              }}
-            >
-              <div
-                className="w-40 h-40 rounded-full flex items-center justify-center"
-                style={{
-                  background: 'linear-gradient(135deg, #dc2626, #ef4444)',
-                  boxShadow: '0 20px 60px rgba(220, 38, 38, 0.5)'
-                }}
-              >
-                <AlertCircle 
-                  className="w-20 h-20 text-white" 
-                  style={{
-                    strokeWidth: 2.5
-                  }}
-                />
-              </div>
-            </div>
-            
-            {/* Mensaje */}
-            <h2
-              className="text-xl font-bold mt-6"
-              style={{
-                color: '#ffffff',
-                animation: 'fadeInUp 0.5s ease-out 0.4s both'
-              }}
-            >
-              Error al actualizar el estado
-            </h2>
-          </div>
-        </div>
-      )}
-
-      {/* Estilos de animación inline */}
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        
-        @keyframes scaleInBounce {
-          0% {
-            transform: scale(0);
-            opacity: 0;
-          }
-          50% {
-            transform: scale(1.1);
-          }
-          100% {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-        
-        @keyframes checkMark {
-          0% {
-            transform: scale(0);
-            opacity: 0;
-          }
-          50% {
-            transform: scale(1.2);
-          }
-          100% {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-        
-        @keyframes errorPop {
-          0% {
-            transform: scale(0) rotate(-10deg);
-            opacity: 0;
-          }
-          50% {
-            transform: scale(1.3) rotate(5deg);
-          }
-          70% {
-            transform: scale(0.9) rotate(-2deg);
-          }
-          100% {
-            transform: scale(1) rotate(0deg);
-            opacity: 1;
-          }
-        }
-        
-        @keyframes ringExpand {
-          0% {
-            transform: scale(1);
-            opacity: 0.8;
-          }
-          100% {
-            transform: scale(1.5);
-            opacity: 0;
-          }
-        }
-        
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
     </div>
   );
 };

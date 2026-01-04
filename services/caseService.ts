@@ -8,7 +8,7 @@ import { calculateBusinessDaysElapsed, calculateSLADelayDays } from '../utils/sl
 const WEBHOOK_CASOS_URL = API_CONFIG.WEBHOOK_CASOS_URL || '/api/casos';
 
 // Tipos para las acciones del webhook
-type CaseAction = 'case.create' | 'case.update' | 'case.read' | 'case.delete';
+type CaseAction = 'case.create' | 'case.update' | 'case.read' | 'case.delete' | 'case.query';
 
 interface Actor {
   user_id: string;
@@ -18,6 +18,7 @@ interface Actor {
 interface ClienteData {
   cliente_id: string;
   email: string;
+  telefono?: string;
 }
 
 interface CategoriaData {
@@ -55,7 +56,7 @@ interface CaseWebhookResponse {
 const getActor = (): Actor | null => {
   try {
     const userStr = localStorage.getItem('intelfon_user');
-    const userEmail = localStorage.getItem('intelfon_user_email');
+    const userEmail = sessionStorage.getItem('intelfon_user_email');
     
     if (!userStr) {
       return null;
@@ -70,6 +71,24 @@ const getActor = (): Actor | null => {
     };
   } catch (error) {
     console.error('Error obteniendo actor:', error);
+    return null;
+  }
+};
+
+/**
+ * Obtiene el rol del usuario autenticado
+ */
+const getUserRole = (): 'AGENTE' | 'SUPERVISOR' | 'GERENTE' | null => {
+  try {
+    const userStr = localStorage.getItem('intelfon_user');
+    if (!userStr) {
+      return null;
+    }
+    
+    const user = JSON.parse(userStr);
+    return user.role || null;
+  } catch (error) {
+    console.error('Error obteniendo rol del usuario:', error);
     return null;
   }
 };
@@ -114,7 +133,8 @@ const mapCaseToWebhookData = (caseData: any): CaseWebhookPayload['data'] => {
   if (caseData.clienteId || caseData.clientId) {
     data.cliente = {
       cliente_id: caseData.clienteId || caseData.clientId,
-      email: caseData.clientEmail || caseData.email || ''
+      email: caseData.clientEmail || caseData.email || '',
+      telefono: caseData.phone || caseData.telefono || caseData.clientPhone || ''
     };
   }
   
@@ -128,9 +148,11 @@ const mapCaseToWebhookData = (caseData: any): CaseWebhookPayload['data'] => {
     data.estado = caseData.status || caseData.estado;
   }
   
-  if (caseData.canal_notificacion) {
-    data.canal_notificacion = caseData.canal_notificacion;
+  if (caseData.canal_notificacion || caseData.notificationChannel) {
+    data.canal_notificacion = mapChannel(caseData.notificationChannel || caseData.canal_notificacion);
   }
+  
+  // El Round Robin se maneja en n8n, no enviamos información de agente
   
   return data;
 };
@@ -194,6 +216,18 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
       return null;
     }
     
+    console.log('🔍 Caso raw del webhook:', {
+      caseId,
+      cliente_id: caseData.cliente_id,
+      clientId: caseData.clientId,
+      agente_id: caseData.agente_id,
+      agentId: caseData.agentId,
+      agente_nombre: caseData.agente_nombre,
+      agentName: caseData.agentName,
+      tieneObjetoCliente: !!caseData.cliente,
+      tieneObjetoAgente: !!caseData.agente
+    });
+    
     // Mapear categoría con valores por defecto
     // Si solo tenemos categoria_id, crear un objeto básico
     const categoriaId = caseData.categoria_id || caseData.categoriaId || null;
@@ -212,6 +246,14 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
     
     // Mapear cliente con valores por defecto
     const cliente = caseData.cliente || caseData.client || null;
+    
+    console.log('🔍 Cliente raw del webhook:', {
+      caseId,
+      cliente,
+      tieneCliente: !!cliente,
+      campos: cliente ? Object.keys(cliente) : []
+    });
+    
     const clienteMapped = cliente ? {
       idCliente: cliente.cliente_id || cliente.idCliente || cliente.id || '',
       nombreEmpresa: cliente.nombre_empresa || cliente.nombreEmpresa || cliente.nombre || '',
@@ -222,8 +264,24 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
       estado: cliente.estado || cliente.state || 'Activo'
     } : null;
     
+    console.log('✅ Cliente mapeado:', clienteMapped);
+    
     // Mapear agente con valores por defecto
     const agente = caseData.agente || caseData.agenteAsignado || caseData.agent || null;
+    
+    // Si no hay objeto agente pero hay agente_id y agente_name, crear objeto básico
+    const agenteId = caseData.agente_id || caseData.agentId || '';
+    const agenteName = caseData.agente_name || caseData.agente_nombre || caseData.agentName || '';
+    
+    console.log('🔍 Agente raw del webhook:', {
+      caseId,
+      agente,
+      tieneAgente: !!agente,
+      agenteId,
+      agenteName,
+      campos: agente ? Object.keys(agente) : []
+    });
+    
     const agenteMapped = agente ? {
       idAgente: agente.agente_id || agente.idAgente || agente.id || '',
       nombre: agente.nombre || agente.name || '',
@@ -232,7 +290,17 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
       ordenRoundRobin: agente.orden_round_robin || agente.ordenRoundRobin || 999,
       ultimoCasoAsignado: agente.ultimo_caso_asignado || agente.ultimoCasoAsignado || new Date().toISOString(),
       casosActivos: agente.casos_activos || agente.casosActivos || 0
-    } : null;
+    } : (agenteId && agenteName ? {
+      idAgente: agenteId,
+      nombre: agenteName,
+      email: '',
+      estado: 'Activo',
+      ordenRoundRobin: 999,
+      ultimoCasoAsignado: new Date().toISOString(),
+      casosActivos: 0
+    } : null);
+    
+    console.log('✅ Agente mapeado:', agenteMapped);
     
     // Calcular días hábiles
     const createdAtStr = caseData.fecha_creacion || caseData.createdAt || caseData.fechaCreacion;
@@ -255,7 +323,7 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
       id: caseId,
       ticketNumber: caseId,
       clientId: clienteMapped?.idCliente || caseData.cliente_id || caseData.clientId || '',
-      clientName: clienteMapped?.nombreEmpresa || caseData.clientName || '',
+      clientName: clienteMapped?.nombreEmpresa || caseData.cliente_nombre || caseData.clientName || caseData.nombre_cliente || '',
       category: categoriaMapped.nombre,
       origin: caseData.canal_origen || caseData.origin || caseData.contactChannel || Channel.WEB,
       subject: caseData.asunto || caseData.subject || '',
@@ -263,11 +331,11 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
       status: caseData.estado || caseData.status || CaseStatus.NUEVO,
       priority: caseData.prioridad || caseData.priority || 'Media',
       agentId: agenteMapped?.idAgente || caseData.agente_user_id?.toString() || caseData.agente_id || caseData.agentId || '',
-      agentName: agenteMapped?.nombre || caseData.agente_nombre || caseData.agentName || '',
+      agentName: agenteMapped?.nombre || caseData.agente_name || caseData.agente_nombre || caseData.agentName || caseData.nombre_agente || '',
       createdAt: createdAt,
       history: caseData.historial || caseData.history || [],
       clientEmail: clienteMapped?.email || caseData.email_cliente || caseData.clientEmail || '',
-      clientPhone: clienteMapped?.telefono || caseData.telefono_cliente || caseData.clientPhone || '',
+      clientPhone: clienteMapped?.telefono || caseData.telefono_cliente || caseData.telfono_cliente || caseData.clientPhone || '',
       agenteAsignado: agenteMapped as any,
       categoria: categoriaMapped as any,
       cliente: clienteMapped as any,
@@ -471,12 +539,42 @@ export const createCase = async (caseData: {
     data: mapCaseToWebhookData(caseData)
   };
   
+  console.log('📤 ========== JSON ENVIADO AL WEBHOOK ==========');
+  console.log(JSON.stringify(payload, null, 2));
+  
   const response = await callCaseWebhook(payload);
+  
+  console.log('📥 ========== RESPUESTA COMPLETA DEL WEBHOOK ==========');
+  console.log(JSON.stringify(response, null, 2));
+  console.log('📥 Tipo de respuesta:', typeof response);
+  console.log('📥 Es array?:', Array.isArray(response));
+  console.log('📥 Tiene case?:', !!(response as any)?.case);
+  console.log('📥 Tiene cases?:', !!(response as any)?.cases);
+  console.log('📥 Tiene data?:', !!(response as any)?.data);
   
   // Si el webhook retorna un caso, mapearlo
   if (response.case) {
+    console.log('📋 Caso retornado por webhook:', JSON.stringify(response.case, null, 2));
+    console.log('🔍 Agente en el caso retornado:', {
+      tieneAgente: !!(response.case as any).agente,
+      agente: (response.case as any).agente,
+      tieneAgenteAsignado: !!(response.case as any).agenteAsignado,
+      agenteAsignado: (response.case as any).agenteAsignado,
+      tieneAgentId: !!(response.case as any).agent_id,
+      agentId: (response.case as any).agent_id,
+      tieneAgentName: !!(response.case as any).agent_name,
+      agentName: (response.case as any).agent_name
+    });
+    
     const mappedCase = mapWebhookResponseToCase(response.case);
     if (mappedCase) {
+      console.log('✅ Caso mapeado:', {
+        id: mappedCase.id,
+        agentId: mappedCase.agentId,
+        agentName: mappedCase.agentName,
+        tieneAgenteAsignado: !!mappedCase.agenteAsignado,
+        agenteAsignado: mappedCase.agenteAsignado
+      });
       return mappedCase;
     }
   }
@@ -511,23 +609,56 @@ export const createCase = async (caseData: {
 
 /**
  * Obtiene todos los casos
+ * Si el usuario es AGENTE, solo retorna los casos asignados a ese agente usando case.query
+ * Si el usuario es SUPERVISOR o GERENTE, retorna todos los casos usando case.read
  */
 export const getCases = async (): Promise<Case[]> => {
   const actor = getActor();
+  const userRole = getUserRole();
   
   if (!actor) {
     throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
   }
   
+  // Si es AGENTE, usar case.query para obtener solo sus casos asignados
+  if (userRole === 'AGENTE') {
+    const payload: CaseWebhookPayload = {
+      action: 'case.query',
+      actor,
+      data: {
+        user_id: actor.user_id
+      }
+    };
+    
+    console.log('🔍 [AGENTE] Consultando casos asignados al usuario:', actor.user_id);
+    console.log('📤 JSON completo enviado al webhook (case.query):', JSON.stringify(payload, null, 2));
+    const response = await callCaseWebhook(payload);
+    
+    console.log('📥 Respuesta completa del webhook getCases (case.query):', JSON.stringify(response, null, 2));
+    
+    // Procesar la respuesta de la misma manera que case.read
+    return processWebhookResponse(response);
+  }
+  
+  // Si es SUPERVISOR o GERENTE, usar case.read para obtener todos los casos
   const payload: CaseWebhookPayload = {
     action: 'case.read',
     actor,
     data: {}
   };
   
+  console.log('📋 [SUPERVISOR/GERENTE] Consultando todos los casos');
   const response = await callCaseWebhook(payload);
   
-  console.log('📥 Respuesta completa del webhook getCases:', JSON.stringify(response, null, 2));
+  console.log('📥 Respuesta completa del webhook getCases (case.read):', JSON.stringify(response, null, 2));
+  
+  return processWebhookResponse(response);
+};
+
+/**
+ * Procesa la respuesta del webhook y retorna un array de casos mapeados
+ */
+const processWebhookResponse = (response: CaseWebhookResponse): Case[] => {
   
   // Intentar diferentes formatos de respuesta
   // Formato 1: Array directo o array que contiene objetos con data

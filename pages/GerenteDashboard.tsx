@@ -3,6 +3,7 @@ import { api } from '../services/api';
 import { Case, CaseStatus, KPI } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { TrendingUp, Users, Clock, ThumbsUp, ArrowUp, ArrowDown, Info, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 type PeriodFilter = 'hoy' | 'semana' | 'mes';
 
@@ -12,6 +13,7 @@ const GerenteDashboard: React.FC = () => {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('hoy');
   const [loading, setLoading] = useState(true);
   const [hoveredKPI, setHoveredKPI] = useState<string | null>(null);
+  const { theme } = useTheme();
 
   useEffect(() => {
     loadData();
@@ -46,7 +48,7 @@ const GerenteDashboard: React.FC = () => {
       // Validar que categoria existe antes de acceder a slaDias
       const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5; // Default 5 días
       return c.diasAbierto >= slaDias || 
-        c.status === CaseStatus.ESCALADO ||
+      c.status === CaseStatus.ESCALADO ||
         (slaDias - c.diasAbierto <= 1 && c.diasAbierto > 0);
     });
   }, [casos]);
@@ -127,18 +129,19 @@ const GerenteDashboard: React.FC = () => {
   };
 
   // Usar todos los casos, no solo los filtrados por período, para la distribución
-  const chartData = [
+  const chartData = useMemo(() => [
     { name: 'Nuevos', value: casos.filter(c => c.status === CaseStatus.NUEVO).length },
     { name: 'En Proceso', value: casos.filter(c => c.status === CaseStatus.EN_PROCESO).length },
     { name: 'Escalados', value: casos.filter(c => c.status === CaseStatus.ESCALADO).length },
     { name: 'Resueltos', value: casos.filter(c => c.status === CaseStatus.RESUELTO).length },
-  ];
+  ], [casos]);
 
-  const totalCasos = chartData.reduce((sum, item) => sum + item.value, 0);
-  const chartDataWithPercent = chartData.map(item => ({
+  const totalCasos = useMemo(() => chartData.reduce((sum, item) => sum + item.value, 0), [chartData]);
+
+  const chartDataWithPercent = useMemo(() => chartData.map(item => ({
     ...item,
     percent: totalCasos > 0 ? ((item.value / totalCasos) * 100).toFixed(1) : '0.0'
-  }));
+  })), [chartData, totalCasos]);
 
   const COLORS = ['#0f172a', '#f59e0b', '#ef4444', '#10b981'];
 
@@ -200,28 +203,47 @@ const GerenteDashboard: React.FC = () => {
     <div
       className="p-6 rounded-2xl border shadow-sm flex items-center justify-between relative group"
       style={{
-        backgroundColor: isHighlighted ? 'rgba(220, 38, 38, 0.1)' : '#ffffff',
-        borderColor: isHighlighted ? 'rgba(220, 38, 38, 0.3)' : 'rgba(148, 163, 184, 0.2)'
+        backgroundColor: isHighlighted 
+          ? (theme === 'dark' ? 'rgba(220, 38, 38, 0.15)' : 'rgba(220, 38, 38, 0.1)')
+          : styles.card.backgroundColor,
+        borderColor: isHighlighted 
+          ? 'rgba(220, 38, 38, 0.3)' 
+          : styles.card.borderColor
       }}
       onMouseEnter={() => setHoveredKPI(label)}
       onMouseLeave={() => setHoveredKPI(null)}
     >
       <div className="flex-1">
         <div className="flex items-center gap-2 mb-1">
-          <p className="text-sm font-bold uppercase tracking-widest" style={{color: '#64748b'}}>{label}</p>
+          <p className="text-sm font-bold uppercase tracking-widest" style={{color: styles.text.tertiary}}>{label}</p>
           {tooltip && (
             <div className="relative">
-              <Info className="w-3.5 h-3.5" style={{color: '#64748b'}} />
+              <Info className="w-3.5 h-3.5" style={{color: styles.text.tertiary}} />
               {hoveredKPI === label && (
-                <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-slate-900 text-white text-xs rounded-lg shadow-lg whitespace-nowrap z-50">
+                <div 
+                  className="absolute bottom-full left-0 mb-2 px-3 py-2 text-xs rounded-lg shadow-lg whitespace-nowrap z-50"
+                  style={{
+                    backgroundColor: theme === 'dark' ? '#1e293b' : '#0f172a',
+                    color: '#ffffff',
+                    border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
+                  }}
+                >
                   {tooltip}
-                  <div className="absolute top-full left-4 -mt-1 border-4 border-transparent border-t-slate-900"></div>
+                  <div 
+                    className="absolute top-full left-4 -mt-1 border-4 border-transparent"
+                    style={{borderTopColor: theme === 'dark' ? '#1e293b' : '#0f172a'}}
+                  ></div>
                 </div>
               )}
             </div>
           )}
         </div>
-        <h3 className="text-2xl font-black mt-1" style={{color: color.includes('red') ? '#ef4444' : color.includes('green') ? '#22c55e' : color.includes('slate') ? '#1e293b' : '#1e293b'}}>{value}</h3>
+        <h3 className="text-2xl font-black mt-1" style={{
+          color: color.includes('red') ? '#ef4444' : 
+                 color.includes('green') ? '#22c55e' : 
+                 color.includes('slate') || color.includes('white') ? styles.text.primary : 
+                 styles.text.primary
+        }}>{value}</h3>
         <div className="mt-2 flex items-center gap-2">
           {variation.isPositive && !variation.isNegative && (
             <ArrowUp className={`w-3 h-3 ${label === 'Excedidos SLA' ? 'text-red-600' : 'text-green-600'}`} />
@@ -238,7 +260,7 @@ const GerenteDashboard: React.FC = () => {
           </span>
         </div>
         {variation.percent && (
-          <p className="text-xs mt-0.5" style={{color: '#64748b'}}>{variation.percent}</p>
+          <p className="text-xs mt-0.5" style={{color: styles.text.tertiary}}>{variation.percent}</p>
         )}
         {isHighlighted && vencidos > 0 && (
           <p className="text-xs font-semibold mt-2" style={{color: '#f87171'}}>
@@ -246,31 +268,75 @@ const GerenteDashboard: React.FC = () => {
           </p>
         )}
       </div>
-      <div className="p-3 rounded-xl" style={{backgroundColor: bg === 'bg-slate-900' ? 'rgb(15, 23, 42)' : bg === 'bg-red-50' ? 'rgba(220, 38, 38, 0.15)' : bg === 'bg-green-50' ? 'rgba(34, 197, 94, 0.15)' : '#f1f5f9'}}>
-        <Icon className="w-6 h-6" style={{color: bg === 'bg-slate-900' ? '#ffffff' : color.includes('red') ? '#ef4444' : color.includes('green') ? '#22c55e' : 'rgb(15, 23, 42)'}} />
+      <div 
+        className="p-3 rounded-xl" 
+        style={{
+          backgroundColor: bg === 'bg-slate-900' 
+            ? (theme === 'dark' ? 'rgba(15, 23, 42, 0.5)' : 'rgb(15, 23, 42)')
+            : bg === 'bg-red-50' 
+            ? (theme === 'dark' ? 'rgba(220, 38, 38, 0.2)' : 'rgba(220, 38, 38, 0.15)')
+            : bg === 'bg-green-50'
+            ? (theme === 'dark' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.15)')
+            : (theme === 'dark' ? 'rgba(241, 245, 249, 0.1)' : '#f1f5f9')
+        }}
+      >
+        <Icon 
+          className="w-6 h-6" 
+          style={{
+            color: bg === 'bg-slate-900' 
+              ? '#ffffff' 
+              : color.includes('red') 
+              ? '#ef4444' 
+              : color.includes('green') 
+              ? '#22c55e' 
+              : styles.text.primary
+          }} 
+        />
       </div>
     </div>
   );
 
+  // Estilos dinámicos basados en el tema
+  const styles = {
+    container: {
+      backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
+      minHeight: '100vh'
+    },
+    card: {
+      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+      borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.2)',
+      color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
+    },
+    text: {
+      primary: theme === 'dark' ? '#f1f5f9' : '#0f172a',
+      secondary: theme === 'dark' ? '#cbd5e1' : '#475569',
+      tertiary: theme === 'dark' ? '#94a3b8' : '#64748b'
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={styles.container}>
       {/* Header con filtro de período y última actualización */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div></div>
           <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 rounded-xl border p-1" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+          <div className="flex items-center gap-2 rounded-xl border p-1" style={{...styles.card}}>
             {(['hoy', 'semana', 'mes'] as PeriodFilter[]).map((period) => (
               <button
                 key={period}
                 onClick={() => setPeriodFilter(period)}
                 className="px-4 py-2 rounded-lg text-sm font-semibold transition-all"
                 style={{
-                  backgroundColor: periodFilter === period ? 'rgb(15, 23, 42)' : 'transparent',
-                  color: periodFilter === period ? '#ffffff' : '#475569'
+                  backgroundColor: periodFilter === period 
+                    ? (theme === 'dark' ? 'rgba(15, 23, 42, 0.8)' : 'rgb(15, 23, 42)')
+                    : 'transparent',
+                  color: periodFilter === period 
+                    ? '#ffffff' 
+                    : styles.text.secondary
                 }}
                 onMouseEnter={(e) => {
                   if (periodFilter !== period) {
-                    e.currentTarget.style.backgroundColor = '#f1f5f9';
+                    e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(241, 245, 249, 0.1)' : '#f1f5f9';
                   }
                 }}
                 onMouseLeave={(e) => {
@@ -329,15 +395,15 @@ const GerenteDashboard: React.FC = () => {
 
       {/* Resumen Ejecutivo */}
       {insights.length > 0 && (
-        <div className="p-6 rounded-2xl border shadow-sm" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
-          <h3 className="text-base font-bold mb-4 flex items-center gap-2" style={{color: '#1e293b'}}>
+        <div className="p-6 rounded-2xl border shadow-sm" style={{...styles.card}}>
+          <h3 className="text-base font-bold mb-4 flex items-center gap-2" style={{color: styles.text.primary}}>
             <CheckCircle2 className="w-5 h-5" style={{color: '#94a3b8'}} />
             Resumen Ejecutivo
           </h3>
           <ul className="space-y-2">
             {insights.map((insight, idx) => (
-              <li key={idx} className="flex items-center gap-2 text-sm" style={{color: '#475569'}}>
-                <div className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: '#94a3b8'}}></div>
+              <li key={idx} className="flex items-center gap-2 text-sm" style={{color: styles.text.secondary}}>
+                <div className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: styles.text.tertiary}}></div>
                 {insight}
               </li>
             ))}
@@ -348,37 +414,41 @@ const GerenteDashboard: React.FC = () => {
       {/* Gráficas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Distribución por Estado */}
-        <div className="p-6 rounded-2xl border shadow-sm" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+        <div className="p-6 rounded-2xl border shadow-sm" style={{...styles.card}}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-bold" style={{color: '#1e293b'}}>Distribución por Estado</h3>
-            <div className="text-xs font-medium" style={{color: '#64748b'}}>
+            <h3 className="text-base font-bold" style={{color: styles.text.primary}}>Distribución por Estado</h3>
+            <div className="text-xs font-medium" style={{color: styles.text.tertiary}}>
               Total: {totalCasos} casos
             </div>
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartDataWithPercent}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148, 163, 184, 0.15)" />
+                <CartesianGrid 
+                  strokeDasharray="3 3" 
+                  vertical={false} 
+                  stroke={theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.15)'} 
+                />
                 <XAxis 
                   dataKey="name" 
                   axisLine={false} 
                   tickLine={false}
-                  tick={{ fontSize: 12, fill: '#94a3b8' }}
+                  tick={{ fontSize: 12, fill: styles.text.tertiary }}
                 />
                 <YAxis 
                   axisLine={false} 
                   tickLine={false}
-                  tick={{ fontSize: 12, fill: '#94a3b8' }}
+                  tick={{ fontSize: 12, fill: styles.text.tertiary }}
                 />
                 <Tooltip 
-                  cursor={{fill: 'rgba(148, 163, 184, 0.1)'}}
+                  cursor={{fill: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.1)'}}
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       const data = payload[0].payload;
                       return (
-                        <div className="p-3 rounded-lg shadow-lg border" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
-                  <p className="font-semibold" style={{color: '#1e293b'}}>{data.name}</p>
-                  <p className="text-sm" style={{color: '#475569'}}>
+                        <div className="p-3 rounded-lg shadow-lg border" style={{...styles.card}}>
+                          <p className="font-semibold" style={{color: styles.text.primary}}>{data.name}</p>
+                          <p className="text-sm" style={{color: styles.text.secondary}}>
                             {data.value} caso{data.value !== 1 ? 's' : ''} ({data.percent}%)
                           </p>
                         </div>
@@ -397,30 +467,36 @@ const GerenteDashboard: React.FC = () => {
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
             {chartDataWithPercent.map((item, idx) => (
-              <div key={idx} className="flex items-center justify-between p-2 rounded-lg" style={{backgroundColor: '#f8fafc'}}>
+              <div 
+                key={idx} 
+                className="flex items-center justify-between p-2 rounded-lg" 
+                style={{
+                  backgroundColor: theme === 'dark' ? 'rgba(241, 245, 249, 0.05)' : '#f8fafc'
+                }}
+              >
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded" style={{ backgroundColor: COLORS[idx] }}></div>
-                  <span className="font-medium" style={{color: '#475569'}}>{item.name}</span>
+                  <span className="font-medium" style={{color: styles.text.secondary}}>{item.name}</span>
                 </div>
-                <span className="font-bold" style={{color: '#1e293b'}}>{item.value} ({item.percent}%)</span>
+                <span className="font-bold" style={{color: styles.text.primary}}>{item.value} ({item.percent}%)</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Cumplimiento de SLA */}
-        <div className="p-6 rounded-2xl border shadow-sm" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
-          <h3 className="text-base font-bold mb-6" style={{color: '#1e293b'}}>Cumplimiento de SLA</h3>
+        <div className="p-6 rounded-2xl border shadow-sm" style={{...styles.card}}>
+          <h3 className="text-base font-bold mb-6" style={{color: styles.text.primary}}>Cumplimiento de SLA</h3>
           <div className="h-64 flex flex-col justify-center items-center">
             <div className={`relative w-48 h-48 rounded-full border-[12px] flex flex-col items-center justify-center`} style={{
               borderColor: slaStatus === 'en_cumplimiento' ? '#22c55e' : slaStatus === 'riesgo' ? '#f59e0b' : '#ef4444'
             }}>
-              <span className="text-4xl font-black" style={{color: '#1e293b'}}>{kpis.slaCompliance}%</span>
-              <span className="text-xs font-bold uppercase tracking-tighter mt-1" style={{color: '#64748b'}}>On Target</span>
+              <span className="text-4xl font-black" style={{color: styles.text.primary}}>{kpis.slaCompliance}%</span>
+              <span className="text-xs font-bold uppercase tracking-tighter mt-1" style={{color: styles.text.tertiary}}>On Target</span>
             </div>
             <div className="mt-6 text-center space-y-2">
-              <p className="text-sm" style={{color: '#64748b'}}>
-                Objetivo: <span className="font-bold" style={{color: '#1e293b'}}>{slaObjective}%</span>
+              <p className="text-sm" style={{color: styles.text.tertiary}}>
+                Objetivo: <span className="font-bold" style={{color: styles.text.primary}}>{slaObjective}%</span>
               </p>
               <p className="text-sm font-semibold" style={{
                 color: slaStatus === 'en_cumplimiento' ? '#22c55e' :
@@ -429,7 +505,7 @@ const GerenteDashboard: React.FC = () => {
                 {slaText}
               </p>
               {slaStatus !== 'en_cumplimiento' && (
-                <p className="text-xs mt-1" style={{color: '#64748b'}}>
+                <p className="text-xs mt-1" style={{color: styles.text.tertiary}}>
                   {kpis.slaCompliance < slaObjective 
                     ? `Faltan ${(slaObjective - kpis.slaCompliance).toFixed(1)}% para alcanzar el objetivo`
                     : ''}

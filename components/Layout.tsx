@@ -3,7 +3,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { Role } from '../types';
-import { LayoutDashboard, Ticket, Users, BarChart3, LogOut, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, Ticket, Users, BarChart3, LogOut, ShieldAlert, Sun, Moon, Menu, X } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -14,8 +15,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const [user, setUser] = useState(api.getUser());
   const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const { theme, toggleTheme } = useTheme();
 
   // Actualizar usuario cuando cambie en localStorage o cuando cambie la ruta
   // Usar useRef para evitar loops infinitos
@@ -192,8 +196,23 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const filteredNavItems = navItems.filter(item => item.roles.includes(user?.role as Role));
   const isActive = (path: string) => location.pathname === path;
 
-  // Función para mostrar el sidebar
+  // Estilos dinámicos basados en el tema
+  const styles = {
+    sidebar: {
+      backgroundColor: theme === 'dark' ? '#0f172a' : 'rgb(15, 23, 42)',
+      borderColor: theme === 'dark' ? 'rgba(200, 21, 27, 0.2)' : 'rgba(148, 163, 184, 0.2)'
+    },
+    main: {
+      backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff'
+    },
+    header: {
+      backgroundColor: theme === 'dark' ? '#1e293b' : 'rgb(15, 23, 42)'
+    }
+  };
+
+  // Función para mostrar el sidebar (solo desktop)
   const showSidebar = () => {
+    if (isMobile) return; // No usar hover en móvil
     if (hideTimeoutRef.current) {
       clearTimeout(hideTimeoutRef.current);
       hideTimeoutRef.current = null;
@@ -201,8 +220,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     setSidebarVisible(true);
   };
 
-  // Función para ocultar el sidebar con delay
+  // Función para ocultar el sidebar con delay (solo desktop)
   const hideSidebar = () => {
+    if (isMobile) return; // No usar hover en móvil
     if (hideTimeoutRef.current) {
       clearTimeout(hideTimeoutRef.current);
     }
@@ -211,6 +231,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       hideTimeoutRef.current = null;
     }, 1500); // 1.5 segundos de delay
   };
+
+  // Detectar si es móvil
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Limpiar timeout al desmontar
   useEffect(() => {
@@ -221,41 +253,72 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     };
   }, []);
 
+  // Toggle del menú móvil
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
+  };
+
+  // Cerrar menú móvil al hacer clic en un enlace
+  const handleNavClick = (path: string) => {
+    navigate(path);
+    if (isMobile) {
+      setMobileMenuOpen(false);
+    }
+  };
+
   return (
     <div className="flex relative" style={{ height: '100vh', overflow: 'hidden' }}>
-      {/* Área de detección de hover en el borde izquierdo */}
-      <div
-        className="fixed left-0 top-0 h-full z-20"
-        style={{
-          width: '20px',
-          backgroundColor: 'transparent'
-        }}
-        onMouseEnter={showSidebar}
-        onMouseLeave={hideSidebar}
-      />
+      {/* Área de detección de hover en el borde izquierdo (solo desktop) */}
+      {!isMobile && (
+        <div
+          className="fixed left-0 top-0 h-full z-20"
+          style={{
+            width: '20px',
+            backgroundColor: 'transparent'
+          }}
+          onMouseEnter={showSidebar}
+          onMouseLeave={hideSidebar}
+        />
+      )}
+
+      {/* Overlay oscuro para móvil cuando el menú está abierto */}
+      {isMobile && mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black z-40 transition-opacity duration-300"
+          style={{
+            opacity: 0.5,
+          }}
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
 
       {/* Sidebar */}
       <aside 
         ref={sidebarRef}
-        className="text-white flex flex-col fixed h-full z-30 transition-all duration-300 ease-in-out"
+        className="text-white flex flex-col fixed h-full z-50 transition-all duration-300 ease-in-out"
         style={{
-          width: sidebarVisible ? '256px' : '0px',
-          backgroundColor: 'rgb(15, 23, 42)',
-          overflowY: sidebarVisible ? 'auto' : 'hidden',
+          width: isMobile 
+            ? (mobileMenuOpen ? '256px' : '0px')
+            : (sidebarVisible ? '256px' : '0px'),
+          backgroundColor: styles.sidebar.backgroundColor,
+          overflowY: (isMobile ? mobileMenuOpen : sidebarVisible) ? 'auto' : 'hidden',
           overflowX: 'hidden',
-          borderRight: sidebarVisible ? '1px solid rgba(148, 163, 184, 0.2)' : 'none',
-          opacity: sidebarVisible ? 1 : 0,
-          pointerEvents: sidebarVisible ? 'auto' : 'none'
+          borderRight: (isMobile ? mobileMenuOpen : sidebarVisible) ? `1px solid ${styles.sidebar.borderColor}` : 'none',
+          opacity: (isMobile ? mobileMenuOpen : sidebarVisible) ? 1 : 0,
+          pointerEvents: (isMobile ? mobileMenuOpen : sidebarVisible) ? 'auto' : 'none',
+          transform: isMobile 
+            ? (mobileMenuOpen ? 'translateX(0)' : 'translateX(-100%)')
+            : 'none'
         }}
-        onMouseEnter={showSidebar}
-        onMouseLeave={hideSidebar}
+        onMouseEnter={!isMobile ? showSidebar : undefined}
+        onMouseLeave={!isMobile ? hideSidebar : undefined}
       >
         <div 
           className="p-6 border-b flex-shrink-0 flex flex-col items-center" 
           style={{
             borderColor: 'rgba(255, 255, 255, 0.08)',
             minWidth: '256px',
-            opacity: sidebarVisible ? 1 : 0,
+            opacity: (isMobile ? mobileMenuOpen : sidebarVisible) ? 1 : 0,
             transition: 'opacity 0.2s ease-in-out'
           }}
         >
@@ -274,7 +337,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           className="flex-1 mt-6 px-4 space-y-2 overflow-y-auto"
           style={{
             minWidth: '256px',
-            opacity: sidebarVisible ? 1 : 0,
+            opacity: (isMobile ? mobileMenuOpen : sidebarVisible) ? 1 : 0,
             transition: 'opacity 0.2s ease-in-out'
           }}
         >
@@ -292,7 +355,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   <div className="my-3 h-px" style={{backgroundColor: 'rgba(148, 163, 184, 0.12)'}} />
                 )}
                 <button
-                  onClick={() => navigate(item.path)}
+                  onClick={() => handleNavClick(item.path)}
                   className="flex items-center w-full px-3 py-2 text-xs font-medium rounded-lg transition-all duration-200 relative"
                   style={active ? {
                     background: 'linear-gradient(135deg, var(--color-brand-red), var(--color-accent-red))',
@@ -339,7 +402,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             borderColor: 'rgba(148, 163, 184, 0.15)',
             backgroundColor: 'rgba(15, 23, 42, 0.3)',
             minWidth: '256px',
-            opacity: sidebarVisible ? 1 : 0,
+            opacity: (isMobile ? mobileMenuOpen : sidebarVisible) ? 1 : 0,
             transition: 'opacity 0.2s ease-in-out'
           }}
           onMouseEnter={(e) => {
@@ -411,57 +474,109 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       <main 
         className="flex-1 transition-all duration-300 ease-in-out" 
-        style={{ 
+          style={{ 
           overflow: 'hidden', 
           display: 'flex', 
           flexDirection: 'column', 
           height: '100vh', 
           padding: '1.5rem', 
-          backgroundColor: '#ffffff',
-          marginLeft: sidebarVisible ? '256px' : '0px'
+          backgroundColor: styles.main.backgroundColor,
+          marginLeft: isMobile ? '0px' : (sidebarVisible ? '256px' : '0px')
         }}
       >
-        <header className="flex-shrink-0 mb-6 p-4 -mx-6 -mt-6 relative" style={{backgroundColor: 'rgb(15, 23, 42)'}}>
+        <header className="flex-shrink-0 mb-6 p-4 -mx-6 -mt-6 relative" style={{backgroundColor: styles.header.backgroundColor}}>
           <div className="flex items-start justify-between">
-            <div>
-              <h2 className="text-lg font-black" style={{color: '#ffffff'}}>
-                {getPageTitle()}
-              </h2>
-              <p className="text-xs" style={{color: '#94a3b8'}}>{getRoleName(user?.role)}</p>
+            <div className="flex items-center gap-3">
+              {/* Botón de menú hamburguesa para móvil */}
+              {isMobile && (
+                <button
+                  onClick={toggleMobileMenu}
+                  className="p-2 rounded-lg transition-all duration-200"
+                  style={{
+                    color: '#ffffff',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                  }}
+                >
+                  {mobileMenuOpen ? (
+                    <X className="w-6 h-6" />
+                  ) : (
+                    <Menu className="w-6 h-6" />
+                  )}
+                </button>
+              )}
+              <div>
+                <h2 className="text-lg font-black" style={{color: '#ffffff'}}>
+            {getPageTitle()}
+          </h2>
+                <p className="text-xs" style={{color: '#94a3b8'}}>{getRoleName(user?.role)}</p>
+              </div>
             </div>
-            {(() => {
-              // Buscar la última actualización de cualquier vista
-              const bandejaUpdate = localStorage.getItem('bandeja_last_update');
-              const gestionAgentesUpdate = localStorage.getItem('gestion_agentes_last_update');
-              
-              // Obtener la más reciente
-              let lastUpdateStr = null;
-              if (bandejaUpdate && gestionAgentesUpdate) {
-                const bandejaDate = new Date(bandejaUpdate);
-                const gestionDate = new Date(gestionAgentesUpdate);
-                lastUpdateStr = bandejaDate > gestionDate ? bandejaUpdate : gestionAgentesUpdate;
-              } else if (bandejaUpdate) {
-                lastUpdateStr = bandejaUpdate;
-              } else if (gestionAgentesUpdate) {
-                lastUpdateStr = gestionAgentesUpdate;
-              }
-              
-              if (lastUpdateStr) {
-                const lastUpdate = new Date(lastUpdateStr);
-                return (
-                  <div className="text-xs absolute bottom-2 right-4" style={{color: '#64748b'}}>
-                    Última actualización: {lastUpdate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                );
-              }
-              return null;
-            })()}
           </div>
+          
+          {(() => {
+            // Buscar la última actualización de cualquier vista
+            const bandejaUpdate = localStorage.getItem('bandeja_last_update');
+            const gestionAgentesUpdate = localStorage.getItem('gestion_agentes_last_update');
+            
+            // Obtener la más reciente
+            let lastUpdateStr = null;
+            if (bandejaUpdate && gestionAgentesUpdate) {
+              const bandejaDate = new Date(bandejaUpdate);
+              const gestionDate = new Date(gestionAgentesUpdate);
+              lastUpdateStr = bandejaDate > gestionDate ? bandejaUpdate : gestionAgentesUpdate;
+            } else if (bandejaUpdate) {
+              lastUpdateStr = bandejaUpdate;
+            } else if (gestionAgentesUpdate) {
+              lastUpdateStr = gestionAgentesUpdate;
+            }
+            
+            if (lastUpdateStr) {
+              const lastUpdate = new Date(lastUpdateStr);
+              return (
+                <div className="text-xs absolute bottom-2 right-4" style={{color: '#64748b'}}>
+                  Última actualización: {lastUpdate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                </div>
+              );
+            }
+            return null;
+          })()}
         </header>
         <div style={{ flex: '1 1 auto', overflowY: 'auto', overflowX: 'hidden', minHeight: 0 }}>
           {children}
         </div>
       </main>
+
+      {/* Botón flotante de cambio de tema */}
+      <button
+        onClick={toggleTheme}
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+        style={{
+          backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+          border: '2px solid rgba(148, 163, 184, 0.2)',
+          color: theme === 'dark' ? '#f1f5f9' : '#0f172a',
+          zIndex: 9999,
+          boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.boxShadow = '0 15px 50px rgba(0, 0, 0, 0.25)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.boxShadow = '0 10px 40px rgba(0, 0, 0, 0.15)';
+        }}
+        title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+      >
+        {theme === 'dark' ? (
+          <Sun className="w-6 h-6" />
+        ) : (
+          <Moon className="w-6 h-6" />
+        )}
+      </button>
     </div>
   );
 };

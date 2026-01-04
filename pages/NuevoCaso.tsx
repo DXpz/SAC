@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import { CaseStatus, Cliente, Categoria, Channel } from '../types';
 import { Search, X, Building2, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import Toast, { ToastType } from '../components/Toast';
+import { useTheme } from '../contexts/ThemeContext';
 
 const NuevoCaso: React.FC = () => {
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -13,6 +14,7 @@ const NuevoCaso: React.FC = () => {
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { theme } = useTheme();
   
   const [newCase, setNewCase] = useState({
     clienteId: '',
@@ -30,11 +32,14 @@ const NuevoCaso: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    loadClientes();
-    loadCategorias();
-    // Guardar hora de actualización para mostrar en el header
-    const updateTime = new Date();
-    localStorage.setItem('bandeja_last_update', updateTime.toISOString());
+    const initializeData = async () => {
+      await loadClientes();
+      await loadCategorias();
+      // Guardar hora de actualización para mostrar en el header
+      const updateTime = new Date();
+      localStorage.setItem('bandeja_last_update', updateTime.toISOString());
+    };
+    initializeData();
   }, []);
 
   // Cerrar dropdown al hacer clic fuera
@@ -80,13 +85,15 @@ const NuevoCaso: React.FC = () => {
   }, [clientes, clienteSearchTerm]);
 
   const handleClienteSelect = async (cliente: Cliente) => {
+    // Solo autocompletar empresa/cliente, NO los datos de contacto
     setNewCase({
       ...newCase,
       clienteId: cliente.idCliente,
       clientName: cliente.nombreEmpresa,
-      contactName: cliente.contactoPrincipal,
-      phone: cliente.telefono,
-      email: cliente.email,
+      // Dejar vacíos para que el usuario los ingrese manualmente
+      contactName: '',
+      phone: '',
+      email: '',
     });
     setClienteSearchTerm(`${cliente.idCliente} - ${cliente.nombreEmpresa}`);
     setShowClienteDropdown(false);
@@ -137,7 +144,7 @@ const NuevoCaso: React.FC = () => {
         phone: newCase.phone,
         clientEmail: newCase.email,
         status: CaseStatus.NUEVO,
-        createdAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
       };
 
       console.log('📝 ========== INICIANDO CREACIÓN DE CASO ==========');
@@ -148,6 +155,7 @@ const NuevoCaso: React.FC = () => {
 
       if (result) {
         console.log('✅ ========== CASO CREADO EXITOSAMENTE ==========');
+        
         setShowSuccessAnimation(true);
         setTimeout(() => {
           setShowSuccessAnimation(false);
@@ -168,20 +176,43 @@ const NuevoCaso: React.FC = () => {
     }
   };
 
+  // Estilos dinámicos basados en el tema
+  const styles = {
+    container: {
+      backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
+      minHeight: '100vh'
+    },
+    card: {
+      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+      borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.2)',
+      color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
+    },
+    text: {
+      primary: theme === 'dark' ? '#f1f5f9' : '#0f172a',
+      secondary: theme === 'dark' ? '#cbd5e1' : '#475569',
+      tertiary: theme === 'dark' ? '#94a3b8' : '#64748b'
+    },
+    input: {
+      backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+      borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.2)',
+      color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
+    }
+  };
+
   return (
-    <div>
+    <div style={styles.container}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => navigate('/app/casos')}
             className="flex items-center gap-2 mb-3 transition-colors font-medium"
-            style={{color: '#64748b'}}
+            style={{color: styles.text.tertiary}}
             onMouseEnter={(e) => {
-              e.currentTarget.style.color = '#475569';
+              e.currentTarget.style.color = styles.text.secondary;
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.color = '#94a3b8';
+              e.currentTarget.style.color = styles.text.tertiary;
             }}
           >
             <ArrowLeft className="w-5 h-5" />
@@ -190,21 +221,21 @@ const NuevoCaso: React.FC = () => {
         </div>
 
         {/* Formulario */}
-        <div className="rounded-3xl shadow-xl border overflow-hidden" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'}}>
+        <div className="rounded-3xl shadow-xl border overflow-hidden" style={{...styles.card, boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'}}>
           <form onSubmit={handleCreateCase} className="p-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Columna Izquierda */}
               <div className="space-y-5">
-                <h2 className="text-sm font-semibold mb-3 pb-2 border-b" style={{color: '#1e293b', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+                <h2 className="text-sm font-semibold mb-3 pb-2 border-b" style={{color: styles.text.primary, borderColor: 'rgba(148, 163, 184, 0.2)'}}>
                   Información del Cliente
                 </h2>
 
                 <div className="relative cliente-selector-container">
-                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>
+                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>
                     Cliente <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none" style={{color: '#94a3b8'}} />
+                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none" style={{color: styles.text.tertiary}} />
                     <input
                       type="text"
                       required
@@ -220,19 +251,17 @@ const NuevoCaso: React.FC = () => {
                         setShowClienteDropdown(true);
                         e.target.style.borderColor = 'var(--color-accent-blue)';
                         e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                        e.target.style.backgroundColor = '#ffffff';
+                        e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
                       }}
                       onBlur={(e) => {
-                        e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                        e.target.style.borderColor = styles.input.borderColor;
                         e.target.style.boxShadow = '';
-                        e.target.style.backgroundColor = '#f8fafc';
+                        e.target.style.backgroundColor = styles.input.backgroundColor;
                       }}
                       placeholder="Buscar cliente por ID, nombre, email o teléfono..."
                       className="w-full pl-11 pr-9 py-3 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
                       style={{
-                        backgroundColor: '#f8fafc',
-                        borderColor: 'rgba(148, 163, 184, 0.3)',
-                        color: '#1e293b',
+                        ...styles.input,
                         '--tw-ring-color': 'var(--color-accent-blue)',
                         '--tw-ring-opacity': '0.2'
                       } as React.CSSProperties & { '--tw-ring-color': string, '--tw-ring-opacity': string }}
@@ -242,12 +271,12 @@ const NuevoCaso: React.FC = () => {
                         type="button"
                         onClick={handleClienteClear}
                         className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
-                        style={{color: '#64748b'}}
+                        style={{color: styles.text.tertiary}}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.color = '#475569';
+                          e.currentTarget.style.color = styles.text.secondary;
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.color = '#94a3b8';
+                          e.currentTarget.style.color = styles.text.tertiary;
                         }}
                       >
                         <X className="w-5 h-5" />
@@ -257,9 +286,12 @@ const NuevoCaso: React.FC = () => {
                   
                   {/* Dropdown de resultados */}
                   {showClienteDropdown && filteredClientes.length > 0 && (
-                    <div className="absolute z-30 w-full mt-2 rounded-xl shadow-2xl max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200 border" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
-                      <div className="p-2 border-b sticky top-0" style={{backgroundColor: '#f8fafc', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
-                        <p className="text-xs font-semibold" style={{color: '#475569'}}>
+                    <div className="absolute z-30 w-full mt-2 rounded-xl shadow-2xl max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200 border" style={{...styles.card}}>
+                      <div className="p-2 border-b sticky top-0" style={{
+                        backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                        borderColor: 'rgba(148, 163, 184, 0.2)'
+                      }}>
+                        <p className="text-xs font-semibold" style={{color: styles.text.secondary}}>
                           {filteredClientes.length} {filteredClientes.length === 1 ? 'cliente encontrado' : 'clientes encontrados'}
                         </p>
                       </div>
@@ -280,15 +312,20 @@ const NuevoCaso: React.FC = () => {
                           }}
                         >
                           <div className="flex items-start gap-3">
-                            <div className="p-2.5 rounded-xl transition-all shadow-sm" style={{backgroundColor: '#f1f5f9'}}>
-                              <Building2 className="w-5 h-5" style={{color: '#475569'}} />
+                            <div className="p-2.5 rounded-xl transition-all shadow-sm" style={{
+                              backgroundColor: theme === 'dark' ? '#0f172a' : '#f1f5f9'
+                            }}>
+                              <Building2 className="w-5 h-5" style={{color: styles.text.secondary}} />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-sm font-bold transition-colors" style={{color: '#1e293b'}}>
+                                <span className="text-sm font-bold transition-colors" style={{color: styles.text.primary}}>
                                   {cliente.nombreEmpresa}
                                 </span>
-                                <span className="text-xs font-bold px-2 py-1 rounded-md shadow-sm" style={{backgroundColor: '#e2e8f0', color: '#475569'}}>
+                                <span className="text-xs font-bold px-2 py-1 rounded-md shadow-sm" style={{
+                                  backgroundColor: theme === 'dark' ? '#0f172a' : '#e2e8f0',
+                                  color: styles.text.secondary
+                                }}>
                                   {cliente.idCliente}
                                 </span>
                               </div>
@@ -300,36 +337,34 @@ const NuevoCaso: React.FC = () => {
                   )}
                   
                   {showClienteDropdown && clienteSearchTerm && filteredClientes.length === 0 && (
-                    <div className="absolute z-30 w-full mt-2 rounded-xl shadow-2xl p-8 text-center animate-in fade-in slide-in-from-top-2 duration-200 border" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
-                      <div className="mb-3" style={{color: '#64748b'}}>
+                    <div className="absolute z-30 w-full mt-2 rounded-xl shadow-2xl p-8 text-center animate-in fade-in slide-in-from-top-2 duration-200 border" style={{...styles.card}}>
+                      <div className="mb-3" style={{color: styles.text.tertiary}}>
                         <Search className="w-12 h-12 mx-auto" />
                       </div>
-                      <p className="text-sm font-bold mb-1" style={{color: '#1e293b'}}>No se encontraron clientes</p>
-                      <p className="text-xs" style={{color: '#94a3b8'}}>Intenta buscar por ID, nombre de empresa, contacto, email o teléfono</p>
+                      <p className="text-sm font-bold mb-1" style={{color: styles.text.primary}}>No se encontraron clientes</p>
+                      <p className="text-xs" style={{color: styles.text.tertiary}}>Intenta buscar por ID, nombre de empresa, contacto, email o teléfono</p>
                     </div>
                   )}
                 </div>
                 
                 <div>
-                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>Empresa / Cliente</label>
+                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>Empresa / Cliente</label>
                   <input 
                     type="text" 
                     required 
                     className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
                     style={{
-                      backgroundColor: '#f8fafc',
-                      borderColor: 'rgba(148, 163, 184, 0.3)',
-                      color: '#1e293b'
+                      ...styles.input
                     }}
                     onFocus={(e) => {
                       e.target.style.borderColor = 'var(--color-accent-blue)';
                       e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                      e.target.style.backgroundColor = '#f1f5f9';
+                      e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
                     }}
                     onBlur={(e) => {
-                      e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                      e.target.style.borderColor = styles.input.borderColor;
                       e.target.style.boxShadow = '';
-                      e.target.style.backgroundColor = '#f8fafc';
+                      e.target.style.backgroundColor = styles.input.backgroundColor;
                     }}
                     placeholder="Nombre de la empresa"
                     value={newCase.clientName}
@@ -339,24 +374,22 @@ const NuevoCaso: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>Contacto Principal</label>
+                    <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>Contacto Principal</label>
                     <input 
                       type="text"
                       className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
                       style={{
-                        backgroundColor: '#f8fafc',
-                        borderColor: 'rgba(148, 163, 184, 0.3)',
-                        color: '#1e293b'
+                        ...styles.input
                       }}
                       onFocus={(e) => {
                         e.target.style.borderColor = 'var(--color-accent-blue)';
                         e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                        e.target.style.backgroundColor = '#ffffff';
+                        e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
                       }}
                       onBlur={(e) => {
-                        e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                        e.target.style.borderColor = styles.input.borderColor;
                         e.target.style.boxShadow = '';
-                        e.target.style.backgroundColor = '#f8fafc';
+                        e.target.style.backgroundColor = styles.input.backgroundColor;
                       }}
                       placeholder="Nombre contacto"
                       value={newCase.contactName}
@@ -364,24 +397,22 @@ const NuevoCaso: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>Teléfono</label>
+                    <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>Teléfono</label>
                     <input 
                       type="tel"
                       className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
                       style={{
-                        backgroundColor: '#f8fafc',
-                        borderColor: 'rgba(148, 163, 184, 0.3)',
-                        color: '#1e293b'
+                        ...styles.input
                       }}
                       onFocus={(e) => {
                         e.target.style.borderColor = 'var(--color-accent-blue)';
                         e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                        e.target.style.backgroundColor = '#ffffff';
+                        e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
                       }}
                       onBlur={(e) => {
-                        e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                        e.target.style.borderColor = styles.input.borderColor;
                         e.target.style.boxShadow = '';
-                        e.target.style.backgroundColor = '#f8fafc';
+                        e.target.style.backgroundColor = styles.input.backgroundColor;
                       }}
                       placeholder="+50370000000"
                       value={newCase.phone}
@@ -391,25 +422,23 @@ const NuevoCaso: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>Email Cliente <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>Email Cliente <span className="text-red-500">*</span></label>
                   <input 
                     type="email" 
                     required 
                     className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
                     style={{
-                      backgroundColor: '#f8fafc',
-                      borderColor: 'rgba(148, 163, 184, 0.3)',
-                      color: '#1e293b'
+                      ...styles.input
                     }}
                     onFocus={(e) => {
                       e.target.style.borderColor = 'var(--color-accent-blue)';
                       e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                      e.target.style.backgroundColor = '#f1f5f9';
+                      e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
                     }}
                     onBlur={(e) => {
-                      e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                      e.target.style.borderColor = styles.input.borderColor;
                       e.target.style.boxShadow = '';
-                      e.target.style.backgroundColor = '#f8fafc';
+                      e.target.style.backgroundColor = styles.input.backgroundColor;
                     }}
                     placeholder="cliente@empresa.com"
                     value={newCase.email}
@@ -418,22 +447,21 @@ const NuevoCaso: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>Medio de Contacto (Primer Contacto) <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>Medio de Contacto (Primer Contacto) <span className="text-red-500">*</span></label>
                   <select
                     required
                     value={newCase.contactChannel}
                     onChange={(e) => setNewCase({...newCase, contactChannel: e.target.value as Channel})}
                     className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs appearance-none cursor-pointer shadow-sm hover:shadow-md"
                     style={{
-                      backgroundColor: '#f8fafc',
-                      borderColor: 'rgba(148, 163, 184, 0.3)',
-                      color: newCase.contactChannel ? '#475569' : '#94a3b8'
+                      ...styles.input,
+                      color: newCase.contactChannel ? styles.text.secondary : styles.text.tertiary
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#ffffff';
+                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#f8fafc';
+                      e.currentTarget.style.backgroundColor = styles.input.backgroundColor;
                     }}
                   >
                     <option value="" disabled>Seleccionar una opción</option>
@@ -446,22 +474,21 @@ const NuevoCaso: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>Canal de Notificación (Contacto Posterior) <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>Canal de Notificación (Contacto Posterior) <span className="text-red-500">*</span></label>
                   <select
                     required
                     value={newCase.notificationChannel}
                     onChange={(e) => setNewCase({...newCase, notificationChannel: e.target.value as Channel})}
                     className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs appearance-none cursor-pointer shadow-sm hover:shadow-md"
                     style={{
-                      backgroundColor: '#f8fafc',
-                      borderColor: 'rgba(148, 163, 184, 0.3)',
-                      color: newCase.notificationChannel ? '#475569' : '#94a3b8'
+                      ...styles.input,
+                      color: newCase.notificationChannel ? styles.text.secondary : styles.text.tertiary
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#ffffff';
+                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#f8fafc';
+                      e.currentTarget.style.backgroundColor = styles.input.backgroundColor;
                     }}
                   >
                     <option value="" disabled>Seleccionar una opción</option>
@@ -476,27 +503,25 @@ const NuevoCaso: React.FC = () => {
 
               {/* Columna Derecha */}
               <div className="space-y-5">
-                <h2 className="text-sm font-semibold mb-3 pb-2 border-b" style={{color: '#1e293b', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+                <h2 className="text-sm font-semibold mb-3 pb-2 border-b" style={{color: styles.text.primary, borderColor: 'rgba(148, 163, 184, 0.2)'}}>
                   Detalles del Caso
                 </h2>
 
                 <div>
-                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>Categoría <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>Categoría <span className="text-red-500">*</span></label>
                   <select
                     required
                     value={newCase.categoriaId}
                     onChange={(e) => setNewCase({...newCase, categoriaId: e.target.value})}
                     className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs appearance-none cursor-pointer shadow-sm hover:shadow-md"
                     style={{
-                      backgroundColor: '#f8fafc',
-                      borderColor: 'rgba(148, 163, 184, 0.3)',
-                      color: '#475569'
+                      ...styles.input
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#ffffff';
+                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#f8fafc';
+                      e.currentTarget.style.backgroundColor = styles.input.backgroundColor;
                     }}
                   >
                     <option value="">Seleccione una categoría...</option>
@@ -511,30 +536,28 @@ const NuevoCaso: React.FC = () => {
                     )}
                   </select>
                   {categorias.length === 0 && (
-                    <p className="text-xs mt-1" style={{color: '#64748b'}}>Cargando categorías...</p>
+                    <p className="text-xs mt-1" style={{color: styles.text.tertiary}}>Cargando categorías...</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black uppercase tracking-wider mb-1.5" style={{color: '#475569'}}>Asunto <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-black uppercase tracking-wider mb-1.5" style={{color: styles.text.secondary}}>Asunto <span className="text-red-500">*</span></label>
                   <input 
                     type="text" 
                     required 
                     className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
                     style={{
-                      backgroundColor: '#f8fafc',
-                      borderColor: 'rgba(148, 163, 184, 0.3)',
-                      color: '#1e293b'
+                      ...styles.input
                     }}
                     onFocus={(e) => {
                       e.target.style.borderColor = 'var(--color-accent-blue)';
                       e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                      e.target.style.backgroundColor = '#f1f5f9';
+                      e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
                     }}
                     onBlur={(e) => {
-                      e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                      e.target.style.borderColor = styles.input.borderColor;
                       e.target.style.boxShadow = '';
-                      e.target.style.backgroundColor = '#f8fafc';
+                      e.target.style.backgroundColor = styles.input.backgroundColor;
                     }}
                     placeholder="Resumen del caso"
                     value={newCase.subject}
@@ -543,25 +566,23 @@ const NuevoCaso: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black uppercase tracking-wider mb-1.5" style={{color: '#475569'}}>Descripción <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-black uppercase tracking-wider mb-1.5" style={{color: styles.text.secondary}}>Descripción <span className="text-red-500">*</span></label>
                   <textarea 
                     required 
                     rows={12}
                     className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs resize-none shadow-sm hover:shadow-md"
                     style={{
-                      backgroundColor: '#f8fafc',
-                      borderColor: 'rgba(148, 163, 184, 0.3)',
-                      color: '#1e293b'
+                      ...styles.input
                     }}
                     onFocus={(e) => {
                       e.target.style.borderColor = 'var(--color-accent-blue)';
                       e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                      e.target.style.backgroundColor = '#f1f5f9';
+                      e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
                     }}
                     onBlur={(e) => {
-                      e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                      e.target.style.borderColor = styles.input.borderColor;
                       e.target.style.boxShadow = '';
-                      e.target.style.backgroundColor = '#f8fafc';
+                      e.target.style.backgroundColor = styles.input.backgroundColor;
                     }}
                     placeholder="Detalles completos del caso..."
                     value={newCase.description}
@@ -578,17 +599,17 @@ const NuevoCaso: React.FC = () => {
                 onClick={() => navigate('/app/casos')}
                 className="flex-1 py-2 text-xs font-bold rounded-lg transition-all border-2 shadow-sm hover:shadow-md"
                 style={{
-                  color: '#475569',
+                  color: styles.text.secondary,
                   borderColor: 'rgba(148, 163, 184, 0.4)',
-                  backgroundColor: '#ffffff'
+                  backgroundColor: styles.card.backgroundColor
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f8fafc';
+                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f8fafc';
                   e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.6)';
                   e.currentTarget.style.transform = 'translateY(-1px)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#ffffff';
+                  e.currentTarget.style.backgroundColor = styles.card.backgroundColor;
                   e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.4)';
                   e.currentTarget.style.transform = 'translateY(0)';
                 }}

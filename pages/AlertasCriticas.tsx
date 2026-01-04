@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { Caso, CaseStatus, Agente } from '../types';
 import { STATE_COLORS } from '../constants';
+import { useTheme } from '../contexts/ThemeContext';
 import { 
   ShieldAlert, 
   Clock, 
   AlertTriangle, 
   Eye,
-  RefreshCw,
   CheckCircle2,
   TrendingUp,
   Timer,
@@ -27,6 +27,7 @@ const AlertasCriticas: React.FC = () => {
   const [criticos, setCriticos] = useState<CaseWithPriority[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { theme } = useTheme();
 
   const loadData = async () => {
     setLoading(true);
@@ -170,6 +171,24 @@ const AlertasCriticas: React.FC = () => {
 
   const casosEscalados = criticos.filter(c => c.status === CaseStatus.ESCALADO).length;
 
+  // Estilos dinámicos basados en el tema
+  const styles = {
+    container: {
+      backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
+      minHeight: '100vh'
+    },
+    card: {
+      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+      borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.2)',
+      color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
+    },
+    text: {
+      primary: theme === 'dark' ? '#f1f5f9' : '#0f172a',
+      secondary: theme === 'dark' ? '#cbd5e1' : '#475569',
+      tertiary: theme === 'dark' ? '#94a3b8' : '#64748b'
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -193,8 +212,7 @@ const AlertasCriticas: React.FC = () => {
         <div 
           className="p-5 rounded-xl border-2 cursor-pointer transition-all duration-200"
           style={{
-            backgroundColor: '#ffffff',
-            borderColor: 'rgba(148, 163, 184, 0.2)'
+            ...styles.card
           }}
           onClick={() => navigate('/app/casos')}
           onMouseEnter={(e) => {
@@ -208,13 +226,16 @@ const AlertasCriticas: React.FC = () => {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{color: '#64748b'}}>Total Críticos</p>
-              <p className="text-3xl font-black" style={{color: '#1e293b'}}>
+              <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{color: styles.text.tertiary}}>Total Críticos</p>
+              <p className="text-3xl font-black" style={{color: styles.text.primary}}>
                 <AnimatedNumber value={criticos.length} />
               </p>
             </div>
-            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{backgroundColor: '#f8fafc', border: '2px solid rgba(148, 163, 184, 0.2)'}}>
-              <ShieldAlert className="w-6 h-6" style={{color: '#64748b'}} />
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{
+              backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+              border: '2px solid rgba(148, 163, 184, 0.2)'
+            }}>
+              <ShieldAlert className="w-6 h-6" style={{color: styles.text.tertiary}} />
             </div>
           </div>
         </div>
@@ -223,7 +244,7 @@ const AlertasCriticas: React.FC = () => {
         <div 
           className="p-5 rounded-xl border-2 cursor-pointer transition-all duration-200"
           style={{
-            backgroundColor: '#ffffff',
+            ...styles.card,
             borderColor: casosFueraSLA > 0 ? 'rgba(200, 21, 27, 0.3)' : 'rgba(148, 163, 184, 0.2)'
           }}
           onClick={() => navigate('/app/casos')}
@@ -238,13 +259,16 @@ const AlertasCriticas: React.FC = () => {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{color: '#64748b'}}>Fuera de SLA</p>
-              <p className="text-3xl font-black" style={{color: casosFueraSLA > 0 ? '#c8151b' : '#1e293b'}}>
+              <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{color: styles.text.tertiary}}>Fuera de SLA</p>
+              <p className="text-3xl font-black" style={{color: casosFueraSLA > 0 ? '#c8151b' : styles.text.primary}}>
                 <AnimatedNumber value={casosFueraSLA} />
               </p>
             </div>
-            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{backgroundColor: casosFueraSLA > 0 ? 'rgba(200, 21, 27, 0.1)' : '#f8fafc', border: `2px solid ${casosFueraSLA > 0 ? 'rgba(200, 21, 27, 0.2)' : 'rgba(148, 163, 184, 0.2)'}`}}>
-              <Timer className="w-6 h-6" style={{color: casosFueraSLA > 0 ? '#c8151b' : '#64748b'}} />
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{
+              backgroundColor: casosFueraSLA > 0 ? 'rgba(200, 21, 27, 0.1)' : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
+              border: `2px solid ${casosFueraSLA > 0 ? 'rgba(200, 21, 27, 0.2)' : 'rgba(148, 163, 184, 0.2)'}`
+            }}>
+              <Timer className="w-6 h-6" style={{color: casosFueraSLA > 0 ? '#c8151b' : styles.text.tertiary}} />
             </div>
           </div>
         </div>
@@ -253,8 +277,7 @@ const AlertasCriticas: React.FC = () => {
         <div 
           className="p-5 rounded-xl border-2 cursor-pointer transition-all duration-200"
           style={{
-            backgroundColor: '#ffffff',
-            borderColor: 'rgba(148, 163, 184, 0.2)'
+            ...styles.card
           }}
           onClick={() => navigate('/app/casos')}
           onMouseEnter={(e) => {
@@ -268,13 +291,16 @@ const AlertasCriticas: React.FC = () => {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{color: '#64748b'}}>Vencen &lt;24h</p>
-              <p className="text-3xl font-black" style={{color: '#1e293b'}}>
+              <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{color: styles.text.tertiary}}>Vencen &lt;24h</p>
+              <p className="text-3xl font-black" style={{color: styles.text.primary}}>
                 <AnimatedNumber value={casosVencen24h} />
               </p>
             </div>
-            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{backgroundColor: '#f8fafc', border: '2px solid rgba(148, 163, 184, 0.2)'}}>
-              <Clock className="w-6 h-6" style={{color: '#64748b'}} />
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{
+              backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+              border: '2px solid rgba(148, 163, 184, 0.2)'
+            }}>
+              <Clock className="w-6 h-6" style={{color: styles.text.tertiary}} />
             </div>
           </div>
         </div>
@@ -283,7 +309,7 @@ const AlertasCriticas: React.FC = () => {
         <div 
           className="p-5 rounded-xl border-2 cursor-pointer transition-all duration-200"
           style={{
-            backgroundColor: '#ffffff',
+            ...styles.card,
             borderColor: casosEscalados > 0 ? 'rgba(200, 21, 27, 0.3)' : 'rgba(148, 163, 184, 0.2)'
           }}
           onClick={() => navigate('/app/casos')}
@@ -298,13 +324,16 @@ const AlertasCriticas: React.FC = () => {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{color: '#64748b'}}>Escalados</p>
-              <p className="text-3xl font-black" style={{color: casosEscalados > 0 ? '#c8151b' : '#1e293b'}}>
+              <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{color: styles.text.tertiary}}>Escalados</p>
+              <p className="text-3xl font-black" style={{color: casosEscalados > 0 ? '#c8151b' : styles.text.primary}}>
                 <AnimatedNumber value={casosEscalados} />
               </p>
             </div>
-            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{backgroundColor: casosEscalados > 0 ? 'rgba(200, 21, 27, 0.1)' : '#f8fafc', border: `2px solid ${casosEscalados > 0 ? 'rgba(200, 21, 27, 0.2)' : 'rgba(148, 163, 184, 0.2)'}`}}>
-              <TrendingUp className="w-6 h-6" style={{color: casosEscalados > 0 ? '#c8151b' : '#64748b'}} />
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{
+              backgroundColor: casosEscalados > 0 ? 'rgba(200, 21, 27, 0.1)' : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
+              border: `2px solid ${casosEscalados > 0 ? 'rgba(200, 21, 27, 0.2)' : 'rgba(148, 163, 184, 0.2)'}`
+            }}>
+              <TrendingUp className="w-6 h-6" style={{color: casosEscalados > 0 ? '#c8151b' : styles.text.tertiary}} />
             </div>
           </div>
         </div>
@@ -312,18 +341,24 @@ const AlertasCriticas: React.FC = () => {
 
       {/* Lista de Casos en Formato Tabla */}
       {criticos.length > 0 ? (
-        <div className="rounded-3xl shadow-xl border overflow-hidden" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'}}>
+        <div className="rounded-3xl shadow-xl border overflow-hidden" style={{
+          ...styles.card,
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+        }}>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
-              <thead className="border-b" style={{backgroundColor: '#f8fafc', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+              <thead className="border-b" style={{
+                backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                borderColor: 'rgba(148, 163, 184, 0.2)'
+              }}>
                 <tr>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: '#475569'}}>ID Caso</th>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: '#475569'}}>Asunto</th>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: '#475569'}}>Cliente</th>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: '#475569'}}>Prioridad</th>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: '#475569'}}>Estado</th>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: '#475569'}}>SLA</th>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase text-right" style={{color: '#475569'}}>Acción</th>
+                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>ID Caso</th>
+                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Asunto</th>
+                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Cliente</th>
+                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Prioridad</th>
+                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Estado</th>
+                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>SLA</th>
+                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase text-right" style={{color: styles.text.secondary}}>Acción</th>
                 </tr>
               </thead>
               <tbody className="divide-y" style={{borderColor: 'rgba(148, 163, 184, 0.15)'}}>
@@ -343,7 +378,7 @@ const AlertasCriticas: React.FC = () => {
                         borderLeft: caso.priority === 'Critica' ? '4px solid #c8151b' : 'none'
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#f1f5f9';
+                        e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f1f5f9';
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.backgroundColor = 'transparent';
@@ -351,20 +386,20 @@ const AlertasCriticas: React.FC = () => {
                       onClick={() => navigate(`/app/casos/${caso.id}`)}
                     >
                       <td className="px-4 py-3">
-                        <span className="text-xs font-bold transition-colors" style={{color: '#1e293b'}}>
+                        <span className="text-xs font-bold transition-colors" style={{color: styles.text.primary}}>
                           #{(caso as any).ticketNumber || caso.id}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="max-w-xs">
-                          <span className="text-xs font-semibold line-clamp-1" style={{color: '#1e293b'}}>
+                          <span className="text-xs font-semibold line-clamp-1" style={{color: styles.text.primary}}>
                             {caso.subject}
                           </span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold" style={{color: '#1e293b'}}>
+                          <span className="text-xs font-semibold" style={{color: styles.text.primary}}>
                             {caso.clientName || 'Sin cliente'}
                           </span>
                         </div>
@@ -373,7 +408,7 @@ const AlertasCriticas: React.FC = () => {
                         <span 
                           className="text-[10px] font-semibold uppercase tracking-wide"
                           style={{
-                            color: caso.priority === 'Critica' ? '#c8151b' : caso.priority === 'Alta' ? '#f59e0b' : '#64748b'
+                            color: caso.priority === 'Critica' ? '#c8151b' : caso.priority === 'Alta' ? '#f59e0b' : styles.text.tertiary
                           }}
                         >
                           {caso.priority}
@@ -397,11 +432,11 @@ const AlertasCriticas: React.FC = () => {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
-                          <TimeIcon className="w-3.5 h-3.5" style={{color: isVencido ? '#c8151b' : '#64748b'}} />
+                          <TimeIcon className="w-3.5 h-3.5" style={{color: isVencido ? '#c8151b' : styles.text.tertiary}} />
                           <span 
                             className="text-[10px] font-semibold uppercase tracking-wide"
                             style={{
-                              color: isVencido ? '#c8151b' : '#64748b'
+                              color: isVencido ? '#c8151b' : styles.text.tertiary
                             }}
                           >
                             {isVencido ? 'Vencido' : `${caso.diasAbierto} días`}
@@ -418,21 +453,21 @@ const AlertasCriticas: React.FC = () => {
                             className="p-2 rounded-lg transition-all"
                             style={{
                               backgroundColor: 'transparent',
-                              color: '#64748b'
+                              color: styles.text.tertiary
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = '#f8fafc';
-                              e.currentTarget.style.color = '#475569';
+                              e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f8fafc';
+                              e.currentTarget.style.color = styles.text.secondary;
                             }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.backgroundColor = 'transparent';
-                              e.currentTarget.style.color = '#64748b';
+                              e.currentTarget.style.color = styles.text.tertiary;
                             }}
                             title="Ver detalle"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
-                          <ChevronRight className="w-5 h-5 transition-all" style={{color: '#64748b'}} onMouseEnter={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.transform = 'translateX(4px)'; }} onMouseLeave={(e) => { e.currentTarget.style.color = '#64748b'; e.currentTarget.style.transform = ''; }} />
+                          <ChevronRight className="w-5 h-5 transition-all" style={{color: styles.text.tertiary}} onMouseEnter={(e) => { e.currentTarget.style.color = styles.text.secondary; e.currentTarget.style.transform = 'translateX(4px)'; }} onMouseLeave={(e) => { e.currentTarget.style.color = styles.text.tertiary; e.currentTarget.style.transform = ''; }} />
                         </div>
                       </td>
                     </tr>
@@ -444,7 +479,7 @@ const AlertasCriticas: React.FC = () => {
         </div>
       ) : (
           <div className="p-20 text-center rounded-xl border-2 border-dashed" style={{
-            backgroundColor: '#ffffff',
+            ...styles.card,
             borderColor: 'rgba(148, 163, 184, 0.25)'
           }}>
             <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5 border-2" style={{
@@ -453,30 +488,10 @@ const AlertasCriticas: React.FC = () => {
             }}>
               <CheckCircle2 className="w-10 h-10" style={{color: '#22c55e'}} />
             </div>
-            <h3 className="text-xl font-bold mb-2" style={{color: '#1e293b'}}>Todo bajo control</h3>
-            <p className="text-sm font-medium mb-6" style={{color: '#64748b'}}>
+            <h3 className="text-xl font-bold mb-2" style={{color: styles.text.primary}}>Todo bajo control</h3>
+            <p className="text-sm font-medium" style={{color: styles.text.tertiary}}>
               No hay alertas críticas. Todos los casos están dentro del SLA.
             </p>
-            <button
-              onClick={loadData}
-              className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold rounded-lg border-2 transition-all"
-              style={{
-                backgroundColor: '#ffffff',
-                borderColor: 'rgba(148, 163, 184, 0.2)',
-                color: '#475569'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#f8fafc';
-                e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.3)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#ffffff';
-                e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.2)';
-              }}
-            >
-              <RefreshCw className="w-4 h-4" />
-              Actualizar
-            </button>
           </div>
         )}
     </div>

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
@@ -16,6 +15,8 @@ const Login: React.FC = () => {
   const [emailTouched, setEmailTouched] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
+  const [showErrorAnimation, setShowErrorAnimation] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const navigate = useNavigate();
 
@@ -111,38 +112,55 @@ const Login: React.FC = () => {
     try {
       const user = await api.authenticate(email, password);
       
+      // Mostrar animación de éxito
+      setShowSuccessAnimation(true);
+      
       // Mapeo de roles para redirección
       let targetPath = '/app/agente';
       if (user.role === 'SUPERVISOR') targetPath = '/app/supervisor';
       if (user.role === 'GERENTE') targetPath = '/app/gerencia';
       
+      // Esperar un momento para mostrar la animación antes de redirigir
+      setTimeout(() => {
       navigate(targetPath);
+      }, 1500);
     } catch (err: any) {
       const errorMessage = err.message || 'Error de conexión con el servidor corporativo.';
       
-      // Mensajes de error claros y humanos
+      // Determinar mensaje de error
+      let errorText = 'Credenciales incorrectas';
       if (errorMessage.includes('no encontrado') || 
           errorMessage.includes('no está almacenado') ||
           errorMessage.includes('no registrada') ||
           errorMessage.includes('404')) {
-        setError('Usuario no encontrado. El usuario no está almacenado en el sistema. Contacta a tu supervisor para crear una cuenta.');
+        errorText = 'Usuario no encontrado';
       } else if (errorMessage.includes('Credenciales inválidas') ||
           errorMessage.includes('401') ||
           errorMessage.includes('403') ||
           errorMessage.includes('contraseña') ||
           errorMessage.includes('password')) {
-        setError('Credenciales incorrectas. Verifica tu correo y contraseña.');
+        errorText = 'Credenciales incorrectas';
       } else if (errorMessage.includes('desactivada') ||
           errorMessage.includes('inactiva') ||
           errorMessage.includes('deshabilitada')) {
-        setError('Cuenta desactivada. Contacta a tu supervisor para reactivar tu cuenta.');
+        errorText = 'Cuenta desactivada';
       } else if (errorMessage.includes('Timeout') || errorMessage.includes('tiempo')) {
-        setError('El servidor no respondió a tiempo. Verifica tu conexión e intenta nuevamente.');
+        errorText = 'Tiempo de espera agotado';
       } else if (errorMessage.includes('conexión') || errorMessage.includes('Error de conexión') || errorMessage.includes('CORS')) {
-        setError('Error de conexión con el servidor. Verifica tu conexión a internet.');
+        errorText = 'Error de conexión';
       } else {
-        setError('No se pudo autenticar. La cuenta debe estar registrada en el sistema. Contacta a tu supervisor.');
+        errorText = 'Error de autenticación';
       }
+      
+      setError(errorText);
+      
+      // Mostrar animación de error
+      setShowErrorAnimation(true);
+      
+      // Ocultar animación después de 3.5 segundos (más tiempo que la de éxito)
+      setTimeout(() => {
+        setShowErrorAnimation(false);
+      }, 3500);
       
       // Animación shake en el formulario
       if (formRef.current) {
@@ -234,12 +252,6 @@ const Login: React.FC = () => {
           </div>
           
           <form ref={formRef} onSubmit={handleLogin} className="space-y-5">
-            {error && (
-              <div className="bg-gradient-to-r from-red-50 to-rose-50 text-red-700 p-4 rounded-2xl flex items-center gap-3 border-2 border-red-200 shadow-sm animate-in slide-in-from-top duration-300">
-                <AlertCircle className="w-5 h-5 shrink-0" style={{color: 'var(--color-brand-red)'}} />
-                <p className="text-sm font-bold">{error}</p>
-              </div>
-            )}
 
             <div>
               <label className="block text-xs font-medium text-slate-300 tracking-normal mb-2">Correo Institucional</label>
@@ -464,6 +476,175 @@ const Login: React.FC = () => {
           </div>
         </div>
       </div>
+
+        {/* Animación de éxito a pantalla completa */}
+        {showSuccessAnimation && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{
+            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            animation: 'fadeIn 0.3s ease-out'
+          }}
+        >
+          <div 
+            className="flex flex-col items-center justify-center"
+            style={{
+              animation: 'scaleInBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+            }}
+          >
+            {/* Logo animado */}
+            <div
+              className="relative mb-6"
+              style={{
+                animation: 'logoPop 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.3s both'
+              }}
+            >
+              <img 
+                src="https://static.wixstatic.com/media/98a19d_504d5e7478054d2484448813ac235267~mv2.png/v1/fill/w_192,h_176,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/red256.png"
+                alt="INTELFON Logo"
+                className="w-48 h-48 object-contain"
+                style={{
+                  filter: 'drop-shadow(0 8px 24px rgba(200, 21, 27, 0.5))',
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Animación de error a pantalla completa */}
+      {showErrorAnimation && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{
+            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            animation: 'fadeIn 0.3s ease-out'
+          }}
+        >
+          <div 
+            className="flex flex-col items-center justify-center"
+            style={{
+              animation: 'scaleInBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+            }}
+          >
+            {/* Icono de error animado */}
+            <div
+              className="relative"
+              style={{
+                animation: 'errorPop 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.3s both'
+              }}
+            >
+              <div
+                className="w-40 h-40 rounded-full flex items-center justify-center"
+                style={{
+                  background: 'linear-gradient(135deg, #dc2626, #ef4444)',
+                  boxShadow: '0 20px 60px rgba(220, 38, 38, 0.5)'
+                }}
+              >
+                <AlertCircle 
+                  className="w-20 h-20 text-white" 
+                  style={{
+                    strokeWidth: 2.5
+                  }}
+                />
+              </div>
+            </div>
+            
+            {/* Mensaje */}
+            <h2
+              className="text-xl font-bold mt-6"
+              style={{
+                color: '#ffffff',
+                animation: 'fadeInUp 0.5s ease-out 0.4s both'
+              }}
+            >
+              Credenciales inválidas
+            </h2>
+          </div>
+        </div>
+      )}
+
+      {/* Estilos de animación inline */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes scaleInBounce {
+          0% {
+            transform: scale(0);
+            opacity: 0;
+          }
+          50% {
+            transform: scale(1.1);
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes logoPop {
+          0% {
+            transform: scale(0);
+            opacity: 0;
+          }
+          50% {
+            transform: scale(1.3);
+          }
+          70% {
+            transform: scale(0.9);
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes errorPop {
+          0% {
+            transform: scale(0) rotate(-10deg);
+            opacity: 0;
+          }
+          50% {
+            transform: scale(1.3) rotate(5deg);
+          }
+          70% {
+            transform: scale(0.9) rotate(-2deg);
+          }
+          100% {
+            transform: scale(1) rotate(0deg);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes ringExpand {
+          0% {
+            transform: scale(1);
+            opacity: 0.8;
+          }
+          100% {
+            transform: scale(1.5);
+            opacity: 0;
+          }
+        }
+        
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 };

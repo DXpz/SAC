@@ -21,6 +21,7 @@ import {
   TrendingUp,
   Clock
 } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 const GestionAgentes: React.FC = () => {
   const [agentes, setAgentes] = useState<Agente[]>([]);
@@ -31,6 +32,7 @@ const GestionAgentes: React.FC = () => {
   const [hoveredAgenteId, setHoveredAgenteId] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const { theme } = useTheme();
   const navigate = useNavigate();
 
   const [itemsPerView, setItemsPerView] = useState(3);
@@ -53,9 +55,12 @@ const GestionAgentes: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // Limpiar caché de agentes al montar el componente para forzar recálculo
+    localStorage.removeItem('intelfon_agents');
     loadAgentes();
     
     const handleAgenteCreado = () => {
+      localStorage.removeItem('intelfon_agents');
       loadAgentes();
     };
     
@@ -105,7 +110,31 @@ const GestionAgentes: React.FC = () => {
   const loadAgentes = async () => {
     setLoading(true);
     const data = await api.getAgentes();
-    setAgentes([...data]);
+    
+    console.log('📊 Agentes recibidos en GestionAgentes:', data.map(a => ({
+      nombre: a.nombre,
+      casosActivos: a.casosActivos,
+      ordenRoundRobin: a.ordenRoundRobin,
+      ultimoCasoAsignado: a.ultimoCasoAsignado,
+      estado: a.estado
+    })));
+    
+    // Ordenar agentes por ordenRoundRobin (1, 2, 3...) para mostrar el orden del round robin
+    // Los agentes activos con orden 1, 2, 3... primero, luego los inactivos/vacaciones
+    const sortedAgentes = [...data].sort((a, b) => {
+      // Agentes activos primero
+      if (a.estado === 'Activo' && b.estado !== 'Activo') return -1;
+      if (a.estado !== 'Activo' && b.estado === 'Activo') return 1;
+      
+      // Si ambos son activos, ordenar por ordenRoundRobin
+      if (a.estado === 'Activo' && b.estado === 'Activo') {
+        return (a.ordenRoundRobin || 999) - (b.ordenRoundRobin || 999);
+      }
+      
+      // Si ambos no son activos, mantener orden original
+      return 0;
+    });
+    setAgentes(sortedAgentes);
     const updateTime = new Date();
     // Guardar en localStorage para que Layout pueda mostrarlo
     localStorage.setItem('gestion_agentes_last_update', updateTime.toISOString());
@@ -311,29 +340,47 @@ const GestionAgentes: React.FC = () => {
     inactivos: agentes.filter(a => a.estado === 'Inactivo').length
   };
 
+  // Estilos dinámicos basados en el tema
+  const styles = {
+    container: {
+      backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
+      minHeight: '100vh'
+    },
+    card: {
+      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+      borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.2)',
+      color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
+    },
+    text: {
+      primary: theme === 'dark' ? '#f1f5f9' : '#0f172a',
+      secondary: theme === 'dark' ? '#cbd5e1' : '#475569',
+      tertiary: theme === 'dark' ? '#94a3b8' : '#64748b'
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full" style={{ overflow: 'hidden', gap: '1rem' }}>
-      <div className="p-4 rounded-xl border flex-shrink-0 flex justify-between items-center" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+    <div className="flex flex-col h-full" style={{ overflow: 'hidden', gap: '1rem', ...styles.container }}>
+      <div className="p-4 rounded-xl border flex-shrink-0 flex justify-between items-center" style={{...styles.card}}>
          <div className="flex items-center gap-3">
            <div className="flex items-center gap-1.5">
              <div className="w-2 h-2 rounded-full" style={{backgroundColor: '#22c55e'}}></div>
-             <span className="text-xs font-semibold" style={{color: '#475569'}}>
-               {resumenAgentes.activos} <span style={{color: '#94a3b8'}}>Activos</span>
+             <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>
+               {resumenAgentes.activos} <span style={{color: styles.text.tertiary}}>Activos</span>
              </span>
            </div>
            {resumenAgentes.vacaciones > 0 && (
              <div className="flex items-center gap-1.5">
                <div className="w-2 h-2 rounded-full" style={{backgroundColor: '#f59e0b'}}></div>
-               <span className="text-xs font-semibold" style={{color: '#475569'}}>
-                 {resumenAgentes.vacaciones} <span style={{color: '#94a3b8'}}>Vacaciones</span>
+               <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>
+                 {resumenAgentes.vacaciones} <span style={{color: styles.text.tertiary}}>Vacaciones</span>
                </span>
              </div>
            )}
            {resumenAgentes.inactivos > 0 && (
              <div className="flex items-center gap-1.5">
                <div className="w-2 h-2 rounded-full" style={{backgroundColor: '#ef4444'}}></div>
-               <span className="text-xs font-semibold" style={{color: '#475569'}}>
-                 {resumenAgentes.inactivos} <span style={{color: '#94a3b8'}}>Inactivos</span>
+               <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>
+                 {resumenAgentes.inactivos} <span style={{color: styles.text.tertiary}}>Inactivos</span>
                </span>
              </div>
            )}
@@ -348,10 +395,12 @@ const GestionAgentes: React.FC = () => {
          </button>
       </div>
 
+      {/* Contenedor con scroll vertical para el carrusel */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ minHeight: 0 }}>
       {loading && agentes.length === 0 ? (
         <div className="flex gap-4">
           {[1, 2, 3].map(i => (
-            <div key={i} className="flex-shrink-0 rounded-2xl border-2 p-4 w-80 animate-pulse" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+            <div key={i} className="flex-shrink-0 rounded-2xl border-2 p-4 w-80 animate-pulse" style={{...styles.card}}>
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-12 h-12 rounded-xl" style={{backgroundColor: 'rgba(148, 163, 184, 0.2)'}}></div>
                 <div className="flex-1">
@@ -365,12 +414,14 @@ const GestionAgentes: React.FC = () => {
           ))}
         </div>
       ) : agentes.length === 0 ? (
-        <div className="rounded-2xl border-2 p-16 text-center" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
-          <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{backgroundColor: '#f8fafc'}}>
-            <Users className="w-10 h-10" style={{color: '#94a3b8'}} />
+        <div className="rounded-2xl border-2 p-16 text-center" style={{...styles.card}}>
+          <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{
+            backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc'
+          }}>
+            <Users className="w-10 h-10" style={{color: styles.text.tertiary}} />
           </div>
-          <h3 className="text-base font-bold mb-2" style={{color: '#1e293b'}}>No hay agentes disponibles</h3>
-          <p className="text-sm mb-6" style={{color: '#94a3b8'}}>Los agentes aparecerán aquí cuando estén registrados</p>
+          <h3 className="text-base font-bold mb-2" style={{color: styles.text.primary}}>No hay agentes disponibles</h3>
+          <p className="text-sm mb-6" style={{color: styles.text.tertiary}}>Los agentes aparecerán aquí cuando estén registrados</p>
           <button
             onClick={() => navigate('/app/crear-cuenta')}
             className="px-6 py-3 text-white font-semibold rounded-xl hover:shadow-xl transition-all flex items-center gap-2 mx-auto"
@@ -415,7 +466,7 @@ const GestionAgentes: React.FC = () => {
                   }}
                   aria-label="Anterior"
                 >
-                  <ChevronLeft className="w-6 h-6" style={{color: currentIndex === 0 ? '#64748b' : '#475569'}} />
+                  <ChevronLeft className="w-6 h-6" style={{color: currentIndex === 0 ? styles.text.tertiary : styles.text.secondary}} />
                 </button>
                 <button
                   onClick={nextPage}
@@ -439,7 +490,7 @@ const GestionAgentes: React.FC = () => {
                   }}
                   aria-label="Siguiente"
                 >
-                  <ChevronRight className="w-6 h-6" style={{color: currentIndex >= totalPages - 1 ? '#64748b' : '#475569'}} />
+                  <ChevronRight className="w-6 h-6" style={{color: currentIndex >= totalPages - 1 ? styles.text.tertiary : styles.text.secondary}} />
                 </button>
               </>
             )}
@@ -465,10 +516,11 @@ const GestionAgentes: React.FC = () => {
                 marginRight: '0',
                 flex: '1 1 auto',
                 minHeight: 0,
-                maxHeight: '100%'
+                maxHeight: '100%',
+                height: '100%'
               } as React.CSSProperties}
             >
-              <div className="flex gap-4 items-center justify-center" style={{ minHeight: '100%', alignItems: 'center', boxSizing: 'border-box' }}>
+              <div className="flex gap-4 items-stretch" style={{ minHeight: '100%', alignItems: 'stretch', boxSizing: 'border-box', height: '100%' }}>
                 <div style={{ minWidth: 'calc(50% - 140px)', flexShrink: 0 }}></div>
           {agentes.map((agente, idx) => {
                   const isHovered = hoveredAgenteId === agente.idAgente;
@@ -482,10 +534,9 @@ const GestionAgentes: React.FC = () => {
             return (
               <div 
                 key={agente.idAgente} 
-                    className="snap-center flex-shrink-0 rounded-2xl border-2 shadow-sm overflow-hidden group"
+                    className="snap-center flex-shrink-0 rounded-2xl border-2 shadow-sm overflow-visible group flex flex-col"
                     style={{
-          backgroundColor: '#ffffff',
-          borderColor: 'rgba(148, 163, 184, 0.2)',
+          ...styles.card,
                       width: `calc((100% - ${(itemsPerView - 1) * 16}px) / ${itemsPerView})`,
                       minWidth: '280px',
                       maxWidth: '280px',
@@ -502,26 +553,28 @@ const GestionAgentes: React.FC = () => {
                     onMouseEnter={() => setHoveredAgenteId(agente.idAgente)}
                     onMouseLeave={() => setHoveredAgenteId(null)}
               >
-                    <div className="p-3 w-full">
+                    <div 
+                      className="p-2.5 w-full flex flex-col" 
+                    >
                       {/* Header: Avatar con Ring de Estado */}
-                      <div className="flex items-center gap-2.5 mb-2.5">
+                      <div className="flex items-center gap-2 mb-2">
                         <div className="relative flex-shrink-0">
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-700 to-slate-900 text-white flex items-center justify-center font-bold text-sm shadow-md">
+                          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-slate-700 to-slate-900 text-white flex items-center justify-center font-bold text-sm shadow-md">
                         {agente.nombre.charAt(0)}
                       </div>
-                          <div className="absolute -inset-1 rounded-xl border-2" style={{borderColor: getEstadoRingColor(agente.estado)}}></div>
+                          <div className="absolute -inset-0.5 rounded-lg border-2" style={{borderColor: getEstadoRingColor(agente.estado)}}></div>
                         </div>
                         <div className="flex-1 min-w-0 overflow-hidden">
-                          <h4 className="font-bold text-sm mb-0.5 truncate" style={{color: '#1e293b'}}>{agente.nombre}</h4>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-xs font-semibold uppercase tracking-wide" style={{
+                          <h4 className="font-bold text-xs mb-0.5 truncate" style={{color: styles.text.primary}}>{agente.nombre}</h4>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className="text-[10px] font-semibold uppercase tracking-wide" style={{
                               color: estadoBadge.text
                             }}>
                               {agente.estado}
                             </span>
                             {estadoOperativo && (
-                              <span className="inline-flex items-center gap-0.5 text-xs font-medium" style={{color: estadoOperativo.color}}>
-                                <estadoOperativo.icon className="w-2.5 h-2.5" />
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-medium" style={{color: estadoOperativo.color}}>
+                                <estadoOperativo.icon className="w-2 h-2" />
                                 {estadoOperativo.texto}
                               </span>
                             )}
@@ -531,24 +584,56 @@ const GestionAgentes: React.FC = () => {
 
                       {/* Métricas con barra de carga */}
                       {(() => {
-                        // Usar el orden_round_robin que viene directamente del webhook
-                        // El backend ya calcula este valor, no lo calculamos en el frontend
+                        // Orden Round Robin calculado en el frontend
                         const ordenRoundRobin = agente.ordenRoundRobin || 999;
                         const esSiguiente = ordenRoundRobin === 1 && agente.estado === 'Activo';
+                        const esActivo = agente.estado === 'Activo';
+                        
+                        // Formatear fecha del último caso
+                        const formatFechaUltimoCaso = (fecha: string) => {
+                          if (!fecha || fecha === 'N/A') return 'Sin casos';
+                          try {
+                            // Intentar parsear la fecha (puede venir como ISO string o DD/MM/YYYY)
+                            let date;
+                            if (fecha.includes('T')) {
+                              // Formato ISO
+                              date = new Date(fecha);
+                            } else if (fecha.includes('/')) {
+                              // Formato DD/MM/YYYY del webhook
+                              const [day, month, year] = fecha.split('/');
+                              date = new Date(`${year}-${month}-${day}`);
+                            } else {
+                              date = new Date(fecha);
+                            }
+                            
+                            if (isNaN(date.getTime())) return 'Sin casos';
+                            
+                            // Formatear a DD/MM/YYYY
+                            const day = String(date.getDate()).padStart(2, '0');
+                            const month = String(date.getMonth() + 1).padStart(2, '0');
+                            const year = date.getFullYear();
+                            return `${day}/${month}/${year}`;
+                          } catch {
+                            return 'Sin casos';
+                          }
+                        };
                         
                         return (
-                          <div className="space-y-2 mb-2">
+                          <div className="space-y-1.5 mb-1.5">
                             {/* Casos Activos con Barra de Carga */}
-                            <div className="p-2.5 rounded-xl border" style={{backgroundColor: '#f8fafc', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
-                              <div className="flex items-center justify-between mb-1.5">
-                                <div className="flex items-center gap-1.5">
-                                  <Briefcase className="w-3.5 h-3.5 flex-shrink-0" style={{color: '#94a3b8'}} />
-                                  <span className="text-xs font-medium" style={{color: '#94a3b8'}}>Activos</span>
+                            <div className="p-2 rounded-lg border" style={{
+                              backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                              borderColor: 'rgba(148, 163, 184, 0.2)'
+                            }}>
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center gap-1">
+                                  <Briefcase className="w-3 h-3 flex-shrink-0" style={{color: styles.text.tertiary}} />
+                                  <span className="text-[10px] font-medium" style={{color: styles.text.tertiary}}>Casos Activos</span>
                                 </div>
-                                <span className="text-sm font-bold" style={{color: '#1e293b'}}>{agente.casosActivos}</span>
+                                <span className="text-xs font-bold" style={{color: styles.text.primary}}>{agente.casosActivos}</span>
                               </div>
                               {/* Barra de carga visual */}
-                              <div className="w-full rounded-full h-1.5 overflow-hidden" style={{backgroundColor: 'rgba(148, 163, 184, 0.2)'}}>
+                              <div className="w-full rounded-full h-1 overflow-hidden" style={{backgroundColor: 'rgba(148, 163, 184, 0.2)'}}>
                                 <div
                                   className="h-full rounded-full transition-all duration-300"
                                   style={{ 
@@ -556,62 +641,80 @@ const GestionAgentes: React.FC = () => {
                                     backgroundColor: cargaColor
                                   }}
                                 />
-                    </div>
-                  </div>
-
-                            {/* R-Robin con destacado - Usa el orden_round_robin del webhook */}
-                            <div className="p-2.5 rounded-xl border-2 transition-all" style={{
-                              backgroundColor: esSiguiente ? 'rgba(34, 197, 94, 0.15)' : '#f8fafc',
-                              borderColor: esSiguiente ? 'rgba(34, 197, 94, 0.3)' : 'rgba(148, 163, 184, 0.2)'
-                            }}>
-                              <div className="flex items-center gap-1.5 mb-1">
-                                <RotateCcw className="w-3.5 h-3.5 flex-shrink-0" style={{color: esSiguiente ? '#22c55e' : '#94a3b8'}} />
-                                <span className="text-xs font-medium" style={{color: esSiguiente ? '#22c55e' : '#94a3b8'}}>
-                                  R-Robin
-                                </span>
                               </div>
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-sm font-bold" style={{color: esSiguiente ? '#22c55e' : '#1e293b'}}>
-                                  #{ordenRoundRobin}
-                                </span>
+                            </div>
+
+                            {/* Round Robin - Orden de Asignación */}
+                            <div className="p-2 rounded-lg border-2 transition-all" style={{
+                              backgroundColor: esSiguiente ? 'rgba(34, 197, 94, 0.15)' : esActivo ? 'rgba(59, 130, 246, 0.1)' : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
+                              borderColor: esSiguiente ? 'rgba(34, 197, 94, 0.4)' : esActivo ? 'rgba(59, 130, 246, 0.3)' : 'rgba(148, 163, 184, 0.2)'
+                            }}>
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center gap-1">
+                                  <RotateCcw className="w-3 h-3 flex-shrink-0" style={{color: esSiguiente ? '#22c55e' : esActivo ? '#3b82f6' : '#94a3b8'}} />
+                                  <span className="text-[10px] font-medium" style={{color: esSiguiente ? '#22c55e' : esActivo ? '#3b82f6' : '#94a3b8'}}>
+                                    Round Robin
+                                  </span>
+                                </div>
                                 {esSiguiente && (
-                                  <span className="inline-flex items-center gap-0.5 text-xs font-semibold" style={{
+                                  <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-semibold" style={{
+                                    backgroundColor: 'rgba(34, 197, 94, 0.2)',
                                     color: '#22c55e'
                                   }}>
-                                    <TrendingUp className="w-2.5 h-2.5" />
+                                    <TrendingUp className="w-2 h-2" />
                                     Siguiente
                                   </span>
                                 )}
                               </div>
+                              <div className="space-y-0.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[9px] font-medium" style={{color: '#64748b'}}>Orden:</span>
+                                  <span className="text-sm font-black" style={{color: esSiguiente ? '#22c55e' : esActivo ? '#3b82f6' : '#94a3b8'}}>
+                                    #{ordenRoundRobin === 999 ? '—' : ordenRoundRobin}
+                                  </span>
+                                </div>
+                                {esActivo && (
+                                  <div className="pt-0.5 border-t" style={{borderColor: 'rgba(148, 163, 184, 0.15)'}}>
+                                    <div className="text-[9px] space-y-0.5" style={{color: '#94a3b8'}}>
+                                      <div className="flex items-center justify-between">
+                                        <span>Último caso:</span>
+                                        <span className="font-medium" style={{color: '#64748b'}}>
+                                          {formatFechaUltimoCaso(agente.ultimoCasoAsignado)}
+                                        </span>
+                                      </div>
+                                      <div className="text-[8px] italic" style={{color: '#94a3b8'}}>
+                                        {ordenRoundRobin === 1 
+                                          ? 'Menor carga • Siguiente asignación'
+                                          : ordenRoundRobin === 2
+                                          ? 'Segundo en cola'
+                                          : `Posición ${ordenRoundRobin} en cola`
+                                        }
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                                {!esActivo && (
+                                  <div className="pt-0.5 border-t" style={{borderColor: 'rgba(148, 163, 184, 0.15)'}}>
+                                    <div className="text-[9px] italic" style={{color: '#94a3b8'}}>
+                                      No participa en round robin
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                    </div>
+                          </div>
                         );
                       })()}
 
-                      {/* Contexto adicional */}
-                      {(casosHoy > 0 || agente.ultimoCasoAsignado) && (
-                        <div className="mb-3 px-2 py-1.5 rounded-lg border" style={{backgroundColor: '#f8fafc', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
-                          <div className="flex items-center gap-2 text-xs" style={{color: '#94a3b8'}}>
-                            <Clock className="w-3 h-3" />
-                            <span className="font-medium">
-                              {casosHoy > 0 
-                                ? `Casos hoy: ${casosHoy}`
-                                : `Último caso: ${formatTimeAgo(agente.ultimoCasoAsignado || '')}`
-                              }
-                            </span>
-                    </div>
-                  </div>
-                      )}
-
                       {/* Acciones */}
-                      <div className="space-y-1.5">
+                      <div className="space-y-1 mt-auto">
                         {/* Acción Primaria: Activar/Desactivar */}
                     <button 
                       onClick={() => toggleEstado(agente.idAgente, agente.estado)}
-                          className="w-full py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 shadow-sm hover:shadow-md border"
+                          className="w-full py-1.5 text-[10px] font-semibold rounded-lg transition-all flex items-center justify-center gap-1 shadow-sm hover:shadow-md border"
                           style={agente.estado === 'Activo' ? {
-                            backgroundColor: '#f8fafc',
-                            color: '#475569',
+                            backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                            color: styles.text.secondary,
                             borderColor: 'rgba(148, 163, 184, 0.2)'
                           } : {
                             background: 'linear-gradient(to right, var(--color-brand-red), var(--color-accent-red))',
@@ -621,7 +724,7 @@ const GestionAgentes: React.FC = () => {
                           }}
                       onMouseEnter={(e) => {
                             if (agente.estado === 'Activo') {
-                              e.currentTarget.style.backgroundColor = '#f1f5f9';
+                              e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
                             } else {
                               e.currentTarget.style.background = 'linear-gradient(to right, var(--color-accent-red), var(--color-brand-red))';
                               e.currentTarget.style.boxShadow = '0 10px 24px rgba(245, 41, 56, 0.25)';
@@ -629,7 +732,7 @@ const GestionAgentes: React.FC = () => {
                       }}
                       onMouseLeave={(e) => {
                             if (agente.estado === 'Activo') {
-                              e.currentTarget.style.backgroundColor = '#f8fafc';
+                              e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f8fafc';
                             } else {
                               e.currentTarget.style.background = 'linear-gradient(to right, var(--color-brand-red), var(--color-accent-red))';
                               e.currentTarget.style.boxShadow = '0 8px 20px rgba(200, 21, 27, 0.2)';
@@ -637,16 +740,16 @@ const GestionAgentes: React.FC = () => {
                       }}
                           title={agente.estado === 'Activo' ? 'Desactivar agente' : 'Activar agente'}
                     >
-                          {agente.estado === 'Activo' ? <UserX className="w-3 h-3 flex-shrink-0" /> : <UserCheck className="w-3 h-3 flex-shrink-0" />}
-                          <span className="truncate text-xs">{agente.estado === 'Activo' ? 'Desactivar' : 'Activar'}</span>
+                          {agente.estado === 'Activo' ? <UserX className="w-2.5 h-2.5 flex-shrink-0" /> : <UserCheck className="w-2.5 h-2.5 flex-shrink-0" />}
+                          <span className="truncate text-[10px]">{agente.estado === 'Activo' ? 'Desactivar' : 'Activar'}</span>
                     </button>
 
                         {/* Acciones Secundarias */}
-                        <div className="flex gap-1.5">
+                        <div className="flex gap-1">
                     <button 
                       onClick={() => setVacaciones(agente.idAgente)}
                             disabled={agente.estado === 'Vacaciones'}
-                            className="flex-1 py-1.5 rounded-lg transition-all border shadow-sm hover:shadow-md flex items-center justify-center gap-1 min-w-0"
+                            className="flex-1 py-1.5 rounded-lg transition-all border shadow-sm hover:shadow-md flex items-center justify-center gap-0.5 min-w-0 text-[10px]"
                             style={agente.estado === 'Vacaciones' ? {
                               backgroundColor: 'rgba(245, 158, 11, 0.2)',
                               color: '#f59e0b',
@@ -669,15 +772,15 @@ const GestionAgentes: React.FC = () => {
                             }}
                             title={agente.estado === 'Vacaciones' ? 'Ya está en vacaciones' : 'Marcar en vacaciones'}
                           >
-                            <Sun className="w-3 h-3 flex-shrink-0" />
-                            <span className="text-xs font-semibold truncate">Vacaciones</span>
+                            <Sun className="w-2.5 h-2.5 flex-shrink-0" />
+                            <span className="text-[10px] font-semibold truncate">Vacaciones</span>
                           </button>
                         </div>
 
                         {/* Acción Destructiva Separada */}
                         <button 
                           onClick={() => handleDeleteClick(agente)}
-                          className="w-full py-1.5 px-2 rounded-lg transition-all border shadow-sm hover:shadow-md flex items-center justify-center gap-1.5 group"
+                          className="w-full py-1.5 px-2 rounded-lg transition-all border shadow-sm hover:shadow-md flex items-center justify-center gap-1 group"
                           style={{
                             backgroundColor: 'rgba(220, 38, 38, 0.15)',
                             color: '#f87171',
@@ -691,11 +794,11 @@ const GestionAgentes: React.FC = () => {
                           }}
                           title="Eliminar agente permanentemente"
                         >
-                          <Trash2 className="w-3 h-3 group-hover:scale-110 transition-transform flex-shrink-0" />
-                          <span className="text-xs font-semibold">Eliminar</span>
+                          <Trash2 className="w-2.5 h-2.5 group-hover:scale-110 transition-transform flex-shrink-0" />
+                          <span className="text-[10px] font-semibold">Eliminar</span>
                     </button>
                   </div>
-                </div>
+                    </div>
               </div>
             );
           })}
@@ -816,6 +919,26 @@ const GestionAgentes: React.FC = () => {
           </div>
         </div>
       )}
+      </div>
+
+      {/* Estilos para scrollbar personalizado */}
+      <style>{`
+        .scrollbar-hide::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+        .scrollbar-hide::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .scrollbar-hide::-webkit-scrollbar-thumb {
+          background-color: rgba(148, 163, 184, 0.3);
+          border-radius: 3px;
+          border: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar-thumb:hover {
+          background-color: rgba(148, 163, 184, 0.5);
+        }
+      `}</style>
     </div>
   );
 };

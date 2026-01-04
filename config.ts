@@ -19,7 +19,7 @@ export const API_CONFIG = {
   // URLs completas de n8n (para referencia y uso en producción)
   // Estas URLs se usan cuando VITE_WEBHOOK_*_URL está definido o en producción
   WEBHOOK_URL_FULL: 'https://n8n.red.com.sv/webhook/6f27bb4b-bfcd-4776-b554-5194569be2a7',
-  WEBHOOK_AGENTES_URL_FULL: 'https://n8n.red.com.sv/webhook-test/d804c804-9841-41f7-bc4b-66d2edeed53b',
+  WEBHOOK_AGENTES_URL_FULL: 'https://n8n.red.com.sv/webhook/d804c804-9841-41f7-bc4b-66d2edeed53b',
   WEBHOOK_CASOS_URL_FULL: 'https://n8n.red.com.sv/webhook-test/97a6c0f7-ea50-4542-b99e-710b96b58652',
   WEBHOOK_ROUND_ROBIN_URL_FULL: 'https://n8n.red.com.sv/webhook-test/case-create-round-robin',
   WEBHOOK_CLIENTES_URL_FULL: 'https://n8n.red.com.sv/webhook/b30aeff4-1d3a-4b40-b8da-141b4e1fc5b6',

@@ -18,6 +18,7 @@ import AlertasCriticas from './pages/AlertasCriticas';
 import GestionAgentes from './pages/GestionAgentes';
 import { UserRole } from './types';
 import { api } from './services/api';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 const App: React.FC = () => {
   // Validar al cargar la aplicación que el usuario tenga token válido
@@ -51,6 +52,7 @@ const App: React.FC = () => {
   }, []);
 
   return (
+    <ThemeProvider>
     <HashRouter>
       <Routes>
         {/* 
@@ -113,6 +115,7 @@ const App: React.FC = () => {
         <Route path="/" element={<Navigate to="/login" replace />} />
       </Routes>
     </HashRouter>
+    </ThemeProvider>
   );
 };
 
