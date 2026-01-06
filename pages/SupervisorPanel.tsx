@@ -110,9 +110,10 @@ const SupervisorPanel: React.FC = () => {
     return diasRestantes > 1;
   });
 
+  // Si no hay casos abiertos, el SLA no puede ser 100%, debe ser null
   const slaPromedio = casosAbiertos.length > 0 
     ? Math.round((casosDentroSLA.length / casosAbiertos.length) * 100)
-    : 100;
+    : null;
 
   const agentesActivos = agentes.filter(a => a.estado === 'Activo').length;
   const totalAgentes = agentes.length;
@@ -159,8 +160,44 @@ const SupervisorPanel: React.FC = () => {
     });
   }, [casosCriticosOrdenados]);
 
-  const slaAyer = 94;
-  const slaCambio = slaPromedio - slaAyer;
+  // Calcular SLA de ayer basado en casos que existían ayer
+  const slaAyer = useMemo(() => {
+    const hoy = new Date();
+    const ayer = new Date(hoy);
+    ayer.setDate(ayer.getDate() - 1);
+    ayer.setHours(0, 0, 0, 0);
+    const finAyer = new Date(ayer);
+    finAyer.setHours(23, 59, 59, 999);
+
+    // Obtener casos que existían ayer (creados antes del final de ayer)
+    const casosAyer = casosAbiertos.filter(c => {
+      const fechaCreacion = new Date(c.createdAt);
+      return fechaCreacion <= finAyer;
+    });
+
+    if (casosAyer.length === 0) {
+      // Si no hay casos de ayer, retornar null
+      return null;
+    }
+
+    // Calcular casos dentro de SLA ayer
+    const casosDentroSLAAyer = casosAyer.filter(c => {
+      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
+      // Calcular días abiertos hasta ayer
+      const diasAbiertoAyer = Math.floor((finAyer.getTime() - new Date(c.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+      const diasRestantes = slaDias - diasAbiertoAyer;
+      return diasRestantes > 0;
+    });
+
+    return casosAyer.length > 0 
+      ? Math.round((casosDentroSLAAyer.length / casosAyer.length) * 100)
+      : null;
+  }, [casosAbiertos, slaPromedio]);
+
+  // Calcular cambio de SLA solo si ambos valores existen
+  const slaCambio = (slaPromedio !== null && slaAyer !== null) 
+    ? slaPromedio - slaAyer 
+    : null;
 
   const handleReasignar = (e: React.MouseEvent, casoId: string) => {
     e.stopPropagation();
@@ -186,7 +223,8 @@ const SupervisorPanel: React.FC = () => {
   };
 
   const getAgenteStats = (agenteId: string) => {
-    const casosAgente = casosAbiertos.filter(c => c.agenteAsignado?.idAgente === agenteId);
+    // Filtrar casos abiertos del agente para estadísticas de casos activos
+    const casosAgente = casosAbiertos.filter(c => c.agenteAsignado?.idAgente === agenteId || c.agentId === agenteId);
     const criticosAgente = casosAgente.filter(c => {
       const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
       return c.diasAbierto >= slaDias || c.status === CaseStatus.ESCALADO;
@@ -196,15 +234,53 @@ const SupervisorPanel: React.FC = () => {
       const diasRestantes = slaDias - c.diasAbierto;
       return diasRestantes > 0;
     });
+    // Si no hay casos, el SLA no puede ser 100%, debe ser null para mostrar "N/A"
     const cumplimientoSLA = casosAgente.length > 0 
       ? Math.round((dentroSLA.length / casosAgente.length) * 100)
-      : 100;
+      : null;
+    
+    // Calcular tiempo promedio de resolución basado en casos resueltos del agente
+    // Usar TODOS los casos, no solo los abiertos
+    const casosResueltosAgente = casos.filter(c => 
+      (c.agenteAsignado?.idAgente === agenteId || c.agentId === agenteId) &&
+      (c.status === CaseStatus.RESUELTO || c.status === CaseStatus.CERRADO)
+    );
+    
+    let tiempoPromedio = 'N/A';
+    if (casosResueltosAgente.length > 0) {
+      // Calcular tiempo promedio desde creación hasta resolución
+      const tiemposResolucion = casosResueltosAgente.map(caso => {
+        const fechaCreacion = new Date(caso.createdAt);
+        // Buscar en el historial la fecha de resolución
+        const historial = caso.historial || caso.history || [];
+        const entradaResolucion = historial.find((h: any) => 
+          (h.estado_nuevo === CaseStatus.RESUELTO || h.estado_nuevo === CaseStatus.CERRADO) &&
+          h.tipo_evento === 'CAMBIO_ESTADO'
+        );
+        
+        const fechaResolucion = entradaResolucion 
+          ? new Date(entradaResolucion.fecha)
+          : new Date(); // Si no hay historial, usar fecha actual como fallback
+        
+        return fechaResolucion.getTime() - fechaCreacion.getTime();
+      });
+      
+      const tiempoPromedioMs = tiemposResolucion.reduce((sum, tiempo) => sum + tiempo, 0) / tiemposResolucion.length;
+      const horas = Math.floor(tiempoPromedioMs / (1000 * 60 * 60));
+      const minutos = Math.floor((tiempoPromedioMs % (1000 * 60 * 60)) / (1000 * 60));
+      
+      if (horas > 0) {
+        tiempoPromedio = minutos > 0 ? `${horas}h ${minutos}m` : `${horas}h`;
+      } else {
+        tiempoPromedio = `${minutos}m`;
+      }
+    }
     
     return {
       casos: casosAgente.length,
       criticos: criticosAgente.length,
       cumplimientoSLA,
-      tiempoPromedio: '2.5h'
+      tiempoPromedio
     };
   };
 
@@ -272,7 +348,7 @@ const SupervisorPanel: React.FC = () => {
               </span>
             </div>
           )}
-          {slaCambio !== 0 && (
+          {slaCambio !== null && slaCambio !== 0 && (
             <div key="sla-change" className="flex items-center gap-1.5">
               {slaCambio > 0 ? <TrendingUp className="w-3 h-3" style={{color: '#22c55e'}} /> : <TrendingDown className="w-3 h-3" style={{color: '#f59e0b'}} />}
               <span className="text-[10px] font-semibold" style={{color: slaCambio > 0 ? '#22c55e' : '#f59e0b'}}>
@@ -575,18 +651,30 @@ const SupervisorPanel: React.FC = () => {
                 <Info className="w-3 h-3 flex-shrink-0" style={{color: styles.text.tertiary}} />
               </div>
               <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{
-                backgroundColor: slaPromedio >= 90 ? 'rgba(34, 197, 94, 0.2)' : slaPromedio >= 70 ? 'rgba(245, 158, 11, 0.2)' : 'rgba(200, 21, 27, 0.2)'
+                backgroundColor: slaPromedio === null ? 'rgba(148, 163, 184, 0.2)' :
+                                 slaPromedio >= 90 ? 'rgba(34, 197, 94, 0.2)' : 
+                                 slaPromedio >= 70 ? 'rgba(245, 158, 11, 0.2)' : 
+                                 'rgba(200, 21, 27, 0.2)'
               }}>
                 <Clock className="w-4 h-4" style={{
-                  color: slaPromedio >= 90 ? '#22c55e' : slaPromedio >= 70 ? '#fbbf24' : '#f87171'
+                  color: slaPromedio === null ? styles.text.tertiary :
+                         slaPromedio >= 90 ? '#22c55e' : 
+                         slaPromedio >= 70 ? '#fbbf24' : 
+                         '#f87171'
                 }} />
               </div>
             </div>
             <h3 className="text-lg font-black mb-0.5" style={{
-              color: slaPromedio >= 90 ? '#22c55e' : slaPromedio >= 70 ? '#fbbf24' : '#f87171'
-            }}>{slaPromedio}%</h3>
+              color: slaPromedio === null ? styles.text.tertiary :
+                     slaPromedio >= 90 ? '#22c55e' : 
+                     slaPromedio >= 70 ? '#fbbf24' : 
+                     '#f87171'
+            }}>{slaPromedio === null ? 'N/A' : `${slaPromedio}%`}</h3>
             <p className="text-[10px] font-medium" style={{color: styles.text.tertiary}}>
-              {slaPromedio >= 90 ? 'Normal' : slaPromedio >= 70 ? 'En riesgo' : 'Bajo el objetivo'}
+              {slaPromedio === null ? 'Sin datos' : 
+               slaPromedio >= 90 ? 'Normal' : 
+               slaPromedio >= 70 ? 'En riesgo' : 
+               'Bajo el objetivo'}
             </p>
           </div>
         </Tooltip>
@@ -919,12 +1007,13 @@ const SupervisorPanel: React.FC = () => {
                           <p 
                             className="text-base font-black"
                             style={{
-                              color: stats.cumplimientoSLA >= 90 ? '#16a34a' :
+                              color: stats.cumplimientoSLA === null ? styles.text.tertiary :
+                                     stats.cumplimientoSLA >= 90 ? '#16a34a' :
                                      stats.cumplimientoSLA >= 70 ? '#d97706' :
                                      '#dc2626'
                             }}
                           >
-                            {stats.cumplimientoSLA}%
+                            {stats.cumplimientoSLA === null ? 'N/A' : `${stats.cumplimientoSLA}%`}
                           </p>
                         </div>
                       </div>

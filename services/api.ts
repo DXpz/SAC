@@ -742,9 +742,10 @@ export const api = {
       return c.diasAbierto < slaDias;
     });
     
+    // Si no hay casos con SLA, no puede ser 100%, debe ser null o 0
     const slaCompliance = casosConSLA.length > 0 
       ? Math.round((casosCumplenSLA.length / casosConSLA.length) * 100)
-      : 100;
+      : null;
     
     // Calcular CSAT promedio si está disponible en los casos
     const casosConCSAT = cases.filter(c => {
@@ -752,12 +753,13 @@ export const api = {
       return csat && !isNaN(parseFloat(csat)) && parseFloat(csat) > 0;
     });
     
+    // Si no hay datos de CSAT, retornar null en lugar de un valor mock
     const csatScore = casosConCSAT.length > 0
       ? casosConCSAT.reduce((sum, c) => {
           const csat = parseFloat((c as any).csat_rating || (c as any).csatRating || (c as any).csat || '0');
           return sum + csat;
         }, 0) / casosConCSAT.length
-      : 4.2; // Fallback si no hay datos de CSAT
+      : null; // No usar fallback, retornar null si no hay datos
     
     return {
       totalCases: cases.length,

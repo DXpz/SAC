@@ -13,12 +13,15 @@ import {
   CheckCircle2,
   AlertCircle,
   Filter,
-  Search
+  Search,
+  RefreshCw
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import { api } from '../services/api';
+import { Agente } from '../types';
 
 // ==================================================
-// TIPOS Y DATOS MOCK
+// TIPOS
 // ==================================================
 
 type UserRole = 'ADMIN' | 'AGENTE' | 'SUPERVISOR' | 'GERENTE';
@@ -33,13 +36,6 @@ interface DemoUser {
   enVacaciones?: boolean;
 }
 
-const DEMO_USERS: DemoUser[] = [
-  { id: "U-001", nombre: "Admin Demo", email: "admin@demo.com", rol: "ADMIN", activo: true, enVacaciones: false },
-  { id: "U-002", nombre: "Juan Agente", email: "juan@demo.com", rol: "AGENTE", activo: true, enVacaciones: false },
-  { id: "U-003", nombre: "Ana Supervisora", email: "ana@demo.com", rol: "SUPERVISOR", activo: true, enVacaciones: false },
-  { id: "U-004", nombre: "Luis Gerente", email: "luis@demo.com", rol: "GERENTE", activo: false, enVacaciones: false }
-];
-
 type RoleFilter = 'todos' | 'AGENTE' | 'SUPERVISOR' | 'GERENTE' | 'ADMIN';
 
 // ==================================================
@@ -48,7 +44,8 @@ type RoleFilter = 'todos' | 'AGENTE' | 'SUPERVISOR' | 'GERENTE' | 'ADMIN';
 
 const AdminUsers: React.FC = () => {
   const { theme } = useTheme();
-  const [users, setUsers] = useState<DemoUser[]>(DEMO_USERS);
+  const [users, setUsers] = useState<DemoUser[]>([]);
+  const [loading, setLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('todos');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -77,6 +74,120 @@ const AdminUsers: React.FC = () => {
     activo: true,
     enVacaciones: false
   });
+
+  // Función para cargar usuarios desde el webhook
+  const loadUsers = async () => {
+    setLoading(true);
+    try {
+      console.log('🔄 [AdminUsers] Cargando usuarios desde webhook...');
+      
+      // Obtener usuarios del webhook (puede incluir agentes, gerentes, supervisores)
+      // El webhook puede devolver todos los usuarios, no solo agentes
+      const agentes = await api.getAgentes();
+      console.log('📊 [AdminUsers] Datos recibidos del webhook:', agentes.length);
+      console.log('📊 [AdminUsers] Primer usuario (ejemplo):', agentes[0]);
+      console.log('📊 [AdminUsers] Todos los usuarios recibidos:', JSON.stringify(agentes, null, 2));
+      
+      // Mapear todos los usuarios del webhook
+      // El webhook puede devolver usuarios con diferentes roles (agentes, gerentes, supervisores, admin)
+      const usuariosMapeados: DemoUser[] = agentes.map((usuario: any) => {
+        // Determinar el rol: el webhook puede tener diferentes campos para el rol
+        let rol: UserRole = 'AGENTE'; // Por defecto es agente
+        
+        // Buscar el rol en diferentes campos posibles del webhook
+        const rolRaw = usuario.rol || 
+                      usuario.role || 
+                      usuario.rol_usuario || 
+                      usuario.tipo_usuario ||
+                      usuario.tipo ||
+                      usuario.cargo ||
+                      usuario.position ||
+                      '';
+        
+        console.log('🔍 [AdminUsers] Usuario:', usuario.nombre || usuario.name, 'Rol raw:', rolRaw);
+        
+        if (rolRaw) {
+          const rolUpper = String(rolRaw).toUpperCase().trim();
+          if (rolUpper === 'ADMIN' || rolUpper === 'ADMINISTRADOR' || rolUpper === 'ADMINISTRATOR') {
+            rol = 'ADMIN';
+          } else if (rolUpper === 'SUPERVISOR' || rolUpper === 'SUPERVISORA') {
+            rol = 'SUPERVISOR';
+          } else if (rolUpper === 'GERENTE' || rolUpper === 'MANAGER' || rolUpper === 'GERENTA') {
+            rol = 'GERENTE';
+          } else if (rolUpper === 'AGENTE' || rolUpper === 'AGENT' || rolUpper === 'AGENTA') {
+            rol = 'AGENTE';
+          } else {
+            // Si no coincide con ningún rol conocido, mantener como AGENTE por defecto
+            console.warn('⚠️ [AdminUsers] Rol desconocido:', rolRaw, 'para usuario:', usuario.nombre || usuario.name);
+            rol = 'AGENTE';
+          }
+        } else {
+          // Si no hay campo de rol, intentar inferirlo del email o nombre
+          const email = (usuario.email || '').toLowerCase();
+          const nombre = (usuario.nombre || usuario.name || '').toLowerCase();
+          
+          if (email.includes('gerente') || email.includes('manager') || nombre.includes('gerente')) {
+            rol = 'GERENTE';
+          } else if (email.includes('supervisor') || nombre.includes('supervisor')) {
+            rol = 'SUPERVISOR';
+          } else if (email.includes('admin') || nombre.includes('admin')) {
+            rol = 'ADMIN';
+          }
+        }
+        
+        // Mapear estado
+        const estado = usuario.estado || usuario.state || usuario.status || 'Inactivo';
+        const activo = estado === 'Activo' || estado === 'ACTIVO' || estado === 'active' || estado === 'ACTIVE';
+        const enVacaciones = estado === 'Vacaciones' || estado === 'VACACIONES' || estado === 'vacations' || estado === 'VACATIONS';
+        
+        return {
+          id: usuario.idAgente || usuario.id_agente || usuario.id || usuario.id_usuario || `U-${usuario.email || Date.now()}`,
+          nombre: usuario.nombre || usuario.name || 'Sin nombre',
+          email: usuario.email || '',
+          rol: rol,
+          activo: activo,
+          enVacaciones: enVacaciones
+        };
+      });
+      
+      console.log('✅ [AdminUsers] Usuarios mapeados:', usuariosMapeados.length);
+      console.log('📋 [AdminUsers] Distribución por rol:', {
+        AGENTE: usuariosMapeados.filter(u => u.rol === 'AGENTE').length,
+        SUPERVISOR: usuariosMapeados.filter(u => u.rol === 'SUPERVISOR').length,
+        GERENTE: usuariosMapeados.filter(u => u.rol === 'GERENTE').length,
+        ADMIN: usuariosMapeados.filter(u => u.rol === 'ADMIN').length
+      });
+      
+      // Mostrar detalles de cada usuario para debug
+      usuariosMapeados.forEach((u, idx) => {
+        console.log(`👤 [AdminUsers] Usuario ${idx + 1}:`, {
+          nombre: u.nombre,
+          email: u.email,
+          rol: u.rol,
+          activo: u.activo,
+          enVacaciones: u.enVacaciones
+        });
+      });
+      
+      setUsers(usuariosMapeados);
+    } catch (error) {
+      console.error('❌ [AdminUsers] Error al cargar usuarios:', error);
+      // En caso de error, mantener array vacío
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cargar usuarios al montar el componente
+  useEffect(() => {
+    loadUsers();
+    // Recargar cada 30 segundos
+    const interval = setInterval(() => {
+      loadUsers();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Calcular items por vista según el ancho
   const itemsPerView = useMemo(() => {
@@ -454,7 +565,7 @@ const AdminUsers: React.FC = () => {
         <div className="flex items-center gap-4">
           <div>
             <h1 className="text-lg font-black mb-1" style={{color: styles.text.primary}}>
-              Administración de Usuarios <span className="text-xs font-normal" style={{color: styles.text.tertiary}}>(Demo)</span>
+              Administración de Usuarios
             </h1>
             <p className="text-xs" style={{color: styles.text.tertiary}}>Gestiona usuarios del sistema</p>
           </div>
@@ -485,6 +596,24 @@ const AdminUsers: React.FC = () => {
             )}
           </div>
           <div className="flex items-center gap-3">
+            {/* Botón de recargar */}
+            <button
+              onClick={loadUsers}
+              disabled={loading}
+              className="px-3 py-2 text-xs font-semibold rounded-lg border transition-all hover:shadow-md flex items-center gap-2"
+              style={{
+                backgroundColor: 'transparent',
+                borderColor: 'rgba(148, 163, 184, 0.3)',
+                color: styles.text.secondary,
+                opacity: loading ? 0.5 : 1,
+                cursor: loading ? 'not-allowed' : 'pointer'
+              }}
+              title="Recargar usuarios"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              {loading ? 'Cargando...' : 'Recargar'}
+            </button>
+            
             {/* Campo de búsqueda */}
             <div className="relative" style={{ minWidth: '250px' }}>
               <div className="relative">
@@ -614,7 +743,19 @@ const AdminUsers: React.FC = () => {
 
       {/* Contenedor del carrusel */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ minHeight: 0 }}>
-        {filteredUsers.length === 0 ? (
+        {loading ? (
+          <div className="rounded-2xl border-2 p-16 text-center" style={{...styles.card}}>
+            <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{
+              backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc'
+            }}>
+              <RefreshCw className="w-10 h-10 animate-spin" style={{color: styles.text.tertiary}} />
+            </div>
+            <h3 className="text-base font-bold mb-2" style={{color: styles.text.primary}}>Cargando usuarios...</h3>
+            <p className="text-sm" style={{color: styles.text.tertiary}}>
+              Extrayendo usuarios
+            </p>
+          </div>
+        ) : filteredUsers.length === 0 ? (
           <div className="rounded-2xl border-2 p-16 text-center" style={{...styles.card}}>
             <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{
               backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc'

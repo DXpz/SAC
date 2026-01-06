@@ -182,3 +182,4 @@ export function isValidTransition(estadoActual: string, estadoDestino: string): 
 
 
 
+

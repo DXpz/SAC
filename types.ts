@@ -33,8 +33,8 @@ export interface User {
 
 export interface KPI {
   totalCases: number;
-  slaCompliance: number;
-  csatScore: number;
+  slaCompliance: number | null;
+  csatScore: number | null;
 }
 
 export interface Cliente {

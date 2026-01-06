@@ -63,12 +63,12 @@ const AnimatedBackground: React.FC = () => {
           const distance = Math.sqrt(dx * dx + dy * dy);
 
           if (distance < connectionDistance) {
-            const opacity = (1 - distance / connectionDistance) * 0.3;
+            const opacity = (1 - distance / connectionDistance) * 0.5;
             ctx.beginPath();
             ctx.moveTo(particle.x, particle.y);
             ctx.lineTo(otherParticle.x, otherParticle.y);
             ctx.strokeStyle = `rgba(200, 21, 27, ${opacity})`;
-            ctx.lineWidth = 0.5;
+            ctx.lineWidth = 1.0;
             ctx.stroke();
           }
         });

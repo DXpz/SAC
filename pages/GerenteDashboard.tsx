@@ -15,6 +15,19 @@ const GerenteDashboard: React.FC = () => {
   const [hoveredKPI, setHoveredKPI] = useState<string | null>(null);
   const { theme } = useTheme();
 
+  // Función para normalizar el estado del caso (debe estar antes de loadData)
+  const normalizeStatus = (status: string | CaseStatus | undefined): CaseStatus => {
+    if (!status) return CaseStatus.NUEVO;
+    const statusStr = String(status).trim();
+    const statusValues = Object.values(CaseStatus);
+    const matchedStatus = statusValues.find(s => {
+      const sNormalized = s.toLowerCase().replace(/\s+/g, '');
+      const statusNormalized = statusStr.toLowerCase().replace(/\s+/g, '');
+      return s === statusStr || s.toLowerCase() === statusStr.toLowerCase() || sNormalized === statusNormalized;
+    });
+    return (matchedStatus as CaseStatus) || CaseStatus.NUEVO;
+  };
+
   useEffect(() => {
     loadData();
     const interval = setInterval(() => {
@@ -26,17 +39,44 @@ const GerenteDashboard: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
+      console.log('🔄 [GerenteDashboard] Iniciando carga de datos...');
       const [casosData, kpisData] = await Promise.all([
         api.getCases(),
         api.getKPIs()
       ]);
-      setCasos(casosData);
+      
+      console.log('📊 [GerenteDashboard] Casos recibidos del webhook:', casosData.length);
+      console.log('📊 [GerenteDashboard] Detalle completo de casos:', casosData);
+      console.log('📊 [GerenteDashboard] Detalle de casos (resumen):', casosData.map(c => ({
+        id: c.id,
+        ticketNumber: c.ticketNumber,
+        status: c.status,
+        statusNormalized: normalizeStatus(c.status),
+        subject: c.subject,
+        diasAbierto: c.diasAbierto,
+        createdAt: c.createdAt
+      })));
+      
+      // Verificar que los casos tengan datos válidos
+      const casosValidos = casosData.filter(c => c && c.id);
+      console.log('📊 [GerenteDashboard] Casos válidos:', casosValidos.length);
+      
+      if (casosValidos.length !== casosData.length) {
+        console.warn('⚠️ [GerenteDashboard] Algunos casos no tienen ID válido');
+      }
+      
+      setCasos(casosValidos);
       setKpis(kpisData);
+      
       // Guardar en localStorage para que Layout pueda mostrarlo en el header
       const updateTime = new Date();
       localStorage.setItem('bandeja_last_update', updateTime.toISOString());
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('❌ [GerenteDashboard] Error loading data:', error);
+      // En caso de error, mantener los casos anteriores o establecer array vacío
+      if (casos.length === 0) {
+        setCasos([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -47,8 +87,9 @@ const GerenteDashboard: React.FC = () => {
     return casos.filter(c => {
       // Validar que categoria existe antes de acceder a slaDias
       const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5; // Default 5 días
+      const normalizedStatus = normalizeStatus(c.status);
       return c.diasAbierto >= slaDias || 
-      c.status === CaseStatus.ESCALADO ||
+      normalizedStatus === CaseStatus.ESCALADO ||
         (slaDias - c.diasAbierto <= 1 && c.diasAbierto > 0);
     });
   }, [casos]);
@@ -71,88 +112,155 @@ const GerenteDashboard: React.FC = () => {
   }, [casos, periodFilter]);
 
   // Usar datos reales de casos críticos
-  const abiertos = casos.filter(c => c.status !== CaseStatus.CERRADO && c.status !== CaseStatus.RESUELTO).length;
+  const abiertos = casos.filter(c => {
+    const normalizedStatus = normalizeStatus(c.status);
+    return normalizedStatus !== CaseStatus.CERRADO && normalizedStatus !== CaseStatus.RESUELTO;
+  }).length;
   const vencidos = casosCriticos.filter(c => {
     const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
     return c.diasAbierto >= slaDias;
   }).length;
-  const escalados = casosCriticos.filter(c => c.status === CaseStatus.ESCALADO).length;
+  const escalados = casosCriticos.filter(c => normalizeStatus(c.status) === CaseStatus.ESCALADO).length;
   
-  // Calcular variaciones (mock - valores simulados)
+  // Calcular variaciones reales comparando con períodos anteriores
   const getVariation = (current: number, label: string) => {
+    const now = new Date();
+    let startDate: Date;
+    let prevStartDate: Date;
+    let prevEndDate: Date;
+    let periodLabel: string;
+    let prevPeriodLabel: string;
+
     if (periodFilter === 'hoy') {
-      const mockPrev = Math.max(0, current - Math.floor(Math.random() * 3) + 1);
-      const diff = current - mockPrev;
-      const percent = mockPrev > 0 ? ((diff / mockPrev) * 100).toFixed(0) : '0';
-      return {
-        value: diff > 0 ? `+${diff} hoy` : diff < 0 ? `${diff} hoy` : 'Sin cambios',
-        percent: mockPrev > 0 ? `${diff > 0 ? '+' : ''}${percent}% vs ayer` : null,
-        isPositive: diff >= 0,
-        isNegative: diff < 0
-      };
+      startDate = new Date(now.setHours(0, 0, 0, 0));
+      prevStartDate = new Date(now);
+      prevStartDate.setDate(prevStartDate.getDate() - 1);
+      prevStartDate.setHours(0, 0, 0, 0);
+      prevEndDate = new Date(prevStartDate);
+      prevEndDate.setHours(23, 59, 59, 999);
+      periodLabel = 'hoy';
+      prevPeriodLabel = 'ayer';
     } else if (periodFilter === 'semana') {
-      const mockPrev = Math.max(0, current - Math.floor(Math.random() * 5) + 2);
-      const diff = current - mockPrev;
-      const percent = mockPrev > 0 ? ((diff / mockPrev) * 100).toFixed(0) : '0';
-      return {
-        value: diff > 0 ? `+${diff} esta semana` : diff < 0 ? `${diff} esta semana` : 'Sin cambios',
-        percent: mockPrev > 0 ? `${diff > 0 ? '+' : ''}${percent}% vs semana anterior` : null,
-        isPositive: diff >= 0,
-        isNegative: diff < 0
-      };
+      const dayOfWeek = now.getDay();
+      startDate = new Date(now.setDate(now.getDate() - dayOfWeek));
+      startDate.setHours(0, 0, 0, 0);
+      prevStartDate = new Date(startDate);
+      prevStartDate.setDate(prevStartDate.getDate() - 7);
+      prevEndDate = new Date(startDate);
+      prevEndDate.setDate(prevEndDate.getDate() - 1);
+      prevEndDate.setHours(23, 59, 59, 999);
+      periodLabel = 'esta semana';
+      prevPeriodLabel = 'semana anterior';
     } else {
-      const mockPrev = Math.max(0, current - Math.floor(Math.random() * 10) + 5);
-      const diff = current - mockPrev;
-      const percent = mockPrev > 0 ? ((diff / mockPrev) * 100).toFixed(0) : '0';
-      return {
-        value: diff > 0 ? `+${diff} este mes` : diff < 0 ? `${diff} este mes` : 'Sin cambios',
-        percent: mockPrev > 0 ? `${diff > 0 ? '+' : ''}${percent}% vs mes anterior` : null,
-        isPositive: diff >= 0,
-        isNegative: diff < 0
-      };
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      prevStartDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      prevEndDate = new Date(now.getFullYear(), now.getMonth(), 0);
+      prevEndDate.setHours(23, 59, 59, 999);
+      periodLabel = 'este mes';
+      prevPeriodLabel = 'mes anterior';
     }
+
+    // Calcular casos del período anterior
+    const casosPeriodoAnterior = casos.filter(c => {
+      const fechaCreacion = new Date(c.createdAt);
+      return fechaCreacion >= prevStartDate && fechaCreacion <= prevEndDate;
+    });
+
+    // Calcular valor del período anterior según el tipo de métrica
+    let prevValue = 0;
+    if (label === 'Casos Abiertos') {
+      // Para casos abiertos, contar casos que estaban abiertos al final del período anterior
+      prevValue = casosPeriodoAnterior.filter(c => {
+        const normalizedStatus = normalizeStatus(c.status);
+        return normalizedStatus !== CaseStatus.CERRADO && normalizedStatus !== CaseStatus.RESUELTO;
+      }).length;
+    } else if (label === 'Excedidos SLA') {
+      // Para excedidos SLA, contar casos que excedieron SLA en el período anterior
+      prevValue = casosPeriodoAnterior.filter(c => {
+        const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
+        const fechaCreacion = new Date(c.createdAt);
+        const diasAbiertoAlFinalPeriodo = Math.floor((prevEndDate.getTime() - fechaCreacion.getTime()) / (1000 * 60 * 60 * 24));
+        return diasAbiertoAlFinalPeriodo >= slaDias;
+      }).length;
+    }
+
+    const diff = current - prevValue;
+    const percent = prevValue > 0 ? ((diff / prevValue) * 100).toFixed(0) : null;
+
+    return {
+      value: diff > 0 ? `+${diff} ${periodLabel}` : diff < 0 ? `${diff} ${periodLabel}` : 'Sin cambios',
+      percent: percent ? `${diff > 0 ? '+' : ''}${percent}% vs ${prevPeriodLabel}` : null,
+      isPositive: diff >= 0,
+      isNegative: diff < 0
+    };
   };
 
   const abiertosVar = getVariation(abiertos, 'Casos Abiertos');
   const vencidosVar = getVariation(vencidos, 'Excedidos SLA');
+  
+  // Calcular variación de CSAT (si hay datos históricos disponibles)
+  // Por ahora, si no hay datos históricos, mostrar sin variación
   const csatVar = {
-    value: '+0.1 vs ayer',
-    percent: '+2.4%',
+    value: 'Sin datos históricos',
+    percent: null,
     isPositive: true,
     isNegative: false
   };
+  
+  // Calcular variación del total histórico basado en casos filtrados
   const historicoVar = {
-    value: `+${kpis.totalCases - (kpis.totalCases - filteredCasos.length)} total`,
+    value: `${filteredCasos.length} en ${periodFilter === 'hoy' ? 'hoy' : periodFilter === 'semana' ? 'esta semana' : 'este mes'}`,
     percent: null,
     isPositive: true,
     isNegative: false
   };
 
   // Usar todos los casos, no solo los filtrados por período, para la distribución
-  const chartData = useMemo(() => [
-    { name: 'Nuevos', value: casos.filter(c => c.status === CaseStatus.NUEVO).length },
-    { name: 'En Proceso', value: casos.filter(c => c.status === CaseStatus.EN_PROCESO).length },
-    { name: 'Escalados', value: casos.filter(c => c.status === CaseStatus.ESCALADO).length },
-    { name: 'Resueltos', value: casos.filter(c => c.status === CaseStatus.RESUELTO).length },
-  ], [casos]);
+  // Normalizar estados antes de comparar para que coincidan con los valores del webhook
+  // Incluir TODOS los estados posibles del webhook
+  const chartData = useMemo(() => {
+    console.log('📊 [GerenteDashboard] Calculando distribución de casos. Total casos:', casos.length);
+    console.log('📊 [GerenteDashboard] Estados de casos:', casos.map(c => ({
+      id: c.id,
+      status: c.status,
+      normalized: normalizeStatus(c.status)
+    })));
+    
+    const data = [
+      { name: 'Nuevos', value: casos.filter(c => normalizeStatus(c.status) === CaseStatus.NUEVO).length },
+      { name: 'En Proceso', value: casos.filter(c => normalizeStatus(c.status) === CaseStatus.EN_PROCESO).length },
+      { name: 'Pendiente Cliente', value: casos.filter(c => normalizeStatus(c.status) === CaseStatus.PENDIENTE_CLIENTE).length },
+      { name: 'Escalados', value: casos.filter(c => normalizeStatus(c.status) === CaseStatus.ESCALADO).length },
+      { name: 'Resueltos', value: casos.filter(c => normalizeStatus(c.status) === CaseStatus.RESUELTO).length },
+      { name: 'Cerrados', value: casos.filter(c => normalizeStatus(c.status) === CaseStatus.CERRADO).length },
+    ];
+    
+    console.log('📊 [GerenteDashboard] Distribución calculada:', data);
+    return data;
+  }, [casos]);
 
-  const totalCasos = useMemo(() => chartData.reduce((sum, item) => sum + item.value, 0), [chartData]);
+  // El total debe ser TODOS los casos, no solo los del gráfico
+  const totalCasos = casos.length;
 
   const chartDataWithPercent = useMemo(() => chartData.map(item => ({
     ...item,
     percent: totalCasos > 0 ? ((item.value / totalCasos) * 100).toFixed(1) : '0.0'
   })), [chartData, totalCasos]);
 
-  const COLORS = ['#0f172a', '#f59e0b', '#ef4444', '#10b981'];
+  // Colores para cada estado: Nuevos, En Proceso, Pendiente Cliente, Escalados, Resueltos, Cerrados
+  const COLORS = ['#0f172a', '#f59e0b', '#a855f7', '#ef4444', '#10b981', '#64748b'];
 
   const slaObjective = 90;
-  const slaStatus = kpis.slaCompliance >= slaObjective ? 'en_cumplimiento' : 
+  const slaStatus = kpis.slaCompliance === null ? 'sin_datos' :
+                     kpis.slaCompliance >= slaObjective ? 'en_cumplimiento' : 
                      kpis.slaCompliance >= slaObjective - 10 ? 'riesgo' : 'debajo_objetivo';
   
-  const slaColor = slaStatus === 'en_cumplimiento' ? 'border-green-500' :
+  const slaColor = slaStatus === 'sin_datos' ? 'border-slate-500' :
+                   slaStatus === 'en_cumplimiento' ? 'border-green-500' :
                    slaStatus === 'riesgo' ? 'border-amber-500' : 'border-red-500';
 
-  const slaText = slaStatus === 'en_cumplimiento' ? 'En cumplimiento' :
+  const slaText = slaStatus === 'sin_datos' ? 'Sin datos disponibles' :
+                  slaStatus === 'en_cumplimiento' ? 'En cumplimiento' :
                   slaStatus === 'riesgo' ? 'Por debajo del objetivo' : 'Requiere atención';
 
   // Generar insights automáticos usando datos reales de casos críticos
@@ -177,15 +285,23 @@ const GerenteDashboard: React.FC = () => {
     if (casosVencen24h.length > 0) {
       insightsList.push(`${casosVencen24h.length} caso${casosVencen24h.length !== 1 ? 's' : ''} vence${casosVencen24h.length !== 1 ? 'n' : ''} en <24h`);
     }
-    if (kpis.csatScore >= 4.0) {
-      insightsList.push('CSAT estable');
+    if (kpis.csatScore !== null) {
+      if (kpis.csatScore >= 4.0) {
+        insightsList.push('CSAT estable');
+      } else {
+        insightsList.push('CSAT requiere atención');
+      }
     } else {
-      insightsList.push('CSAT requiere atención');
+      insightsList.push('CSAT: Sin datos disponibles');
     }
-    if (kpis.slaCompliance >= slaObjective) {
-      insightsList.push('SLA en objetivo');
+    if (kpis.slaCompliance !== null) {
+      if (kpis.slaCompliance >= slaObjective) {
+        insightsList.push('SLA en objetivo');
+      } else {
+        insightsList.push(`SLA ${kpis.slaCompliance}% - Por debajo del objetivo`);
+      }
     } else {
-      insightsList.push(`SLA ${kpis.slaCompliance}% - Por debajo del objetivo`);
+      insightsList.push('SLA: Sin datos disponibles');
     }
     return insightsList;
   }, [casosCriticos, escalados, kpis.csatScore, kpis.slaCompliance]);
@@ -375,8 +491,8 @@ const GerenteDashboard: React.FC = () => {
         />
         <KPICard
           label="CSAT Promedio"
-          value={kpis.csatScore.toFixed(1)}
-          color="#22c55e"
+          value={kpis.csatScore !== null ? kpis.csatScore.toFixed(1) : 'N/A'}
+          color={kpis.csatScore !== null ? "#22c55e" : "#94a3b8"}
           bg="bg-green-50"
           icon={ThumbsUp}
           variation={csatVar}
@@ -489,22 +605,29 @@ const GerenteDashboard: React.FC = () => {
           <h3 className="text-base font-bold mb-6" style={{color: styles.text.primary}}>Cumplimiento de SLA</h3>
           <div className="h-64 flex flex-col justify-center items-center">
             <div className={`relative w-48 h-48 rounded-full border-[12px] flex flex-col items-center justify-center`} style={{
-              borderColor: slaStatus === 'en_cumplimiento' ? '#22c55e' : slaStatus === 'riesgo' ? '#f59e0b' : '#ef4444'
+              borderColor: slaStatus === 'sin_datos' ? '#94a3b8' :
+                          slaStatus === 'en_cumplimiento' ? '#22c55e' : 
+                          slaStatus === 'riesgo' ? '#f59e0b' : '#ef4444'
             }}>
-              <span className="text-4xl font-black" style={{color: styles.text.primary}}>{kpis.slaCompliance}%</span>
-              <span className="text-xs font-bold uppercase tracking-tighter mt-1" style={{color: styles.text.tertiary}}>On Target</span>
+              <span className="text-4xl font-black" style={{color: styles.text.primary}}>
+                {kpis.slaCompliance !== null ? `${kpis.slaCompliance}%` : 'N/A'}
+              </span>
+              <span className="text-xs font-bold uppercase tracking-tighter mt-1" style={{color: styles.text.tertiary}}>
+                {kpis.slaCompliance !== null ? 'On Target' : 'Sin datos'}
+              </span>
             </div>
             <div className="mt-6 text-center space-y-2">
               <p className="text-sm" style={{color: styles.text.tertiary}}>
                 Objetivo: <span className="font-bold" style={{color: styles.text.primary}}>{slaObjective}%</span>
               </p>
               <p className="text-sm font-semibold" style={{
-                color: slaStatus === 'en_cumplimiento' ? '#22c55e' :
-                slaStatus === 'riesgo' ? '#f59e0b' : '#ef4444'
+                color: slaStatus === 'sin_datos' ? '#94a3b8' :
+                       slaStatus === 'en_cumplimiento' ? '#22c55e' :
+                       slaStatus === 'riesgo' ? '#f59e0b' : '#ef4444'
               }}>
                 {slaText}
               </p>
-              {slaStatus !== 'en_cumplimiento' && (
+              {slaStatus !== 'en_cumplimiento' && slaStatus !== 'sin_datos' && kpis.slaCompliance !== null && (
                 <p className="text-xs mt-1" style={{color: styles.text.tertiary}}>
                   {kpis.slaCompliance < slaObjective 
                     ? `Faltan ${(slaObjective - kpis.slaCompliance).toFixed(1)}% para alcanzar el objetivo`
