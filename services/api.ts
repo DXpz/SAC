@@ -563,58 +563,15 @@ export const api = {
   async updateCaseStatus(id: string, status: string, detail: string, extra?: any): Promise<boolean> {
     const user = this.getUser();
 
-    // 1) Intentar actualizar usando el nuevo caseService (conecta con n8n)
-    try {
-      await caseService.updateCaseStatus(id, status, detail || `Cambio de estado a ${status}`);
-      console.log('✅ Caso actualizado exitosamente usando caseService');
-      // Limpiar caché de casos para forzar actualización
-      clearCache('cases');
-    } catch (err) {
-      console.warn('⚠️ Error al actualizar caso en caseService, intentando método legacy:', err);
-      
-      // Fallback: Notificar cambio de estado a n8n usando el contrato CRUD.UPDATE
-    try {
-      await callCasesWebhook('POST', {
-        action: 'case.update',
-        actor: buildActorPayload(user),
-        data: {
-          case_id: id,
-          patch: {
-            estado: status,
-            descripcion: detail || `Cambio de estado a ${status}`,
-            ...(extra?.resolucion ? { resolucion: extra.resolucion } : {}),
-          },
-        },
-      });
-      } catch (err2) {
-        console.warn('Error al actualizar caso en n8n, aplicando cambio solo en local.', err2);
-      }
-    }
-
-    // 2) Actualizar también el estado en localStorage como fallback
-    const cases = await this.getCases();
-    const idx = cases.findIndex((c: any) => (c.id === id || c.idCaso === id || c.ticketNumber === id));
+    // Actualizar usando caseService (conecta con n8n)
+    // NO usar fallback local, si falla debe lanzar error
+    await caseService.updateCaseStatus(id, status, detail || `Cambio de estado a ${status}`);
+    console.log('✅ Caso actualizado exitosamente usando caseService');
     
-    if (idx !== -1) {
-      const casoAnterior = cases[idx];
-      const estadoAnterior = casoAnterior.estado || casoAnterior.status;
-      
-      cases[idx].estado = status;
-      cases[idx].status = status;
-      if (!cases[idx].historial) cases[idx].historial = [];
-      
-      cases[idx].historial.unshift({
-        fechaHora: new Date().toISOString(),
-        detalle: detail || `Cambio de estado a ${status}`,
-        usuario: this.getUser()?.name || 'Sistema'
-      });
-
-      if (extra?.resolucion) cases[idx].resolucion = extra.resolucion;
-      
-      localStorage.setItem('intelfon_cases', JSON.stringify(cases));
-      return true;
-    }
-    return false;
+    // Limpiar caché de casos para forzar actualización
+    clearCache('cases');
+    
+    return true;
   },
 
   async createCase(caseData: any): Promise<boolean> {

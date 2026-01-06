@@ -22,6 +22,38 @@ import { api } from './services/api';
 import { ThemeProvider } from './contexts/ThemeContext';
 
 const App: React.FC = () => {
+  // Manejador global de errores no capturados (para evitar errores de extensiones del navegador)
+  useEffect(() => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      // Ignorar errores de extensiones del navegador
+      const errorMessage = event.reason?.message || event.reason?.toString() || '';
+      if (errorMessage.includes('message channel') || errorMessage.includes('listener')) {
+        console.warn('⚠️ Error de extensión del navegador ignorado:', event.reason);
+        event.preventDefault();
+        return;
+      }
+      console.error('❌ Error no manejado en promesa:', event.reason);
+    };
+
+    const handleError = (event: ErrorEvent) => {
+      // Ignorar errores de extensiones del navegador
+      const errorMessage = event.message || event.error?.message || '';
+      if (errorMessage.includes('message channel') || errorMessage.includes('listener')) {
+        console.warn('⚠️ Error de extensión del navegador ignorado:', event.error);
+        event.preventDefault();
+        return;
+      }
+    };
+
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    window.addEventListener('error', handleError);
+
+    return () => {
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      window.removeEventListener('error', handleError);
+    };
+  }, []);
+
   // Validar al cargar la aplicación que el usuario tenga token válido
   // Si hay usuario sin token, limpiar datos (no está registrado en n8n o no es cuenta demo)
   useEffect(() => {

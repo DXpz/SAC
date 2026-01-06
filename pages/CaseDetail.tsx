@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { Case, CaseStatus, Cliente, AutorRol, HistorialEntry } from '../types';
 import { CASE_TRANSITIONS, CASE_STATES, getStateColor, getStateBadgeColor } from '../constants';
-import { changeCaseStatus, getAllowedTransitions, sendStatusChangeToWebhook } from '../services/caseStatusService';
+import { getAllowedTransitions } from '../services/caseStatusService';
+import { updateCaseStatus } from '../services/caseService';
 import { ArrowLeft, MessageSquare, User, Building2, Phone, Mail, CheckCircle2, Clock, X, AlertTriangle, Lock, History, Users, TrendingUp, AlertCircle } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -25,10 +26,21 @@ const CaseDetail: React.FC = () => {
 
   useEffect(() => {
     const initializeData = async () => {
-      await Promise.all([loadClientes(), loadAgentes()]);
-      if (id) await loadCaso(id);
+      try {
+        await Promise.all([loadClientes(), loadAgentes()]);
+        if (id) await loadCaso(id);
+      } catch (error) {
+        console.error('Error inicializando datos:', error);
+      }
     };
-    initializeData();
+    initializeData().catch((error) => {
+      // Capturar errores no manejados de extensiones del navegador
+      if (error?.message?.includes('message channel') || error?.message?.includes('listener')) {
+        console.warn('⚠️ Error de extensión del navegador ignorado:', error);
+        return;
+      }
+      console.error('Error no manejado:', error);
+    });
   }, [id]);
 
   const loadClientes = async () => {
@@ -160,28 +172,14 @@ const CaseDetail: React.FC = () => {
 
   const loadCaso = async (caseId: string) => {
     try {
-      console.log('🔄 Iniciando carga del caso:', caseId);
-      let data = await api.getCasoById(caseId);
-      
-      // Si no se encuentra, intentar desde localStorage
-      if (!data) {
-        console.warn('⚠️ Caso no encontrado en webhook, buscando en localStorage...');
-        const cases = await api.getCases();
-        data = cases.find((c: any) => 
-          c.id === caseId || c.idCaso === caseId || c.ticketNumber === caseId
-        );
-        if (data) {
-          console.log('✅ Caso encontrado en localStorage');
-        } else {
-          console.error('❌ Caso no encontrado en ningún lugar:', caseId);
-          return;
-        }
-      }
+      console.log('🔄 Iniciando carga del caso desde webhook:', caseId);
+      const data = await api.getCasoById(caseId);
       
       if (!data) {
-        console.error('❌ No se pudo cargar el caso:', caseId);
+        console.error('❌ Caso no encontrado en webhook:', caseId);
         return;
       }
+      
       console.log('📥 Caso recibido del webhook:', {
         id: data.id,
         clientId: data.clientId,
@@ -191,197 +189,29 @@ const CaseDetail: React.FC = () => {
         agentId: data.agentId,
         agentName: data.agentName,
         agenteAsignado: data.agenteAsignado,
-        status: data.status
+        status: data.status,
+        historial: data.historial?.length || 0
       });
       
-      // Si ya tenemos un caso cargado, preservar TODA la información crítica
-      // IMPORTANTE: El estado (status) debe venir del webhook para que los botones se actualicen correctamente
-      if (caso) {
-        // Preservar información del cliente (si el webhook no la trae completa)
-        // Convertir a string y verificar antes de usar .trim()
-        const dataClientNameStr = data.clientName ? String(data.clientName).trim() : '';
-        const casoClientNameStr = caso.clientName ? String(caso.clientName).trim() : '';
-        if (casoClientNameStr && (!dataClientNameStr || dataClientNameStr === '')) {
-          data.clientName = caso.clientName;
-        }
-        
-        const dataClientEmailStr = data.clientEmail ? String(data.clientEmail).trim() : '';
-        const casoClientEmailStr = caso.clientEmail ? String(caso.clientEmail).trim() : '';
-        if (casoClientEmailStr && (!dataClientEmailStr || dataClientEmailStr === '')) {
-          data.clientEmail = caso.clientEmail;
-        }
-        // clientPhone puede venir como número del webhook, convertir a string si es necesario
-        const dataClientPhoneStr = data.clientPhone ? String(data.clientPhone).trim() : '';
-        const casoClientPhoneStr = caso.clientPhone ? String(caso.clientPhone).trim() : '';
-        if (casoClientPhoneStr && (!dataClientPhoneStr || dataClientPhoneStr === '')) {
-          data.clientPhone = caso.clientPhone;
-        } else if (data.clientPhone && typeof data.clientPhone !== 'string') {
-          // Convertir a string si viene como número
-          data.clientPhone = String(data.clientPhone);
-        }
-        if (caso.cliente && !data.cliente) {
-          data.cliente = caso.cliente;
-        }
-        // clientId también puede necesitar conversión
-        const dataClientIdStr = data.clientId ? String(data.clientId).trim() : '';
-        const casoClientIdStr = caso.clientId ? String(caso.clientId).trim() : '';
-        if (casoClientIdStr && (!dataClientIdStr || dataClientIdStr === '')) {
-          data.clientId = caso.clientId;
-        }
-        
-        // Preservar información del agente
-        if (caso.agenteAsignado && !data.agenteAsignado) {
-          data.agenteAsignado = caso.agenteAsignado;
-        }
-        // agentName y agentId también pueden necesitar conversión
-        const dataAgentNameStr = data.agentName ? String(data.agentName).trim() : '';
-        const casoAgentNameStr = caso.agentName ? String(caso.agentName).trim() : '';
-        if (casoAgentNameStr && (!dataAgentNameStr || dataAgentNameStr === '')) {
-          data.agentName = caso.agentName;
-        }
-        
-        const dataAgentIdStr = data.agentId ? String(data.agentId).trim() : '';
-        const casoAgentIdStr = caso.agentId ? String(caso.agentId).trim() : '';
-        if (casoAgentIdStr && (!dataAgentIdStr || dataAgentIdStr === '')) {
-          data.agentId = caso.agentId;
-        }
-        
-        // Preservar categoría
-        if (caso.categoria && !data.categoria) {
-          data.categoria = caso.categoria;
-        }
-        // category también puede necesitar conversión
-        const dataCategoryStr = data.category ? String(data.category).trim() : '';
-        const casoCategoryStr = caso.category ? String(caso.category).trim() : '';
-        if (casoCategoryStr && (!dataCategoryStr || dataCategoryStr === '')) {
-          data.category = caso.category;
-        }
-        if (caso.categoriaId && !data.categoriaId) {
-          data.categoriaId = caso.categoriaId;
-        }
-        
-        // Preservar historial (combinar si hay nuevo historial del webhook)
-        const historialExistente = Array.isArray(caso.historial) ? caso.historial : 
-                                   Array.isArray(caso.history) ? caso.history : [];
-        const historialNuevo = Array.isArray(data.historial) ? data.historial : 
-                              Array.isArray(data.history) ? data.history : [];
-        
-        // Función para crear un ID único de una entrada de historial
-        const crearIdUnico = (h: any): string => {
-          const fecha = h.fecha || h.fechaHora || '';
-          const tipo = h.tipo_evento || h.tipo || '';
-          const estadoAnterior = h.estado_anterior || '';
-          const estadoNuevo = h.estado_nuevo || '';
-          const justificacion = (h.justificacion || h.detalle || '').trim();
-          const autor = (h.autor_nombre || h.usuario || h.user || '').trim();
-          // Crear ID único combinando todos los campos relevantes
-          return `${fecha}|${tipo}|${estadoAnterior}|${estadoNuevo}|${justificacion}|${autor}`;
-        };
-        
-        if (historialExistente.length > 0) {
-          if (historialNuevo.length > 0) {
-            // Crear Set con IDs únicos del historial existente
-            const existingIds = new Set(historialExistente.map(crearIdUnico));
-            
-            // Filtrar solo las entradas nuevas que no existen
-            const newHistory = historialNuevo.filter((h: any) => {
-              const idUnico = crearIdUnico(h);
-              return !existingIds.has(idUnico);
-            });
-            
-            // Combinar: primero el existente, luego las nuevas
-            const historialCombinado = [...historialExistente, ...newHistory];
-            
-            // Eliminar duplicados dentro del historial combinado (por si acaso)
-            const idsVistos = new Set<string>();
-            const historialSinDuplicados = historialCombinado.filter((h: any) => {
-              const idUnico = crearIdUnico(h);
-              if (idsVistos.has(idUnico)) {
-                return false; // Duplicado, no incluir
-              }
-              idsVistos.add(idUnico);
-              return true;
-            });
-            
-            data.history = historialSinDuplicados;
-            data.historial = historialSinDuplicados;
-          } else {
-            // Mantener el historial existente
-            data.history = historialExistente;
-            data.historial = historialExistente;
-          }
-        } else if (historialNuevo.length > 0) {
-          // Si no hay historial existente pero hay nuevo, usar el nuevo
-          // También eliminar duplicados dentro del nuevo historial
-          const idsVistos = new Set<string>();
-          const historialSinDuplicados = historialNuevo.filter((h: any) => {
-            const idUnico = crearIdUnico(h);
-            if (idsVistos.has(idUnico)) {
-              return false; // Duplicado, no incluir
-            }
-            idsVistos.add(idUnico);
-            return true;
-          });
-          data.history = historialSinDuplicados;
-          data.historial = historialSinDuplicados;
-        } else {
-          // No hay historial en ningún lado, se inicializará más abajo
-          data.history = [];
-          data.historial = [];
-        }
-        
-        // Preservar otros campos importantes
-        // subject, description, ticketNumber, id también pueden necesitar conversión
-        const dataSubjectStr = data.subject ? String(data.subject).trim() : '';
-        const casoSubjectStr = caso.subject ? String(caso.subject).trim() : '';
-        if (casoSubjectStr && (!dataSubjectStr || dataSubjectStr === '')) {
-          data.subject = caso.subject;
-        }
-        
-        const dataDescriptionStr = data.description ? String(data.description).trim() : '';
-        const casoDescriptionStr = caso.description ? String(caso.description).trim() : '';
-        if (casoDescriptionStr && (!dataDescriptionStr || dataDescriptionStr === '')) {
-          data.description = caso.description;
-        }
-        
-        const dataTicketNumberStr = data.ticketNumber ? String(data.ticketNumber).trim() : '';
-        const casoTicketNumberStr = caso.ticketNumber ? String(caso.ticketNumber).trim() : '';
-        if (casoTicketNumberStr && (!dataTicketNumberStr || dataTicketNumberStr === '')) {
-          data.ticketNumber = caso.ticketNumber;
-        }
-        
-        const dataIdStr = data.id ? String(data.id).trim() : '';
-        const casoIdStr = caso.id ? String(caso.id).trim() : '';
-        if (casoIdStr && (!dataIdStr || dataIdStr === '')) {
-          data.id = caso.id;
-        }
-        if (caso.createdAt && !data.createdAt) {
-          data.createdAt = caso.createdAt;
-        }
-      }
-      
-      // IMPORTANTE: El estado debe venir del webhook para actualizar los botones
       // Normalizar el estado para asegurar que sea válido
-      let finalStatus: CaseStatus;
       if (data.status) {
-        finalStatus = normalizeStatus(data.status);
-      } else if (caso?.status) {
-        // Si el webhook no trae estado, usar el del caso anterior
-        finalStatus = normalizeStatus(caso.status);
-      } else {
-        finalStatus = CaseStatus.NUEVO;
+        data.status = normalizeStatus(data.status);
+        data.estado = data.status; // También asignar a 'estado' para compatibilidad
       }
       
-      // Asegurar que el estado normalizado se asigne al objeto
-      data.status = finalStatus;
-      data.estado = finalStatus; // También asignar a 'estado' para compatibilidad
+      // Asegurar que ambos arrays de historial existan y estén sincronizados
+      if (data.historial && !data.history) {
+        data.history = data.historial;
+      }
+      if (data.history && !data.historial) {
+        data.historial = data.history;
+      }
       
-      // Inicializar historial si no existe (solo si realmente no hay historial)
+      // Si no hay historial, inicializar con evento de creación
       const tieneHistorial = (data.historial && Array.isArray(data.historial) && data.historial.length > 0) ||
                               (data.history && Array.isArray(data.history) && data.history.length > 0);
       
       if (!tieneHistorial) {
-        // Inicializar con evento de creación
         const historialInicial: HistorialEntry[] = [{
           tipo_evento: "CREADO",
           justificacion: "Caso creado",
@@ -391,40 +221,13 @@ const CaseDetail: React.FC = () => {
         }];
         data.historial = historialInicial;
         data.history = historialInicial;
-      } else {
-        // Asegurar que ambos arrays de historial existan y estén sincronizados
-        if (!data.historial && data.history) {
-          data.historial = data.history;
-        }
-        if (!data.history && data.historial) {
-          data.history = data.historial;
-        }
       }
       
-      console.log('✅ Mostrando caso con datos preservados del caso anterior');
-      console.log('📋 Datos del caso antes de setCaso:', {
-        id: data.id,
-        ticketNumber: data.ticketNumber,
-        status: data.status,
-        estado: data.estado,
-        tieneHistorial: !!(data.historial && data.historial.length > 0)
-      });
+      console.log('✅ Caso cargado completamente desde webhook');
       setCaso(data);
     } catch (error) {
-      console.error('❌ Error al cargar el caso:', error);
-      // Aún así intentar cargar desde localStorage como fallback
-      try {
-        const cases = await api.getCases();
-        const fallbackCase = cases.find((c: any) => 
-          c.id === caseId || c.idCaso === caseId || c.ticketNumber === caseId
-        );
-        if (fallbackCase) {
-          console.log('✅ Caso cargado desde fallback (localStorage)');
-          setCaso(fallbackCase);
-        }
-      } catch (fallbackError) {
-        console.error('❌ Error en fallback también:', fallbackError);
-      }
+      console.error('❌ Error al cargar el caso desde webhook:', error);
+      throw error; // Lanzar el error en lugar de usar fallback local
     }
   };
 
@@ -447,52 +250,44 @@ const CaseDetail: React.FC = () => {
 
     setTransitionLoading(true);
     try {
-      // Obtener información del usuario actual
-      const user = api.getUser();
-      const autor_nombre = user?.name || 'Usuario';
-      const autor_rol: AutorRol = user?.role === 'SUPERVISOR' ? 'supervisor' : 
-                                  user?.role === 'GERENTE' ? 'supervisor' : 'agente';
-
-      // Usar la función centralizada de cambio de estado
-      const { casoActualizado, payload } = changeCaseStatus(caso, {
-        nuevoEstado: newState,
-        justificacion: justificacion,
-        autor_nombre: autor_nombre,
-        autor_rol: autor_rol
+      // Enviar actualización directamente al webhook
+      // NO usar lógica local, todo debe ir al webhook
+      const casoActualizadoWebhook = await updateCaseStatus(
+        caso.id || caso.ticketNumber || caso.idCaso || '',
+        newState,
+        justificacion
+      ).catch((error) => {
+        console.error('❌ Error en updateCaseStatus:', error);
+        throw error;
       });
-
-      // Actualizar el estado local
-      setCaso(casoActualizado);
-
-      // Guardar en localStorage (persistencia local)
-      const cases = await api.getCases();
-      const idx = cases.findIndex((c: any) => (c.id === caso.id || c.idCaso === caso.id || c.ticketNumber === caso.id));
-      if (idx !== -1) {
-        cases[idx] = { ...cases[idx], ...casoActualizado };
-        localStorage.setItem('intelfon_cases', JSON.stringify(cases));
-      }
-
-      // Preparar payload para webhook futuro (no se envía aún)
-      if (payload) {
-        console.log('📤 Payload preparado para webhook:', payload);
-        // TODO: Descomentar cuando exista el webhook
-        // await sendStatusChangeToWebhook(payload);
-      }
-
-      // Cerrar modal
-      setShowJustificationModal(false);
-      setPendingNewState(null);
-      setJustification('');
       
-      // Mostrar animación de éxito
-      setShowSuccessAnimation(true);
-      setTimeout(() => {
-        setShowSuccessAnimation(false);
-      }, 2000);
+      // Si el webhook retorna el caso actualizado, usarlo directamente
+      if (casoActualizadoWebhook) {
+        // Usar SOLO los datos del webhook, no preservar nada anterior
+        setCaso(casoActualizadoWebhook);
+        
+        // Cerrar modal
+        setShowJustificationModal(false);
+        setPendingNewState(null);
+        setJustification('');
+        
+        // Mostrar animación de éxito
+        setShowSuccessAnimation(true);
+        setTimeout(() => {
+          setShowSuccessAnimation(false);
+        }, 2000);
+      } else {
+        throw new Error('El webhook no retornó el caso actualizado');
+      }
       
     } catch (err: any) {
       console.error('❌ Error al actualizar el estado del caso:', err);
-      alert(err.message || 'Error al actualizar el estado del caso');
+      const errorMessage = err?.message || err?.toString() || 'Error al actualizar el estado del caso';
+      
+      // Evitar mostrar alert si el error es de extensiones del navegador
+      if (!errorMessage.includes('message channel') && !errorMessage.includes('listener')) {
+        alert(errorMessage);
+      }
       
       // Mostrar animación de error
       setShowErrorAnimation(true);
@@ -842,7 +637,16 @@ const CaseDetail: React.FC = () => {
                 });
                 
                 // Ordenar por fecha ascendente (más antiguo primero)
+                // Ordenar historial: primero las entradas de creación, luego por fecha ascendente
                 const historialOrdenado = [...historialSinDuplicados].sort((a, b) => {
+                  // Si una es de creación y la otra no, la creación va primero
+                  if (a.tipo_evento === 'CREADO' && b.tipo_evento !== 'CREADO') {
+                    return -1;
+                  }
+                  if (a.tipo_evento !== 'CREADO' && b.tipo_evento === 'CREADO') {
+                    return 1;
+                  }
+                  // Si ambas son del mismo tipo, ordenar por fecha ascendente
                   const fechaA = new Date(a.fecha || a.fechaHora || 0).getTime();
                   const fechaB = new Date(b.fecha || b.fechaHora || 0).getTime();
                   return fechaA - fechaB; // Orden ascendente
