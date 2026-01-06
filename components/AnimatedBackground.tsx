@@ -20,56 +20,124 @@ const AnimatedBackground: React.FC = () => {
       vy: number;
       radius: number;
       opacity: number;
+      baseOpacity: number;
+      glowIntensity: number;
+      glowPhase: number;
     }
 
     const particles: Particle[] = [];
-    const particleCount = 60;
-    const connectionDistance = 150;
+    const particleCount = 50; // Número reducido para mejor rendimiento en login
+    const connectionDistance = 100; // Distancia reducida para menos conexiones
 
     // Crear partículas
     for (let i = 0; i < particleCount; i++) {
+      const baseOpacity = Math.random() * 0.5 + 0.3;
       particles.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.5) * 0.5,
-        radius: Math.random() * 2 + 1,
-        opacity: Math.random() * 0.5 + 0.3,
+        vx: (Math.random() - 0.5) * 0.8, // Movimiento más lento para ahorrar recursos
+        vy: (Math.random() - 0.5) * 0.8, // Movimiento más lento para ahorrar recursos
+        radius: Math.random() * 1.5 + 0.5, // Puntos más finos
+        opacity: baseOpacity,
+        baseOpacity: baseOpacity,
+        glowIntensity: Math.random() * 0.2 + 0.15, // Variación más sutil para neón
+        glowPhase: Math.random() * Math.PI * 2, // Fase inicial aleatoria para variar el destello
       });
     }
 
+    let frameCount = 0;
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      frameCount++;
 
-      // Actualizar y dibujar partículas
+      // Actualizar y dibujar partículas (optimizado)
       particles.forEach((particle, i) => {
+        // Movimiento simplificado (sin variaciones complejas para mejor rendimiento)
         particle.x += particle.vx;
         particle.y += particle.vy;
 
-        // Rebote en bordes
-        if (particle.x < 0 || particle.x > canvas.width) particle.vx *= -1;
-        if (particle.y < 0 || particle.y > canvas.height) particle.vy *= -1;
+        // Rebote en bordes (simplificado)
+        if (particle.x < 0 || particle.x > canvas.width) {
+          particle.vx *= -1;
+        }
+        if (particle.y < 0 || particle.y > canvas.height) {
+          particle.vy *= -1;
+        }
 
-        // Dibujar partícula
+        // Calcular efecto de destello neón (optimizado: menos cálculos)
+        const time = frameCount * 0.01; // Velocidad del destello (más lento para ahorrar recursos)
+        const glowVariation = Math.sin(time + particle.glowPhase) * particle.glowIntensity;
+        // Mantener opacidad más alta para efecto neón más brillante
+        particle.opacity = Math.max(0.5, Math.min(1.0, particle.baseOpacity + 0.3 + glowVariation));
+
+        // Dibujar partícula con efecto neón (optimizado: menos capas)
+        ctx.save();
+        
+        // Capa 1: Glow exterior (combinado para mejor rendimiento)
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = `rgba(200, 21, 27, ${particle.opacity * 0.8})`;
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.radius * 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(200, 21, 27, ${particle.opacity * 0.5})`;
+        ctx.fill();
+        
+        // Capa 2: Núcleo brillante (combinado)
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = `rgba(240, 50, 60, ${particle.opacity})`;
         ctx.beginPath();
         ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(200, 21, 27, ${particle.opacity})`;
+        ctx.fillStyle = `rgba(240, 50, 60, ${Math.min(1.0, particle.opacity * 1.2)})`;
         ctx.fill();
+        
+        ctx.restore();
 
-        // Dibujar conexiones
-        particles.slice(i + 1).forEach(otherParticle => {
+        // Dibujar conexiones con efecto neón (optimizado para rendimiento)
+        // Solo verificar conexiones con partículas cercanas (optimización)
+        const nearbyParticles = particles.slice(i + 1).filter(otherParticle => {
+          const dx = Math.abs(particle.x - otherParticle.x);
+          const dy = Math.abs(particle.y - otherParticle.y);
+          // Verificación rápida de distancia (evita calcular sqrt si está muy lejos)
+          return (dx < connectionDistance && dy < connectionDistance);
+        });
+
+        nearbyParticles.forEach(otherParticle => {
           const dx = particle.x - otherParticle.x;
           const dy = particle.y - otherParticle.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
 
+          // Solo conectar si están relativamente cerca
           if (distance < connectionDistance) {
-            const opacity = (1 - distance / connectionDistance) * 0.5;
-            ctx.beginPath();
-            ctx.moveTo(particle.x, particle.y);
-            ctx.lineTo(otherParticle.x, otherParticle.y);
-            ctx.strokeStyle = `rgba(200, 21, 27, ${opacity})`;
-            ctx.lineWidth = 1.0;
-            ctx.stroke();
+            // Calcular opacidad basada en distancia (más suave)
+            const normalizedDistance = distance / connectionDistance;
+            const baseOpacity = Math.pow(1 - normalizedDistance, 1.5); // Curva más suave
+            const lineOpacity = Math.max(0, Math.min(1, baseOpacity * 0.6));
+            
+            // Solo dibujar si la opacidad es suficiente para ser visible
+            if (lineOpacity > 0.1) {
+              ctx.save();
+              
+              // Capa 1: Glow exterior (optimizado: menos capas)
+              ctx.shadowBlur = 10;
+              ctx.shadowColor = `rgba(200, 21, 27, ${lineOpacity * 0.6})`;
+              ctx.beginPath();
+              ctx.moveTo(particle.x, particle.y);
+              ctx.lineTo(otherParticle.x, otherParticle.y);
+              ctx.strokeStyle = `rgba(200, 21, 27, ${lineOpacity * 0.5})`;
+              ctx.lineWidth = 1.8;
+              ctx.stroke();
+              
+              // Capa 2: Línea principal brillante (combinado)
+              ctx.shadowBlur = 4;
+              ctx.shadowColor = `rgba(240, 50, 60, ${lineOpacity})`;
+              ctx.beginPath();
+              ctx.moveTo(particle.x, particle.y);
+              ctx.lineTo(otherParticle.x, otherParticle.y);
+              ctx.strokeStyle = `rgba(240, 50, 60, ${lineOpacity})`;
+              ctx.lineWidth = 0.8;
+              ctx.stroke();
+              
+              ctx.restore();
+            }
           }
         });
       });
