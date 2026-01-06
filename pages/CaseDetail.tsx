@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import { Case, CaseStatus, Cliente } from '../types';
-import { STATE_TRANSITIONS, STATE_COLORS } from '../constants';
+import { Case, CaseStatus, Cliente, AutorRol, HistorialEntry } from '../types';
+import { CASE_TRANSITIONS, CASE_STATES, getStateColor, getStateBadgeColor } from '../constants';
+import { changeCaseStatus, getAllowedTransitions, sendStatusChangeToWebhook } from '../services/caseStatusService';
 import { ArrowLeft, MessageSquare, User, Building2, Phone, Mail, CheckCircle2, Clock, X, AlertTriangle, Lock, History, Users, TrendingUp, AlertCircle } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -15,11 +16,10 @@ const CaseDetail: React.FC = () => {
   const [transitionLoading, setTransitionLoading] = useState(false);
   const { theme } = useTheme();
   
-  const [showResueltoModal, setShowResueltoModal] = useState(false);
-  const [showPendienteModal, setShowPendienteModal] = useState(false);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [pendingAction, setPendingAction] = useState<{ state: CaseStatus; label: string } | null>(null);
-  const [formDetail, setFormDetail] = useState('');
+  // Modal unificado de justificación
+  const [showJustificationModal, setShowJustificationModal] = useState(false);
+  const [pendingNewState, setPendingNewState] = useState<string | null>(null);
+  const [justification, setJustification] = useState('');
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [showErrorAnimation, setShowErrorAnimation] = useState(false);
 
@@ -159,8 +159,29 @@ const CaseDetail: React.FC = () => {
   };
 
   const loadCaso = async (caseId: string) => {
-    const data = await api.getCasoById(caseId);
-    if (data) {
+    try {
+      console.log('🔄 Iniciando carga del caso:', caseId);
+      let data = await api.getCasoById(caseId);
+      
+      // Si no se encuentra, intentar desde localStorage
+      if (!data) {
+        console.warn('⚠️ Caso no encontrado en webhook, buscando en localStorage...');
+        const cases = await api.getCases();
+        data = cases.find((c: any) => 
+          c.id === caseId || c.idCaso === caseId || c.ticketNumber === caseId
+        );
+        if (data) {
+          console.log('✅ Caso encontrado en localStorage');
+        } else {
+          console.error('❌ Caso no encontrado en ningún lugar:', caseId);
+          return;
+        }
+      }
+      
+      if (!data) {
+        console.error('❌ No se pudo cargar el caso:', caseId);
+        return;
+      }
       console.log('📥 Caso recibido del webhook:', {
         id: data.id,
         clientId: data.clientId,
@@ -240,16 +261,73 @@ const CaseDetail: React.FC = () => {
         }
         
         // Preservar historial (combinar si hay nuevo historial del webhook)
-        if (caso.history && caso.history.length > 0) {
-          // Si el webhook trae historial nuevo, combinarlo, sino mantener el existente
-          if (data.history && Array.isArray(data.history) && data.history.length > 0) {
-            // Combinar historiales, evitando duplicados
-            const existingIds = new Set(caso.history.map(h => h.fechaHora + h.detalle));
-            const newHistory = data.history.filter(h => !existingIds.has(h.fechaHora + h.detalle));
-            data.history = [...caso.history, ...newHistory];
+        const historialExistente = Array.isArray(caso.historial) ? caso.historial : 
+                                   Array.isArray(caso.history) ? caso.history : [];
+        const historialNuevo = Array.isArray(data.historial) ? data.historial : 
+                              Array.isArray(data.history) ? data.history : [];
+        
+        // Función para crear un ID único de una entrada de historial
+        const crearIdUnico = (h: any): string => {
+          const fecha = h.fecha || h.fechaHora || '';
+          const tipo = h.tipo_evento || h.tipo || '';
+          const estadoAnterior = h.estado_anterior || '';
+          const estadoNuevo = h.estado_nuevo || '';
+          const justificacion = (h.justificacion || h.detalle || '').trim();
+          const autor = (h.autor_nombre || h.usuario || h.user || '').trim();
+          // Crear ID único combinando todos los campos relevantes
+          return `${fecha}|${tipo}|${estadoAnterior}|${estadoNuevo}|${justificacion}|${autor}`;
+        };
+        
+        if (historialExistente.length > 0) {
+          if (historialNuevo.length > 0) {
+            // Crear Set con IDs únicos del historial existente
+            const existingIds = new Set(historialExistente.map(crearIdUnico));
+            
+            // Filtrar solo las entradas nuevas que no existen
+            const newHistory = historialNuevo.filter((h: any) => {
+              const idUnico = crearIdUnico(h);
+              return !existingIds.has(idUnico);
+            });
+            
+            // Combinar: primero el existente, luego las nuevas
+            const historialCombinado = [...historialExistente, ...newHistory];
+            
+            // Eliminar duplicados dentro del historial combinado (por si acaso)
+            const idsVistos = new Set<string>();
+            const historialSinDuplicados = historialCombinado.filter((h: any) => {
+              const idUnico = crearIdUnico(h);
+              if (idsVistos.has(idUnico)) {
+                return false; // Duplicado, no incluir
+              }
+              idsVistos.add(idUnico);
+              return true;
+            });
+            
+            data.history = historialSinDuplicados;
+            data.historial = historialSinDuplicados;
           } else {
-            data.history = caso.history;
+            // Mantener el historial existente
+            data.history = historialExistente;
+            data.historial = historialExistente;
           }
+        } else if (historialNuevo.length > 0) {
+          // Si no hay historial existente pero hay nuevo, usar el nuevo
+          // También eliminar duplicados dentro del nuevo historial
+          const idsVistos = new Set<string>();
+          const historialSinDuplicados = historialNuevo.filter((h: any) => {
+            const idUnico = crearIdUnico(h);
+            if (idsVistos.has(idUnico)) {
+              return false; // Duplicado, no incluir
+            }
+            idsVistos.add(idUnico);
+            return true;
+          });
+          data.history = historialSinDuplicados;
+          data.historial = historialSinDuplicados;
+        } else {
+          // No hay historial en ningún lado, se inicializará más abajo
+          data.history = [];
+          data.historial = [];
         }
         
         // Preservar otros campos importantes
@@ -296,23 +374,57 @@ const CaseDetail: React.FC = () => {
       
       // Asegurar que el estado normalizado se asigne al objeto
       data.status = finalStatus;
+      data.estado = finalStatus; // También asignar a 'estado' para compatibilidad
       
-      const transitions = STATE_TRANSITIONS[finalStatus] || [];
+      // Inicializar historial si no existe (solo si realmente no hay historial)
+      const tieneHistorial = (data.historial && Array.isArray(data.historial) && data.historial.length > 0) ||
+                              (data.history && Array.isArray(data.history) && data.history.length > 0);
       
-      console.log('📊 Estado del caso después de preservar datos:', {
-        statusOriginalDelWebhook: data.status,
-        statusNormalizado: finalStatus,
-        statusAnterior: caso?.status,
-        tieneStatus: !!data.status,
-        validTransitions: transitions,
-        transitionsCount: transitions.length,
-        estadoEnTransitions: finalStatus in STATE_TRANSITIONS,
-        allStatusValues: Object.values(CaseStatus),
-        stateTransitionsKeys: Object.keys(STATE_TRANSITIONS)
-      });
+      if (!tieneHistorial) {
+        // Inicializar con evento de creación
+        const historialInicial: HistorialEntry[] = [{
+          tipo_evento: "CREADO",
+          justificacion: "Caso creado",
+          autor_nombre: "Sistema",
+          autor_rol: "sistema",
+          fecha: data.createdAt || new Date().toISOString()
+        }];
+        data.historial = historialInicial;
+        data.history = historialInicial;
+      } else {
+        // Asegurar que ambos arrays de historial existan y estén sincronizados
+        if (!data.historial && data.history) {
+          data.historial = data.history;
+        }
+        if (!data.history && data.historial) {
+          data.history = data.historial;
+        }
+      }
       
       console.log('✅ Mostrando caso con datos preservados del caso anterior');
+      console.log('📋 Datos del caso antes de setCaso:', {
+        id: data.id,
+        ticketNumber: data.ticketNumber,
+        status: data.status,
+        estado: data.estado,
+        tieneHistorial: !!(data.historial && data.historial.length > 0)
+      });
       setCaso(data);
+    } catch (error) {
+      console.error('❌ Error al cargar el caso:', error);
+      // Aún así intentar cargar desde localStorage como fallback
+      try {
+        const cases = await api.getCases();
+        const fallbackCase = cases.find((c: any) => 
+          c.id === caseId || c.idCaso === caseId || c.ticketNumber === caseId
+        );
+        if (fallbackCase) {
+          console.log('✅ Caso cargado desde fallback (localStorage)');
+          setCaso(fallbackCase);
+        }
+      } catch (fallbackError) {
+        console.error('❌ Error en fallback también:', fallbackError);
+      }
     }
   };
 
@@ -322,7 +434,10 @@ const CaseDetail: React.FC = () => {
   // Validar si se puede realizar una acción
   const canPerformAction = !isCaseClosed && !transitionLoading;
 
-  const handleStateChange = async (newState: string, extraData?: any) => {
+  // ==================================================
+  // FUNCIÓN CENTRAL DE CAMBIO DE ESTADO
+  // ==================================================
+  const handleStateChange = async (newState: string, justificacion: string) => {
     if (!caso) return;
     
     if (isCaseClosed) {
@@ -332,17 +447,42 @@ const CaseDetail: React.FC = () => {
 
     setTransitionLoading(true);
     try {
-      const detail = extraData?.detalle || extraData?.resolucion || `Transición a ${newState}`;
-      
-      // Actualizar el caso en el backend
-      await api.updateCaseStatus(caso.id, newState, detail, extraData);
-      
-      // Cerrar modales
-      setShowResueltoModal(false);
-      setShowPendienteModal(false);
-      setShowConfirmModal(false);
-      setPendingAction(null);
-      setFormDetail('');
+      // Obtener información del usuario actual
+      const user = api.getUser();
+      const autor_nombre = user?.name || 'Usuario';
+      const autor_rol: AutorRol = user?.role === 'SUPERVISOR' ? 'supervisor' : 
+                                  user?.role === 'GERENTE' ? 'supervisor' : 'agente';
+
+      // Usar la función centralizada de cambio de estado
+      const { casoActualizado, payload } = changeCaseStatus(caso, {
+        nuevoEstado: newState,
+        justificacion: justificacion,
+        autor_nombre: autor_nombre,
+        autor_rol: autor_rol
+      });
+
+      // Actualizar el estado local
+      setCaso(casoActualizado);
+
+      // Guardar en localStorage (persistencia local)
+      const cases = await api.getCases();
+      const idx = cases.findIndex((c: any) => (c.id === caso.id || c.idCaso === caso.id || c.ticketNumber === caso.id));
+      if (idx !== -1) {
+        cases[idx] = { ...cases[idx], ...casoActualizado };
+        localStorage.setItem('intelfon_cases', JSON.stringify(cases));
+      }
+
+      // Preparar payload para webhook futuro (no se envía aún)
+      if (payload) {
+        console.log('📤 Payload preparado para webhook:', payload);
+        // TODO: Descomentar cuando exista el webhook
+        // await sendStatusChangeToWebhook(payload);
+      }
+
+      // Cerrar modal
+      setShowJustificationModal(false);
+      setPendingNewState(null);
+      setJustification('');
       
       // Mostrar animación de éxito
       setShowSuccessAnimation(true);
@@ -350,15 +490,9 @@ const CaseDetail: React.FC = () => {
         setShowSuccessAnimation(false);
       }, 2000);
       
-      // Recargar el caso completo desde el webhook (el mismo que siempre usamos)
-      // loadCaso ya tiene lógica para preservar datos si el webhook devuelve datos incompletos
-      console.log('🔄 Recargando caso desde el webhook después de actualizar estado...');
-      await loadCaso(caso.id);
-      
-      console.log('✅ Caso recargado desde el webhook con el nuevo estado');
-      
-    } catch (err) {
+    } catch (err: any) {
       console.error('❌ Error al actualizar el estado del caso:', err);
+      alert(err.message || 'Error al actualizar el estado del caso');
       
       // Mostrar animación de error
       setShowErrorAnimation(true);
@@ -370,36 +504,33 @@ const CaseDetail: React.FC = () => {
     }
   };
 
-  const handleActionClick = (newState: CaseStatus) => {
+  // Manejar clic en botón de acción
+  const handleActionClick = (newState: string) => {
     if (isCaseClosed) {
       return;
     }
 
-    // Limpiar el comentario anterior
-    setFormDetail('');
-
-    if (newState === CaseStatus.RESUELTO) {
-      setShowResueltoModal(true);
-      return;
-    }
+    // Validar transición
+    const estadoActual = caso?.estado || caso?.status || 'Nuevo';
+    const transicionesPermitidas = getAllowedTransitions(estadoActual);
     
-    if (newState === CaseStatus.PENDIENTE_CLIENTE) {
-      setShowPendienteModal(true);
+    if (!transicionesPermitidas.includes(newState)) {
+      alert(`No se puede cambiar de "${estadoActual}" a "${newState}"`);
       return;
     }
 
-    setPendingAction({ state: newState, label: newState });
-    setShowConfirmModal(true);
+    // Abrir modal de justificación
+    setPendingNewState(newState);
+    setJustification('');
+    setShowJustificationModal(true);
   };
 
-  const confirmAction = () => {
-    if (pendingAction) {
-      // Validar que el comentario esté presente para TODOS los cambios de estado
-      if (!formDetail.trim()) {
-        return;
-      }
-      handleStateChange(pendingAction.state, { detalle: formDetail });
+  // Confirmar cambio de estado desde el modal
+  const confirmStateChange = () => {
+    if (!pendingNewState || !justification.trim()) {
+      return;
     }
+    handleStateChange(pendingNewState, justification);
   };
 
   if (!caso) return (
@@ -411,33 +542,9 @@ const CaseDetail: React.FC = () => {
     </div>
   );
 
-  // Normalizar el estado y obtener las transiciones válidas
-  const normalizedStatus = normalizeStatus(caso.status);
-  const validTransitions = STATE_TRANSITIONS[normalizedStatus] || [];
-  
-  // Debug: Log para verificar las transiciones (siempre mostrar para debug)
-  console.log('🔍 Debug botones de estado:', {
-    casoStatus: caso.status,
-    tipoStatus: typeof caso.status,
-    normalizedStatus,
-    validTransitions,
-    transitionsCount: validTransitions.length,
-    stateTransitionsKeys: Object.keys(STATE_TRANSITIONS),
-    estadoEnTransitions: normalizedStatus in STATE_TRANSITIONS,
-    estadoExacto: STATE_TRANSITIONS[normalizedStatus],
-    todosLosEstados: Object.values(CaseStatus)
-  });
-  
-  // Si no hay transiciones, intentar usar el estado directamente sin normalizar
-  if (validTransitions.length === 0 && caso.status) {
-    const directTransitions = STATE_TRANSITIONS[caso.status as CaseStatus] || [];
-    if (directTransitions.length > 0) {
-      console.warn('⚠️ No se encontraron transiciones con estado normalizado, usando estado directo:', {
-        estadoDirecto: caso.status,
-        transicionesDirectas: directTransitions
-      });
-    }
-  }
+  // Obtener transiciones permitidas usando el nuevo sistema
+  const estadoActual = caso.estado || caso.status || 'Nuevo';
+  const validTransitions = getAllowedTransitions(estadoActual);
 
   // Calcular información SLA
   const createdDate = new Date(caso.createdAt);
@@ -533,26 +640,9 @@ const CaseDetail: React.FC = () => {
                     <span className="text-xl font-bold tracking-tight" style={{color: styles.text.primary}}>{caso.ticketNumber}</span>
                     <div className="flex items-center gap-1.5">
                       <span 
-                        className="text-xs font-semibold uppercase tracking-wide px-3 py-1 rounded-full"
-                        style={{
-                          backgroundColor: (() => {
-                            const status = caso.status as CaseStatus;
-                            if (status === CaseStatus.ESCALADO) return 'rgba(220, 38, 38, 0.15)';
-                            return 'rgba(148, 163, 184, 0.15)';
-                          })(),
-                          color: (() => {
-                            const status = caso.status as CaseStatus;
-                            if (status === CaseStatus.NUEVO) return '#2563eb';
-                            if (status === CaseStatus.EN_PROCESO) return '#d97706';
-                            if (status === CaseStatus.PENDIENTE_CLIENTE) return '#9333ea';
-                            if (status === CaseStatus.ESCALADO) return '#dc2626';
-                            if (status === CaseStatus.RESUELTO) return '#16a34a';
-                            if (status === CaseStatus.CERRADO) return '#64748b';
-                            return '#475569';
-                          })()
-                        }}
+                        className={`text-xs font-semibold uppercase tracking-wide px-3 py-1 rounded-full border ${getStateBadgeColor(estadoActual)}`}
                       >
-                    {caso.status}
+                    {estadoActual}
                   </span>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -685,27 +775,29 @@ const CaseDetail: React.FC = () => {
                  </div>
                ) : validTransitions.length > 0 ? (
                 <div className="flex flex-wrap gap-2.5">
-                   {validTransitions.map(st => (
+                   {validTransitions.map((estadoDestino: string) => {
+                     const buttonColor = getStateColor(estadoDestino);
+                     const stateConfig = CASE_STATES[estadoDestino as keyof typeof CASE_STATES];
+                     
+                     return (
                         <button
-                          key={st}
-                       disabled={transitionLoading || !canPerformAction}
-                       onClick={() => handleActionClick(st)}
-                      className="px-4 py-2.5 rounded-lg text-xs font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:hover:translate-y-0"
-                      style={{backgroundColor: '#c8151b'}}
+                          key={estadoDestino}
+                          disabled={transitionLoading || !canPerformAction}
+                          onClick={() => handleActionClick(estadoDestino)}
+                          className={`px-4 py-2.5 rounded-lg text-xs font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:hover:translate-y-0 ${buttonColor}`}
                           onMouseEnter={(e) => {
                             if (!e.currentTarget.disabled) {
-                          e.currentTarget.style.backgroundColor = '#dc2626';
-                          e.currentTarget.style.transform = 'translateY(-2px)';
+                              e.currentTarget.style.transform = 'translateY(-2px)';
                             }
                           }}
                           onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#c8151b';
-                        e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.transform = 'translateY(0)';
                           }}
                         >
-                          {st}
+                          {stateConfig?.label || estadoDestino}
                         </button>
-                   ))}
+                     );
+                   })}
                  </div>
                  ) : (
                 <div className="p-4 rounded-lg border text-center" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
@@ -723,53 +815,109 @@ const CaseDetail: React.FC = () => {
                 <h3 className="text-sm font-bold uppercase tracking-wide" style={{color: styles.text.primary}}>Historial del Caso</h3>
               </div>
               
-              {caso.history && caso.history.length > 0 ? (
-                <div className="space-y-4">
-                  {caso.history.map((entry, idx) => (
-                    <div key={idx} className="relative pl-12 border-l-2" style={{borderColor: 'rgba(59, 130, 246, 0.2)'}}>
-                      <div 
-                        className="absolute left-[-24px] top-2 w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg border-4"
-                        style={{
-                          backgroundColor: theme === 'dark' ? '#3b82f6' : '#107ab4',
-                          borderColor: styles.card.backgroundColor
-                        }}
-                      >
-                        <CheckCircle2 className="w-5 h-5" />
-                      </div>
-                      <div 
-                        className="p-4 rounded-lg border transition-all ml-4"
-                        style={{
-                          backgroundColor: styles.input.backgroundColor,
-                          borderColor: styles.input.borderColor
-                        }}
-                      >
-                        <div className="flex items-start justify-between gap-3 mb-2">
-                          <div className="flex-1">
-                            <p className="text-sm font-bold mb-1" style={{color: styles.text.primary}}>
-                              {entry.detalle}
-                            </p>
-                            <p className="text-xs font-medium" style={{color: styles.text.secondary}}>
-                              Por: {entry.usuario}
-                            </p>
+              {(() => {
+                // Obtener historial (puede venir como 'history' o 'historial')
+                const historial: HistorialEntry[] = caso.historial || caso.history || [];
+                
+                // Función para crear un ID único de una entrada de historial (misma que arriba)
+                const crearIdUnico = (h: any): string => {
+                  const fecha = h.fecha || h.fechaHora || '';
+                  const tipo = h.tipo_evento || h.tipo || '';
+                  const estadoAnterior = h.estado_anterior || '';
+                  const estadoNuevo = h.estado_nuevo || '';
+                  const justificacion = (h.justificacion || h.detalle || '').trim();
+                  const autor = (h.autor_nombre || h.usuario || h.user || '').trim();
+                  return `${fecha}|${tipo}|${estadoAnterior}|${estadoNuevo}|${justificacion}|${autor}`;
+                };
+                
+                // Eliminar duplicados antes de ordenar
+                const idsVistos = new Set<string>();
+                const historialSinDuplicados = historial.filter((h: any) => {
+                  const idUnico = crearIdUnico(h);
+                  if (idsVistos.has(idUnico)) {
+                    return false; // Duplicado, no incluir
+                  }
+                  idsVistos.add(idUnico);
+                  return true;
+                });
+                
+                // Ordenar por fecha ascendente (más antiguo primero)
+                const historialOrdenado = [...historialSinDuplicados].sort((a, b) => {
+                  const fechaA = new Date(a.fecha || a.fechaHora || 0).getTime();
+                  const fechaB = new Date(b.fecha || b.fechaHora || 0).getTime();
+                  return fechaA - fechaB; // Orden ascendente
+                });
+
+                return historialOrdenado.length > 0 ? (
+                  <div className="space-y-4">
+                    {historialOrdenado.map((entry: HistorialEntry | any, idx: number) => {
+                      // Formatear texto del evento según tipo
+                      let textoEvento = '';
+                      if (entry.tipo_evento === 'CREADO') {
+                        textoEvento = 'El caso fue creado';
+                      } else if (entry.tipo_evento === 'CAMBIO_ESTADO') {
+                        textoEvento = `Estado cambiado de ${entry.estado_anterior || 'N/A'} a ${entry.estado_nuevo || 'N/A'}`;
+                      } else {
+                        // Compatibilidad con formato anterior
+                        textoEvento = entry.detalle || entry.descripcion || entry.accion || 'Evento del caso';
+                      }
+
+                      const fecha = entry.fecha || entry.fechaHora || entry.createdAt || new Date().toISOString();
+                      const autorNombre = entry.autor_nombre || entry.usuario || entry.user || 'Sistema';
+                      const autorRol = entry.autor_rol || 'sistema';
+                      const justificacion = entry.justificacion || entry.detalle || '';
+
+                      return (
+                        <div key={idx} className="relative pl-12 border-l-2" style={{borderColor: 'rgba(59, 130, 246, 0.2)'}}>
+                          <div 
+                            className="absolute left-[-24px] top-2 w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg border-4"
+                            style={{
+                              backgroundColor: theme === 'dark' ? '#3b82f6' : '#107ab4',
+                              borderColor: styles.card.backgroundColor
+                            }}
+                          >
+                            <CheckCircle2 className="w-5 h-5" />
                           </div>
-                          <p className="text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap" style={{
-                            color: styles.text.tertiary,
-                            backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.1)'
-                          }}>
-                            {new Date(entry.fechaHora).toLocaleString('es-ES', { 
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </p>
+                          <div 
+                            className="p-4 rounded-lg border transition-all ml-4"
+                            style={{
+                              backgroundColor: styles.input.backgroundColor,
+                              borderColor: styles.input.borderColor
+                            }}
+                          >
+                            <div className="flex items-start justify-between gap-3 mb-2">
+                              <div className="flex-1">
+                                <p className="text-sm font-bold mb-1" style={{color: styles.text.primary}}>
+                                  {textoEvento}
+                                </p>
+                                {justificacion && (
+                                  <p className="text-xs font-medium mb-1" style={{color: styles.text.secondary}}>
+                                    {justificacion}
+                                  </p>
+                                )}
+                                <p className="text-xs font-medium" style={{color: styles.text.tertiary}}>
+                                  Por: {autorNombre} ({autorRol})
+                                </p>
+                              </div>
+                              <p className="text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap" style={{
+                                color: styles.text.tertiary,
+                                backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.1)'
+                              }}>
+                                {new Date(fecha).toLocaleString('es-ES', { 
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
+                      );
+                    })}
+                  </div>
+                ) : (
                 <div className="flex flex-col items-center justify-center py-8">
                   <div className="p-4 rounded-full mb-3" style={{backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.1)'}}>
                     <History className="w-8 h-8" style={{color: styles.text.tertiary}} />
@@ -780,7 +928,8 @@ const CaseDetail: React.FC = () => {
                   </p>
                   <p className="text-xs mt-1" style={{color: styles.text.tertiary}}>Por: Sistema</p>
                    </div>
-                 )}
+                 );
+                })()}
             </div>
           </section>
 
@@ -834,19 +983,19 @@ const CaseDetail: React.FC = () => {
         </div>
       </div>
 
-      {/* Modales (conservados del código anterior) */}
-      {showConfirmModal && pendingAction && (
+      {/* Modal Unificado de Justificación */}
+      {showJustificationModal && pendingNewState && (
         <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4 z-50" style={{backgroundColor: styles.modal.overlay}}>
           <div className="rounded-xl w-full max-w-sm overflow-hidden shadow-2xl border transform animate-in fade-in zoom-in" style={{...styles.modal, borderColor: styles.card.borderColor}}>
             <div className="p-4 border-b flex justify-between items-center" style={{borderColor: styles.cardHeader.borderColor}}>
               <h3 className="font-bold text-sm" style={{color: styles.text.primary}}>
-                {pendingAction.state === CaseStatus.CERRADO ? 'Cerrar Caso' : 'Cambiar Estado'}
+                Cambiar estado a {pendingNewState}
               </h3>
               <button 
                 onClick={() => {
-                  setShowConfirmModal(false);
-                  setPendingAction(null);
-                  setFormDetail('');
+                  setShowJustificationModal(false);
+                  setPendingNewState(null);
+                  setJustification('');
                 }}
                 className="p-1.5 rounded-lg transition-colors"
                 style={{color: '#64748b'}}
@@ -863,21 +1012,18 @@ const CaseDetail: React.FC = () => {
               </button>
             </div>
             <div className="p-5 space-y-4">
-              <p className="text-xs font-medium leading-relaxed" style={{color: '#64748b'}}>
-                {pendingAction.state === CaseStatus.CERRADO 
-                  ? 'El caso se cerrará permanentemente. Esta acción no se puede deshacer.'
-                  : `¿Cambiar estado a "${pendingAction.label}"?`
-                }
+              <p className="text-xs font-medium leading-relaxed" style={{color: styles.text.tertiary}}>
+                Se cambiará el estado del caso de <strong>{caso?.estado || caso?.status || 'Nuevo'}</strong> a <strong>{pendingNewState}</strong>.
               </p>
               <div>
                 <label className="block text-xs font-bold mb-2" style={{color: styles.text.secondary}}>
-                  Comentario <span className="text-red-500">*</span>
+                  Justificación del cambio <span className="text-red-500">*</span>
                 </label>
                 <textarea 
                   className="w-full h-24 p-3 rounded-lg border outline-none focus:ring-2 transition-all text-xs resize-none"
                   style={{
                     backgroundColor: styles.input.backgroundColor,
-                    borderColor: formDetail.trim() ? styles.input.borderColor : 'rgba(220, 38, 38, 0.4)',
+                    borderColor: justification.trim() ? styles.input.borderColor : 'rgba(220, 38, 38, 0.4)',
                     color: styles.input.color
                   }}
                   onFocus={(e) => {
@@ -886,7 +1032,7 @@ const CaseDetail: React.FC = () => {
                     e.target.style.boxShadow = '0 0 0 3px rgba(16, 122, 180, 0.1)';
                   }}
                   onBlur={(e) => {
-                    if (!formDetail.trim()) {
+                    if (!justification.trim()) {
                       e.target.style.borderColor = 'rgba(220, 38, 38, 0.5)';
                     } else {
                       e.target.style.borderColor = styles.input.borderColor;
@@ -894,13 +1040,10 @@ const CaseDetail: React.FC = () => {
                     e.target.style.backgroundColor = styles.input.backgroundColor;
                     e.target.style.boxShadow = 'none';
                   }}
-                  placeholder={pendingAction.state === CaseStatus.CERRADO 
-                    ? "Describe el motivo del cierre..."
-                    : "Describe el motivo del cambio de estado..."
-                  }
-                  value={formDetail}
+                  placeholder="Describe el motivo del cambio de estado..."
+                  value={justification}
                   onChange={e => {
-                    setFormDetail(e.target.value);
+                    setJustification(e.target.value);
                     const textarea = e.target;
                     if (e.target.value.trim()) {
                       textarea.style.borderColor = styles.input.borderColor;
@@ -915,9 +1058,9 @@ const CaseDetail: React.FC = () => {
                 <button 
                   type="button"
                   onClick={() => {
-                    setShowConfirmModal(false);
-                    setPendingAction(null);
-                    setFormDetail('');
+                    setShowJustificationModal(false);
+                    setPendingNewState(null);
+                    setJustification('');
                   }}
                   className="flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all border"
                   style={{
@@ -937,8 +1080,8 @@ const CaseDetail: React.FC = () => {
                   Cancelar
                 </button>
                 <button 
-                  onClick={confirmAction}
-                  disabled={transitionLoading || !formDetail.trim()}
+                  onClick={confirmStateChange}
+                  disabled={transitionLoading || !justification.trim()}
                   className="flex-1 py-2.5 text-xs font-semibold text-white rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{backgroundColor: '#c8151b'}}
                   onMouseEnter={(e) => {
@@ -960,241 +1103,7 @@ const CaseDetail: React.FC = () => {
         </div>
       )}
 
-      {showResueltoModal && (
-        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4 z-50" style={{backgroundColor: styles.modal.overlay}}>
-          <div className="rounded-xl w-full max-w-sm overflow-hidden shadow-2xl border transform" style={{...styles.modal, borderColor: styles.card.borderColor}}>
-            <div className="p-4 border-b flex justify-between items-center" style={{borderColor: styles.cardHeader.borderColor}}>
-              <h3 className="font-bold text-sm" style={{color: styles.text.primary}}>Marcar como Resuelto</h3>
-                    <button 
-                      onClick={() => {
-                        setShowResueltoModal(false);
-                        setFormDetail('');
-                      }}
-                className="p-1.5 rounded-lg transition-colors"
-                style={{color: '#64748b'}}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f1f5f9';
-                  e.currentTarget.style.color = '#475569';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = '#64748b';
-                }}
-                    >
-                <X className="w-4 h-4"/>
-                    </button>
-                </div>
-            <div className="p-5 space-y-4">
-              <p className="text-xs font-medium leading-relaxed" style={{color: styles.text.tertiary}}>
-                El caso se marcará como resuelto y quedará disponible para cierre.
-              </p>
-              <div>
-                <label className="block text-xs font-bold mb-2" style={{color: styles.text.secondary}}>
-                  Comentario <span className="text-red-500">*</span>
-                </label>
-                <textarea 
-                  className="w-full h-24 p-3 rounded-lg border outline-none focus:ring-2 transition-all text-xs resize-none"
-                  style={{
-                    backgroundColor: styles.input.backgroundColor,
-                    borderColor: formDetail.trim() ? styles.input.borderColor : 'rgba(220, 38, 38, 0.4)',
-                    color: styles.input.color
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#107ab4';
-                    e.target.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#ffffff';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(16, 122, 180, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    if (!formDetail.trim()) {
-                      e.target.style.borderColor = 'rgba(220, 38, 38, 0.5)';
-                    } else {
-                      e.target.style.borderColor = styles.input.borderColor;
-                    }
-                    e.target.style.backgroundColor = styles.input.backgroundColor;
-                    e.target.style.boxShadow = 'none';
-                  }}
-                  placeholder="Describe la resolución del caso..."
-                  value={formDetail}
-                  onChange={e => {
-                    setFormDetail(e.target.value);
-                    const textarea = e.target;
-                    if (e.target.value.trim()) {
-                      textarea.style.borderColor = styles.input.borderColor;
-                    } else {
-                      textarea.style.borderColor = 'rgba(220, 38, 38, 0.4)';
-                    }
-                  }}
-                  required
-                />
-              </div>
-              <div className="flex gap-2.5 pt-2">
-                      <button 
-                        type="button"
-                        onClick={() => {
-                          setShowResueltoModal(false);
-                          setFormDetail('');
-                        }}
-                  className="flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all border"
-                  style={{
-                    color: '#475569',
-                    borderColor: 'rgba(148, 163, 184, 0.3)',
-                    backgroundColor: 'transparent'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f1f5f9';
-                    e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.4)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.3)';
-                  }}
-                      >
-                        Cancelar
-                      </button>
-                      <button 
-                  onClick={() => {
-                    if (!formDetail.trim()) return;
-                    handleStateChange(CaseStatus.RESUELTO, { detalle: formDetail });
-                  }}
-                  disabled={transitionLoading || !formDetail.trim()}
-                  className="flex-1 py-2.5 text-xs font-semibold text-white rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{backgroundColor: '#c8151b'}}
-                        onMouseEnter={(e) => {
-                          if (!e.currentTarget.disabled) {
-                      e.currentTarget.style.backgroundColor = '#dc2626';
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#c8151b';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                        }}
-                      >
-                  {transitionLoading ? 'Procesando...' : 'Confirmar'}
-                      </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-      )}
 
-      {showPendienteModal && (
-        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4 z-50" style={{backgroundColor: styles.modal.overlay}}>
-          <div className="rounded-xl w-full max-w-sm overflow-hidden shadow-2xl border transform" style={{...styles.modal, borderColor: styles.card.borderColor}}>
-            <div className="p-4 border-b flex justify-between items-center" style={{borderColor: styles.cardHeader.borderColor}}>
-              <h3 className="font-bold text-sm" style={{color: styles.text.primary}}>Pendiente Cliente</h3>
-                    <button 
-                      onClick={() => {
-                        setShowPendienteModal(false);
-                        setFormDetail('');
-                      }}
-                className="p-1.5 rounded-lg transition-colors"
-                style={{color: '#64748b'}}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f1f5f9';
-                  e.currentTarget.style.color = '#475569';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = '#64748b';
-                }}
-                    >
-                <X className="w-4 h-4"/>
-                    </button>
-                </div>
-            <div className="p-5 space-y-4">
-              <p className="text-xs font-medium leading-relaxed" style={{color: styles.text.tertiary}}>
-                El caso quedará en espera de respuesta del cliente.
-              </p>
-              <div>
-                <label className="block text-xs font-bold mb-2" style={{color: styles.text.secondary}}>
-                  Comentario <span className="text-red-500">*</span>
-                </label>
-                <textarea 
-                  className="w-full h-24 p-3 rounded-lg border outline-none focus:ring-2 transition-all text-xs resize-none"
-                  style={{
-                    backgroundColor: styles.input.backgroundColor,
-                    borderColor: formDetail.trim() ? styles.input.borderColor : 'rgba(220, 38, 38, 0.4)',
-                    color: styles.input.color
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#107ab4';
-                    e.target.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#ffffff';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(16, 122, 180, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    if (!formDetail.trim()) {
-                      e.target.style.borderColor = 'rgba(220, 38, 38, 0.5)';
-                    } else {
-                      e.target.style.borderColor = styles.input.borderColor;
-                    }
-                    e.target.style.backgroundColor = styles.input.backgroundColor;
-                    e.target.style.boxShadow = 'none';
-                  }}
-                  placeholder="Describe por qué el caso queda pendiente del cliente..."
-                  value={formDetail}
-                  onChange={e => {
-                    setFormDetail(e.target.value);
-                    const textarea = e.target;
-                    if (e.target.value.trim()) {
-                      textarea.style.borderColor = styles.input.borderColor;
-                    } else {
-                      textarea.style.borderColor = 'rgba(220, 38, 38, 0.4)';
-                    }
-                  }}
-                  required
-                />
-              </div>
-              <div className="flex gap-2.5 pt-2">
-                      <button 
-                        type="button"
-                        onClick={() => {
-                          setShowPendienteModal(false);
-                          setFormDetail('');
-                        }}
-                  className="flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all border"
-                  style={{
-                    color: '#475569',
-                    borderColor: 'rgba(148, 163, 184, 0.3)',
-                    backgroundColor: 'transparent'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f1f5f9';
-                    e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.4)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.3)';
-                  }}
-                      >
-                        Cancelar
-                      </button>
-                      <button 
-                  onClick={() => {
-                    if (!formDetail.trim()) return;
-                    handleStateChange(CaseStatus.PENDIENTE_CLIENTE, { detalle: formDetail });
-                  }}
-                        disabled={transitionLoading || !formDetail.trim()}
-                  className="flex-1 py-2.5 text-xs font-semibold text-white rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{backgroundColor: '#c8151b'}}
-                        onMouseEnter={(e) => {
-                          if (!e.currentTarget.disabled) {
-                      e.currentTarget.style.backgroundColor = '#dc2626';
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#c8151b';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                        }}
-                      >
-                        {transitionLoading ? 'Procesando...' : 'Confirmar'}
-                      </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-      )}
 
       {/* Animación de éxito a pantalla completa */}
       {showSuccessAnimation && (

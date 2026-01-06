@@ -89,7 +89,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
     
     // Validar rol (permite cuentas demo y cuentas de n8n)
-    if (!['AGENTE', 'SUPERVISOR', 'GERENTE'].includes(user.role)) {
+    if (!['AGENTE', 'SUPERVISOR', 'GERENTE', 'ADMIN'].includes(user.role)) {
       console.warn('Usuario con rol inválido. Redirigiendo al login.');
       api.logout();
       navigate('/login');
@@ -108,7 +108,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const roleNames: Record<Role, string> = {
       'AGENTE': 'Agente',
       'SUPERVISOR': 'Supervisor',
-      'GERENTE': 'Gerente'
+      'GERENTE': 'Gerente',
+      'ADMIN': 'Administrador'
     };
     return roleNames[role] || role;
   };
@@ -150,6 +151,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         icon: ShieldAlert,
         roles: ['SUPERVISOR', 'GERENTE'] as Role[]
     },
+    { 
+        name: 'Administración de Usuarios', 
+        path: '/app/admin/usuarios', 
+        icon: Users,
+        roles: ['ADMIN'] as Role[]
+    },
   ];
 
   const getPageTitle = () => {
@@ -190,6 +197,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     if (location.pathname.includes('/casos/nuevo')) return 'Nuevo Caso';
     if (location.pathname.includes('/casos/')) return 'Detalle de Caso';
     if (location.pathname === '/app/crear-cuenta') return 'Crear nueva cuenta';
+    if (location.pathname === '/app/admin/usuarios') return 'Administración de Usuarios';
     return 'Sistema SAC';
   };
 

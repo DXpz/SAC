@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { UserPlus, Loader2, AlertCircle, ArrowLeft, ChevronRight } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 const Register: React.FC = () => {
   const [name, setName] = useState('');
@@ -10,6 +11,7 @@ const Register: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { theme } = useTheme();
 
   // Función para generar contraseña automática: "red" + número + letras random
   const generatePassword = (): string => {
@@ -61,197 +63,165 @@ const Register: React.FC = () => {
     }
   };
 
+  // Estilos dinámicos basados en el tema (igual que GestionAgentes)
+  const styles = {
+    container: {
+      backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
+      minHeight: '100vh'
+    },
+    card: {
+      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+      borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.2)',
+      color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
+    },
+    text: {
+      primary: theme === 'dark' ? '#f1f5f9' : '#0f172a',
+      secondary: theme === 'dark' ? '#cbd5e1' : '#475569',
+      tertiary: theme === 'dark' ? '#94a3b8' : '#64748b'
+    },
+    input: {
+      backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+      borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.3)',
+      color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
+    }
+  };
+
   return (
-    <div className="w-full h-full flex flex-col space-y-5">
-          <button
-            onClick={() => navigate('/app/agentes')}
-        className="flex items-center gap-2 text-xs font-bold transition-all px-4 py-2 rounded-xl group"
-        style={{color: '#64748b'}}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.color = '#475569';
-          e.currentTarget.style.backgroundColor = '#f8fafc';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.color = '#64748b';
-          e.currentTarget.style.backgroundColor = 'transparent';
-        }}
-          >
-        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-        Volver a Gestión de Agentes
-          </button>
+    <div className="w-full h-full flex flex-col" style={{...styles.container}}>
+      {/* Header con botón volver - estilo igual a GestionAgentes */}
+      <div className="p-4 rounded-xl border flex-shrink-0 mb-4" style={{...styles.card}}>
+        <button
+          onClick={() => navigate('/app/agentes')}
+          className="flex items-center gap-2 text-xs font-semibold transition-all"
+          style={{color: styles.text.secondary}}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = styles.text.primary;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = styles.text.secondary;
+          }}
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Volver a Gestión de Agentes
+        </button>
+      </div>
 
-          {error && (
-        <div className="mb-5 p-4 rounded-xl flex items-start gap-3 border-2 animate-in slide-in-from-top duration-300" style={{
-          backgroundColor: 'rgba(220, 38, 38, 0.1)',
+      {/* Mensaje de error */}
+      {error && (
+        <div className="mb-4 p-4 rounded-xl flex items-start gap-3 border-2" style={{
+          backgroundColor: theme === 'dark' ? 'rgba(220, 38, 38, 0.1)' : 'rgba(220, 38, 38, 0.05)',
           borderColor: 'rgba(220, 38, 38, 0.3)',
-          color: '#dc2626'
         }}>
-          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" style={{color: '#dc2626'}} />
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" style={{color: '#dc2626'}} />
           <p className="text-xs font-semibold" style={{color: '#dc2626'}}>{error}</p>
+        </div>
+      )}
+
+      {/* Formulario - estilo igual a AdminUsers */}
+      <div className="flex-1 flex items-center justify-center">
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-6 w-full max-w-md" style={{...styles.card}}>
+          <form onSubmit={handleRegister}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold" style={{color: styles.text.primary}}>Información del Agente</h2>
             </div>
-          )}
-
-      {/* Formulario */}
-      <div className="rounded-3xl shadow-xl border overflow-hidden flex-1 flex flex-col" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'}}>
-        <form onSubmit={handleRegister} className="p-6 flex-1 flex flex-col">
-          <div className="max-w-2xl mx-auto w-full space-y-5 flex-1">
-            <h2 className="text-sm font-semibold mb-3 pb-2 border-b" style={{color: '#1e293b', borderColor: 'rgba(148, 163, 184, 0.2)'}}>
-              Información del Agente
-            </h2>
-
+            <div className="space-y-4">
+              {/* Campo Nombre Completo */}
               <div>
-                <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>
-                  Nombre Completo <span className="text-red-500">*</span>
+                <label className="block text-xs font-semibold mb-1" style={{color: styles.text.secondary}}>
+                  Nombre Completo <span style={{color: '#ef4444'}}>*</span>
                 </label>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Juan Pérez"
-                  className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Juan Pérez"
+                  className="w-full px-3 py-2 rounded-lg border text-sm"
                   style={{
-                    backgroundColor: '#f8fafc',
+                    backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
                     borderColor: 'rgba(148, 163, 184, 0.3)',
-                    color: '#1e293b',
-                    '--tw-ring-color': 'var(--color-accent-blue)',
-                    '--tw-ring-opacity': '0.2'
-                  } as React.CSSProperties & { '--tw-ring-color': string, '--tw-ring-opacity': string }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = 'var(--color-accent-blue)';
-                    e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                    e.target.style.backgroundColor = '#ffffff';
+                    color: styles.text.primary
                   }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
-                    e.target.style.boxShadow = '';
-                    e.target.style.backgroundColor = '#f8fafc';
-                  }}
-              />
-            </div>
+                />
+              </div>
 
+              {/* Campo Correo */}
               <div>
-                <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>
-                  Correo <span className="text-red-500">*</span>
+                <label className="block text-xs font-semibold mb-1" style={{color: styles.text.secondary}}>
+                  Correo <span style={{color: '#ef4444'}}>*</span>
                 </label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="usuario@intelfon.com"
-                  className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="usuario@intelfon.com"
+                  className="w-full px-3 py-2 rounded-lg border text-sm"
                   style={{
-                    backgroundColor: '#f8fafc',
+                    backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
                     borderColor: 'rgba(148, 163, 184, 0.3)',
-                    color: '#1e293b',
-                    '--tw-ring-color': 'var(--color-accent-blue)',
-                    '--tw-ring-opacity': '0.2'
-                  } as React.CSSProperties & { '--tw-ring-color': string, '--tw-ring-opacity': string }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = 'var(--color-accent-blue)';
-                    e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                    e.target.style.backgroundColor = '#ffffff';
+                    color: styles.text.primary
                   }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
-                    e.target.style.boxShadow = '';
-                    e.target.style.backgroundColor = '#f8fafc';
-                  }}
-              />
-            </div>
+                />
+              </div>
 
-              <div className="relative">
-                <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: '#475569'}}>
-                  País <span className="text-red-500">*</span>
+              {/* Campo País */}
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{color: styles.text.secondary}}>
+                  País <span style={{color: '#ef4444'}}>*</span>
                 </label>
                 <select
-                required
+                  required
                   value={pais}
                   onChange={(e) => setPais(e.target.value)}
-                  className="w-full pl-3 pr-10 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md appearance-none cursor-pointer"
+                  className="w-full px-3 py-2 rounded-lg border text-sm"
                   style={{
-                    backgroundColor: '#f8fafc',
+                    backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
                     borderColor: 'rgba(148, 163, 184, 0.3)',
-                    color: '#1e293b',
-                    '--tw-ring-color': 'var(--color-accent-blue)',
-                    '--tw-ring-opacity': '0.2'
-                  } as React.CSSProperties & { '--tw-ring-color': string, '--tw-ring-opacity': string }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = 'var(--color-accent-blue)';
-                    e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                    e.target.style.backgroundColor = '#ffffff';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
-                    e.target.style.boxShadow = '';
-                    e.target.style.backgroundColor = '#f8fafc';
+                    color: styles.text.primary
                   }}
                 >
                   <option value="El Salvador">El Salvador</option>
                   <option value="Guatemala">Guatemala</option>
+                  <option value="Honduras">Honduras</option>
+                  <option value="Nicaragua">Nicaragua</option>
+                  <option value="Costa Rica">Costa Rica</option>
+                  <option value="Panamá">Panamá</option>
                 </select>
-                <ChevronRight className="absolute right-3 top-9 w-4 h-4 pointer-events-none transition-all duration-200" style={{color: '#64748b', transform: 'rotate(90deg)'}} />
-            </div>
+              </div>
             </div>
 
-          {/* Botones de acción */}
-          <div className="mt-5 pt-4 border-t flex gap-3" style={{borderColor: 'rgba(148, 163, 184, 0.2)'}}>
-            <button
-              type="button"
-              onClick={() => navigate('/app/agentes')}
-              className="flex-1 py-2 text-xs font-bold rounded-lg transition-all border-2 shadow-sm hover:shadow-md"
-              style={{
-                color: '#475569',
-                borderColor: 'rgba(148, 163, 184, 0.4)',
-                backgroundColor: '#ffffff'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#f8fafc';
-                e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.6)';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#ffffff';
-                e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.4)';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 py-2 text-xs font-bold rounded-lg transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg"
-              style={{
-                background: 'linear-gradient(135deg, var(--color-brand-red), var(--color-accent-red))',
-                color: '#ffffff',
-                boxShadow: '0 4px 14px rgba(200, 21, 27, 0.25)'
-              }}
-              onMouseEnter={(e) => {
-                if (!loading) {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, var(--color-accent-red), var(--color-brand-red))';
-                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(200, 21, 27, 0.35)';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'linear-gradient(135deg, var(--color-brand-red), var(--color-accent-red))';
-                e.currentTarget.style.boxShadow = '0 4px 14px rgba(200, 21, 27, 0.25)';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-              ) : (
-                <span className="flex items-center justify-center gap-2">
-                  Crear Cuenta
-                  <UserPlus className="w-4 h-4" />
-                </span>
-              )}
-            </button>
-          </div>
-        </form>
+            {/* Botones de acción - estilo igual a AdminUsers */}
+            <div className="flex gap-3 mt-6">
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 px-4 py-2 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{background: 'linear-gradient(to right, var(--color-brand-red), var(--color-accent-red))'}}
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    Crear Cuenta <UserPlus className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/app/agentes')}
+                className="px-4 py-2 text-sm font-semibold rounded-lg border transition-all"
+                style={{
+                  backgroundColor: 'transparent',
+                  borderColor: 'rgba(148, 163, 184, 0.3)',
+                  color: styles.text.secondary
+                }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

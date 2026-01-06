@@ -435,6 +435,7 @@ const DEMO_ACCOUNTS: Record<string, { role: Role; name: string }> = {
   'agente@intelfon.com': { role: 'AGENTE', name: 'Agente Demo' },
   'supervisor@intelfon.com': { role: 'SUPERVISOR', name: 'Supervisor Demo' },
   'gerente@intelfon.com': { role: 'GERENTE', name: 'Gerente Demo' },
+  'admin@intelfon.com': { role: 'ADMIN', name: 'Admin Demo' },
 };
 
 // Función auxiliar para autenticación en modo demo (solo para cuentas demo permitidas)
@@ -451,7 +452,7 @@ const authenticateDemo = (email: string): User => {
   const user: User = {
     id: `demo-${demoAccount.role.toLowerCase()}`,
     name: demoAccount.name,
-    role: demoAccount.role,
+    role: demoAccount.role as Role,
     avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(demoAccount.name)}&background=0f172a&color=fff`
   };
 
@@ -595,6 +596,9 @@ export const api = {
     const idx = cases.findIndex((c: any) => (c.id === id || c.idCaso === id || c.ticketNumber === id));
     
     if (idx !== -1) {
+      const casoAnterior = cases[idx];
+      const estadoAnterior = casoAnterior.estado || casoAnterior.status;
+      
       cases[idx].estado = status;
       cases[idx].status = status;
       if (!cases[idx].historial) cases[idx].historial = [];
@@ -748,9 +752,18 @@ export const api = {
       diasAbierto: 0,
       createdAt: new Date().toISOString(),
       historial: [{
-        fechaHora: new Date().toISOString(),
-        detalle: 'Caso creado manualmente en sistema (local fallback)',
-        usuario: this.getUser()?.name || 'Sistema'
+        tipo_evento: "CREADO",
+        justificacion: "Caso creado",
+        autor_nombre: "Sistema",
+        autor_rol: "sistema",
+        fecha: new Date().toISOString()
+      }],
+      history: [{
+        tipo_evento: "CREADO",
+        justificacion: "Caso creado",
+        autor_nombre: "Sistema",
+        autor_rol: "sistema",
+        fecha: new Date().toISOString()
       }]
     };
     cases.unshift(newEntry);
@@ -1383,5 +1396,103 @@ export const api = {
       
       throw new Error('Error de conexión con el servidor.');
     }
+  },
+
+  async reassignCase(caseId: string, newAgentId: string, justification: string): Promise<boolean> {
+    const user = this.getUser();
+    const cases = await this.getCases();
+    const idx = cases.findIndex((c: any) => (c.id === caseId || c.idCaso === caseId || c.ticketNumber === caseId));
+    
+    if (idx === -1) {
+      throw new Error('Caso no encontrado');
+    }
+
+    const caso = cases[idx];
+    const agentes = await this.getAgentes();
+    const nuevoAgente = agentes.find((a: any) => a.idAgente === newAgentId || a.id === newAgentId);
+    
+    if (!nuevoAgente) {
+      throw new Error('Agente no encontrado');
+    }
+
+    const agenteAnterior = caso.agenteAsignado?.nombre || caso.agentName || 'Sin asignar';
+    const agenteNuevo = nuevoAgente.nombre;
+
+    // Actualizar agente asignado
+    cases[idx].agenteAsignado = nuevoAgente;
+    cases[idx].agentId = nuevoAgente.idAgente;
+    cases[idx].agentName = nuevoAgente.nombre;
+
+    // Registrar en historial
+    if (!cases[idx].historial) cases[idx].historial = [];
+    const detalleCompleto = justification || `Reasignación de "${agenteAnterior}" a "${agenteNuevo}"`;
+    cases[idx].historial.unshift({
+      fechaHora: new Date().toISOString(),
+      detalle: detalleCompleto,
+      usuario: this.getUser()?.name || 'Sistema'
+    });
+
+    // Intentar actualizar en el backend
+    try {
+      await callCasesWebhook('POST', {
+        action: 'case.update',
+        actor: buildActorPayload(user),
+        data: {
+          case_id: caseId,
+          patch: {
+            agente_id: newAgentId,
+            descripcion: detalleCompleto
+          }
+        }
+      });
+    } catch (err) {
+      console.warn('Error al actualizar reasignación en n8n, aplicando cambio solo en local.', err);
+    }
+
+    localStorage.setItem('intelfon_cases', JSON.stringify(cases));
+    clearCache('cases');
+    return true;
+  },
+
+  async addCaseComment(caseId: string, comment: string): Promise<boolean> {
+    const user = this.getUser();
+    const cases = await this.getCases();
+    const idx = cases.findIndex((c: any) => (c.id === caseId || c.idCaso === caseId || c.ticketNumber === caseId));
+    
+    if (idx === -1) {
+      throw new Error('Caso no encontrado');
+    }
+
+    if (!comment || !comment.trim()) {
+      throw new Error('El comentario no puede estar vacío');
+    }
+
+    // Registrar comentario en historial
+    if (!cases[idx].historial) cases[idx].historial = [];
+    cases[idx].historial.unshift({
+      fechaHora: new Date().toISOString(),
+      detalle: comment.trim(),
+      usuario: this.getUser()?.name || 'Sistema'
+    });
+
+    // Intentar actualizar en el backend
+    try {
+      await callCasesWebhook('POST', {
+        action: 'case.update',
+        actor: buildActorPayload(user),
+        data: {
+          case_id: caseId,
+          patch: {
+            comentario: comment.trim()
+          }
+        }
+      });
+    } catch (err) {
+      console.warn('Error al actualizar comentario en n8n, aplicando cambio solo en local.', err);
+    }
+
+    localStorage.setItem('intelfon_cases', JSON.stringify(cases));
+    clearCache('cases');
+    return true;
   }
 };

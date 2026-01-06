@@ -19,7 +19,8 @@ import {
   Activity,
   CheckCircle2,
   TrendingUp,
-  Clock
+  Clock,
+  Search
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -34,6 +35,13 @@ const GestionAgentes: React.FC = () => {
   const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { theme } = useTheme();
   const navigate = useNavigate();
+  
+  // Estados para búsqueda
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [focusedSuggestionIndex, setFocusedSuggestionIndex] = useState(-1);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
 
   const [itemsPerView, setItemsPerView] = useState(3);
   const [totalPages, setTotalPages] = useState(1);
@@ -340,6 +348,94 @@ const GestionAgentes: React.FC = () => {
     inactivos: agentes.filter(a => a.estado === 'Inactivo').length
   };
 
+  // Filtrar agentes por término de búsqueda
+  const filteredAgentes = React.useMemo(() => {
+    if (!searchTerm.trim()) {
+      return agentes;
+    }
+    const term = searchTerm.toLowerCase().trim();
+    return agentes.filter(agente => 
+      agente.nombre.toLowerCase().includes(term)
+    );
+  }, [agentes, searchTerm]);
+
+  // Generar sugerencias de autocompletado
+  const suggestions = React.useMemo(() => {
+    if (!searchTerm.trim() || searchTerm.length < 1) {
+      return [];
+    }
+    const term = searchTerm.toLowerCase().trim();
+    return agentes
+      .filter(agente => 
+        agente.nombre.toLowerCase().includes(term) &&
+        agente.nombre.toLowerCase() !== term
+      )
+      .slice(0, 5) // Máximo 5 sugerencias
+      .map(agente => agente.nombre);
+  }, [agentes, searchTerm]);
+
+  // Manejar selección de sugerencia
+  const handleSelectSuggestion = (suggestion: string) => {
+    setSearchTerm(suggestion);
+    setShowSuggestions(false);
+    setFocusedSuggestionIndex(-1);
+    searchInputRef.current?.blur();
+  };
+
+  // Manejar teclado en sugerencias
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setFocusedSuggestionIndex(prev => 
+        prev < suggestions.length - 1 ? prev + 1 : prev
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setFocusedSuggestionIndex(prev => prev > 0 ? prev - 1 : -1);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (focusedSuggestionIndex >= 0 && focusedSuggestionIndex < suggestions.length) {
+        handleSelectSuggestion(suggestions[focusedSuggestionIndex]);
+      } else if (suggestions.length === 1) {
+        handleSelectSuggestion(suggestions[0]);
+      }
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+      setFocusedSuggestionIndex(-1);
+      searchInputRef.current?.blur();
+    }
+  };
+
+  // Scroll a sugerencia enfocada
+  useEffect(() => {
+    if (focusedSuggestionIndex >= 0 && suggestionsRef.current) {
+      const focusedElement = suggestionsRef.current.children[focusedSuggestionIndex] as HTMLElement;
+      if (focusedElement) {
+        focusedElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }
+  }, [focusedSuggestionIndex]);
+
+  // Cerrar sugerencias al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        searchInputRef.current &&
+        !searchInputRef.current.contains(event.target as Node) &&
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target as Node)
+      ) {
+        setShowSuggestions(false);
+        setFocusedSuggestionIndex(-1);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Estilos dinámicos basados en el tema
   const styles = {
     container: {
@@ -385,14 +481,92 @@ const GestionAgentes: React.FC = () => {
              </div>
            )}
          </div>
-         <button 
-           onClick={() => navigate('/app/crear-cuenta')}
-           className="px-4 py-2 text-white text-xs font-bold rounded-lg hover:shadow-lg transition-all flex items-center gap-2 hover:-translate-y-0.5"
-           style={{background: 'linear-gradient(to right, var(--color-brand-red), var(--color-accent-red))', boxShadow: '0 4px 12px rgba(200, 21, 27, 0.2)'}}
-         >
-           <UserPlus className="w-4 h-4" />
-           Nueva Cuenta
-         </button>
+         <div className="flex items-center gap-3">
+           {/* Campo de búsqueda */}
+           <div className="relative" style={{ minWidth: '250px' }}>
+             <div className="relative">
+               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{color: styles.text.tertiary}} />
+               <input
+                 ref={searchInputRef}
+                 type="text"
+                 value={searchTerm}
+                 onChange={(e) => {
+                   setSearchTerm(e.target.value);
+                   setShowSuggestions(true);
+                   setFocusedSuggestionIndex(-1);
+                 }}
+                 onFocus={() => {
+                   if (suggestions.length > 0) {
+                     setShowSuggestions(true);
+                   }
+                 }}
+                 onKeyDown={handleKeyDown}
+                 placeholder="Buscar agente por nombre..."
+                 className="w-full pl-10 pr-10 py-2 text-xs rounded-lg border transition-all focus:outline-none"
+                 style={{
+                   backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                   borderColor: showSuggestions ? 'rgba(200, 21, 27, 0.4)' : 'rgba(148, 163, 184, 0.3)',
+                   color: styles.text.primary
+                 }}
+               />
+               {searchTerm && (
+                 <button
+                   onClick={() => {
+                     setSearchTerm('');
+                     setShowSuggestions(false);
+                     setFocusedSuggestionIndex(-1);
+                     searchInputRef.current?.focus();
+                   }}
+                   className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-opacity-20 transition-colors"
+                   style={{color: styles.text.tertiary}}
+                 >
+                   <X className="w-3 h-3" />
+                 </button>
+               )}
+             </div>
+             
+             {/* Lista de sugerencias */}
+             {showSuggestions && suggestions.length > 0 && (
+               <div
+                 ref={suggestionsRef}
+                 className="absolute z-50 w-full mt-1 rounded-lg border shadow-xl max-h-48 overflow-y-auto"
+                 style={{
+                   backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                   borderColor: 'rgba(148, 163, 184, 0.3)',
+                   boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)'
+                 }}
+               >
+                 {suggestions.map((suggestion, index) => (
+                   <button
+                     key={suggestion}
+                     onClick={() => handleSelectSuggestion(suggestion)}
+                     className="w-full px-4 py-2.5 text-left text-xs transition-colors flex items-center gap-2"
+                     style={{
+                       backgroundColor: focusedSuggestionIndex === index 
+                         ? (theme === 'dark' ? 'rgba(200, 21, 27, 0.2)' : 'rgba(200, 21, 27, 0.1)')
+                         : 'transparent',
+                       color: styles.text.primary
+                     }}
+                     onMouseEnter={() => setFocusedSuggestionIndex(index)}
+                     onMouseLeave={() => setFocusedSuggestionIndex(-1)}
+                   >
+                     <Search className="w-3 h-3 flex-shrink-0" style={{color: styles.text.tertiary}} />
+                     <span className="truncate">{suggestion}</span>
+                   </button>
+                 ))}
+               </div>
+             )}
+           </div>
+           
+           <button 
+             onClick={() => navigate('/app/crear-cuenta')}
+             className="px-4 py-2 text-white text-xs font-bold rounded-lg hover:shadow-lg transition-all flex items-center gap-2 hover:-translate-y-0.5"
+             style={{background: 'linear-gradient(to right, var(--color-brand-red), var(--color-accent-red))', boxShadow: '0 4px 12px rgba(200, 21, 27, 0.2)'}}
+           >
+             <UserPlus className="w-4 h-4" />
+             Nueva Cuenta
+           </button>
+         </div>
       </div>
 
       {/* Contenedor con scroll vertical para el carrusel */}
@@ -413,36 +587,59 @@ const GestionAgentes: React.FC = () => {
             </div>
           ))}
         </div>
-      ) : agentes.length === 0 ? (
+      ) : filteredAgentes.length === 0 ? (
         <div className="rounded-2xl border-2 p-16 text-center" style={{...styles.card}}>
           <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{
             backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc'
           }}>
             <Users className="w-10 h-10" style={{color: styles.text.tertiary}} />
           </div>
-          <h3 className="text-base font-bold mb-2" style={{color: styles.text.primary}}>No hay agentes disponibles</h3>
-          <p className="text-sm mb-6" style={{color: styles.text.tertiary}}>Los agentes aparecerán aquí cuando estén registrados</p>
-          <button
-            onClick={() => navigate('/app/crear-cuenta')}
-            className="px-6 py-3 text-white font-semibold rounded-xl hover:shadow-xl transition-all flex items-center gap-2 mx-auto"
-            style={{background: 'linear-gradient(to right, var(--color-brand-red), var(--color-accent-red))'}}
-          >
-            <UserPlus className="w-4 h-4" />
-            Crear primer agente
-          </button>
+          <h3 className="text-base font-bold mb-2" style={{color: styles.text.primary}}>
+            {searchTerm ? 'No se encontraron agentes' : 'No hay agentes disponibles'}
+          </h3>
+          <p className="text-sm mb-6" style={{color: styles.text.tertiary}}>
+            {searchTerm 
+              ? `No hay agentes que coincidan con "${searchTerm}"`
+              : 'Los agentes aparecerán aquí cuando estén registrados'}
+          </p>
+          {searchTerm ? (
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setShowSuggestions(false);
+              }}
+              className="px-4 py-2 text-xs font-semibold rounded-lg border transition-all"
+              style={{
+                backgroundColor: 'transparent',
+                borderColor: 'rgba(148, 163, 184, 0.3)',
+                color: styles.text.secondary
+              }}
+            >
+              Limpiar búsqueda
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate('/app/crear-cuenta')}
+              className="px-6 py-3 text-white font-semibold rounded-xl hover:shadow-xl transition-all flex items-center gap-2 mx-auto"
+              style={{background: 'linear-gradient(to right, var(--color-brand-red), var(--color-accent-red))'}}
+            >
+              <UserPlus className="w-4 h-4" />
+              Crear primer agente
+            </button>
+          )}
         </div>
       ) : (
         <div className="relative w-full flex-1" style={{ overflow: 'hidden', minHeight: 0, display: 'flex', flexDirection: 'column', maxHeight: '100%' }}>
           {/* Microcopy */}
-          {agentes.length > itemsPerView && (
+          {filteredAgentes.length > itemsPerView && (
             <p className="text-xs text-center mb-2 flex-shrink-0" style={{color: '#94a3b8'}}>
-              Desliza para ver más agentes
+              {searchTerm ? `Mostrando ${filteredAgentes.length} resultado(s) para "${searchTerm}"` : 'Desliza para ver más agentes'}
             </p>
           )}
 
           <div className="relative w-full flex-1" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0, maxHeight: '100%' }}>
             {/* Flechas de Navegación Mejoradas */}
-            {agentes.length > itemsPerView && (
+            {filteredAgentes.length > itemsPerView && (
               <>
                 <button
                   onClick={prevPage}
@@ -522,7 +719,7 @@ const GestionAgentes: React.FC = () => {
             >
               <div className="flex gap-4 items-stretch" style={{ minHeight: '100%', alignItems: 'stretch', boxSizing: 'border-box', height: '100%' }}>
                 <div style={{ minWidth: 'calc(50% - 140px)', flexShrink: 0 }}></div>
-          {agentes.map((agente, idx) => {
+          {filteredAgentes.map((agente, idx) => {
                   const isHovered = hoveredAgenteId === agente.idAgente;
                   const isAnyHovered = hoveredAgenteId !== null;
                   const estadoOperativo = getEstadoOperativo(agente);
@@ -808,7 +1005,7 @@ const GestionAgentes: React.FC = () => {
           </div>
 
           {/* Indicadores de Posición Mejorados - Siempre visible */}
-          {agentes.length > 0 && (
+          {filteredAgentes.length > 0 && (
             <div className="flex justify-center items-center gap-3 mt-4 flex-shrink-0">
               {totalPages > 1 && Array.from({ length: totalPages }).map((_, index) => (
                 <button

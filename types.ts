@@ -1,5 +1,5 @@
 
-export type Role = 'AGENTE' | 'SUPERVISOR' | 'GERENTE';
+export type Role = 'AGENTE' | 'SUPERVISOR' | 'GERENTE' | 'ADMIN';
 
 export enum CaseStatus {
   NUEVO = 'Nuevo',
@@ -66,6 +66,22 @@ export interface Agente {
   casosActivos: number;
 }
 
+// ==================================================
+// MODELO DE HISTORIAL DEL CASO
+// ==================================================
+export type TipoEventoHistorial = "CREADO" | "CAMBIO_ESTADO";
+export type AutorRol = "sistema" | "agente" | "supervisor";
+
+export interface HistorialEntry {
+  tipo_evento: TipoEventoHistorial;
+  estado_anterior?: string;
+  estado_nuevo?: string;
+  justificacion: string;
+  autor_nombre: string;
+  autor_rol: AutorRol;
+  fecha: string;
+}
+
 export interface Case {
   id: string;
   ticketNumber: string;
@@ -81,7 +97,8 @@ export interface Case {
   agentName: string;
   createdAt: string;
   slaExpired: boolean;
-  history?: any[];
+  history?: HistorialEntry[] | any[]; // Compatibilidad con formato anterior
+  historial?: HistorialEntry[]; // Formato nuevo oficial
   clientEmail?: string;
   clientPhone?: string;
   // Extended metadata for supervisor/alert views

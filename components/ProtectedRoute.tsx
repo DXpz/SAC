@@ -36,7 +36,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
   }
 
   // Validar que el rol sea válido
-  if (!['AGENTE', 'SUPERVISOR', 'GERENTE'].includes(user.role)) {
+  if (!['AGENTE', 'SUPERVISOR', 'GERENTE', 'ADMIN'].includes(user.role)) {
     api.logout();
     return <Navigate to="/login" replace />;
   }

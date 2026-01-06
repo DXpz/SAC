@@ -119,6 +119,7 @@ const Login: React.FC = () => {
       let targetPath = '/app/agente';
       if (user.role === 'SUPERVISOR') targetPath = '/app/supervisor';
       if (user.role === 'GERENTE') targetPath = '/app/gerencia';
+      if (user.role === 'ADMIN') targetPath = '/app/admin/usuarios';
       
       // Esperar un momento para mostrar la animación antes de redirigir
       setTimeout(() => {
@@ -470,6 +471,30 @@ const Login: React.FC = () => {
                 Gerente
                 <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 text-xs text-slate-300 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap border border-slate-700">
                   Dashboard ejecutivo
+                </span>
+              </button>
+              <button 
+                onClick={() => handleDemoClick('admin@intelfon.com')}
+                className="px-5 py-2.5 text-xs font-medium text-slate-300 rounded-full border transition-all relative group"
+                style={{
+                  background: 'rgba(30, 30, 30, 0.6)',
+                  borderColor: 'rgba(100, 116, 139, 0.3)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(40, 40, 40, 0.8)';
+                  e.currentTarget.style.borderColor = 'rgba(200, 21, 27, 0.4)';
+                  e.currentTarget.style.color = '#ffffff';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(30, 30, 30, 0.6)';
+                  e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.3)';
+                  e.currentTarget.style.color = '#cbd5e1';
+                }}
+                title="Acceso rápido como Admin - Administración de usuarios"
+              >
+                Admin
+                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 text-xs text-slate-300 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap border border-slate-700">
+                  Administración de usuarios
                 </span>
               </button>
             </div>

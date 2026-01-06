@@ -16,6 +16,7 @@ import GerenteDashboard from './pages/GerenteDashboard';
 import SupervisorPanel from './pages/SupervisorPanel';
 import AlertasCriticas from './pages/AlertasCriticas';
 import GestionAgentes from './pages/GestionAgentes';
+import AdminUsers from './pages/AdminUsers';
 import { UserRole } from './types';
 import { api } from './services/api';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -44,7 +45,7 @@ const App: React.FC = () => {
       if (!user.id || !user.name || !user.role) {
         console.warn('Usuario con estructura inválida. Limpiando datos.');
         api.logout();
-      } else if (!['AGENTE', 'SUPERVISOR', 'GERENTE'].includes(user.role)) {
+      } else if (!['AGENTE', 'SUPERVISOR', 'GERENTE', 'ADMIN'].includes(user.role)) {
         console.warn('Usuario con rol inválido. Limpiando datos.');
         api.logout();
       }
@@ -97,6 +98,11 @@ const App: React.FC = () => {
                   <ProtectedRoute allowedRoles={[UserRole.SUPERVISOR]}>
                     <GestionAgentes />
                   </ProtectedRoute>
+                } />
+                
+                {/* Administración de Usuarios - Solo para ADMIN (Demo) */}
+                <Route path="admin/usuarios" element={
+                  <AdminUsers />
                 } />
                 
                 {/* Crear nueva cuenta - Solo para supervisores */}
