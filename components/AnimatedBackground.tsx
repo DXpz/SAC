@@ -64,28 +64,32 @@ const AnimatedBackground: React.FC = () => {
           particle.vy *= -1;
         }
 
-        // Calcular efecto de destello neón (optimizado: menos cálculos)
+        // Calcular efecto de destello neón con zoom (optimizado: menos cálculos)
         const time = frameCount * 0.01; // Velocidad del destello (más lento para ahorrar recursos)
         const glowVariation = Math.sin(time + particle.glowPhase) * particle.glowIntensity;
         // Mantener opacidad más alta para efecto neón más brillante
         particle.opacity = Math.max(0.5, Math.min(1.0, particle.baseOpacity + 0.3 + glowVariation));
+        
+        // Calcular efecto de zoom in/out (pequeño pulso)
+        const zoomVariation = Math.sin(time * 1.2 + particle.glowPhase) * 0.15; // Variación de 15% del tamaño
+        const currentRadius = particle.radius * (1 + zoomVariation);
 
-        // Dibujar partícula con efecto neón (optimizado: menos capas)
+        // Dibujar partícula con efecto neón y zoom (optimizado: menos capas)
         ctx.save();
         
-        // Capa 1: Glow exterior (combinado para mejor rendimiento)
-        ctx.shadowBlur = 12;
+        // Capa 1: Glow exterior con zoom (combinado para mejor rendimiento)
+        ctx.shadowBlur = 12 + (zoomVariation * 8); // El glow también pulsa
         ctx.shadowColor = `rgba(200, 21, 27, ${particle.opacity * 0.8})`;
         ctx.beginPath();
-        ctx.arc(particle.x, particle.y, particle.radius * 1.5, 0, Math.PI * 2);
+        ctx.arc(particle.x, particle.y, currentRadius * 1.5, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(200, 21, 27, ${particle.opacity * 0.5})`;
         ctx.fill();
         
-        // Capa 2: Núcleo brillante (combinado)
-        ctx.shadowBlur = 6;
+        // Capa 2: Núcleo brillante con zoom (combinado)
+        ctx.shadowBlur = 6 + (zoomVariation * 4); // El glow también pulsa
         ctx.shadowColor = `rgba(240, 50, 60, ${particle.opacity})`;
         ctx.beginPath();
-        ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+        ctx.arc(particle.x, particle.y, currentRadius, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(240, 50, 60, ${Math.min(1.0, particle.opacity * 1.2)})`;
         ctx.fill();
         

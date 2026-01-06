@@ -8,7 +8,7 @@ import { calculateBusinessDaysElapsed, calculateSLADelayDays } from '../utils/sl
 const WEBHOOK_CASOS_URL = API_CONFIG.WEBHOOK_CASOS_URL || '/api/casos';
 
 // Tipos para las acciones del webhook
-type CaseAction = 'case.create' | 'case.update' | 'case.read' | 'case.delete' | 'case.query';
+type CaseAction = 'case.create' | 'case.update' | 'case.read' | 'case.delete' | 'case.query' | 'case.agent';
 
 interface Actor {
   user_id: number;
@@ -688,7 +688,7 @@ export const createCase = async (caseData: {
 
 /**
  * Obtiene todos los casos
- * Si el usuario es AGENTE, solo retorna los casos asignados a ese agente usando case.query
+ * Si el usuario es AGENTE, solo retorna los casos asignados a ese agente usando case.agent
  * Si el usuario es SUPERVISOR o GERENTE, retorna todos los casos usando case.read
  */
 export const getCases = async (): Promise<Case[]> => {
@@ -699,21 +699,21 @@ export const getCases = async (): Promise<Case[]> => {
     throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
   }
   
-  // Si es AGENTE, usar case.query para obtener solo sus casos asignados
+  // Si es AGENTE, usar case.agent para obtener solo sus casos asignados
   if (userRole === 'AGENTE') {
     const payload: CaseWebhookPayload = {
-      action: 'case.query',
+      action: 'case.agent',
       actor,
       data: {
         user_id: actor.user_id
       }
     };
     
-    console.log('🔍 [AGENTE] Consultando casos asignados al usuario:', actor.user_id);
-    console.log('📤 JSON completo enviado al webhook (case.query):', JSON.stringify(payload, null, 2));
+    console.log('🔍 [AGENTE] Consultando casos asignados al usuario usando case.agent:', actor.user_id);
+    console.log('📤 JSON completo enviado al webhook (case.agent):', JSON.stringify(payload, null, 2));
     const response = await callCaseWebhook(payload);
     
-    console.log('📥 Respuesta completa del webhook getCases (case.query):', JSON.stringify(response, null, 2));
+    console.log('📥 Respuesta completa del webhook getCases (case.agent):', JSON.stringify(response, null, 2));
     
     // Procesar la respuesta de la misma manera que case.read
     return processWebhookResponse(response);

@@ -48,17 +48,30 @@ const SupervisorPanel: React.FC = () => {
     }
   };
 
+  // Función helper para filtrar por agente (usando useCallback para optimización)
+  const filterByAgent = React.useCallback((casosList: Caso[]) => {
+    if (agentFilter === 'todos') {
+      return casosList;
+    }
+    return casosList.filter(c => 
+      c.agenteAsignado?.idAgente === agentFilter || 
+      c.agentId === agentFilter
+    );
+  }, [agentFilter]);
+
   const casosAbiertos = useMemo(() => {
-    return casos.filter(c => c.status !== CaseStatus.RESUELTO);
-  }, [casos]);
+    const abiertos = casos.filter(c => c.status !== CaseStatus.RESUELTO && c.status !== CaseStatus.CERRADO);
+    return filterByAgent(abiertos);
+  }, [casos, agentFilter]);
   
   const casosCriticos = useMemo(() => {
-    return casos.filter(c => {
+    const criticos = casos.filter(c => {
       // Validar que categoria existe antes de acceder a slaDias
       const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5; // Default 5 días
       return c.diasAbierto >= slaDias || c.status === CaseStatus.ESCALADO;
     });
-  }, [casos]);
+    return filterByAgent(criticos);
+  }, [casos, agentFilter]);
 
   const filteredCasos = useMemo(() => {
     let filtered = [...casos];
@@ -95,20 +108,28 @@ const SupervisorPanel: React.FC = () => {
     return filtered;
   }, [casos, periodFilter, typeFilter, agentFilter]);
   
-  const casosVencidos = casosAbiertos.filter(c => {
-    const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-    return c.diasAbierto > slaDias;
-  });
-  const casosEnRiesgo = casosAbiertos.filter(c => {
-    const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-    const diasRestantes = slaDias - c.diasAbierto;
-    return diasRestantes > 0 && diasRestantes <= 1;
-  });
-  const casosDentroSLA = casosAbiertos.filter(c => {
-    const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-    const diasRestantes = slaDias - c.diasAbierto;
-    return diasRestantes > 1;
-  });
+  const casosVencidos = useMemo(() => {
+    return casosAbiertos.filter(c => {
+      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
+      return c.diasAbierto > slaDias;
+    });
+  }, [casosAbiertos]);
+  
+  const casosEnRiesgo = useMemo(() => {
+    return casosAbiertos.filter(c => {
+      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
+      const diasRestantes = slaDias - c.diasAbierto;
+      return diasRestantes > 0 && diasRestantes <= 1;
+    });
+  }, [casosAbiertos]);
+  
+  const casosDentroSLA = useMemo(() => {
+    return casosAbiertos.filter(c => {
+      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
+      const diasRestantes = slaDias - c.diasAbierto;
+      return diasRestantes > 1;
+    });
+  }, [casosAbiertos]);
 
   // Si no hay casos abiertos, el SLA no puede ser 100%, debe ser null
   const slaPromedio = casosAbiertos.length > 0 
@@ -170,6 +191,7 @@ const SupervisorPanel: React.FC = () => {
     finAyer.setHours(23, 59, 59, 999);
 
     // Obtener casos que existían ayer (creados antes del final de ayer)
+    // Ya están filtrados por agente en casosAbiertos
     const casosAyer = casosAbiertos.filter(c => {
       const fechaCreacion = new Date(c.createdAt);
       return fechaCreacion <= finAyer;
@@ -901,13 +923,31 @@ const SupervisorPanel: React.FC = () => {
               Rendimiento de Agentes
             </h3>
                 <p className="text-[10px] font-medium" style={{color: styles.text.tertiary}}>
-                  {agentes.length} agente{agentes.length !== 1 ? 's' : ''} en el equipo
+                  {agentFilter !== 'todos' 
+                    ? `Agente seleccionado: ${agentes.find(a => a.idAgente === agentFilter)?.nombre || 'N/A'}`
+                    : `${agentes.length} agente${agentes.length !== 1 ? 's' : ''} en el equipo`
+                  }
                 </p>
               </div>
             </div>
-            {agentes.length > 4 && (
+            {agentFilter === 'todos' && agentes.length > 4 && (
               <button 
                 onClick={() => navigate('/app/agentes')}
+                className="text-sm font-semibold flex items-center gap-1.5 transition-colors"
+                style={{color: styles.text.tertiary}}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = styles.text.secondary;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = styles.text.tertiary;
+                }}
+              >
+                Ver todos <ArrowUpRight className="w-4 h-4" />
+              </button>
+            )}
+            {agentFilter !== 'todos' && (
+              <button 
+                onClick={() => setAgentFilter('todos')}
                 className="text-sm font-semibold flex items-center gap-1.5 transition-colors"
                 style={{color: styles.text.tertiary}}
                 onMouseEnter={(e) => {
@@ -924,7 +964,10 @@ const SupervisorPanel: React.FC = () => {
           <div className="rounded-2xl border shadow-sm p-5" style={{...styles.card}}>
             {agentes.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {agentes.slice(0, 4).map((agente) => {
+                {(agentFilter !== 'todos' 
+                  ? agentes.filter(a => a.idAgente === agentFilter).slice(0, 4)
+                  : agentes.slice(0, 4)
+                ).map((agente) => {
                   const estadoColors = {
                     'Activo': { 
                       dotColor: '#22c55e', 

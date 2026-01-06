@@ -273,12 +273,48 @@ const BandejaCasos: React.FC = () => {
       console.log('📥 Cargando casos...');
       const data = await api.getCases();
       console.log('✅ Casos cargados:', data.length);
-      console.log('📋 Primer caso de ejemplo:', data[0] ? {
-        id: data[0].id,
-        clientId: data[0].clientId,
-        clientName: data[0].clientName,
-        tieneCliente: !!data[0].cliente
-      } : 'No hay casos');
+      
+      // Obtener usuario actual para debugging
+      const currentUser = api.getUser();
+      console.log('👤 Usuario actual:', currentUser);
+      
+        // Log detallado de todos los casos y sus agentes asignados
+        if (data.length > 0) {
+          console.log('📋 [BandejaCasos] Análisis de casos y agentes asignados:');
+          data.forEach((caso, index) => {
+            const agentObject = (caso as any).agent || caso.agenteAsignado || null;
+            const agenteIdFromAgent = agentObject?.idAgente || agentObject?.id || agentObject?.id_agente || agentObject?.agente_id || agentObject?.user_id || '';
+            const agenteIdFromObject = caso.agenteAsignado?.idAgente || caso.agenteAsignado?.id || (caso.agenteAsignado as any)?.id_agente || (caso.agenteAsignado as any)?.agente_id;
+            const agenteIdFromCase = caso.agentId || (caso as any).agente_id || (caso as any).agente_user_id;
+            const agenteId = agenteIdFromAgent || agenteIdFromObject || agenteIdFromCase;
+            
+            console.log(`  Caso ${index + 1}:`, {
+              ticketNumber: caso.ticketNumber || caso.id,
+              tieneAgent: !!(caso as any).agent,
+              agentObject: (caso as any).agent,
+              agentId: caso.agentId,
+              agenteId: agenteId,
+              agenteIdFromAgent,
+              agenteAsignado: caso.agenteAsignado ? {
+                idAgente: caso.agenteAsignado.idAgente,
+                nombre: caso.agenteAsignado.nombre,
+                email: caso.agenteAsignado.email
+              } : null,
+              agenteIdFromObject,
+              agenteIdFromCase,
+              todosLosCamposAgente: Object.keys(caso).filter(k => 
+                k.toLowerCase().includes('agent') || 
+                k.toLowerCase().includes('agente') ||
+                k.toLowerCase().includes('user')
+              ).reduce((acc, key) => {
+                acc[key] = (caso as any)[key];
+                return acc;
+              }, {} as any)
+            });
+          });
+        } else {
+          console.warn('⚠️ [BandejaCasos] No se cargaron casos desde el webhook');
+        }
       
       // Guardar casos directamente, el useEffect de enriquecimiento se ejecutará automáticamente
       setCasos(data);
@@ -300,8 +336,172 @@ const BandejaCasos: React.FC = () => {
   };
 
   useEffect(() => {
+    // Obtener usuario autenticado
+    const currentUser = api.getUser();
+    const isAgente = currentUser?.role === 'AGENTE';
+    
+    // Si es agente, filtrar solo sus casos asignados
+    let casosParaFiltrar = casos;
+    if (isAgente && currentUser?.id) {
+      console.log('🔍 [BandejaCasos] Filtrando casos para agente:', {
+        userId: currentUser.id,
+        userName: currentUser.name,
+        role: currentUser.role,
+        totalCasos: casos.length
+      });
+      
+      casosParaFiltrar = casos.filter(c => {
+        // Intentar obtener el ID del agente de múltiples fuentes
+        // PRIORIDAD: case.agent (campo directo del webhook)
+        const agentObject = (c as any).agent || c.agenteAsignado || null;
+        const agenteIdFromAgent = agentObject?.idAgente || agentObject?.id || agentObject?.id_agente || agentObject?.agente_id || agentObject?.user_id || '';
+        const agenteIdFromObject = c.agenteAsignado?.idAgente || c.agenteAsignado?.id || (c.agenteAsignado as any)?.id_agente || (c.agenteAsignado as any)?.agente_id;
+        const agenteIdFromCase = c.agentId || (c as any).agente_id || (c as any).agente_user_id;
+        const agenteId = agenteIdFromAgent || agenteIdFromObject || agenteIdFromCase;
+        
+        // Normalizar ambos IDs a string para comparación
+        const agenteIdStr = agenteId ? String(agenteId).trim() : '';
+        const userIdStr = String(currentUser.id).trim();
+        
+        // Función helper para extraer el número de un ID (ej: "AG-0006" -> "0006" o "6")
+        const extractIdNumber = (id: string): string => {
+          // Si tiene formato "AG-XXXX" o similar, extraer la parte numérica
+          const match = id.match(/(\d+)$/);
+          if (match) {
+            return match[1];
+          }
+          return id;
+        };
+        
+        // Función helper para normalizar ID (quitar ceros a la izquierda si es numérico)
+        const normalizeId = (id: string): string => {
+          const numStr = extractIdNumber(id);
+          // Si es puramente numérico, quitar ceros a la izquierda
+          if (/^\d+$/.test(numStr)) {
+            return String(Number(numStr));
+          }
+          return numStr;
+        };
+        
+        // Comparar IDs de múltiples formas
+        let casoAsignado = false;
+        if (agenteIdStr && userIdStr) {
+          // 1. Comparación exacta
+          casoAsignado = agenteIdStr === userIdStr;
+          
+          // 2. Comparación case-insensitive
+          if (!casoAsignado) {
+            casoAsignado = agenteIdStr.toLowerCase() === userIdStr.toLowerCase();
+          }
+          
+          // 3. Comparación normalizada (sin prefijos, sin ceros a la izquierda)
+          if (!casoAsignado) {
+            const agenteIdNormalized = normalizeId(agenteIdStr);
+            const userIdNormalized = normalizeId(userIdStr);
+            casoAsignado = agenteIdNormalized === userIdNormalized;
+          }
+          
+          // 4. Comparación numérica directa
+          if (!casoAsignado) {
+            const agenteIdNum = Number(agenteIdStr.replace(/[^\d]/g, ''));
+            const userIdNum = Number(userIdStr.replace(/[^\d]/g, ''));
+            if (!isNaN(agenteIdNum) && !isNaN(userIdNum) && agenteIdNum > 0 && userIdNum > 0) {
+              casoAsignado = agenteIdNum === userIdNum;
+            }
+          }
+          
+          // 5. Comparación por parte numérica extraída
+          if (!casoAsignado) {
+            const agenteIdPart = extractIdNumber(agenteIdStr);
+            const userIdPart = extractIdNumber(userIdStr);
+            casoAsignado = agenteIdPart === userIdPart || normalizeId(agenteIdPart) === normalizeId(userIdPart);
+          }
+        }
+        
+        // Loggear información de debugging para los primeros casos
+        if (casosParaFiltrar.length < 10) {
+          console.log('🔍 [BandejaCasos] Verificando caso:', c.ticketNumber || c.id, {
+            tieneAgent: !!(c as any).agent,
+            agentObject: (c as any).agent,
+            agenteIdFromAgent,
+            agenteIdFromObject,
+            agenteIdFromCase,
+            agenteId: agenteIdStr,
+            currentUserId: userIdStr,
+            asignado: casoAsignado,
+            tieneAgenteAsignado: !!c.agenteAsignado,
+            agenteAsignadoCompleto: c.agenteAsignado
+          });
+        }
+        
+        return casoAsignado;
+      });
+      
+      console.log('✅ [BandejaCasos] Casos del agente:', casosParaFiltrar.length, 'de', casos.length, 'total');
+      
+      // Si no hay casos asignados, mostrar un mensaje de advertencia con análisis detallado
+      if (casosParaFiltrar.length === 0 && casos.length > 0) {
+        console.warn('⚠️ [BandejaCasos] No se encontraron casos asignados al agente. Verificando estructura de datos...');
+        console.warn('⚠️ [BandejaCasos] Usuario buscado:', {
+          userId: currentUser.id,
+          userName: currentUser.name,
+          role: currentUser.role
+        });
+        
+        // Analizar los primeros 5 casos para ver qué IDs tienen
+        casos.slice(0, 5).forEach((caso, idx) => {
+          const agentObject = (caso as any).agent || caso.agenteAsignado || null;
+          const agenteIdFromAgent = agentObject?.idAgente || agentObject?.id || agentObject?.id_agente || agentObject?.agente_id || agentObject?.user_id || '';
+          const agenteIdFromObject = caso.agenteAsignado?.idAgente || caso.agenteAsignado?.id || (caso.agenteAsignado as any)?.id_agente || (caso.agenteAsignado as any)?.agente_id;
+          const agenteIdFromCase = caso.agentId || (caso as any).agente_id || (caso as any).agente_user_id;
+          const agenteId = agenteIdFromAgent || agenteIdFromObject || agenteIdFromCase;
+          
+          // Intentar todas las comparaciones
+          const agenteIdStr = agenteId ? String(agenteId).trim() : '';
+          const userIdStr = String(currentUser.id).trim();
+          
+          const extractIdNumber = (id: string): string => {
+            const match = id.match(/(\d+)$/);
+            return match ? match[1] : id;
+          };
+          
+          const normalizeId = (id: string): string => {
+            const numStr = extractIdNumber(id);
+            if (/^\d+$/.test(numStr)) {
+              return String(Number(numStr));
+            }
+            return numStr;
+          };
+          
+          const comparaciones = {
+            exacta: agenteIdStr === userIdStr,
+            caseInsensitive: agenteIdStr.toLowerCase() === userIdStr.toLowerCase(),
+            normalizada: normalizeId(agenteIdStr) === normalizeId(userIdStr),
+            numerica: (() => {
+              const agenteIdNum = Number(agenteIdStr.replace(/[^\d]/g, ''));
+              const userIdNum = Number(userIdStr.replace(/[^\d]/g, ''));
+              return !isNaN(agenteIdNum) && !isNaN(userIdNum) && agenteIdNum > 0 && userIdNum > 0 && agenteIdNum === userIdNum;
+            })(),
+            parteNumerica: extractIdNumber(agenteIdStr) === extractIdNumber(userIdStr) || normalizeId(extractIdNumber(agenteIdStr)) === normalizeId(extractIdNumber(userIdStr))
+          };
+          
+          console.warn(`⚠️ [BandejaCasos] Caso ${idx + 1} (${caso.ticketNumber || caso.id}):`, {
+            tieneAgent: !!(caso as any).agent,
+            agentObject: (caso as any).agent,
+            agenteIdFromAgent,
+            agenteIdEnCaso: agenteIdStr,
+            userIdBuscado: userIdStr,
+            agenteAsignadoCompleto: caso.agenteAsignado,
+            agentId: caso.agentId,
+            comparaciones,
+            coincide: Object.values(comparaciones).some(v => v === true)
+          });
+        });
+      }
+    }
+    
     const term = searchTerm.toLowerCase();
-    let result = casos.filter(c => {
+    let result = casosParaFiltrar.filter(c => {
       const id = (c.id || c.ticketNumber || '').toLowerCase();
       const client = (c.clientName || '').toLowerCase();
       const subject = (c.subject || '').toLowerCase();
