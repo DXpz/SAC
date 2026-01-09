@@ -1032,22 +1032,84 @@ export const updateCaseStatus = async (
     }
   };
   
-  console.log('📤 Payload enviado a updateCaseStatus:', JSON.stringify(payload, null, 2));
+  console.log('================== INICIO updateCaseStatus ==================');
+  console.log('📤 [1] PAYLOAD ENVIADO AL WEBHOOK:');
+  console.log(JSON.stringify(payload, null, 2));
+  console.log('📤 [1] Case ID:', caseId);
+  console.log('📤 [1] Nuevo Estado:', newStatus);
+  console.log('📤 [1] Comentario:', detail);
   
   // Enviar actualización de estado
+  console.log('📤 [2] Llamando al webhook...');
   const response = await callCaseWebhook(payload);
+  console.log('📥 [3] RESPUESTA RECIBIDA DEL WEBHOOK:');
   
-  console.log('📥 ========== RESPUESTA DEL WEBHOOK case.update ==========');
-  console.log('📥 Tipo:', typeof response);
-  console.log('📥 Es array?:', Array.isArray(response));
-  console.log('📥 Respuesta completa (JSON):', JSON.stringify(response, null, 2));
-  console.log('📥 Respuesta completa (objeto):', response);
-  console.log('📥 =======================================================');
+  console.log('📥 [3] ========== RESPUESTA DEL WEBHOOK ==========');
+  console.log('📥 [3] Tipo:', typeof response);
+  console.log('📥 [3] Es Array:', Array.isArray(response));
+  console.log('📥 [3] Es null:', response === null);
+  console.log('📥 [3] Es undefined:', response === undefined);
   
-  // Después de actualizar, hacer dos consultas case.query en paralelo:
-  // 1. Con case_id para obtener el caso específico
-  // 2. Con user_id para obtener casos del usuario
-  console.log('🔄 Consultando caso actualizado con case.query (case_id y user_id en paralelo)...');
+  if (response && typeof response === 'object') {
+    console.log('📥 [3] Propiedades (keys):', Object.keys(response));
+    console.log('📥 [3] Valores por propiedad:');
+    for (const key of Object.keys(response)) {
+      console.log(`📥 [3]   - ${key}:`, response[key]);
+      console.log(`📥 [3]     Tipo de ${key}:`, typeof response[key]);
+    }
+  }
+  
+  console.log('📥 [3] Respuesta COMPLETA (JSON stringified):');
+  console.log(JSON.stringify(response, null, 2));
+  console.log('📥 [3] Respuesta COMPLETA (objeto raw):');
+  console.log(response);
+  console.log('📥 [3] ================================================');
+  
+  // ========== VALIDACIÓN SIMPLE: SOLO CONTINUAR SI TIENE action: "case.update" ==========
+  console.log('🔍 [4] ========== VALIDANDO RESPUESTA ==========');
+  console.log('🔍 [4] Verificando si la respuesta tiene action: "case.update"...');
+  console.log('🔍 [4] ¿Es objeto?:', response && typeof response === 'object');
+  console.log('🔍 [4] ¿Tiene propiedad "action"?:', response && typeof response === 'object' && 'action' in response);
+  
+  if (response && typeof response === 'object' && 'action' in response) {
+    console.log('🔍 [4] Valor de response.action:', response.action);
+    console.log('🔍 [4] Tipo de response.action:', typeof response.action);
+    console.log('🔍 [4] response.action === "case.update":', response.action === 'case.update');
+  } else {
+    console.log('🔍 [4] La respuesta NO tiene propiedad "action"');
+  }
+  
+  // SOLO continuar si tiene action: "case.update"
+  if (response && typeof response === 'object' && response.action === 'case.update') {
+    console.log('✅ [5] ========== COMENTARIO VÁLIDO ==========');
+    console.log('✅ [5] La respuesta tiene action: "case.update"');
+    console.log('✅ [5] El webhook VALIDÓ y ACTUALIZÓ el caso');
+    console.log('✅ [5] Procediendo a obtener el caso actualizado con case.query...');
+    console.log('✅ [5] ===========================================');
+  } else {
+    console.error('❌ [5] ========== COMENTARIO NO VÁLIDO ==========');
+    console.error('❌ [5] La respuesta NO tiene action: "case.update"');
+    console.error('❌ [5] El webhook RECHAZÓ el comentario');
+    console.error('❌ [5] NO se hizo ningún cambio en el caso');
+    console.error('❌ [5] Respuesta completa:', response);
+    
+    // Extraer mensaje de error de cualquier campo posible
+    let mensajeError = 'El comentario no cumple con los requisitos necesarios.';
+    if (response && typeof response === 'object') {
+      mensajeError = response.comentario || response.message || response.error || response.feedback || mensajeError;
+      console.error('❌ [5] Mensaje de error extraído:', mensajeError);
+    }
+    
+    console.error('❌ [5] ===========================================');
+    console.log('================== FIN updateCaseStatus (ERROR - COMENTARIO RECHAZADO) ==================');
+    throw new Error(`Comentario no válido: ${mensajeError}`);
+  }
+  
+  // El webhook YA actualizó el caso, ahora consultamos para obtener el caso actualizado
+  console.log('🔄 [6] Consultando caso actualizado con case.query...');
+  console.log('🔄 [6] Haciendo dos consultas en paralelo:');
+  console.log('🔄 [6]   1. Con case_id para obtener el caso específico actualizado');
+  console.log('🔄 [6]   2. Con user_id para actualizar caché de casos del usuario');
   
   const queryPayloadCaseId: CaseWebhookPayload = {
     action: 'case.query',
@@ -1216,11 +1278,12 @@ export const updateCaseStatus = async (
             console.log('✅ Estado actualizado desde caso mapeado:', casoActualizado.status);
           }
           
-          console.log('✅ Retornando caso actualizado con historial:', {
+          console.log('✅ [FINAL] Retornando caso actualizado con historial:', {
             id: casoActualizado.id,
             status: casoActualizado.status,
             historialLength: casoActualizado.historial?.length || 0
           });
+          console.log('================== FIN updateCaseStatus (ÉXITO) ==================');
           
           return casoActualizado;
         } else {

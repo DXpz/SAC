@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import { Caso, CaseStatus, Agente } from '../types';
+import { Caso, CaseStatus, Agente, Cliente } from '../types';
 import { STATE_COLORS } from '../constants';
 import { AlertCircle, Clock, Users, ArrowUpRight, ChevronRight, Activity, Info, Filter, UserPlus, Bell, ArrowRightLeft, TrendingUp, TrendingDown, X, User, CheckCircle2, Eye } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
@@ -12,6 +12,7 @@ type FilterType = 'todos' | 'criticos' | 'vencidos' | string;
 const SupervisorPanel: React.FC = () => {
   const [casos, setCasos] = useState<Caso[]>([]);
   const [agentes, setAgentes] = useState<Agente[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [periodFilter, setPeriodFilter] = useState<FilterPeriod>('hoy');
   const [typeFilter, setTypeFilter] = useState<FilterType>('todos');
@@ -29,14 +30,38 @@ const SupervisorPanel: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const loadClientes = async () => {
+    try {
+      const clientesList = await api.getClientes();
+      setClientes(clientesList);
+      return clientesList;
+    } catch (error) {
+      console.error('Error loading clientes:', error);
+      return [];
+    }
+  };
+
+  const enrichCasesWithClients = (cases: Caso[], clientesList: Cliente[]): Caso[] => {
+    return cases.map(caso => {
+      const cliente = clientesList.find(c => c.idCliente === caso.clientId);
+      return {
+        ...caso,
+        clientName: cliente?.nombreEmpresa || caso.clientName || 'Sin nombre',
+        cliente: cliente || caso.cliente
+      };
+    });
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
-      const [casosData, agentesData] = await Promise.all([
+      const [casosData, agentesData, clientesList] = await Promise.all([
         api.getCases(),
-        api.getAgentes()
+        api.getAgentes(),
+        loadClientes()
       ]);
-      setCasos(casosData);
+      const enriched = enrichCasesWithClients(casosData, clientesList);
+      setCasos(enriched);
       setAgentes(agentesData);
       // Guardar en localStorage para que Layout pueda mostrarlo en el header
       const updateTime = new Date();

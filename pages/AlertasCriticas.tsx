@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import { Caso, CaseStatus, Agente } from '../types';
+import { Caso, CaseStatus, Agente, Cliente } from '../types';
 import { STATE_COLORS } from '../constants';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
@@ -26,14 +26,39 @@ interface CaseWithPriority extends Caso {
 const AlertasCriticas: React.FC = () => {
   const [criticos, setCriticos] = useState<CaseWithPriority[]>([]);
   const [loading, setLoading] = useState(true);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
   const navigate = useNavigate();
   const { theme } = useTheme();
+
+  const loadClientes = async () => {
+    try {
+      const clientesList = await api.getClientes();
+      setClientes(clientesList);
+      return clientesList;
+    } catch (error) {
+      console.error('Error loading clientes:', error);
+      return [];
+    }
+  };
+
+  const enrichCasesWithClients = (cases: Caso[], clientesList: Cliente[]): Caso[] => {
+    return cases.map(caso => {
+      const cliente = clientesList.find(c => c.idCliente === caso.clientId);
+      return {
+        ...caso,
+        clientName: cliente?.nombreEmpresa || caso.clientName || 'Sin nombre',
+        cliente: cliente || caso.cliente
+      };
+    });
+  };
 
   const loadData = async () => {
     setLoading(true);
     try {
+      const clientesList = await loadClientes();
       const list = await api.getCases();
-      const filtered = list.filter(c => {
+      const enriched = enrichCasesWithClients(list, clientesList);
+      const filtered = enriched.filter(c => {
         const slaDias = c.categoria?.slaDias || 5;
         return c.diasAbierto >= slaDias || 
           c.status === CaseStatus.ESCALADO ||

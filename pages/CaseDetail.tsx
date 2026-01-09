@@ -23,6 +23,8 @@ const CaseDetail: React.FC = () => {
   const [justification, setJustification] = useState('');
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [showErrorAnimation, setShowErrorAnimation] = useState(false);
+  const [showInvalidCommentAnimation, setShowInvalidCommentAnimation] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   useEffect(() => {
     const initializeData = async () => {
@@ -270,6 +272,7 @@ const CaseDetail: React.FC = () => {
         setShowJustificationModal(false);
         setPendingNewState(null);
         setJustification('');
+        setErrorMessage('');
         
         // Mostrar animación de éxito
         setShowSuccessAnimation(true);
@@ -282,18 +285,42 @@ const CaseDetail: React.FC = () => {
       
     } catch (err: any) {
       console.error('❌ Error al actualizar el estado del caso:', err);
-      const errorMessage = err?.message || err?.toString() || 'Error al actualizar el estado del caso';
+      const errorMsg = err?.message || err?.toString() || 'Error al actualizar el estado del caso';
       
-      // Evitar mostrar alert si el error es de extensiones del navegador
-      if (!errorMessage.includes('message channel') && !errorMessage.includes('listener')) {
-        alert(errorMessage);
+      // Verificar si es un error de validación de comentario
+      if (errorMsg.includes('Comentario no válido:')) {
+        // Extraer el mensaje de retroalimentación
+        const feedback = errorMsg.replace('Comentario no válido: ', '');
+        setErrorMessage(feedback);
+        
+        // Cerrar el modal de justificación
+        setShowJustificationModal(false);
+        setPendingNewState(null);
+        setJustification('');
+        
+        // Mostrar animación de comentario no válido
+        setShowInvalidCommentAnimation(true);
+        setTimeout(() => {
+          setShowInvalidCommentAnimation(false);
+          setErrorMessage('');
+        }, 5000);
+      } else {
+        // Para otros errores, cerrar el modal y mostrar el error
+        setShowJustificationModal(false);
+        setPendingNewState(null);
+        setJustification('');
+        
+        // Evitar mostrar alert si el error es de extensiones del navegador
+        if (!errorMsg.includes('message channel') && !errorMsg.includes('listener')) {
+          alert(errorMsg);
+        }
+        
+        // Mostrar animación de error
+        setShowErrorAnimation(true);
+        setTimeout(() => {
+          setShowErrorAnimation(false);
+        }, 3000);
       }
-      
-      // Mostrar animación de error
-      setShowErrorAnimation(true);
-      setTimeout(() => {
-        setShowErrorAnimation(false);
-      }, 3000);
     } finally {
       setTransitionLoading(false);
     }
@@ -317,6 +344,7 @@ const CaseDetail: React.FC = () => {
     // Abrir modal de justificación
     setPendingNewState(newState);
     setJustification('');
+    setErrorMessage('');
     setShowJustificationModal(true);
   };
 
@@ -800,6 +828,7 @@ const CaseDetail: React.FC = () => {
                   setShowJustificationModal(false);
                   setPendingNewState(null);
                   setJustification('');
+                  setErrorMessage('');
                 }}
                 className="p-1.5 rounded-lg transition-colors"
                 style={{color: '#64748b'}}
@@ -857,6 +886,17 @@ const CaseDetail: React.FC = () => {
                   }}
                   required
                 />
+                {errorMessage && (
+                  <div className="mt-3 p-3 rounded-lg border-2 border-red-500" style={{backgroundColor: 'rgba(220, 38, 38, 0.1)'}}>
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs font-bold text-red-600 mb-1">Comentario no válido</p>
+                        <p className="text-xs text-red-600">{errorMessage}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="flex gap-2.5 pt-2">
                 <button 
@@ -1026,6 +1066,116 @@ const CaseDetail: React.FC = () => {
         </div>
       )}
 
+      {/* Animación de comentario no válido */}
+      {showInvalidCommentAnimation && errorMessage && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{
+            backgroundColor: 'rgba(15, 23, 42, 0.85)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            animation: 'fadeIn 0.3s ease-out'
+          }}
+          onClick={() => {
+            setShowInvalidCommentAnimation(false);
+            setErrorMessage('');
+          }}
+        >
+          <div 
+            className="max-w-md w-full"
+            style={{
+              animation: 'scaleInBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Icono de advertencia animado */}
+            <div className="flex justify-center mb-6">
+              <div
+                className="relative"
+                style={{
+                  animation: 'shakePop 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.2s both'
+                }}
+              >
+                <div
+                  className="w-28 h-28 rounded-full flex items-center justify-center"
+                  style={{
+                    background: 'linear-gradient(135deg, #f59e0b, #f97316)',
+                    boxShadow: '0 20px 60px rgba(245, 158, 11, 0.5)'
+                  }}
+                >
+                  <AlertTriangle 
+                    className="w-16 h-16 text-white" 
+                    style={{
+                      strokeWidth: 2.5
+                    }}
+                  />
+                </div>
+                {/* Anillos de expansión */}
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    border: '3px solid #f59e0b',
+                    animation: 'ringExpand 1s ease-out 0.3s',
+                    opacity: 0
+                  }}
+                />
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    border: '3px solid #f97316',
+                    animation: 'ringExpand 1s ease-out 0.5s',
+                    opacity: 0
+                  }}
+                />
+              </div>
+            </div>
+            
+            {/* Contenido del mensaje - SIMPLIFICADO */}
+            <div 
+              className="rounded-2xl overflow-hidden shadow-2xl border"
+              style={{
+                backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                borderColor: '#f59e0b',
+                animation: 'fadeInUp 0.5s ease-out 0.4s both'
+              }}
+            >
+              <div className="p-6">
+                <h2 className="text-lg font-bold text-center mb-4" style={{color: '#f59e0b'}}>
+                  Comentario No Válido
+                </h2>
+                
+                <p className="text-sm leading-relaxed text-center mb-6" style={{
+                  color: theme === 'dark' ? '#cbd5e1' : '#475569'
+                }}>
+                  {errorMessage}
+                </p>
+                
+                <button
+                  onClick={() => {
+                    setShowInvalidCommentAnimation(false);
+                    setErrorMessage('');
+                  }}
+                  className="w-full py-2.5 rounded-lg text-sm font-bold text-white transition-all"
+                  style={{
+                    background: 'linear-gradient(135deg, #f59e0b, #f97316)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.opacity = '0.9';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.opacity = '1';
+                  }}
+                >
+                  Entendido
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Estilos de animación inline */}
       <style>{`
         @keyframes fadeIn {
@@ -1099,6 +1249,27 @@ const CaseDetail: React.FC = () => {
             transform: translateY(0);
           }
         }
+        
+        @keyframes shakePop {
+          0% {
+            transform: scale(0) rotate(-10deg);
+            opacity: 0;
+          }
+          25% {
+            transform: scale(1.2) rotate(5deg);
+          }
+          50% {
+            transform: scale(0.95) rotate(-3deg);
+          }
+          75% {
+            transform: scale(1.05) rotate(2deg);
+          }
+          100% {
+            transform: scale(1) rotate(0deg);
+            opacity: 1;
+          }
+        }
+        
       `}</style>
     </div>
   );
