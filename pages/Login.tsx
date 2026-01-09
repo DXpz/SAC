@@ -180,7 +180,7 @@ const Login: React.FC = () => {
 
   // Agregar animación shake al CSS si no existe
   useEffect(() => {
-``    const style = document.createElement('style');
+    const style = document.createElement('style');
     style.textContent = `
       @keyframes shake {
         0%, 100% { transform: translateX(0); }
