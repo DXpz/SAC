@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { Case, CaseStatus, Cliente, AutorRol, HistorialEntry } from '../types';
 import { CASE_TRANSITIONS, CASE_STATES, getStateColor, getStateBadgeColor } from '../constants';
 import { getAllowedTransitions } from '../services/caseStatusService';
 import { updateCaseStatus } from '../services/caseService';
-import { ArrowLeft, MessageSquare, User, Building2, Phone, Mail, CheckCircle2, Clock, X, AlertTriangle, Lock, History, Users, TrendingUp, AlertCircle } from 'lucide-react';
+import { ArrowLeft, MessageSquare, User, Building2, Phone, Mail, CheckCircle2, Clock, X, AlertTriangle, Lock, History, Users, TrendingUp, AlertCircle, Edit, Save, Search } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 const CaseDetail: React.FC = () => {
@@ -25,6 +25,17 @@ const CaseDetail: React.FC = () => {
   const [showErrorAnimation, setShowErrorAnimation] = useState(false);
   const [showInvalidCommentAnimation, setShowInvalidCommentAnimation] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  
+  // Estados para modo de edición
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedCase, setEditedCase] = useState<Partial<Case>>({});
+  const [clienteSearchTerm, setClienteSearchTerm] = useState('');
+  const [showClienteDropdown, setShowClienteDropdown] = useState(false);
+  
+  // Estados para reasignación de agente
+  const [showReassignModal, setShowReassignModal] = useState(false);
+  const [selectedAgentId, setSelectedAgentId] = useState<string>('');
+  const [reassignJustification, setReassignJustification] = useState('');
 
   useEffect(() => {
     const initializeData = async () => {
@@ -44,6 +55,38 @@ const CaseDetail: React.FC = () => {
       console.error('Error no manejado:', error);
     });
   }, [id]);
+
+  // Cerrar dropdown al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (showClienteDropdown && !target.closest('.cliente-selector-container-edit')) {
+        setShowClienteDropdown(false);
+      }
+    };
+
+    if (showClienteDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [showClienteDropdown]);
+
+  // Filtrar clientes según el término de búsqueda
+  const filteredClientes = useMemo(() => {
+    if (!clienteSearchTerm.trim()) {
+      return clientes.slice(0, 50);
+    }
+    const term = clienteSearchTerm.toLowerCase();
+    return clientes.filter(cliente => 
+      cliente.idCliente.toLowerCase().includes(term) ||
+      cliente.nombreEmpresa.toLowerCase().includes(term) ||
+      cliente.contactoPrincipal.toLowerCase().includes(term) ||
+      cliente.email.toLowerCase().includes(term) ||
+      cliente.telefono.includes(term)
+    );
+  }, [clientes, clienteSearchTerm]);
 
   const loadClientes = async () => {
     try {
@@ -239,6 +282,10 @@ const CaseDetail: React.FC = () => {
   // Validar si se puede realizar una acción
   const canPerformAction = !isCaseClosed && !transitionLoading;
 
+  // Obtener usuario actual para validar permisos
+  const currentUser = api.getUser();
+  const canReassign = currentUser && (currentUser.role === 'SUPERVISOR' || currentUser.role === 'GERENTE');
+
   // ==================================================
   // FUNCIÓN CENTRAL DE CAMBIO DE ESTADO
   // ==================================================
@@ -354,6 +401,177 @@ const CaseDetail: React.FC = () => {
       return;
     }
     handleStateChange(pendingNewState, justification);
+  };
+
+  // ==================================================
+  // FUNCIONES DE EDICIÓN DEL CASO
+  // ==================================================
+  const handleEditClick = () => {
+    setIsEditing(true);
+    // Inicializar con los valores actuales del caso
+    setEditedCase({
+      subject: caso?.subject,
+      description: caso?.description,
+      clienteId: caso?.clienteId || caso?.clientId,
+      clientName: caso?.clientName,
+      clientEmail: caso?.clientEmail,
+      clientPhone: caso?.clientPhone
+    });
+    // Inicializar el término de búsqueda con el ID y nombre del cliente actual
+    const clienteActual = clientes.find(c => c.idCliente === (caso?.clienteId || caso?.clientId));
+    if (clienteActual) {
+      setClienteSearchTerm(`${clienteActual.idCliente} - ${clienteActual.nombreEmpresa}`);
+    } else if (caso?.clientName) {
+      setClienteSearchTerm(caso.clientName);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditedCase({});
+    setClienteSearchTerm('');
+    setShowClienteDropdown(false);
+  };
+
+  const handleClienteSelect = (cliente: Cliente) => {
+    setEditedCase({
+      ...editedCase,
+      clienteId: cliente.idCliente,
+      clientName: cliente.nombreEmpresa,
+      // NO sobrescribir email y teléfono, mantener los del caso
+    });
+    setClienteSearchTerm(`${cliente.idCliente} - ${cliente.nombreEmpresa}`);
+    setShowClienteDropdown(false);
+  };
+
+  const handleClienteClear = () => {
+    setEditedCase({
+      ...editedCase,
+      clienteId: '',
+      clientName: '',
+      clientEmail: '',
+      clientPhone: ''
+    });
+    setClienteSearchTerm('');
+    setShowClienteDropdown(false);
+  };
+
+  // ==================================================
+  // FUNCIONES DE REASIGNACIÓN DE AGENTE
+  // ==================================================
+  const handleReassignClick = () => {
+    setSelectedAgentId(caso?.agentId || caso?.agenteAsignado?.idAgente || '');
+    setReassignJustification('');
+    setShowReassignModal(true);
+  };
+
+  const handleCancelReassign = () => {
+    setShowReassignModal(false);
+    setSelectedAgentId('');
+    setReassignJustification('');
+  };
+
+  const handleConfirmReassign = async () => {
+    if (!caso || !id || !selectedAgentId || !reassignJustification.trim()) {
+      return;
+    }
+
+    const currentAgentId = caso.agentId || caso.agenteAsignado?.idAgente || '';
+    if (selectedAgentId === currentAgentId) {
+      alert('El agente seleccionado es el mismo que el actual');
+      return;
+    }
+
+    try {
+      setTransitionLoading(true);
+
+      // Llamar a la API para reasignar
+      await api.reassignCase(id, selectedAgentId, reassignJustification);
+
+      // Recargar el caso para obtener los datos actualizados
+      await loadCaso(id);
+
+      // Cerrar modal
+      setShowReassignModal(false);
+      setSelectedAgentId('');
+      setReassignJustification('');
+
+      // Mostrar animación de éxito
+      setShowSuccessAnimation(true);
+      setTimeout(() => {
+        setShowSuccessAnimation(false);
+      }, 2000);
+
+      console.log('✅ Caso reasignado exitosamente');
+    } catch (error) {
+      console.error('❌ Error al reasignar el caso:', error);
+      alert('Error al reasignar el caso. Por favor, intenta nuevamente.');
+    } finally {
+      setTransitionLoading(false);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!caso || !id) return;
+    
+    try {
+      setTransitionLoading(true);
+      
+      // Construir payload de actualización
+      const updatePayload = {
+        case_id: id,
+        subject: editedCase.subject || caso.subject,
+        description: editedCase.description || caso.description,
+        cliente_id: editedCase.clienteId || caso.clienteId || caso.clientId,
+        client_name: editedCase.clientName || caso.clientName,
+        client_email: editedCase.clientEmail || caso.clientEmail,
+        client_phone: editedCase.clientPhone || caso.clientPhone
+      };
+      
+      console.log('📝 Guardando cambios del caso:', updatePayload);
+      
+      // Actualizar el caso localmente (en el futuro esto debería llamar al webhook)
+      const updatedCase = {
+        ...caso,
+        subject: editedCase.subject || caso.subject,
+        description: editedCase.description || caso.description,
+        clienteId: editedCase.clienteId || caso.clienteId || caso.clientId,
+        clientId: editedCase.clienteId || caso.clienteId || caso.clientId,
+        clientName: editedCase.clientName || caso.clientName,
+        clientEmail: editedCase.clientEmail || caso.clientEmail,
+        clientPhone: editedCase.clientPhone || caso.clientPhone
+      };
+      
+      // Actualizar en localStorage
+      const cases = await api.getCases();
+      const caseIndex = cases.findIndex((c: any) => 
+        c.id === id || c.ticketNumber === id || c.idCaso === id
+      );
+      
+      if (caseIndex !== -1) {
+        cases[caseIndex] = updatedCase;
+        localStorage.setItem('intelfon_cases', JSON.stringify(cases));
+      }
+      
+      setCaso(updatedCase);
+      setIsEditing(false);
+      setEditedCase({});
+      setClienteSearchTerm('');
+      setShowClienteDropdown(false);
+      
+      // Mostrar animación de éxito
+      setShowSuccessAnimation(true);
+      setTimeout(() => {
+        setShowSuccessAnimation(false);
+      }, 2000);
+      
+      console.log('✅ Caso actualizado exitosamente');
+    } catch (error) {
+      console.error('❌ Error al guardar los cambios:', error);
+      alert('Error al guardar los cambios. Por favor, intenta nuevamente.');
+    } finally {
+      setTransitionLoading(false);
+    }
   };
 
   if (!caso) return (
@@ -478,8 +696,99 @@ const CaseDetail: React.FC = () => {
                       </span>
                     </div>
                   </div>
-                  <h1 className="text-lg font-bold leading-snug" style={{color: styles.text.primary}}>{caso.subject}</h1>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={editedCase.subject || ''}
+                      onChange={(e) => setEditedCase({ ...editedCase, subject: e.target.value })}
+                      className="w-full text-lg font-bold leading-snug px-3 py-2 border rounded-lg outline-none focus:ring-2 transition-all"
+                      style={{
+                        ...styles.input,
+                        borderColor: styles.input.borderColor
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#107ab4';
+                        e.target.style.boxShadow = '0 0 0 3px rgba(16, 122, 180, 0.1)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = styles.input.borderColor;
+                        e.target.style.boxShadow = 'none';
+                      }}
+                      placeholder="Asunto del caso"
+                    />
+                  ) : (
+                    <h1 className="text-lg font-bold leading-snug" style={{color: styles.text.primary}}>{caso.subject}</h1>
+                  )}
                 </div>
+                {!isCaseClosed && (
+                  <div className="flex gap-2">
+                    {isEditing ? (
+                      <>
+                        <button
+                          onClick={handleSaveEdit}
+                          disabled={transitionLoading}
+                          className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white rounded-lg transition-all shadow-sm hover:shadow-md disabled:opacity-50"
+                          style={{backgroundColor: '#16a34a'}}
+                          onMouseEnter={(e) => {
+                            if (!transitionLoading) {
+                              e.currentTarget.style.backgroundColor = '#15803d';
+                              e.currentTarget.style.transform = 'translateY(-1px)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = '#16a34a';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                          }}
+                        >
+                          <Save className="w-4 h-4" />
+                          Guardar
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          disabled={transitionLoading}
+                          className="flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-all border disabled:opacity-50"
+                          style={{
+                            color: styles.text.secondary,
+                            borderColor: 'rgba(148, 163, 184, 0.3)',
+                            backgroundColor: 'transparent'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!transitionLoading) {
+                              e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : '#f1f5f9';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
+                        >
+                          <X className="w-4 h-4" />
+                          Cancelar
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={handleEditClick}
+                        className="flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-all border"
+                        style={{
+                          color: '#107ab4',
+                          borderColor: 'rgba(16, 122, 180, 0.3)',
+                          backgroundColor: 'transparent'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = 'rgba(16, 122, 180, 0.1)';
+                          e.currentTarget.style.borderColor = '#107ab4';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                          e.currentTarget.style.borderColor = 'rgba(16, 122, 180, 0.3)';
+                        }}
+                      >
+                        <Edit className="w-4 h-4" />
+                        Editar Caso
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -559,9 +868,31 @@ const CaseDetail: React.FC = () => {
                 </div>
                 <h3 className="text-sm font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Descripción del Caso</h3>
               </div>
-              <div className="p-5 rounded-lg border leading-relaxed" style={{...styles.input}}>
-                <p className="text-sm font-medium">{caso.description}</p>
-              </div>
+              {isEditing ? (
+                <textarea
+                  value={editedCase.description || ''}
+                  onChange={(e) => setEditedCase({ ...editedCase, description: e.target.value })}
+                  rows={6}
+                  className="w-full p-5 rounded-lg border leading-relaxed text-sm font-medium outline-none focus:ring-2 transition-all resize-none"
+                  style={{
+                    ...styles.input,
+                    borderColor: styles.input.borderColor
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#107ab4';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(16, 122, 180, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = styles.input.borderColor;
+                    e.target.style.boxShadow = 'none';
+                  }}
+                  placeholder="Descripción del caso"
+                />
+              ) : (
+                <div className="p-5 rounded-lg border leading-relaxed" style={{...styles.input}}>
+                  <p className="text-sm font-medium">{caso.description}</p>
+                </div>
+              )}
             </div>
 
             {/* Acciones */}
@@ -775,42 +1106,270 @@ const CaseDetail: React.FC = () => {
               <div className="p-2 rounded-lg" style={{backgroundColor: '#eff6ff'}}>
                 <Building2 className="w-4 h-4" style={{color: '#107ab4'}} />
               </div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold uppercase tracking-wide" style={{color: styles.text.primary}}>Cliente</h3>
-                <span className="text-sm font-semibold" style={{color: styles.text.secondary}}>
-                  {caso.clientName || caso.cliente?.nombreEmpresa || 'Sin cliente'}
-                </span>
+              <h3 className="text-sm font-bold uppercase tracking-wide" style={{color: styles.text.primary}}>Cliente</h3>
+            </div>
+            
+            {isEditing ? (
+              <div className="space-y-3">
+                {/* Selector de Cliente con Búsqueda */}
+                <div className="relative cliente-selector-container-edit">
+                  <label className="block text-xs font-semibold mb-1.5" style={{color: styles.text.secondary}}>
+                    Buscar Cliente
+                  </label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{color: styles.text.tertiary}} />
+                    <input
+                      type="text"
+                      value={clienteSearchTerm}
+                      onChange={(e) => {
+                        setClienteSearchTerm(e.target.value);
+                        setShowClienteDropdown(true);
+                        if (!e.target.value) {
+                          handleClienteClear();
+                        }
+                      }}
+                      onFocus={() => setShowClienteDropdown(true)}
+                      placeholder="Buscar por ID, nombre, email o teléfono..."
+                      className="w-full pl-9 pr-9 py-2.5 border rounded-lg outline-none focus:ring-2 transition-all text-xs font-medium"
+                      style={{
+                        ...styles.input,
+                        borderColor: styles.input.borderColor
+                      }}
+                    />
+                    {editedCase.clienteId && (
+                      <button
+                        type="button"
+                        onClick={handleClienteClear}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 transition-colors rounded"
+                        style={{color: styles.text.tertiary}}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : '#f1f5f9';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Dropdown de resultados */}
+                  {showClienteDropdown && filteredClientes.length > 0 && (
+                    <div className="absolute z-50 w-full mt-2 rounded-lg shadow-2xl max-h-60 overflow-y-auto border" style={{...styles.card}}>
+                      <div className="p-2 border-b sticky top-0" style={{
+                        backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                        borderColor: 'rgba(148, 163, 184, 0.2)'
+                      }}>
+                        <p className="text-xs font-semibold" style={{color: styles.text.secondary}}>
+                          {filteredClientes.length} {filteredClientes.length === 1 ? 'cliente encontrado' : 'clientes encontrados'}
+                        </p>
+                      </div>
+                      {filteredClientes.map((cliente) => (
+                        <div
+                          key={cliente.idCliente}
+                          onClick={() => handleClienteSelect(cliente)}
+                          className="p-3 cursor-pointer border-b last:border-b-0 transition-all"
+                          style={{
+                            borderColor: 'rgba(148, 163, 184, 0.1)',
+                            backgroundColor: 'transparent'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : '#eff6ff';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
+                        >
+                          <div className="flex items-start gap-2">
+                            <Building2 className="w-4 h-4 mt-0.5 flex-shrink-0" style={{color: '#107ab4'}} />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-xs font-bold" style={{color: styles.text.primary}}>
+                                  {cliente.nombreEmpresa}
+                                </span>
+                                <span className="text-xs font-semibold px-2 py-0.5 rounded" style={{
+                                  backgroundColor: theme === 'dark' ? '#0f172a' : '#e2e8f0',
+                                  color: styles.text.secondary
+                                }}>
+                                  {cliente.idCliente}
+                                </span>
+                              </div>
+                              <p className="text-xs mt-1" style={{color: styles.text.tertiary}}>
+                                {cliente.email}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {showClienteDropdown && clienteSearchTerm && filteredClientes.length === 0 && (
+                    <div className="absolute z-50 w-full mt-2 rounded-lg shadow-2xl p-6 text-center border" style={{...styles.card}}>
+                      <Search className="w-8 h-8 mx-auto mb-2" style={{color: styles.text.tertiary}} />
+                      <p className="text-xs font-bold mb-1" style={{color: styles.text.primary}}>No se encontraron clientes</p>
+                      <p className="text-xs" style={{color: styles.text.tertiary}}>Intenta buscar por ID, nombre, email o teléfono</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Información del cliente seleccionado */}
+                {editedCase.clienteId && (
+                  <div className="p-3 rounded-lg border" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
+                    <p className="text-xs font-semibold mb-1" style={{color: styles.text.secondary}}>Cliente Seleccionado</p>
+                    <p className="text-sm font-bold" style={{color: styles.text.primary}}>{editedCase.clientName}</p>
+                    <p className="text-xs mt-1" style={{color: styles.text.tertiary}}>ID: {editedCase.clienteId}</p>
+                  </div>
+                )}
+
+                {/* Campos editables de contacto */}
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-xs font-semibold mb-1.5" style={{color: styles.text.secondary}}>
+                      Email de Contacto
+                    </label>
+                    <div className="flex items-center gap-3 p-3 rounded-lg border" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
+                      <Mail className="w-4 h-4 flex-shrink-0" style={{color: '#64748b'}}/>
+                      <input
+                        type="email"
+                        value={editedCase.clientEmail || ''}
+                        onChange={(e) => setEditedCase({ ...editedCase, clientEmail: e.target.value })}
+                        className="flex-1 text-xs font-medium px-2 py-1 border rounded outline-none focus:ring-2 transition-all"
+                        style={{
+                          backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
+                          borderColor: 'rgba(148, 163, 184, 0.2)',
+                          color: styles.text.secondary
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = '#107ab4';
+                          e.target.style.boxShadow = '0 0 0 2px rgba(16, 122, 180, 0.1)';
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = 'rgba(148, 163, 184, 0.2)';
+                          e.target.style.boxShadow = 'none';
+                        }}
+                        placeholder="correo@empresa.com"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold mb-1.5" style={{color: styles.text.secondary}}>
+                      Teléfono de Contacto
+                    </label>
+                    <div className="flex items-center gap-3 p-3 rounded-lg border" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
+                      <Phone className="w-4 h-4 flex-shrink-0" style={{color: '#64748b'}}/>
+                      <input
+                        type="tel"
+                        value={editedCase.clientPhone || ''}
+                        onChange={(e) => setEditedCase({ ...editedCase, clientPhone: e.target.value })}
+                        className="flex-1 text-xs font-medium px-2 py-1 border rounded outline-none focus:ring-2 transition-all"
+                        style={{
+                          backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
+                          borderColor: 'rgba(148, 163, 184, 0.2)',
+                          color: styles.text.secondary
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = '#107ab4';
+                          e.target.style.boxShadow = '0 0 0 2px rgba(16, 122, 180, 0.1)';
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = 'rgba(148, 163, 184, 0.2)';
+                          e.target.style.boxShadow = 'none';
+                        }}
+                        placeholder="+503 0000-0000"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-3 p-3 rounded-lg border" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
-                <Mail className="w-4 h-4" style={{color: '#64748b'}}/>
-                <p className="text-xs font-medium" style={{color: styles.text.secondary}}>{caso.clientEmail || 'No disponible'}</p>
+            ) : (
+              <div className="space-y-2.5">
+                <div className="p-3 rounded-lg border" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
+                  <p className="text-xs font-semibold mb-1" style={{color: styles.text.secondary}}>Cliente</p>
+                  <p className="text-sm font-bold" style={{color: styles.text.primary}}>
+                    {caso.clientName || caso.cliente?.nombreEmpresa || 'Sin cliente'}
+                  </p>
+                  {(caso.clienteId || caso.clientId) && (
+                    <p className="text-xs mt-1" style={{color: styles.text.tertiary}}>
+                      ID: {caso.clienteId || caso.clientId}
+                    </p>
+                  )}
                 </div>
-              <div className="flex items-center gap-3 p-3 rounded-lg border" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
-                <Phone className="w-4 h-4" style={{color: '#64748b'}}/>
-                <p className="text-xs font-medium" style={{color: styles.text.secondary}}>{caso.clientPhone || caso.cliente?.telefono || 'No disponible'}</p>
+                <div className="flex items-center gap-3 p-3 rounded-lg border" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
+                  <Mail className="w-4 h-4" style={{color: '#64748b'}}/>
+                  <p className="text-xs font-medium" style={{color: styles.text.secondary}}>{caso.clientEmail || 'No disponible'}</p>
                 </div>
-            </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg border" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
+                  <Phone className="w-4 h-4" style={{color: '#64748b'}}/>
+                  <p className="text-xs font-medium" style={{color: styles.text.secondary}}>{caso.clientPhone || caso.cliente?.telefono || 'No disponible'}</p>
+                </div>
+              </div>
+            )}
           </section>
 
           {/* Agente Asignado */}
           <section className="rounded-xl border p-5 shadow-sm" style={{...styles.card}}>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="p-2 rounded-lg" style={{backgroundColor: '#f1f5f9'}}>
-                <User className="w-4 h-4" style={{color: '#64748b'}} />
+            <div className="flex items-center justify-between gap-2 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg" style={{backgroundColor: '#f1f5f9'}}>
+                  <User className="w-4 h-4" style={{color: '#64748b'}} />
+                </div>
+                <h3 className="text-sm font-bold uppercase tracking-wide" style={{color: styles.text.primary}}>Agente Asignado</h3>
               </div>
-              <h3 className="text-sm font-bold uppercase tracking-wide" style={{color: styles.text.primary}}>Agente Asignado</h3>
+              {!isCaseClosed && canReassign && (
+                <button
+                  onClick={handleReassignClick}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all border"
+                  style={{
+                    color: '#107ab4',
+                    borderColor: 'rgba(16, 122, 180, 0.3)',
+                    backgroundColor: 'transparent'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(16, 122, 180, 0.1)';
+                    e.currentTarget.style.borderColor = '#107ab4';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.borderColor = 'rgba(16, 122, 180, 0.3)';
+                  }}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  Reasignar
+                </button>
+              )}
             </div>
-            <div className="flex items-center gap-3 p-4 rounded-lg border" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
+            <div 
+              className={`flex items-center gap-3 p-4 rounded-lg border transition-all ${!isCaseClosed && canReassign ? 'cursor-pointer' : ''}`}
+              style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}
+              onClick={!isCaseClosed && canReassign ? handleReassignClick : undefined}
+              onMouseEnter={(e) => {
+                if (!isCaseClosed && canReassign) {
+                  e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : '#eff6ff';
+                  e.currentTarget.style.borderColor = '#107ab4';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = styles.input.backgroundColor;
+                e.currentTarget.style.borderColor = styles.input.borderColor;
+              }}
+            >
               <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm" style={{backgroundColor: '#c8151b'}}>
                 {(caso.agenteAsignado?.nombre || caso.agentName || 'N/A').charAt(0).toUpperCase()}
               </div>
-              <p className="text-sm font-bold" style={{color: styles.text.primary}}>
-                {caso.agenteAsignado?.nombre || caso.agentName || 'Sin asignar'}
-              </p>
+              <div className="flex-1">
+                <p className="text-sm font-bold" style={{color: styles.text.primary}}>
+                  {caso.agenteAsignado?.nombre || caso.agentName || 'Sin asignar'}
+                </p>
+                {!isCaseClosed && canReassign && (
+                  <p className="text-xs mt-0.5" style={{color: styles.text.tertiary}}>
+                    Click para reasignar
+                  </p>
+                )}
+              </div>
             </div>
-
           </section>
         </div>
       </div>
@@ -947,7 +1506,174 @@ const CaseDetail: React.FC = () => {
         </div>
       )}
 
+      {/* Modal de Reasignación de Agente */}
+      {showReassignModal && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4 z-50" style={{backgroundColor: styles.modal.overlay}}>
+          <div className="rounded-xl w-full max-w-md overflow-hidden shadow-2xl border transform animate-in fade-in zoom-in" style={{...styles.modal, borderColor: styles.card.borderColor}}>
+            <div className="p-4 border-b flex justify-between items-center" style={{borderColor: styles.cardHeader.borderColor}}>
+              <h3 className="font-bold text-sm" style={{color: styles.text.primary}}>
+                Reasignar Caso
+              </h3>
+              <button 
+                onClick={handleCancelReassign}
+                className="p-1.5 rounded-lg transition-colors"
+                style={{color: '#64748b'}}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f1f5f9';
+                  e.currentTarget.style.color = '#475569';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = '#64748b';
+                }}
+              >
+                <X className="w-4 h-4"/>
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <p className="text-xs font-medium leading-relaxed" style={{color: styles.text.tertiary}}>
+                Selecciona el nuevo agente asignado para este caso.
+              </p>
+              
+              {/* Selector de Agente */}
+              <div>
+                <label className="block text-xs font-bold mb-2" style={{color: styles.text.secondary}}>
+                  Nuevo Agente <span className="text-red-500">*</span>
+                </label>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {agentes.filter(a => a.estado === 'Activo').map((agente) => {
+                    const isSelected = selectedAgentId === agente.idAgente;
+                    const isCurrent = (caso?.agentId || caso?.agenteAsignado?.idAgente) === agente.idAgente;
+                    
+                    return (
+                      <div
+                        key={agente.idAgente}
+                        onClick={() => setSelectedAgentId(agente.idAgente)}
+                        className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'shadow-md' : ''}`}
+                        style={{
+                          backgroundColor: isSelected ? 'rgba(16, 122, 180, 0.1)' : styles.input.backgroundColor,
+                          borderColor: isSelected ? '#107ab4' : (isCurrent ? 'rgba(200, 21, 27, 0.3)' : styles.input.borderColor)
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isSelected) {
+                            e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(59, 130, 246, 0.05)' : '#f8fafc';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isSelected) {
+                            e.currentTarget.style.backgroundColor = styles.input.backgroundColor;
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm" style={{backgroundColor: '#c8151b'}}>
+                            {agente.nombre.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-bold" style={{color: styles.text.primary}}>
+                                {agente.nombre}
+                              </p>
+                              {isCurrent && (
+                                <span className="text-xs px-2 py-0.5 rounded font-semibold" style={{
+                                  backgroundColor: 'rgba(200, 21, 27, 0.1)',
+                                  color: '#c8151b'
+                                }}>
+                                  Actual
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs mt-0.5" style={{color: styles.text.tertiary}}>
+                              {agente.casosActivos || 0} casos activos
+                            </p>
+                          </div>
+                          {isSelected && (
+                            <CheckCircle2 className="w-5 h-5" style={{color: '#107ab4'}} />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
 
+              {/* Justificación */}
+              <div>
+                <label className="block text-xs font-bold mb-2" style={{color: styles.text.secondary}}>
+                  Justificación de la reasignación <span className="text-red-500">*</span>
+                </label>
+                <textarea 
+                  className="w-full h-24 p-3 rounded-lg border outline-none focus:ring-2 transition-all text-xs resize-none"
+                  style={{
+                    backgroundColor: styles.input.backgroundColor,
+                    borderColor: reassignJustification.trim() ? styles.input.borderColor : 'rgba(220, 38, 38, 0.4)',
+                    color: styles.input.color
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#107ab4';
+                    e.target.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#ffffff';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(16, 122, 180, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    if (!reassignJustification.trim()) {
+                      e.target.style.borderColor = 'rgba(220, 38, 38, 0.5)';
+                    } else {
+                      e.target.style.borderColor = styles.input.borderColor;
+                    }
+                    e.target.style.backgroundColor = styles.input.backgroundColor;
+                    e.target.style.boxShadow = 'none';
+                  }}
+                  placeholder="Describe el motivo de la reasignación..."
+                  value={reassignJustification}
+                  onChange={e => setReassignJustification(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="flex gap-2.5 pt-2">
+                <button 
+                  type="button"
+                  onClick={handleCancelReassign}
+                  className="flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all border"
+                  style={{
+                    color: '#475569',
+                    borderColor: 'rgba(148, 163, 184, 0.3)',
+                    backgroundColor: 'transparent'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f1f5f9';
+                    e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={handleConfirmReassign}
+                  disabled={transitionLoading || !selectedAgentId || !reassignJustification.trim()}
+                  className="flex-1 py-2.5 text-xs font-semibold text-white rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{backgroundColor: '#c8151b'}}
+                  onMouseEnter={(e) => {
+                    if (!e.currentTarget.disabled) {
+                      e.currentTarget.style.backgroundColor = '#dc2626';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#c8151b';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  {transitionLoading ? 'Reasignando...' : 'Reasignar Caso'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Animación de éxito a pantalla completa */}
       {showSuccessAnimation && (

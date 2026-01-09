@@ -117,17 +117,19 @@ const NuevoCaso: React.FC = () => {
   const handleCreateCase = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validaciones básicas
-    if (!newCase.clientName || !newCase.email || !newCase.subject || !newCase.description || !newCase.categoriaId || !newCase.contactChannel || !newCase.notificationChannel) {
-      setToast({ message: 'Por favor, completa todos los campos requeridos (marcados con *)', type: 'warning' });
+    // Validaciones básicas - Solo campos de "Detalles del Caso" son obligatorios
+    if (!newCase.subject || !newCase.description || !newCase.categoriaId) {
+      setToast({ message: 'Por favor, completa todos los campos requeridos de Detalles del Caso (marcados con *)', type: 'warning' });
       return;
     }
 
-    // Validar formato de email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(newCase.email)) {
-      setToast({ message: 'Por favor, ingresa un email válido', type: 'warning' });
-      return;
+    // Validar formato de email solo si se proporcionó
+    if (newCase.email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(newCase.email)) {
+        setToast({ message: 'Por favor, ingresa un email válido', type: 'warning' });
+        return;
+      }
     }
 
     setLoading(true);
@@ -232,13 +234,12 @@ const NuevoCaso: React.FC = () => {
 
                 <div className="relative cliente-selector-container">
                   <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>
-                    Cliente <span className="text-red-500">*</span>
+                    Cliente
                   </label>
                   <div className="relative">
                     <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none" style={{color: styles.text.tertiary}} />
                     <input
                       type="text"
-                      required
                       value={clienteSearchTerm}
                       onChange={(e) => {
                         setClienteSearchTerm(e.target.value);
@@ -351,7 +352,6 @@ const NuevoCaso: React.FC = () => {
                   <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>Empresa / Cliente</label>
                   <input 
                     type="text" 
-                    required 
                     className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
                     style={{
                       ...styles.input
@@ -422,10 +422,9 @@ const NuevoCaso: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>Email Cliente <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>Email Cliente</label>
                   <input 
                     type="email" 
-                    required 
                     className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
                     style={{
                       ...styles.input
@@ -447,9 +446,8 @@ const NuevoCaso: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>Medio de Contacto (Primer Contacto) <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>Medio de Contacto (Primer Contacto)</label>
                   <select
-                    required
                     value={newCase.contactChannel}
                     onChange={(e) => setNewCase({...newCase, contactChannel: e.target.value as Channel})}
                     className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs appearance-none cursor-pointer shadow-sm hover:shadow-md"
@@ -474,9 +472,8 @@ const NuevoCaso: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>Canal de Notificación (Contacto Posterior) <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>Canal de Notificación (Contacto Posterior)</label>
                   <select
-                    required
                     value={newCase.notificationChannel}
                     onChange={(e) => setNewCase({...newCase, notificationChannel: e.target.value as Channel})}
                     className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs appearance-none cursor-pointer shadow-sm hover:shadow-md"

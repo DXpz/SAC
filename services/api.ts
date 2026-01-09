@@ -631,6 +631,41 @@ export const api = {
 
     console.log('📂 Categoría procesada:', { categoriaId, categoriaNombre });
 
+    // Obtener agentes para la asignación
+    console.log('👤 ========== ASIGNACIÓN DE AGENTE ==========');
+    console.log('Usuario actual:', user);
+    console.log('Rol del usuario:', user?.role);
+    
+    const agentes = await this.getAgentes();
+    console.log('📋 Agentes disponibles:', agentes.map(a => ({ id: a.idAgente, nombre: a.nombre, email: a.email, estado: a.estado })));
+    
+    // Determinar agente asignado según el rol del usuario que crea el caso
+    let agenteAsignado;
+    if (user?.role === 'AGENTE') {
+      // Si es un agente, asignar el caso a él mismo
+      console.log('🔍 Buscando agente con email:', user.email, 'o ID:', user.id);
+      
+      agenteAsignado = agentes.find(a => 
+        a.email?.toLowerCase() === user.email?.toLowerCase() || 
+        a.idAgente === user.id
+      );
+      
+      if (!agenteAsignado) {
+        console.warn('⚠️ No se encontró el agente actual en la lista, usando primer agente disponible');
+        agenteAsignado = agentes.find(a => a.estado === 'Activo') || agentes[0];
+      } else {
+        console.log('✅ Agente creó su propio caso. Asignado a:', agenteAsignado.nombre, '(ID:', agenteAsignado.idAgente, ')');
+      }
+    } else {
+      // Si es supervisor o gerente, usar round robin (primer agente activo con menos casos)
+      const agentesActivos = agentes.filter(a => a.estado === 'Activo');
+      agenteAsignado = agentesActivos.length > 0 ? agentesActivos[0] : agentes[0];
+      console.log('✅ Supervisor/Gerente creó caso. Usando round robin. Asignado a:', agenteAsignado?.nombre, '(ID:', agenteAsignado?.idAgente, ')');
+    }
+    
+    console.log('📌 Agente final asignado:', agenteAsignado);
+    console.log('==========================================');
+
     // Construir el payload completo para n8n
     const actorPayload = buildActorPayload(user);
     const n8nPayload = {
@@ -652,6 +687,7 @@ export const api = {
         canal_notificacion: caseData.notificationChannel || caseData.contactChannel || 'Email',
         asunto: caseData.subject,
         descripcion: caseData.description,
+        agente_id: agenteAsignado?.idAgente || agenteAsignado?.id || '',
       },
     };
 
@@ -699,9 +735,9 @@ export const api = {
       idCaso: newId,
       id: newId,
       ticketNumber: newId,
-      agenteAsignado: MOCK_AGENTES[0],
-      agentId: MOCK_AGENTES[0].idAgente,
-      agentName: MOCK_AGENTES[0].nombre,
+      agenteAsignado: agenteAsignado || MOCK_AGENTES[0],
+      agentId: agenteAsignado?.idAgente || MOCK_AGENTES[0].idAgente,
+      agentName: agenteAsignado?.nombre || MOCK_AGENTES[0].nombre,
       categoria: { nombre: 'General', slaDias: 2 },
       category: 'General',
       canalOrigen: caseData.contactChannel || caseData.canalOrigen || 'Web',
@@ -725,6 +761,11 @@ export const api = {
     };
     cases.unshift(newEntry);
     localStorage.setItem('intelfon_cases', JSON.stringify(cases));
+    
+    // Limpiar caché para que el dashboard actualice
+    clearCache('cases');
+    console.log('✅ Caso creado exitosamente:', newId, '- Asignado a:', agenteAsignado?.nombre);
+    
     return true;
   },
 
