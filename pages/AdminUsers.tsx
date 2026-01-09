@@ -182,15 +182,12 @@ const AdminUsers: React.FC = () => {
   // Cargar usuarios al montar el componente
   useEffect(() => {
     loadUsers();
-    // Recargar cada 30 segundos, pero solo si no hay operaciones activas
+    // Recargar cada 30 segundos
     const interval = setInterval(() => {
-      // Solo refrescar si no está cargando y no hay modales abiertos
-      if (!loading && !showCreateModal && !showEditModal && !showDeleteModal) {
-        loadUsers();
-      }
+      loadUsers();
     }, 30000);
     return () => clearInterval(interval);
-  }, [loading, showCreateModal, showEditModal, showDeleteModal]);
+  }, []);
 
   // Calcular items por vista según el ancho
   const itemsPerView = useMemo(() => {

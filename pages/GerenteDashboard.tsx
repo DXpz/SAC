@@ -30,14 +30,11 @@ const GerenteDashboard: React.FC = () => {
 
   useEffect(() => {
     loadData();
-    // Solo refrescar si no está cargando (evita refresh durante operaciones)
     const interval = setInterval(() => {
-      if (!loading) {
-        loadData();
-      }
+      loadData();
     }, 30000);
     return () => clearInterval(interval);
-  }, [loading]);
+  }, []);
 
   const loadData = async () => {
     setLoading(true);

@@ -24,14 +24,11 @@ const SupervisorPanel: React.FC = () => {
   useEffect(() => {
     loadData();
     // Intervalo aumentado a 60 segundos para reducir llamadas
-    // Solo refrescar si no está cargando (evita refresh durante operaciones)
     const interval = setInterval(() => {
-      if (!loading) {
-        loadData();
-      }
+      loadData();
     }, 60000); // 30s -> 60s
     return () => clearInterval(interval);
-  }, [loading]);
+  }, []);
 
   const loadClientes = async () => {
     try {
