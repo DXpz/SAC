@@ -76,9 +76,14 @@ const AlertasCriticas: React.FC = () => {
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 60000);
+    // Solo refrescar si no está cargando (evita refresh durante operaciones)
+    const interval = setInterval(() => {
+      if (!loading) {
+        loadData();
+      }
+    }, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [loading]);
 
   const prioritizeCases = (cases: Caso[]): CaseWithPriority[] => {
     return cases.map(caso => {
