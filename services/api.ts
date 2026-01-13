@@ -1143,20 +1143,43 @@ export const api = {
         // 1. { users: [...] } o { usuarios: [...] }
         // 2. Array directo de usuarios
         // 3. { data: [...] } - estructura con data
+        // 4. [{ data: [...] }] - array con objeto que contiene data
         let usuarios: any[] = [];
         
         if (Array.isArray(result)) {
-          usuarios = result;
+          console.log('📋 Resultado es un array, verificando estructura...');
+          // Si es un array, verificar si el primer elemento tiene una propiedad "data"
+          if (result.length > 0 && result[0] && typeof result[0] === 'object' && 'data' in result[0]) {
+            console.log('📋 Array contiene objeto con propiedad "data", extrayendo...');
+            // Es un array como [{ data: [...] }], extraer el array interno
+            if (Array.isArray(result[0].data)) {
+              usuarios = result[0].data;
+              console.log('✅ Usuarios extraídos de result[0].data:', usuarios.length);
+            } else {
+              console.warn('⚠️ result[0].data no es un array');
+              usuarios = result;
+            }
+          } else {
+            console.log('📋 Array directo de usuarios');
+            usuarios = result;
+          }
         } else if (result.users && Array.isArray(result.users)) {
+          console.log('📋 Usuarios en result.users');
           usuarios = result.users;
         } else if (result.usuarios && Array.isArray(result.usuarios)) {
+          console.log('📋 Usuarios en result.usuarios');
           usuarios = result.usuarios;
         } else if (result.data && Array.isArray(result.data)) {
+          console.log('📋 Usuarios en result.data');
           usuarios = result.data;
         } else if (result.data && result.data.users && Array.isArray(result.data.users)) {
+          console.log('📋 Usuarios en result.data.users');
           usuarios = result.data.users;
         } else if (result.data && result.data.usuarios && Array.isArray(result.data.usuarios)) {
+          console.log('📋 Usuarios en result.data.usuarios');
           usuarios = result.data.usuarios;
+        } else {
+          console.warn('⚠️ No se pudo identificar la estructura de usuarios en la respuesta');
         }
 
         console.log('✅ Usuarios obtenidos:', usuarios.length);
