@@ -152,11 +152,12 @@ const NuevoCaso: React.FC = () => {
         createdAt: new Date().toISOString()
       };
 
-      // Si el usuario es AGENTE, agregar su ID al payload
-      if (currentUser?.role === 'AGENTE' && currentUser?.id) {
-        casePayload.agentId = currentUser.id;
-        casePayload.agenteId = currentUser.id;
-        console.log('👤 Agente creando caso. ID del agente:', currentUser.id);
+      // Si el usuario es AGENTE, agregar su email al payload (el backend procesa el correo para asignar)
+      const agentEmail = (currentUser as any)?.email;
+      if (currentUser?.role === 'AGENTE' && agentEmail) {
+        casePayload.agentEmail = agentEmail;
+        casePayload.agenteEmail = agentEmail;
+        console.log('👤 Agente creando caso. Email del agente:', agentEmail);
       }
 
       console.log('📝 ========== INICIANDO CREACIÓN DE CASO ==========');

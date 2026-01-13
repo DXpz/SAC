@@ -581,6 +581,9 @@ export const api = {
     console.log('📦 Datos recibidos del formulario:', JSON.stringify(caseData, null, 2));
     console.log('👤 Usuario:', JSON.stringify(user, null, 2));
 
+    // Inicializar agenteAsignado para que esté disponible en todo el scope
+    let agenteAsignado: any = null;
+
     // 1) Intentar crear el caso usando el nuevo caseService (conecta con n8n)
     try {
       console.log('🌐 Intentando crear caso usando caseService...');
@@ -640,7 +643,6 @@ export const api = {
     console.log('📋 Agentes disponibles:', agentes.map(a => ({ id: a.idAgente, nombre: a.nombre, email: a.email, estado: a.estado })));
     
     // Determinar agente asignado según el rol del usuario que crea el caso
-    let agenteAsignado;
     if (user?.role === 'AGENTE') {
       // Si es un agente, asignar el caso a él mismo
       console.log('🔍 Buscando agente con email:', user.email, 'o ID:', user.id);
@@ -687,6 +689,8 @@ export const api = {
         canal_notificacion: caseData.notificationChannel || caseData.contactChannel || 'Email',
         asunto: caseData.subject,
         descripcion: caseData.description,
+        // El backend procesa el correo del agente para asignar, usar email si está disponible
+        agente_email: caseData.agentEmail || caseData.agenteEmail || actorPayload.email || '',
         agente_id: agenteAsignado?.idAgente || agenteAsignado?.id || '',
       },
     };
