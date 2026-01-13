@@ -134,7 +134,10 @@ const NuevoCaso: React.FC = () => {
 
     setLoading(true);
     try {
-      const casePayload = {
+      // Obtener usuario actual
+      const currentUser = api.getUser();
+      
+      const casePayload: any = {
         clienteId: newCase.clienteId,
         categoriaId: newCase.categoriaId,
         contactChannel: newCase.contactChannel,
@@ -149,9 +152,16 @@ const NuevoCaso: React.FC = () => {
         createdAt: new Date().toISOString()
       };
 
+      // Si el usuario es AGENTE, agregar su ID al payload
+      if (currentUser?.role === 'AGENTE' && currentUser?.id) {
+        casePayload.agentId = currentUser.id;
+        casePayload.agenteId = currentUser.id;
+        console.log('👤 Agente creando caso. ID del agente:', currentUser.id);
+      }
+
       console.log('📝 ========== INICIANDO CREACIÓN DE CASO ==========');
       console.log('📋 Datos del formulario:', casePayload);
-      console.log('👤 Usuario actual:', api.getUser());
+      console.log('👤 Usuario actual:', currentUser);
 
       const result = await api.createCase(casePayload);
 
