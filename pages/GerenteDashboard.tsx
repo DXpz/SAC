@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { Case, CaseStatus, KPI } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
@@ -14,6 +15,7 @@ const GerenteDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [hoveredKPI, setHoveredKPI] = useState<string | null>(null);
   const { theme } = useTheme();
+  const location = useLocation();
 
   // Función para normalizar el estado del caso (debe estar antes de loadData)
   const normalizeStatus = (status: string | CaseStatus | undefined): CaseStatus => {
@@ -30,11 +32,8 @@ const GerenteDashboard: React.FC = () => {
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(() => {
-      loadData();
-    }, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    // Ya no usamos setInterval, solo actualizamos cuando cambia la vista
+  }, [location.pathname]);
 
   const loadData = async () => {
     setLoading(true);

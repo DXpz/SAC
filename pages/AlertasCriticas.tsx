@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { Caso, CaseStatus, Agente, Cliente } from '../types';
 import { STATE_COLORS } from '../constants';
@@ -29,6 +29,7 @@ const AlertasCriticas: React.FC = () => {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const navigate = useNavigate();
   const { theme } = useTheme();
+  const location = useLocation();
 
   const loadClientes = async () => {
     try {
@@ -76,9 +77,8 @@ const AlertasCriticas: React.FC = () => {
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 60000);
-    return () => clearInterval(interval);
-  }, []);
+    // Ya no usamos setInterval, solo actualizamos cuando cambia la vista
+  }, [location.pathname]);
 
   const prioritizeCases = (cases: Caso[]): CaseWithPriority[] => {
     return cases.map(caso => {

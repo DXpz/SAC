@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { Caso, CaseStatus, Agente, Cliente } from '../types';
 import { STATE_COLORS } from '../constants';
@@ -20,15 +20,12 @@ const SupervisorPanel: React.FC = () => {
   const [showTooltip, setShowTooltip] = useState<string | null>(null);
   const { theme } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     loadData();
-    // Intervalo aumentado a 60 segundos para reducir llamadas
-    const interval = setInterval(() => {
-      loadData();
-    }, 60000); // 30s -> 60s
-    return () => clearInterval(interval);
-  }, []);
+    // Ya no usamos setInterval, solo actualizamos cuando cambia la vista
+  }, [location.pathname]);
 
   const loadClientes = async () => {
     try {

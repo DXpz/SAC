@@ -52,18 +52,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
     window.addEventListener('storage', handleStorageChange);
     
-    // También actualizar cuando cambie la ruta (por si el usuario se actualiza en el mismo tab)
-    // Aumentar intervalo a 2 segundos para reducir llamadas
-    const interval = setInterval(() => {
-      const currentUser = api.getUser();
-      if (currentUser && (!userRef.current || currentUser.id !== userRef.current.id || currentUser.name !== userRef.current.name)) {
-        updateUser();
-      }
-    }, 2000); // 500ms -> 2000ms
+    // Actualizar cuando cambie la ruta (por si el usuario se actualiza en el mismo tab)
+    // Ya no usamos setInterval, solo actualizamos cuando cambia la vista
+    updateUser();
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]); // Remover 'user' de las dependencias para evitar loops

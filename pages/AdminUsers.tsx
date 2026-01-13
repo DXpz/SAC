@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { 
   Users, 
   UserPlus, 
@@ -44,6 +45,7 @@ type RoleFilter = 'todos' | 'AGENTE' | 'SUPERVISOR' | 'GERENTE' | 'ADMIN';
 
 const AdminUsers: React.FC = () => {
   const { theme } = useTheme();
+  const location = useLocation();
   const [users, setUsers] = useState<DemoUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('todos');
@@ -179,15 +181,11 @@ const AdminUsers: React.FC = () => {
     }
   };
 
-  // Cargar usuarios al montar el componente
+  // Cargar usuarios al montar el componente o cuando cambia la vista
   useEffect(() => {
     loadUsers();
-    // Recargar cada 30 segundos
-    const interval = setInterval(() => {
-      loadUsers();
-    }, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    // Ya no usamos setInterval, solo actualizamos cuando cambia la vista
+  }, [location.pathname]);
 
   // Calcular items por vista según el ancho
   const itemsPerView = useMemo(() => {

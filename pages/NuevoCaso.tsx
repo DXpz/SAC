@@ -302,11 +302,11 @@ const NuevoCaso: React.FC = () => {
                           onClick={() => handleClienteSelect(cliente)}
                           className="p-4 cursor-pointer border-b last:border-b-0 transition-all group"
                           style={{
-                            borderColor: 'rgba(148, 163, 184, 0.1)',
+                            borderColor: 'rgba(184, 148, 153, 0.1)',
                             backgroundColor: 'transparent'
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#f8fafc';
+                            e.currentTarget.style.backgroundColor = 'rgba(248, 250, 252, 0.1)';
                           }}
                           onMouseLeave={(e) => {
                             e.currentTarget.style.backgroundColor = 'transparent';
