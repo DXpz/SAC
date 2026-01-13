@@ -79,18 +79,18 @@ const AdminUsers: React.FC = () => {
   const loadUsers = async () => {
     setLoading(true);
     try {
-      console.log('🔄 [AdminUsers] Cargando usuarios desde webhook...');
+      console.log('🔄 [AdminUsers] Cargando usuarios desde webhook de usuarios...');
       
-      // Obtener usuarios del webhook (puede incluir agentes, gerentes, supervisores)
-      // El webhook puede devolver todos los usuarios, no solo agentes
-      const agentes = await api.getAgentes();
-      console.log('📊 [AdminUsers] Datos recibidos del webhook:', agentes.length);
-      console.log('📊 [AdminUsers] Primer usuario (ejemplo):', agentes[0]);
-      console.log('📊 [AdminUsers] Todos los usuarios recibidos:', JSON.stringify(agentes, null, 2));
+      // Obtener usuarios del webhook de crear usuario (que también lista usuarios)
+      // El webhook devuelve todos los usuarios creados desde ese flujo
+      const usuariosWebhook = await api.getUsuarios();
+      console.log('📊 [AdminUsers] Datos recibidos del webhook:', usuariosWebhook.length);
+      console.log('📊 [AdminUsers] Primer usuario (ejemplo):', usuariosWebhook[0]);
+      console.log('📊 [AdminUsers] Todos los usuarios recibidos:', JSON.stringify(usuariosWebhook, null, 2));
       
       // Mapear todos los usuarios del webhook
       // El webhook puede devolver usuarios con diferentes roles (agentes, gerentes, supervisores, admin)
-      const usuariosMapeados: DemoUser[] = agentes.map((usuario: any) => {
+      const usuariosMapeados: DemoUser[] = usuariosWebhook.map((usuario: any) => {
         // Determinar el rol: el webhook puede tener diferentes campos para el rol
         let rol: UserRole = 'AGENTE'; // Por defecto es agente
         
@@ -359,7 +359,10 @@ const AdminUsers: React.FC = () => {
   // FUNCIONES DE ACCIÓN
   // ==================================================
 
-  const createUser = () => {
+  const createUser = async () => {
+    console.log('🔵 [AdminUsers] Función createUser iniciada');
+    console.log('📝 [AdminUsers] FormData:', formData);
+    
     if (!formData.nombre.trim() || !formData.email.trim()) {
       alert('El nombre y el email son obligatorios');
       return;
@@ -371,22 +374,55 @@ const AdminUsers: React.FC = () => {
       return;
     }
 
-    const newUser: DemoUser = {
-      id: `U-${String(users.length + 1).padStart(3, '0')}`,
-      nombre: formData.nombre.trim(),
-      email: formData.email.trim(),
-      rol: formData.rol,
-      activo: formData.activo,
-      enVacaciones: formData.enVacaciones
-    };
-
-    setUsers([...users, newUser]);
-    setShowCreateModal(false);
-    setFormData({ nombre: '', email: '', rol: 'AGENTE', activo: true, enVacaciones: false });
-    showSuccessFeedback();
-    
-    // TODO: Preparar para webhook n8n
-    // await sendUserToWebhook('create', newUser);
+    try {
+      setLoading(true);
+      console.log('📤 [AdminUsers] Creando usuario...', formData.nombre, formData.email);
+      console.log('🌐 [AdminUsers] Llamando a api.createAccount...');
+      
+      // Llamar al webhook para crear usuario
+      // La contraseña se genera automáticamente (8 caracteres aleatorios)
+      const result = await api.createAccount(
+        formData.email.trim(),
+        '', // Vacío para que se genere automáticamente
+        formData.nombre.trim(),
+        {
+          rol: formData.rol // Se enviará como 'role' en el payload
+        }
+      );
+      
+      console.log('✅ [AdminUsers] Usuario creado:', result);
+      
+      // Recargar la lista de usuarios desde el webhook
+      // El webhook debe devolver todos los usuarios
+      await loadUsers();
+      
+      setShowCreateModal(false);
+      setFormData({ nombre: '', email: '', rol: 'AGENTE', activo: true, enVacaciones: false });
+      showSuccessFeedback();
+    } catch (error: any) {
+      console.error('❌ [AdminUsers] Error al crear usuario:', error);
+      console.error('❌ [AdminUsers] Error completo:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      
+      // Mensaje de error más detallado para debugging
+      let errorMessage = error.message || 'Error desconocido al crear el usuario';
+      
+      if (errorMessage.includes('Unexpected end of JSON input')) {
+        errorMessage = '❌ El webhook no devolvió una respuesta válida.\n\n' +
+                      '🔍 Posibles causas:\n' +
+                      '• El flujo de n8n no está devolviendo datos\n' +
+                      '• El webhook no tiene un nodo "Respond to Webhook" al final\n' +
+                      '• El flujo tiene un error y no completa la ejecución\n\n' +
+                      '💡 Solución: Verifica el flujo de n8n y asegúrate de que devuelva los datos del usuario.';
+      }
+      
+      alert(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const updateUserRole = (userId: string, newRole: UserRole) => {

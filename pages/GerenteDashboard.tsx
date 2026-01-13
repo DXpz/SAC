@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { api } from '../services/api';
 import { Case, CaseStatus, KPI } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
-import { TrendingUp, Users, Clock, ThumbsUp, ArrowUp, ArrowDown, Info, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { TrendingUp, Users, Clock, ThumbsUp, ArrowUp, ArrowDown, Info, AlertTriangle, CheckCircle2, Filter } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 type PeriodFilter = 'hoy' | 'semana' | 'mes';
@@ -248,7 +248,8 @@ const GerenteDashboard: React.FC = () => {
   })), [chartData, totalCasos]);
 
   // Colores para cada estado: Nuevos, En Proceso, Pendiente Cliente, Escalados, Resueltos, Cerrados
-  const COLORS = ['#0f172a', '#f59e0b', '#a855f7', '#ef4444', '#10b981', '#64748b'];
+  // Usando los mismos colores oficiales del sistema para consistencia
+  const COLORS = ['#3b82f6', '#eab308', '#f97316', '#ef4444', '#22c55e', '#6b7280'];
 
   const slaObjective = 90;
   const slaStatus = kpis.slaCompliance === null ? 'sin_datos' :
@@ -262,6 +263,17 @@ const GerenteDashboard: React.FC = () => {
   const slaText = slaStatus === 'sin_datos' ? 'Sin datos disponibles' :
                   slaStatus === 'en_cumplimiento' ? 'En cumplimiento' :
                   slaStatus === 'riesgo' ? 'Por debajo del objetivo' : 'Requiere atención';
+
+  // Función para obtener el color progresivo según el porcentaje
+  const getSLAProgressiveColor = (compliance: number | null) => {
+    if (compliance === null) return { from: '#94a3b8', to: '#cbd5e1' }; // Gris
+    if (compliance >= 90) return { from: '#22c55e', to: '#4ade80' }; // Verde
+    if (compliance >= 80) return { from: '#eab308', to: '#fbbf24' }; // Amarillo
+    if (compliance >= 70) return { from: '#f97316', to: '#fb923c' }; // Naranja
+    return { from: '#dc2626', to: '#ef4444' }; // Rojo
+  };
+
+  const slaProgressColor = getSLAProgressiveColor(kpis.slaCompliance);
 
   // Generar insights automáticos usando datos reales de casos críticos
   const insights = useMemo(() => {
@@ -317,24 +329,24 @@ const GerenteDashboard: React.FC = () => {
     tooltip?: string;
   }> = ({ label, value, color, bg, icon: Icon, variation, isHighlighted = false, tooltip }) => (
     <div
-      className="p-6 rounded-2xl border shadow-sm flex items-center justify-between relative group"
+      className="p-4 rounded-xl shadow-sm hover:shadow-md transition-all cursor-help relative h-full"
       style={{
-        backgroundColor: isHighlighted 
-          ? (theme === 'dark' ? 'rgba(220, 38, 38, 0.15)' : 'rgba(220, 38, 38, 0.1)')
-          : styles.card.backgroundColor,
+        ...styles.card,
+        borderWidth: isHighlighted ? '2px' : '1px',
+        borderStyle: 'solid',
         borderColor: isHighlighted 
-          ? 'rgba(220, 38, 38, 0.3)' 
+          ? 'rgba(200, 21, 27, 0.4)' 
           : styles.card.borderColor
       }}
       onMouseEnter={() => setHoveredKPI(label)}
       onMouseLeave={() => setHoveredKPI(null)}
     >
-      <div className="flex-1">
-        <div className="flex items-center gap-2 mb-1">
-          <p className="text-sm font-bold uppercase tracking-widest" style={{color: styles.text.tertiary}}>{label}</p>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5">
+          <p className="text-[9px] font-bold uppercase tracking-widest" style={{color: styles.text.tertiary}}>{label}</p>
           {tooltip && (
             <div className="relative">
-              <Info className="w-3.5 h-3.5" style={{color: styles.text.tertiary}} />
+              <Info className="w-3 h-3 flex-shrink-0" style={{color: styles.text.tertiary}} />
               {hoveredKPI === label && (
                 <div 
                   className="absolute bottom-full left-0 mb-2 px-3 py-2 text-xs rounded-lg shadow-lg whitespace-nowrap z-50"
@@ -354,61 +366,42 @@ const GerenteDashboard: React.FC = () => {
             </div>
           )}
         </div>
-        <h3 className="text-2xl font-black mt-1" style={{
-          color: color.includes('red') ? '#ef4444' : 
-                 color.includes('green') ? '#22c55e' : 
-                 color.includes('slate') || color.includes('white') ? styles.text.primary : 
-                 styles.text.primary
-        }}>{value}</h3>
-        <div className="mt-2 flex items-center gap-2">
-          {variation.isPositive && !variation.isNegative && (
-            <ArrowUp className={`w-3 h-3 ${label === 'Excedidos SLA' ? 'text-red-600' : 'text-green-600'}`} />
-          )}
-          {variation.isNegative && (
-            <ArrowDown className="w-3 h-3 text-green-600" />
-          )}
-          <span className="text-xs font-semibold" style={{
-            color: label === 'Excedidos SLA' 
-              ? variation.isPositive ? '#ef4444' : '#22c55e'
-              : variation.isPositive ? '#22c55e' : '#ef4444'
-          }}>
-            {variation.value}
-          </span>
-        </div>
-        {variation.percent && (
-          <p className="text-xs mt-0.5" style={{color: styles.text.tertiary}}>{variation.percent}</p>
-        )}
-        {isHighlighted && vencidos > 0 && (
-          <p className="text-xs font-semibold mt-2" style={{color: '#f87171'}}>
-            {vencidos} caso{vencidos !== 1 ? 's' : ''} fuera de SLA requieren atención
-          </p>
-        )}
-      </div>
-      <div 
-        className="p-3 rounded-xl" 
-        style={{
-          backgroundColor: bg === 'bg-slate-900' 
-            ? (theme === 'dark' ? 'rgba(15, 23, 42, 0.5)' : 'rgb(15, 23, 42)')
-            : bg === 'bg-red-50' 
-            ? (theme === 'dark' ? 'rgba(220, 38, 38, 0.2)' : 'rgba(220, 38, 38, 0.15)')
-            : bg === 'bg-green-50'
-            ? (theme === 'dark' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.15)')
-            : (theme === 'dark' ? 'rgba(241, 245, 249, 0.1)' : '#f1f5f9')
-        }}
-      >
-        <Icon 
-          className="w-6 h-6" 
+        <div 
+          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" 
           style={{
-            color: bg === 'bg-slate-900' 
-              ? '#ffffff' 
-              : color.includes('red') 
-              ? '#ef4444' 
-              : color.includes('green') 
-              ? '#22c55e' 
-              : styles.text.primary
-          }} 
-        />
+            backgroundColor: bg === 'bg-slate-900' 
+              ? 'rgb(15, 23, 42)'
+              : bg === 'bg-red-50' 
+              ? (isHighlighted ? 'rgba(200, 21, 27, 0.2)' : (theme === 'dark' ? '#0f172a' : '#f8fafc'))
+              : bg === 'bg-green-50'
+              ? 'rgba(34, 197, 94, 0.2)'
+              : (theme === 'dark' ? '#0f172a' : '#f8fafc')
+          }}
+        >
+          <Icon 
+            className="w-4 h-4" 
+            style={{
+              color: bg === 'bg-slate-900' 
+                ? '#ffffff' 
+                : color.includes('red')
+                ? (isHighlighted ? '#64748b' : styles.text.tertiary)
+                : color.includes('green') 
+                ? '#22c55e' 
+                : styles.text.primary
+            }} 
+          />
+        </div>
       </div>
+      <h3 className="text-lg font-black mb-0.5" style={{
+        color: color.includes('red') ? (isHighlighted ? '#475569' : styles.text.secondary) : 
+               color.includes('green') ? '#22c55e' : 
+               styles.text.primary
+      }}>{value}</h3>
+      <p className="text-[10px] font-medium" style={{
+        color: isHighlighted && vencidos > 0 ? '#475569' : styles.text.tertiary
+      }}>
+        {isHighlighted && vencidos > 0 ? 'Requiere acción' : variation.value}
+      </p>
     </div>
   );
 
@@ -431,45 +424,52 @@ const GerenteDashboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6" style={styles.container}>
-      {/* Header con filtro de período y última actualización */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div></div>
-          <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 rounded-xl border p-1" style={{...styles.card}}>
-            {(['hoy', 'semana', 'mes'] as PeriodFilter[]).map((period) => (
-              <button
-                key={period}
-                onClick={() => setPeriodFilter(period)}
-                className="px-4 py-2 rounded-lg text-sm font-semibold transition-all"
-                style={{
-                  backgroundColor: periodFilter === period 
-                    ? (theme === 'dark' ? 'rgba(15, 23, 42, 0.8)' : 'rgb(15, 23, 42)')
-                    : 'transparent',
-                  color: periodFilter === period 
-                    ? '#ffffff' 
-                    : styles.text.secondary
-                }}
-                onMouseEnter={(e) => {
-                  if (periodFilter !== period) {
-                    e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(241, 245, 249, 0.1)' : '#f1f5f9';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (periodFilter !== period) {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                  }
-                }}
-              >
-                {period === 'hoy' ? 'Hoy' : period === 'semana' ? 'Semana' : 'Mes'}
-              </button>
-            ))}
+    <div className="space-y-3" style={styles.container}>
+      {/* Header con filtro de período - FIJO EN LA PARTE SUPERIOR */}
+      <div className="sticky top-0 z-50 pb-2 mb-1" style={{
+        backgroundColor: styles.container.backgroundColor,
+        backdropFilter: 'blur(10px)'
+      }}>
+        <div className="flex flex-wrap items-center gap-3 p-3 rounded-lg border" style={{...styles.card}}>
+          <div className="flex items-center gap-1.5">
+            <Filter className="w-3.5 h-3.5" style={{color: styles.text.tertiary}} />
+            <span className="text-[10px] font-semibold uppercase tracking-wide" style={{color: styles.text.secondary}}>Tiempo</span>
+            <div className="flex gap-1">
+              {(['hoy', 'semana', 'mes'] as PeriodFilter[]).map((period) => (
+                <button
+                  key={period}
+                  onClick={() => setPeriodFilter(period)}
+                  className="px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-all border"
+                  style={periodFilter === period ? {
+                    backgroundColor: 'rgb(15, 23, 42)',
+                    borderColor: 'rgba(148, 163, 184, 0.2)',
+                    color: '#ffffff'
+                  } : {
+                    backgroundColor: 'transparent',
+                    color: styles.text.secondary,
+                    borderColor: 'rgba(148, 163, 184, 0.2)'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (periodFilter !== period) {
+                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f8fafc';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (periodFilter !== period) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }
+                  }}
+                >
+                  {period === 'hoy' ? 'Hoy' : period === 'semana' ? 'Semana' : 'Mes'}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 items-stretch">
         <KPICard
           label="Casos Abiertos"
           value={abiertos}
@@ -511,16 +511,19 @@ const GerenteDashboard: React.FC = () => {
 
       {/* Resumen Ejecutivo */}
       {insights.length > 0 && (
-        <div className="p-6 rounded-2xl border shadow-sm" style={{...styles.card}}>
-          <h3 className="text-base font-bold mb-4 flex items-center gap-2" style={{color: styles.text.primary}}>
-            <CheckCircle2 className="w-5 h-5" style={{color: '#94a3b8'}} />
+        <div className="p-3 rounded-xl border shadow-sm" style={{...styles.card}}>
+          <h3 className="text-xs font-black mb-2 flex items-center gap-2 uppercase tracking-wider" style={{color: styles.text.primary}}>
+            <CheckCircle2 className="w-3.5 h-3.5" style={{color: '#64748b'}} />
             Resumen Ejecutivo
           </h3>
-          <ul className="space-y-2">
+          <ul className="space-y-1.5">
             {insights.map((insight, idx) => (
-              <li key={idx} className="flex items-center gap-2 text-sm" style={{color: styles.text.secondary}}>
-                <div className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: styles.text.tertiary}}></div>
-                {insight}
+              <li key={idx} className="flex items-center gap-2 text-xs p-1.5 rounded-lg transition-all hover:bg-opacity-50" style={{
+                color: styles.text.secondary,
+                backgroundColor: theme === 'dark' ? 'rgba(200, 21, 27, 0.08)' : 'rgba(200, 21, 27, 0.05)'
+              }}>
+                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{backgroundColor: '#64748b'}}></div>
+                <span className="font-medium">{insight}</span>
               </li>
             ))}
           </ul>
@@ -528,16 +531,16 @@ const GerenteDashboard: React.FC = () => {
       )}
 
       {/* Gráficas */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* Distribución por Estado */}
-        <div className="p-6 rounded-2xl border shadow-sm" style={{...styles.card}}>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-bold" style={{color: styles.text.primary}}>Distribución por Estado</h3>
-            <div className="text-xs font-medium" style={{color: styles.text.tertiary}}>
+        <div className="p-3 rounded-xl border shadow-sm" style={{...styles.card}}>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xs font-black uppercase tracking-wider" style={{color: styles.text.primary}}>Distribución por Estado</h3>
+            <div className="text-[10px] font-medium" style={{color: styles.text.tertiary}}>
               Total: {totalCasos} casos
             </div>
           </div>
-          <div className="h-64">
+          <div className="h-40">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartDataWithPercent}>
                 <CartesianGrid 
@@ -581,17 +584,17 @@ const GerenteDashboard: React.FC = () => {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+          <div className="mt-2 grid grid-cols-2 gap-1 text-[10px]">
             {chartDataWithPercent.map((item, idx) => (
               <div 
                 key={idx} 
-                className="flex items-center justify-between p-2 rounded-lg" 
+                className="flex items-center justify-between p-1 rounded-lg" 
                 style={{
                   backgroundColor: theme === 'dark' ? 'rgba(241, 245, 249, 0.05)' : '#f8fafc'
                 }}
               >
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded" style={{ backgroundColor: COLORS[idx] }}></div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded" style={{ backgroundColor: COLORS[idx] }}></div>
                   <span className="font-medium" style={{color: styles.text.secondary}}>{item.name}</span>
                 </div>
                 <span className="font-bold" style={{color: styles.text.primary}}>{item.value} ({item.percent}%)</span>
@@ -601,36 +604,77 @@ const GerenteDashboard: React.FC = () => {
         </div>
 
         {/* Cumplimiento de SLA */}
-        <div className="p-6 rounded-2xl border shadow-sm" style={{...styles.card}}>
-          <h3 className="text-base font-bold mb-6" style={{color: styles.text.primary}}>Cumplimiento de SLA</h3>
-          <div className="h-64 flex flex-col justify-center items-center">
-            <div className={`relative w-48 h-48 rounded-full border-[12px] flex flex-col items-center justify-center`} style={{
-              borderColor: slaStatus === 'sin_datos' ? '#94a3b8' :
-                          slaStatus === 'en_cumplimiento' ? '#22c55e' : 
-                          slaStatus === 'riesgo' ? '#f59e0b' : '#ef4444'
-            }}>
-              <span className="text-4xl font-black" style={{color: styles.text.primary}}>
-                {kpis.slaCompliance !== null ? `${kpis.slaCompliance}%` : 'N/A'}
-              </span>
-              <span className="text-xs font-bold uppercase tracking-tighter mt-1" style={{color: styles.text.tertiary}}>
-                {kpis.slaCompliance !== null ? 'On Target' : 'Sin datos'}
-              </span>
-            </div>
-            <div className="mt-6 text-center space-y-2">
-              <p className="text-sm" style={{color: styles.text.tertiary}}>
-                Objetivo: <span className="font-bold" style={{color: styles.text.primary}}>{slaObjective}%</span>
-              </p>
-              <p className="text-sm font-semibold" style={{
-                color: slaStatus === 'sin_datos' ? '#94a3b8' :
-                       slaStatus === 'en_cumplimiento' ? '#22c55e' :
-                       slaStatus === 'riesgo' ? '#f59e0b' : '#ef4444'
+        <div className="p-4 rounded-xl border shadow-sm flex flex-col h-full" style={{...styles.card}}>
+          <h3 className="text-xs font-black mb-2 uppercase tracking-wider" style={{color: styles.text.primary}}>Cumplimiento de SLA</h3>
+          
+          <div className="flex-1 flex flex-col justify-between py-1">
+            {/* Barra de progreso horizontal superior con colores progresivos */}
+            <div className="w-full mb-3">
+              <div className="relative h-3 rounded-full overflow-hidden" style={{
+                backgroundColor: theme === 'dark' ? 'rgba(51, 65, 85, 0.5)' : 'rgba(226, 232, 240, 0.8)'
               }}>
-                {slaText}
-              </p>
+                {/* Progreso con color progresivo: Rojo → Naranja → Amarillo → Verde */}
+                {kpis.slaCompliance !== null && (
+                  <div 
+                    className="absolute left-0 top-0 bottom-0 transition-all duration-1000 ease-out"
+                    style={{
+                      width: `${Math.min(kpis.slaCompliance, 100)}%`,
+                      background: `linear-gradient(90deg, ${slaProgressColor.from} 0%, ${slaProgressColor.to} 100%)`
+                    }}
+                  />
+                )}
+                
+                {/* Marca del objetivo */}
+                <div 
+                  className="absolute top-0 bottom-0 w-0.5"
+                  style={{
+                    left: `${slaObjective}%`,
+                    backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.6)' : 'rgba(71, 85, 105, 0.6)'
+                  }}
+                >
+                  <div 
+                    className="absolute -top-5 -left-4 text-[9px] font-bold px-1.5 py-0.5 rounded"
+                    style={{
+                      color: styles.text.tertiary,
+                      backgroundColor: theme === 'dark' ? 'rgba(30, 41, 59, 0.9)' : 'rgba(241, 245, 249, 0.9)'
+                    }}
+                  >
+                    Meta {slaObjective}%
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Número central grande - COLOR NEUTRAL (SIN ROJO) */}
+            <div className="flex-1 flex flex-col items-center justify-center">
+              <div className="text-center">
+                <div className="text-5xl font-black mb-1" style={{
+                  color: styles.text.primary // Siempre neutral
+                }}>
+                  {kpis.slaCompliance !== null ? `${kpis.slaCompliance}%` : 'N/A'}
+                </div>
+                <div className="text-xs font-medium" style={{color: styles.text.tertiary}}>
+                  Cumplimiento actual
+                </div>
+              </div>
+            </div>
+
+            {/* Estado inferior - solo la barra lateral con color */}
+            <div className="text-center mt-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{
+                backgroundColor: theme === 'dark' ? 'rgba(51, 65, 85, 0.3)' : 'rgba(241, 245, 249, 0.6)',
+                borderLeft: `3px solid ${slaProgressColor.from}`
+              }}>
+                <span className="text-xs font-semibold" style={{
+                  color: styles.text.primary // Texto neutral
+                }}>
+                  {slaText}
+                </span>
+              </div>
               {slaStatus !== 'en_cumplimiento' && slaStatus !== 'sin_datos' && kpis.slaCompliance !== null && (
-                <p className="text-xs mt-1" style={{color: styles.text.tertiary}}>
+                <p className="text-[10px] mt-1.5" style={{color: styles.text.tertiary}}>
                   {kpis.slaCompliance < slaObjective 
-                    ? `Faltan ${(slaObjective - kpis.slaCompliance).toFixed(1)}% para alcanzar el objetivo`
+                    ? `${(slaObjective - kpis.slaCompliance).toFixed(1)}% por debajo del objetivo`
                     : ''}
                 </p>
               )}

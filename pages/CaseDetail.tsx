@@ -997,15 +997,11 @@ const CaseDetail: React.FC = () => {
                 
                 // Ordenar por fecha ascendente (más antiguo primero)
                 // Ordenar historial: primero las entradas de creación, luego por fecha ascendente
-                const historialOrdenado = [...historialSinDuplicados].sort((a, b) => {
-                  // Si una es de creación y la otra no, la creación va primero
-                  if (a.tipo_evento === 'CREADO' && b.tipo_evento !== 'CREADO') {
-                    return -1;
-                  }
-                  if (a.tipo_evento !== 'CREADO' && b.tipo_evento === 'CREADO') {
-                    return 1;
-                  }
-                  // Si ambas son del mismo tipo, ordenar por fecha ascendente
+                // Filtrar entradas de tipo CREADO para no mostrarlas
+                const historialFiltrado = historialSinDuplicados.filter(entry => entry.tipo_evento !== 'CREADO');
+                
+                const historialOrdenado = [...historialFiltrado].sort((a, b) => {
+                  // Ordenar por fecha ascendente
                   const fechaA = new Date(a.fecha || a.fechaHora || 0).getTime();
                   const fechaB = new Date(b.fecha || b.fechaHora || 0).getTime();
                   return fechaA - fechaB; // Orden ascendente
@@ -1016,13 +1012,27 @@ const CaseDetail: React.FC = () => {
                     {historialOrdenado.map((entry: HistorialEntry | any, idx: number) => {
                       // Formatear texto del evento según tipo
                       let textoEvento = '';
-                      if (entry.tipo_evento === 'CREADO') {
-                        textoEvento = 'El caso fue creado';
-                      } else if (entry.tipo_evento === 'CAMBIO_ESTADO') {
-                        textoEvento = `Estado cambiado de ${entry.estado_anterior || 'N/A'} a ${entry.estado_nuevo || 'N/A'}`;
+                      if (entry.tipo_evento === 'CAMBIO_ESTADO') {
+                        // Si es el primer cambio de estado (de N/A a NUEVO), es la creación del caso
+                        const esCreacion = (entry.estado_anterior === 'N/A' || !entry.estado_anterior) && 
+                                          (entry.estado_nuevo === 'NUEVO' || entry.estado_nuevo === 'Nuevo');
+                        
+                        if (esCreacion) {
+                          textoEvento = 'Caso registrado en el sistema';
+                        } else {
+                          textoEvento = `Estado cambiado de ${entry.estado_anterior || 'N/A'} a ${entry.estado_nuevo || 'N/A'}`;
+                        }
                       } else {
                         // Compatibilidad con formato anterior
-                        textoEvento = entry.detalle || entry.descripcion || entry.accion || 'Evento del caso';
+                        let textoOriginal = entry.detalle || entry.descripcion || entry.accion || 'Evento del caso';
+                        
+                        // Reemplazar "INGRESO DE NUEVO CASO" por texto más profesional
+                        if (textoOriginal.toUpperCase().includes('INGRESO DE NUEVO CASO') || 
+                            textoOriginal.toUpperCase().includes('INGRESO NUEVO CASO')) {
+                          textoEvento = 'Caso registrado en el sistema';
+                        } else {
+                          textoEvento = textoOriginal;
+                        }
                       }
 
                       const fecha = entry.fecha || entry.fechaHora || entry.createdAt || new Date().toISOString();

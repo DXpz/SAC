@@ -39,6 +39,13 @@ export default defineConfig(({ mode }) => {
             secure: true,
             rewrite: () => '/webhook/d804c804-9841-41f7-bc4b-66d2edeed53b',
           },
+          // Crear usuario (admin) - webhook para crear nuevos usuarios desde admin
+          '/api/crear-usuario': {
+            target: 'https://n8n.red.com.sv',
+            changeOrigin: true,
+            secure: true,
+            rewrite: () => '/webhook/8679122d-c982-4cc8-92a9-7591ef887d61',
+          },
           // Round Robin (asignación de agentes) - webhook para Round Robin
           '/api/round-robin': {
             target: 'https://n8n.red.com.sv',

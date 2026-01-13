@@ -8,6 +8,10 @@ export const API_CONFIG = {
   // En desarrollo usa el proxy de Vite (/api/agentes), en producción usa la URL completa
   WEBHOOK_AGENTES_URL: import.meta.env.VITE_WEBHOOK_AGENTES_URL || '/api/agentes',
   
+  // URL del webhook de n8n para crear nuevos usuarios desde admin
+  // En desarrollo usa el proxy de Vite (/api/crear-usuario), en producción usa la URL completa
+  WEBHOOK_CREAR_USUARIO_URL: import.meta.env.VITE_WEBHOOK_CREAR_USUARIO_URL || '/api/crear-usuario',
+  
   // URL del webhook de n8n para la gestión de casos (CRUD)
   // En desarrollo usa el proxy de Vite (/api/casos), en producción usa la URL completa
   WEBHOOK_CASOS_URL: import.meta.env.VITE_WEBHOOK_CASOS_URL || '/api/casos',
@@ -20,6 +24,7 @@ export const API_CONFIG = {
   // Estas URLs se usan cuando VITE_WEBHOOK_*_URL está definido o en producción
   WEBHOOK_URL_FULL: 'https://n8n.red.com.sv/webhook/6f27bb4b-bfcd-4776-b554-5194569be2a7',
   WEBHOOK_AGENTES_URL_FULL: 'https://n8n.red.com.sv/webhook/d804c804-9841-41f7-bc4b-66d2edeed53b',
+  WEBHOOK_CREAR_USUARIO_URL_FULL: 'https://n8n.red.com.sv/webhook/8679122d-c982-4cc8-92a9-7591ef887d61',
   WEBHOOK_CASOS_URL_FULL: 'https://n8n.red.com.sv/webhook-test/97a6c0f7-ea50-4542-b99e-710b96b58652',
   WEBHOOK_ROUND_ROBIN_URL_FULL: 'https://n8n.red.com.sv/webhook-test/case-create-round-robin',
   WEBHOOK_CLIENTES_URL_FULL: 'https://n8n.red.com.sv/webhook/b30aeff4-1d3a-4b40-b8da-141b4e1fc5b6',

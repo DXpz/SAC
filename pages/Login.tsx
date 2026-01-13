@@ -180,24 +180,38 @@ const Login: React.FC = () => {
 
   // Agregar animación shake al CSS si no existe
   useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes shake {
-        0%, 100% { transform: translateX(0); }
-        10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-        20%, 40%, 60%, 80% { transform: translateX(5px); }
+    // Usar un ID único para evitar duplicación de estilos
+    const styleId = 'login-animations-styles';
+    
+    // Solo agregar si no existe
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = `
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+          20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        @keyframes logoFloat {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
+        }
+        @keyframes logoPulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.8; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    
+    // Cleanup: remover estilo solo si fue creado por este componente
+    return () => {
+      const existingStyle = document.getElementById(styleId);
+      if (existingStyle) {
+        document.head.removeChild(existingStyle);
       }
-      @keyframes logoFloat {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-10px); }
-      }
-      @keyframes logoPulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.8; }
-      }
-    `;
-    document.head.appendChild(style);
-    return () => document.head.removeChild(style);
+    };
   }, []);
 
   const handleDemoClick = (demoEmail: string) => {
@@ -592,84 +606,6 @@ const Login: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Estilos de animación inline */}
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        
-        @keyframes scaleInBounce {
-          0% {
-            transform: scale(0);
-            opacity: 0;
-          }
-          50% {
-            transform: scale(1.1);
-          }
-          100% {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-        
-        @keyframes logoPop {
-          0% {
-            transform: scale(0);
-            opacity: 0;
-          }
-          50% {
-            transform: scale(1.3);
-          }
-          70% {
-            transform: scale(0.9);
-          }
-          100% {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-        
-        @keyframes errorPop {
-          0% {
-            transform: scale(0) rotate(-10deg);
-            opacity: 0;
-          }
-          50% {
-            transform: scale(1.3) rotate(5deg);
-          }
-          70% {
-            transform: scale(0.9) rotate(-2deg);
-          }
-          100% {
-            transform: scale(1) rotate(0deg);
-            opacity: 1;
-          }
-        }
-        
-        @keyframes ringExpand {
-          0% {
-            transform: scale(1);
-            opacity: 0.8;
-          }
-          100% {
-            transform: scale(1.5);
-            opacity: 0;
-          }
-        }
-        
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
     </div>
   );
 };

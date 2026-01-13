@@ -1070,6 +1070,109 @@ export const api = {
     });
   },
 
+  // Obtener lista de usuarios desde el webhook de crear usuario
+  // Este webhook retorna TODOS los usuarios creados desde ese flujo
+  async getUsuarios(): Promise<any[]> {
+    return getCachedOrFetch('usuarios', async () => {
+      const currentUser = this.getUser();
+      
+      if (!currentUser) {
+        console.warn('⚠️ No hay usuario autenticado, retornando array vacío');
+        return [];
+      }
+
+      const actor = buildActorPayload(currentUser);
+
+      // Construir el payload para listar usuarios
+      const payload = {
+        action: 'user.read',
+        actor: {
+          user_id: Number(actor.user_id) || 0,
+          email: actor.email,
+          role: actor.role
+        }
+      };
+
+      console.log('📤 Consultando usuarios con payload:', JSON.stringify(payload, null, 2));
+
+      // Llamar al webhook de crear usuario (que también lista usuarios)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
+
+      try {
+        const response = await fetch(API_CONFIG.WEBHOOK_CREAR_USUARIO_URL, {
+          method: 'POST',
+          mode: 'cors',
+          credentials: 'omit',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          if (response.status === 0) {
+            throw new Error('Error de CORS: El servidor no está permitiendo peticiones desde este origen.');
+          }
+          const errorText = await response.text();
+          let errorData;
+          try {
+            errorData = JSON.parse(errorText);
+          } catch {
+            errorData = { message: errorText || `Error ${response.status}: ${response.statusText}` };
+          }
+          throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        console.log('📥 Respuesta del webhook de usuarios:', JSON.stringify(result, null, 2));
+
+        // Verificar si hay error en la respuesta
+        if (result.error === true) {
+          throw new Error(result.message || 'Error al obtener los usuarios');
+        }
+
+        // El webhook puede retornar diferentes formatos:
+        // 1. { users: [...] } o { usuarios: [...] }
+        // 2. Array directo de usuarios
+        // 3. { data: [...] } - estructura con data
+        let usuarios: any[] = [];
+        
+        if (Array.isArray(result)) {
+          usuarios = result;
+        } else if (result.users && Array.isArray(result.users)) {
+          usuarios = result.users;
+        } else if (result.usuarios && Array.isArray(result.usuarios)) {
+          usuarios = result.usuarios;
+        } else if (result.data && Array.isArray(result.data)) {
+          usuarios = result.data;
+        } else if (result.data && result.data.users && Array.isArray(result.data.users)) {
+          usuarios = result.data.users;
+        } else if (result.data && result.data.usuarios && Array.isArray(result.data.usuarios)) {
+          usuarios = result.data.usuarios;
+        }
+
+        console.log('✅ Usuarios obtenidos:', usuarios.length);
+        console.log('📋 Lista de usuarios:', JSON.stringify(usuarios, null, 2));
+
+        return usuarios;
+      } catch (error: any) {
+        clearTimeout(timeoutId);
+        
+        if (error.name === 'AbortError') {
+          throw new Error('Timeout: El servidor no respondió a tiempo. Verifica tu conexión.');
+        }
+        
+        console.error('❌ Error al obtener usuarios desde webhook:', error.message || error);
+        throw error;
+      }
+    });
+  },
+
   // Obtener lista de clientes desde n8n
   async getClientes(): Promise<Cliente[]> {
     return getCachedOrFetch('clientes', async () => {
@@ -1270,27 +1373,28 @@ export const api = {
     return true;
   },
 
-  // Crear nueva cuenta de agente con webhook de agentes
-  // SOLO el supervisor puede crear cuentas, y DEBE pasar por el webhook de n8n
-  // El agente se almacena directamente en el sistema a través del webhook
+  // Crear nueva cuenta de usuario con webhook de crear usuario
+  // El usuario se almacena directamente en el sistema a través del webhook
   async createAccount(email: string, password: string, name: string, additionalData?: any): Promise<User> {
+    console.log('🔵 [API] createAccount iniciada');
+    console.log('📧 [API] Email:', email);
+    console.log('👤 [API] Nombre:', name);
+    console.log('📦 [API] Datos adicionales:', additionalData);
+
     // Validaciones previas
     if (!email || !email.trim()) {
       throw new Error('El correo electrónico es requerido');
     }
-    if (!password || !password.trim() || password.length < 8) {
-      throw new Error('La contraseña debe tener al menos 8 caracteres');
-    }
     if (!name || !name.trim()) {
       throw new Error('El nombre es requerido');
     }
-    
+
     // Validar formato de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
       throw new Error('Formato de correo electrónico inválido');
     }
-    
+
     // Obtener el usuario actual (actor)
     const currentUser = this.getUser();
     if (!currentUser) {
@@ -1300,33 +1404,48 @@ export const api = {
     // Construir el actor
     const actor = buildActorPayload(currentUser);
 
-    // Construir el payload según el formato del webhook de agentes
+    // Generar contraseña aleatoria si no se proporciona
+    // Formato: red + 4 dígitos + 4 letras (igual que cuando se crea un agente en Register)
+    const generarPasswordAleatoria = () => {
+      const randomNumber = Math.floor(Math.random() * 9000) + 1000; // Número de 4 dígitos (1000-9999)
+      const letters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      let randomLetters = '';
+      for (let i = 0; i < 4; i++) {
+        randomLetters += letters.charAt(Math.floor(Math.random() * letters.length));
+      }
+      return `red${randomNumber}${randomLetters}`; // Ejemplo: red7453aBcD
+    };
+
+    const passwordFinal = password && password.trim() ? password.trim() : generarPasswordAleatoria();
+    console.log('🔐 [API] Contraseña generada:', passwordFinal);
+
+    // Construir el payload según el formato especificado
     const payload = {
-      action: 'agent.create',
+      action: 'user.create',
       actor: {
         user_id: Number(actor.user_id) || 0,
         email: actor.email,
         role: actor.role
       },
       data: {
-        agent_id: '', // Vacío para crear nuevo agente
         nombre: name.trim(),
-      email: email.trim().toLowerCase(),
-        pais: additionalData?.pais || 'El Salvador',
-        rol: additionalData?.rol || 'AGENTE',
-        estado: additionalData?.estado || 'ACTIVO',
-        password: password.trim() // Incluir la contraseña para que el webhook la almacene
+        email: email.trim().toLowerCase(),
+        password: passwordFinal,
+        role: additionalData?.rol || 'AGENTE' // Usar 'role' en lugar de 'rol'
       }
     };
 
-    console.log('📤 Creando agente con payload:', JSON.stringify(payload, null, 2));
+    console.log('📤 Creando usuario con payload:', JSON.stringify(payload, null, 2));
+    console.log('🔗 [API] URL del webhook:', API_CONFIG.WEBHOOK_CREAR_USUARIO_URL);
+    console.log('🔗 [API] URL completa del webhook:', API_CONFIG.WEBHOOK_CREAR_USUARIO_URL_FULL);
     
-    // Llamar al webhook de agentes
+    // Llamar al webhook de crear usuario (específico para admin)
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
 
     try {
-      const response = await fetch(API_CONFIG.WEBHOOK_AGENTES_URL, {
+      console.log('🌐 [API] Iniciando fetch a:', API_CONFIG.WEBHOOK_CREAR_USUARIO_URL);
+      const response = await fetch(API_CONFIG.WEBHOOK_CREAR_USUARIO_URL, {
         method: 'POST',
         mode: 'cors',
         credentials: 'omit',
@@ -1340,11 +1459,15 @@ export const api = {
 
       clearTimeout(timeoutId);
 
+      console.log('✅ [API] Response status:', response.status, response.statusText);
+      console.log('📋 [API] Response headers:', [...response.headers.entries()]);
+
       if (!response.ok) {
         if (response.status === 0) {
           throw new Error('Error de CORS: El servidor no está permitiendo peticiones desde este origen.');
         }
         const errorText = await response.text();
+        console.log('❌ [API] Error response text:', errorText);
         let errorData;
         try {
           errorData = JSON.parse(errorText);
@@ -1354,24 +1477,57 @@ export const api = {
         throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
       }
 
-      const result = await response.json();
-      console.log('📥 Respuesta del webhook de agentes:', result);
+      // Verificar si la respuesta tiene contenido antes de parsear JSON
+      const contentType = response.headers.get('content-type');
+      console.log('📄 [API] Content-Type:', contentType);
+      
+      const responseText = await response.text();
+      console.log('📥 [API] Response text:', responseText);
+
+      if (!responseText || responseText.trim() === '') {
+        throw new Error('El webhook no devolvió ninguna respuesta. Verifica que el flujo de n8n esté configurado correctamente y devuelva los datos del usuario creado.');
+      }
+
+      let result;
+      try {
+        result = JSON.parse(responseText);
+        console.log('📥 Respuesta del webhook de crear usuario:', JSON.stringify(result, null, 2));
+      } catch (parseError) {
+        console.error('❌ [API] Error al parsear JSON:', parseError);
+        console.error('📄 [API] Texto recibido:', responseText);
+        throw new Error(`El webhook devolvió una respuesta inválida. Respuesta: ${responseText.substring(0, 200)}`);
+      }
 
       // Verificar si hay error en la respuesta
       if (result.error === true) {
-        throw new Error(result.message || 'Error al crear el agente');
+        throw new Error(result.message || 'Error al crear el usuario');
     }
 
-      // El webhook puede retornar el agente creado o un mensaje de éxito
-      // Si retorna el agente, usarlo; si no, crear un objeto básico
-      const agentData = result.agent || result.data || result;
+      // El webhook puede retornar:
+      // 1. Un solo usuario creado: result.user, result.agent o result.data
+      // 2. Una lista de usuarios: result.users o result.data (array)
+      let userData = result.user || result.agent || result.data || result;
       
-      // Crear un objeto User desde los datos del agente
+      // Si el webhook retorna un array de usuarios
+      if (Array.isArray(userData)) {
+        console.log('📋 El webhook retornó una lista de usuarios:', userData.length);
+        console.log('👥 Todos los usuarios del flujo:', JSON.stringify(userData, null, 2));
+        
+        // Buscar el usuario recién creado (el último o el que coincida con el email)
+        const emailLower = email.trim().toLowerCase();
+        userData = userData.find((u: any) => 
+          (u.email || '').toLowerCase() === emailLower
+        ) || userData[userData.length - 1] || userData[0];
+        
+        console.log('✅ Usuario recién creado extraído:', userData);
+      }
+      
+      // Crear un objeto User desde los datos del usuario
     const user: User = {
-        id: agentData.agent_id || agentData.id || `agent-${Date.now()}`,
-        name: agentData.nombre || name.trim(),
-        role: (agentData.rol || 'AGENTE') as Role,
-        avatar: agentData.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(name.trim())}&background=0f172a&color=fff`
+        id: userData.user_id || userData.agent_id || userData.id || userData.idAgente || userData.id_agente || `user-${Date.now()}`,
+        name: userData.nombre || userData.name || name.trim(),
+        role: (userData.role || userData.rol || 'AGENTE') as Role,
+        avatar: userData.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(name.trim())}&background=0f172a&color=fff`
     };
 
       // Validar que el rol sea válido
