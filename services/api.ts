@@ -1090,6 +1090,9 @@ export const api = {
           user_id: Number(actor.user_id) || 0,
           email: actor.email,
           role: actor.role
+        },
+        data: {
+          id: "all"
         }
       };
 

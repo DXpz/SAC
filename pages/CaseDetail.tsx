@@ -109,37 +109,90 @@ const CaseDetail: React.FC = () => {
   // Enriquecer nombres desde webhooks de clientes y agentes
   // IMPORTANTE: Solo enriquecer si faltan datos, NO sobrescribir datos existentes
   useEffect(() => {
+    console.log('🔄 [CaseDetail] useEffect de enriquecimiento ejecutándose...', {
+      tieneCaso: !!caso,
+      casoId: caso?.id || caso?.ticketNumber,
+      clientIdEnCaso: caso?.clientId || caso?.clienteId,
+      clientNameEnCaso: caso?.clientName,
+      cantidadClientes: clientes.length,
+      cantidadAgentes: agentes.length
+    });
+    
     if (caso && (clientes.length > 0 || agentes.length > 0)) {
       let updated = false;
       const casoActualizado = { ...caso };
 
-      // Enriquecer con cliente completo SOLO si falta el nombre
-      if (clientes.length > 0 && casoActualizado.clientId) {
-        const cliente = clientes.find(c => c.idCliente === casoActualizado.clientId);
+      // Enriquecer con cliente completo - usar búsqueda más robusta
+      if (clientes.length > 0 && (casoActualizado.clientId || casoActualizado.clienteId)) {
+        const clientIdBuscar = casoActualizado.clientId || casoActualizado.clienteId || '';
+        
+        console.log('🔍 [CaseDetail] Buscando cliente con ID:', clientIdBuscar);
+        console.log('📋 [CaseDetail] Clientes disponibles:', clientes.map(c => `${c.idCliente} - ${c.nombreEmpresa}`));
+        
+        // Función para normalizar IDs
+        const normalizeId = (id: string) => {
+          if (!id) return '';
+          const normalized = id.toString().trim().toLowerCase();
+          return normalized;
+        };
+        
+        const clientIdNormalized = normalizeId(clientIdBuscar);
+        
+        // Buscar cliente con múltiples estrategias
+        const cliente = clientes.find(c => {
+          const cliIdNormalized = normalizeId(c.idCliente);
+          
+          // Comparación normalizada
+          if (clientIdNormalized === cliIdNormalized) return true;
+          
+          // Comparación directa
+          if (c.idCliente === clientIdBuscar) return true;
+          
+          // Comparación numérica (solo números)
+          const casoNum = clientIdBuscar.replace(/\D/g, '');
+          const cliNum = c.idCliente.replace(/\D/g, '');
+          if (casoNum && cliNum && casoNum === cliNum) return true;
+          
+          return false;
+        });
+        
         if (cliente) {
-          // Solo actualizar si falta el nombre o el objeto cliente completo
-          if (!casoActualizado.clientName || casoActualizado.clientName === 'Sin cliente') {
+          console.log('✅ [CaseDetail] Cliente encontrado para enriquecimiento:', cliente.idCliente, cliente.nombreEmpresa);
+          
+          // Enriquecer con datos del cliente
+          if (!casoActualizado.clientName || casoActualizado.clientName === 'Sin cliente' || casoActualizado.clientName.trim() === '') {
+            console.log('📝 [CaseDetail] Actualizando clientName de', casoActualizado.clientName, 'a', cliente.nombreEmpresa);
             casoActualizado.clientName = cliente.nombreEmpresa;
             updated = true;
           }
           if (!casoActualizado.cliente) {
+            console.log('📝 [CaseDetail] Agregando objeto cliente completo');
             casoActualizado.cliente = cliente;
             updated = true;
           }
-          // Preservar email y teléfono del caso si existen
-          if (casoActualizado.clientEmail && !cliente.email) {
-            // Mantener el email del caso
-          } else if (!casoActualizado.clientEmail && cliente.email) {
+          if (!casoActualizado.clientEmail && cliente.email) {
+            console.log('📝 [CaseDetail] Actualizando clientEmail a', cliente.email);
             casoActualizado.clientEmail = cliente.email;
             updated = true;
           }
-          if (casoActualizado.clientPhone && !cliente.telefono) {
-            // Mantener el teléfono del caso
-          } else if (!casoActualizado.clientPhone && cliente.telefono) {
+          if (!casoActualizado.clientPhone && cliente.telefono) {
+            console.log('📝 [CaseDetail] Actualizando clientPhone a', cliente.telefono);
             casoActualizado.clientPhone = cliente.telefono;
             updated = true;
           }
+        } else {
+          console.warn('⚠️ [CaseDetail] No se encontró cliente para el caso:', {
+            clientIdBuscar,
+            clientIdNormalized,
+            clientesDisponibles: clientes.map(c => c.idCliente)
+          });
         }
+      } else {
+        console.log('⚠️ [CaseDetail] No hay clientes cargados o caso no tiene clientId:', {
+          clientes: clientes.length,
+          clientId: casoActualizado.clientId,
+          clienteId: casoActualizado.clienteId
+        });
       }
 
       // Enriquecer con agente completo SOLO si falta
@@ -159,8 +212,18 @@ const CaseDetail: React.FC = () => {
       }
 
       if (updated) {
+        console.log('✅ [CaseDetail] Actualizando caso con datos enriquecidos:', {
+          casoId: casoActualizado.id || casoActualizado.ticketNumber,
+          clientId: casoActualizado.clientId,
+          clientName: casoActualizado.clientName,
+          tieneObjetoCliente: !!casoActualizado.cliente
+        });
         setCaso(casoActualizado);
+      } else {
+        console.log('ℹ️ [CaseDetail] No se requirieron actualizaciones en el caso');
       }
+    } else {
+      console.log('⚠️ [CaseDetail] No se ejecuta enriquecimiento: caso o clientes/agentes no disponibles');
     }
   }, [caso?.id, clientes, agentes]);
 
@@ -217,26 +280,101 @@ const CaseDetail: React.FC = () => {
 
   const loadCaso = async (caseId: string) => {
     try {
-      console.log('🔄 Iniciando carga del caso desde webhook:', caseId);
+      console.log('📤 ========== CARGANDO DETALLE DEL CASO ==========');
+      console.log('📤 Case ID solicitado:', caseId);
+      console.log('📤 Llamando a api.getCasoById...');
       const data = await api.getCasoById(caseId);
+      console.log('📤 ================================================');
       
       if (!data) {
         console.error('❌ Caso no encontrado en webhook:', caseId);
         return;
       }
       
-      console.log('📥 Caso recibido del webhook:', {
-        id: data.id,
-        clientId: data.clientId,
-        clientName: data.clientName,
-        clientEmail: data.clientEmail,
-        clientPhone: data.clientPhone,
-        agentId: data.agentId,
-        agentName: data.agentName,
-        agenteAsignado: data.agenteAsignado,
-        status: data.status,
-        historial: data.historial?.length || 0
-      });
+      console.log('📥 ========== CASO RECIBIDO DEL WEBHOOK ==========');
+      console.log('📥 ID del caso:', data.id || data.ticketNumber);
+      console.log('📥 DATOS DEL CLIENTE:');
+      console.log('  - clientId:', data.clientId);
+      console.log('  - clienteId:', data.clienteId);
+      console.log('  - clientName:', data.clientName);
+      console.log('  - clientEmail:', data.clientEmail);
+      console.log('  - clientPhone:', data.clientPhone);
+      console.log('  - Objeto cliente completo:', data.cliente);
+      console.log('📥 DATOS DEL AGENTE:');
+      console.log('  - agentId:', data.agentId);
+      console.log('  - agentName:', data.agentName);
+      console.log('  - Objeto agenteAsignado:', data.agenteAsignado);
+      console.log('📥 OTROS DATOS:');
+      console.log('  - status:', data.status);
+      console.log('  - subject:', data.subject);
+      console.log('  - description:', data.description);
+      console.log('  - createdAt:', data.createdAt);
+      console.log('  - historial entries:', data.historial?.length || 0);
+      console.log('📥 OBJETO COMPLETO (JSON):');
+      console.log(JSON.stringify(data, null, 2));
+      console.log('📥 ================================================');
+      
+      // ENRIQUECER CON DATOS DEL CLIENTE SI FALTA EL NOMBRE
+      const clientIdDelCaso = data.clientId || data.clienteId;
+      const clientNameDelCaso = data.clientName;
+      
+      if (clientIdDelCaso && (!clientNameDelCaso || clientNameDelCaso === 'Sin cliente' || clientNameDelCaso.trim() === '')) {
+        console.log('🔍 ========== ENRIQUECIENDO DATOS DEL CLIENTE ==========');
+        console.log('🔍 Cliente sin nombre completo, buscando en API de clientes...');
+        console.log('🔍 Client ID a buscar:', clientIdDelCaso);
+        
+        // Si ya tenemos clientes cargados, buscar ahí primero
+        if (clientes.length > 0) {
+          console.log('📋 Clientes ya disponibles en memoria:', clientes.length);
+          const clienteEncontrado = clientes.find(c => 
+            c.idCliente === clientIdDelCaso || 
+            c.idCliente.toLowerCase() === clientIdDelCaso.toLowerCase() ||
+            c.idCliente.replace(/\D/g, '') === clientIdDelCaso.replace(/\D/g, '')
+          );
+          
+          if (clienteEncontrado) {
+            console.log('✅ Cliente encontrado en memoria:', clienteEncontrado.idCliente, '-', clienteEncontrado.nombreEmpresa);
+            data.clientName = clienteEncontrado.nombreEmpresa;
+            data.cliente = clienteEncontrado;
+            if (!data.clientEmail) data.clientEmail = clienteEncontrado.email;
+            if (!data.clientPhone) data.clientPhone = clienteEncontrado.telefono;
+          } else {
+            console.warn('⚠️ Cliente NO encontrado en memoria');
+            console.log('📋 IDs de clientes disponibles:', clientes.map(c => c.idCliente));
+          }
+        } else {
+          // Si no hay clientes en memoria, cargarlos ahora
+          console.log('📋 No hay clientes en memoria, cargando desde API...');
+          try {
+            const clientesDesdeAPI = await api.getClientes();
+            console.log('📋 Clientes cargados desde API:', clientesDesdeAPI.length);
+            setClientes(clientesDesdeAPI);
+            
+            const clienteEncontrado = clientesDesdeAPI.find(c => 
+              c.idCliente === clientIdDelCaso || 
+              c.idCliente.toLowerCase() === clientIdDelCaso.toLowerCase() ||
+              c.idCliente.replace(/\D/g, '') === clientIdDelCaso.replace(/\D/g, '')
+            );
+            
+            if (clienteEncontrado) {
+              console.log('✅ Cliente encontrado en API:', clienteEncontrado.idCliente, '-', clienteEncontrado.nombreEmpresa);
+              data.clientName = clienteEncontrado.nombreEmpresa;
+              data.cliente = clienteEncontrado;
+              if (!data.clientEmail) data.clientEmail = clienteEncontrado.email;
+              if (!data.clientPhone) data.clientPhone = clienteEncontrado.telefono;
+            } else {
+              console.warn('⚠️ Cliente NO encontrado en API');
+              console.log('📋 IDs de clientes disponibles:', clientesDesdeAPI.map(c => c.idCliente));
+            }
+          } catch (error) {
+            console.error('❌ Error al cargar clientes desde API:', error);
+          }
+        }
+        
+        console.log('🔍 ====================================================');
+      } else {
+        console.log('ℹ️ Cliente ya tiene nombre completo:', clientNameDelCaso);
+      }
       
       // Normalizar el estado para asegurar que sea válido
       if (data.status) {
