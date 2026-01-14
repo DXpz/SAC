@@ -586,31 +586,62 @@ export const api = {
 
     // 1) Intentar crear el caso usando el nuevo caseService (conecta con n8n)
     try {
-      console.log('🌐 Intentando crear caso usando caseService...');
-      const newCase = await caseService.createCase({
-        clienteId: caseData.clienteId || `CL-${Date.now()}`,
+      console.log('🌐 ========== INICIANDO CREACIÓN DE CASO ==========');
+      console.log('📤 Datos que se enviarán al webhook:');
+      const dataToSend = {
+        clienteId: caseData.clienteId || '',
         categoriaId: caseData.categoriaId || '7',
+        categoriaNombre: caseData.categoriaNombre || caseData.categoria?.nombre || caseData.categoryName || '',
         contactChannel: caseData.contactChannel || caseData.canalOrigen || 'Web',
         subject: caseData.subject,
         description: caseData.description,
-        clientEmail: caseData.clientEmail,
-        clientName: caseData.clientName,
-        notificationChannel: caseData.notificationChannel || caseData.contactChannel || 'Email',
+        clientEmail: caseData.clientEmail || '',
+        clientName: caseData.clientName || caseData.nombreEmpresa || 'Por definir',
+        contactName: caseData.contactName || caseData.contactoPrincipal || caseData.clientName || 'Por definir',
+        phone: caseData.phone || caseData.clientPhone || caseData.telefono || '',
+        notificationChannel: caseData.notificationChannel || caseData.contactChannel || caseData.canalNotificacion || 'Email',
         ...caseData
-      });
+      };
+      console.log(JSON.stringify(dataToSend, null, 2));
+      console.log('🌐 Llamando a caseService.createCase...');
+      console.log('🌐 Usuario que crea el caso:', user?.role);
+      console.log('🌐 Si el usuario es AGENTE, el webhook asignará el caso a ese agente automáticamente');
+      console.log('🌐 Si el usuario es SUPERVISOR o GERENTE, el webhook hará Round Robin');
       
-      console.log('✅ Caso creado exitosamente usando caseService');
-      console.log('📋 Caso retornado completo:', JSON.stringify(newCase, null, 2));
-      console.log('🔍 Agente en el caso retornado:', {
-        agentId: newCase.agentId,
-        agentName: newCase.agentName,
-        tieneAgenteAsignado: !!newCase.agenteAsignado,
-        agenteAsignado: newCase.agenteAsignado ? {
-          idAgente: newCase.agenteAsignado.idAgente,
-          nombre: newCase.agenteAsignado.nombre,
-          email: newCase.agenteAsignado.email
-        } : null
-      });
+      const newCase = await caseService.createCase(dataToSend);
+      
+      console.log('✅ ========== CASO CREADO EXITOSAMENTE ==========');
+      console.log('📥 ========== RESPUESTA COMPLETA DEL WEBHOOK ==========');
+      console.log('📥 Tipo de respuesta:', typeof newCase);
+      console.log('📥 Es array?:', Array.isArray(newCase));
+      console.log('📥 Tiene propiedades?:', newCase && typeof newCase === 'object' ? Object.keys(newCase) : 'N/A');
+      console.log('📥 OBJETO COMPLETO (JSON):');
+      console.log(JSON.stringify(newCase, null, 2));
+      console.log('📥 OBJETO COMPLETO (RAW):');
+      console.log(newCase);
+      console.log('📥 ================================================');
+      
+      console.log('🔍 ========== DESGLOSE DE CAMPOS DEL CASO ==========');
+      console.log('🔍 ID del caso:', newCase.id || newCase.ticketNumber);
+      console.log('🔍 CLIENTE:');
+      console.log('  - clientId:', newCase.clientId);
+      console.log('  - clientName:', newCase.clientName);
+      console.log('  - clientEmail:', newCase.clientEmail);
+      console.log('  - clientPhone:', newCase.clientPhone);
+      console.log('  - Objeto cliente completo:', newCase.cliente);
+      console.log('🔍 AGENTE:');
+      console.log('  - agentId:', newCase.agentId);
+      console.log('  - agentName:', newCase.agentName);
+      console.log('  - Objeto agenteAsignado:', newCase.agenteAsignado);
+      console.log('🔍 OTROS DATOS:');
+      console.log('  - status:', newCase.status);
+      console.log('  - subject:', newCase.subject);
+      console.log('  - description:', newCase.description);
+      console.log('  - category:', newCase.category);
+      console.log('  - origin:', newCase.origin);
+      console.log('  - createdAt:', newCase.createdAt);
+      console.log('  - historial:', newCase.historial);
+      console.log('🔍 ================================================');
       
       // Limpiar caché de casos para forzar actualización
       clearCache('cases');
@@ -670,17 +701,21 @@ export const api = {
 
     // Construir el payload completo para n8n
     const actorPayload = buildActorPayload(user);
+    
+    // Construir objeto cliente solo si hay clienteId, sino enviar valores por defecto
+    const clienteData = {
+      cliente_id: caseData.clienteId || 'N/A', // No generar ID aleatorio
+      nombre_empresa: caseData.clientName || 'Por definir',
+      contacto_principal: caseData.contactName || caseData.clientName || 'Por definir',
+      email: caseData.clientEmail || '',
+      telefono: caseData.phone || '',
+    };
+    
     const n8nPayload = {
       action: 'case.create',
       actor: actorPayload,
       data: {
-        cliente: {
-          cliente_id: caseData.clienteId || `CL-${Date.now()}`,
-          nombre_empresa: caseData.clientName,
-          contacto_principal: caseData.contactName || caseData.clientName,
-          email: caseData.clientEmail,
-          telefono: caseData.phone || '',
-        },
+        cliente: clienteData,
         categoria: {
           categoria_id: categoriaId,
           nombre: categoriaNombre,
@@ -690,6 +725,8 @@ export const api = {
         asunto: caseData.subject,
         descripcion: caseData.description,
         // El backend procesa el correo del agente para asignar, usar email si está disponible
+        // Si el actor es un AGENTE, el webhook automáticamente asignará el caso a ese agente (sin round robin)
+        // Si el actor es SUPERVISOR o GERENTE, el webhook hará Round Robin automáticamente
         agente_email: caseData.agentEmail || caseData.agenteEmail || actorPayload.email || '',
         agente_id: agenteAsignado?.idAgente || agenteAsignado?.id || '',
       },
@@ -739,9 +776,9 @@ export const api = {
       idCaso: newId,
       id: newId,
       ticketNumber: newId,
-      agenteAsignado: agenteAsignado || MOCK_AGENTES[0],
-      agentId: agenteAsignado?.idAgente || MOCK_AGENTES[0].idAgente,
-      agentName: agenteAsignado?.nombre || MOCK_AGENTES[0].nombre,
+      // NO asignar agente localmente - el Round Robin de n8n lo asignará
+      agentId: '',
+      agentName: 'Sin asignar',
       categoria: { nombre: 'General', slaDias: 2 },
       category: 'General',
       canalOrigen: caseData.contactChannel || caseData.canalOrigen || 'Web',
@@ -768,7 +805,7 @@ export const api = {
     
     // Limpiar caché para que el dashboard actualice
     clearCache('cases');
-    console.log('✅ Caso creado exitosamente:', newId, '- Asignado a:', agenteAsignado?.nombre);
+    console.log('✅ Caso creado exitosamente:', newId);
     
     return true;
   },
@@ -1281,14 +1318,80 @@ export const api = {
   },
 
   async updateAgente(id: string, data: any): Promise<boolean> {
-    const agentes = await this.getAgentes();
-    const idx = agentes.findIndex(a => a.idAgente === id);
-    if (idx !== -1) {
-      agentes[idx] = { ...agentes[idx], ...data };
-      localStorage.setItem('intelfon_agents', JSON.stringify(agentes));
-      return true;
+    console.log('🔵 [updateAgente] Actualizando agente:', id);
+    console.log('📝 [updateAgente] Datos a actualizar:', data);
+    
+    // Obtener el usuario actual (actor)
+    const currentUser = this.getUser();
+    if (!currentUser) {
+      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
     }
-    return false;
+
+    // Construir el actor
+    const actor = buildActorPayload(currentUser);
+
+    // Construir el payload para el webhook de agentes
+    // Solo enviar agent_id y estado (uno de: Activo/Inactivo/Vacaciones)
+    const payload = {
+      action: 'agent.update',
+      actor: {
+        user_id: Number(actor.user_id) || 0,
+        email: actor.email,
+        role: actor.role
+      },
+      data: {
+        agent_id: id,
+        estado: data.estado // Puede ser: "Activo", "Inactivo" o "Vacaciones"
+      }
+    };
+
+    console.log('📤 [updateAgente] Payload enviado al webhook:', JSON.stringify(payload, null, 2));
+
+    try {
+      // Enviar actualización al webhook de agentes
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
+
+      const response = await fetch(API_CONFIG.WEBHOOK_AGENTES_URL, {
+        method: 'POST',
+        mode: 'cors',
+        credentials: 'omit',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('📥 [updateAgente] Respuesta del webhook:', result);
+
+      // Limpiar caché para forzar recarga
+      clearCache('agents');
+      
+      return true;
+    } catch (error: any) {
+      console.error('❌ [updateAgente] Error al actualizar agente en webhook:', error);
+      
+      // Fallback: actualizar en localStorage
+      console.warn('⚠️ [updateAgente] Actualizando solo en localStorage como fallback');
+      const agentes = await this.getAgentes();
+      const idx = agentes.findIndex(a => a.idAgente === id);
+      if (idx !== -1) {
+        agentes[idx] = { ...agentes[idx], ...data };
+        localStorage.setItem('intelfon_agents', JSON.stringify(agentes));
+        return true;
+      }
+      
+      throw error;
+    }
   },
 
   logout() {
@@ -1449,33 +1552,66 @@ export const api = {
     const passwordFinal = password && password.trim() ? password.trim() : generarPasswordAleatoria();
     console.log('🔐 [API] Contraseña generada:', passwordFinal);
 
-    // Construir el payload según el formato especificado
-    const payload = {
-      action: 'user.create',
-      actor: {
-        user_id: Number(actor.user_id) || 0,
-        email: actor.email,
-        role: actor.role
-      },
-      data: {
-        nombre: name.trim(),
-        email: email.trim().toLowerCase(),
-        password: passwordFinal,
-        role: additionalData?.rol || 'AGENTE' // Usar 'role' en lugar de 'rol'
-      }
-    };
+    // Determinar si es un agente o un usuario administrativo
+    const rolUsuario = additionalData?.rol || 'AGENTE';
+    const esAgente = rolUsuario === 'AGENTE';
+    
+    // Construir el payload según el tipo de usuario
+    let payload: any;
+    let webhookUrl: string;
+    
+    if (esAgente) {
+      // Para AGENTES: usar agent.create y webhook de agentes
+      console.log('👤 [API] Creando AGENTE con agent.create');
+      payload = {
+        action: 'agent.create',
+        actor: {
+          user_id: Number(actor.user_id) || 0,
+          email: actor.email,
+          role: actor.role
+        },
+        data: {
+          agent_id: '', // Vacío para crear nuevo agente
+          nombre: name.trim(),
+          email: email.trim().toLowerCase(),
+          pais: additionalData?.pais || 'El Salvador',
+          rol: 'AGENTE',
+          estado: additionalData?.estado || 'ACTIVO',
+          password: passwordFinal
+        }
+      };
+      webhookUrl = API_CONFIG.WEBHOOK_AGENTES_URL;
+      console.log('🔗 [API] Usando webhook de agentes:', webhookUrl);
+    } else {
+      // Para usuarios administrativos (SUPERVISOR, GERENTE, ADMINISTRADOR): usar user.create
+      console.log('👤 [API] Creando usuario administrativo con user.create');
+      payload = {
+        action: 'user.create',
+        actor: {
+          user_id: Number(actor.user_id) || 0,
+          email: actor.email,
+          role: actor.role
+        },
+        data: {
+          nombre: name.trim(),
+          email: email.trim().toLowerCase(),
+          password: passwordFinal,
+          role: rolUsuario
+        }
+      };
+      webhookUrl = API_CONFIG.WEBHOOK_CREAR_USUARIO_URL;
+      console.log('🔗 [API] Usando webhook de crear usuario:', webhookUrl);
+    }
 
     console.log('📤 Creando usuario con payload:', JSON.stringify(payload, null, 2));
-    console.log('🔗 [API] URL del webhook:', API_CONFIG.WEBHOOK_CREAR_USUARIO_URL);
-    console.log('🔗 [API] URL completa del webhook:', API_CONFIG.WEBHOOK_CREAR_USUARIO_URL_FULL);
     
-    // Llamar al webhook de crear usuario (específico para admin)
+    // Llamar al webhook correspondiente
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
 
     try {
-      console.log('🌐 [API] Iniciando fetch a:', API_CONFIG.WEBHOOK_CREAR_USUARIO_URL);
-      const response = await fetch(API_CONFIG.WEBHOOK_CREAR_USUARIO_URL, {
+      console.log('🌐 [API] Iniciando fetch a:', webhookUrl);
+      const response = await fetch(webhookUrl, {
         method: 'POST',
         mode: 'cors',
         credentials: 'omit',

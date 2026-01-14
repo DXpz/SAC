@@ -614,7 +614,7 @@ const GerenteDashboard: React.FC = () => {
               }}>
                 {/* Progreso con color progresivo: Rojo → Naranja → Amarillo → Verde */}
                 {kpis.slaCompliance !== null && (
-                  <div 
+                  <div
                     className="absolute left-0 top-0 bottom-0 transition-all duration-1000 ease-out"
                     style={{
                       width: `${Math.min(kpis.slaCompliance, 100)}%`,
@@ -622,9 +622,9 @@ const GerenteDashboard: React.FC = () => {
                     }}
                   />
                 )}
-                
+
                 {/* Marca del objetivo */}
-                <div 
+                <div
                   className="absolute top-0 bottom-0 w-0.5"
                   style={{
                     left: `${slaObjective}%`,
@@ -672,7 +672,7 @@ const GerenteDashboard: React.FC = () => {
               </div>
               {slaStatus !== 'en_cumplimiento' && slaStatus !== 'sin_datos' && kpis.slaCompliance !== null && (
                 <p className="text-[10px] mt-1.5" style={{color: styles.text.tertiary}}>
-                  {kpis.slaCompliance < slaObjective 
+                  {kpis.slaCompliance < slaObjective
                     ? `${(slaObjective - kpis.slaCompliance).toFixed(1)}% por debajo del objetivo`
                     : ''}
                 </p>

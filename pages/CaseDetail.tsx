@@ -4,7 +4,7 @@ import { api } from '../services/api';
 import { Case, CaseStatus, Cliente, AutorRol, HistorialEntry } from '../types';
 import { CASE_TRANSITIONS, CASE_STATES, getStateColor, getStateBadgeColor } from '../constants';
 import { getAllowedTransitions } from '../services/caseStatusService';
-import { updateCaseStatus } from '../services/caseService';
+import { updateCaseStatus, updateCaseData } from '../services/caseService';
 import { ArrowLeft, MessageSquare, User, Building2, Phone, Mail, CheckCircle2, Clock, X, AlertTriangle, Lock, History, Users, TrendingUp, AlertCircle, Edit, Save, Search } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -36,6 +36,11 @@ const CaseDetail: React.FC = () => {
   const [showReassignModal, setShowReassignModal] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
   const [reassignJustification, setReassignJustification] = useState('');
+  
+  // Estados para selección rápida de cliente (antes de cambiar a En Proceso)
+  const [showClienteQuickSelectModal, setShowClienteQuickSelectModal] = useState(false);
+  const [clienteQuickSearchTerm, setClienteQuickSearchTerm] = useState('');
+  const [pendingStateAfterClientSelect, setPendingStateAfterClientSelect] = useState<string | null>(null);
 
   useEffect(() => {
     const initializeData = async () => {
@@ -87,6 +92,21 @@ const CaseDetail: React.FC = () => {
       cliente.telefono.includes(term)
     );
   }, [clientes, clienteSearchTerm]);
+  
+  // Filtrar clientes para el modal de selección rápida
+  const filteredClientesQuick = useMemo(() => {
+    if (!clienteQuickSearchTerm.trim()) {
+      return clientes.slice(0, 50);
+    }
+    const term = clienteQuickSearchTerm.toLowerCase();
+    return clientes.filter(cliente => 
+      cliente.idCliente.toLowerCase().includes(term) ||
+      cliente.nombreEmpresa.toLowerCase().includes(term) ||
+      cliente.contactoPrincipal.toLowerCase().includes(term) ||
+      cliente.email.toLowerCase().includes(term) ||
+      cliente.telefono.includes(term)
+    );
+  }, [clientes, clienteQuickSearchTerm]);
 
   const loadClientes = async () => {
     try {
@@ -428,7 +448,7 @@ const CaseDetail: React.FC = () => {
   // FUNCIÓN CENTRAL DE CAMBIO DE ESTADO
   // ==================================================
   const handleStateChange = async (newState: string, justificacion: string) => {
-    if (!caso) return;
+    if (!caso || !id) return;
     
     if (isCaseClosed) {
       alert('No se pueden realizar acciones en un caso cerrado.');
@@ -437,59 +457,84 @@ const CaseDetail: React.FC = () => {
 
     setTransitionLoading(true);
     try {
+      console.log('🔄 Iniciando cambio de estado...');
+      console.log('🔄 Estado actual:', caso?.estado || caso?.status);
+      console.log('🔄 Nuevo estado:', newState);
+      console.log('🔄 Justificación:', justificacion);
+      
       // Enviar actualización directamente al webhook
       // NO usar lógica local, todo debe ir al webhook
-      const casoActualizadoWebhook = await updateCaseStatus(
-        caso.id || caso.ticketNumber || caso.idCaso || '',
+      console.log('🔄 Llamando a updateCaseStatus...');
+      const resultado = await updateCaseStatus(
+        caso.id || caso.ticketNumber || caso.idCaso || id,
         newState,
         justificacion
-      ).catch((error) => {
-        console.error('❌ Error en updateCaseStatus:', error);
-        throw error;
-      });
+      );
       
-      // Si el webhook retorna el caso actualizado, usarlo directamente
-      if (casoActualizadoWebhook) {
-        // Usar SOLO los datos del webhook, no preservar nada anterior
-        setCaso(casoActualizadoWebhook);
-        
-        // Cerrar modal
-        setShowJustificationModal(false);
-        setPendingNewState(null);
-        setJustification('');
-        setErrorMessage('');
-        
-        // Mostrar animación de éxito
-        setShowSuccessAnimation(true);
-        setTimeout(() => {
-          setShowSuccessAnimation(false);
-        }, 2000);
-      } else {
-        throw new Error('El webhook no retornó el caso actualizado');
-      }
+      // Si llegamos aquí, el webhook ACEPTÓ el cambio (NO hubo error)
+      console.log('✅ updateCaseStatus completó SIN errores');
+      console.log('✅ Estado actualizado exitosamente por el webhook, recargando caso...');
+      
+      // Recargar el caso desde el servidor para asegurar que tenemos los datos más actualizados
+      await loadCaso(id);
+      
+      // Cerrar modal
+      setShowJustificationModal(false);
+      setPendingNewState(null);
+      setJustification('');
+      setErrorMessage('');
+      
+      // Mostrar animación de éxito SOLO si llegamos aquí (webhook aceptó y NO hubo error)
+      console.log('✅ Mostrando animación de éxito - el cambio fue exitoso');
+      setShowSuccessAnimation(true);
+      setTimeout(() => {
+        setShowSuccessAnimation(false);
+      }, 2000);
       
     } catch (err: any) {
-      console.error('❌ Error al actualizar el estado del caso:', err);
+      console.error('❌ ========== ERROR CAPTURADO EN handleStateChange ==========');
+      console.error('❌ Error completo:', err);
+      console.error('❌ Error message:', err?.message);
+      console.error('❌ Error toString:', err?.toString());
       const errorMsg = err?.message || err?.toString() || 'Error al actualizar el estado del caso';
+      
+      console.log('🔍 Analizando error:', errorMsg);
+      console.log('🔍 ¿Contiene "Comentario no válido:"?:', errorMsg.includes('Comentario no válido:'));
       
       // Verificar si es un error de validación de comentario
       if (errorMsg.includes('Comentario no válido:')) {
+        console.log('🚫 ========== ERROR DE VALIDACIÓN DETECTADO ==========');
+        console.log('🚫 NO se mostrará animación de éxito');
+        console.log('🚫 NO se cerrará el modal');
+        console.log('🚫 NO se recargará el caso');
+        console.log('🚫 Solo se mostrará el mensaje de error');
+        
         // Extraer el mensaje de retroalimentación
         const feedback = errorMsg.replace('Comentario no válido: ', '');
         setErrorMessage(feedback);
         
-        // Cerrar el modal de justificación
-        setShowJustificationModal(false);
-        setPendingNewState(null);
-        setJustification('');
+        // IMPORTANTE: NO cerrar el modal, mantenerlo abierto para que el usuario vea el error
+        // NO limpiar la justificación para que el usuario pueda corregirla
+        // setShowJustificationModal(false); // COMENTADO - mantener modal abierto
+        // setPendingNewState(null); // COMENTADO - mantener estado pendiente
+        // setJustification(''); // COMENTADO - mantener justificación para corrección
+        
+        // NO mostrar animación de éxito - solo mostrar error
+        // setShowSuccessAnimation NO se ejecuta aquí
         
         // Mostrar animación de comentario no válido
         setShowInvalidCommentAnimation(true);
         setTimeout(() => {
           setShowInvalidCommentAnimation(false);
-          setErrorMessage('');
+          // NO limpiar errorMessage aquí para que permanezca visible
         }, 5000);
+        
+        // IMPORTANTE: Salir aquí para NO ejecutar código de éxito
+        console.log('🚫 Saliendo de handleStateChange - NO se ejecutará código de éxito');
+        setTransitionLoading(false);
+        return; // SALIR INMEDIATAMENTE - NO continuar con código de éxito
       } else {
+        console.log('⚠️ Error diferente a validación de comentario:', errorMsg);
         // Para otros errores, cerrar el modal y mostrar el error
         setShowJustificationModal(false);
         setPendingNewState(null);
@@ -519,11 +564,34 @@ const CaseDetail: React.FC = () => {
 
     // Validar transición
     const estadoActual = caso?.estado || caso?.status || 'Nuevo';
-    const transicionesPermitidas = getAllowedTransitions(estadoActual);
     
+    // VALIDACIÓN: No permitir cambiar al mismo estado
+    if (estadoActual === newState) {
+      alert(`El caso ya está en el estado "${estadoActual}". No puedes cambiarlo al mismo estado.`);
+      return;
+    }
+    
+    const transicionesPermitidas = getAllowedTransitions(estadoActual);
+
     if (!transicionesPermitidas.includes(newState)) {
       alert(`No se puede cambiar de "${estadoActual}" a "${newState}"`);
       return;
+    }
+
+    // VALIDACIÓN: Si se intenta cambiar a "En Proceso" y no hay cliente asignado
+    if (newState === CaseStatus.EN_PROCESO || newState === 'En Proceso') {
+      const clienteId = caso?.clientId || caso?.clienteId;
+      const clienteName = caso?.clientName || caso?.cliente?.nombreEmpresa;
+      
+      // Si no hay cliente o el cliente es "N/A" o "Por definir"
+      if (!clienteId || clienteId === 'N/A' || clienteId === '' || 
+          !clienteName || clienteName === 'Por definir' || clienteName === 'Sin cliente' || clienteName.trim() === '') {
+        // Abrir modal de selección rápida de cliente
+        setPendingStateAfterClientSelect(newState);
+        setClienteQuickSearchTerm('');
+        setShowClienteQuickSelectModal(true);
+        return;
+      }
     }
 
     // Abrir modal de justificación
@@ -580,6 +648,59 @@ const CaseDetail: React.FC = () => {
     });
     setClienteSearchTerm(`${cliente.idCliente} - ${cliente.nombreEmpresa}`);
     setShowClienteDropdown(false);
+  };
+  
+  // Selección rápida de cliente desde el modal (sin entrar en modo edición)
+  const handleQuickClienteSelect = async (cliente: Cliente) => {
+    if (!caso || !id) return;
+    
+    try {
+      setTransitionLoading(true);
+      
+      console.log('📝 Asignando cliente al caso:', {
+        caseId: id,
+        clienteId: cliente.idCliente,
+        clientName: cliente.nombreEmpresa
+      });
+      
+      // Actualizar el caso en el webhook con el cliente seleccionado
+      const updatedCase = await updateCaseData(id, {
+        cliente_id: cliente.idCliente,
+        client_name: cliente.nombreEmpresa,
+        client_email: caso.clientEmail || cliente.email,
+        client_phone: caso.clientPhone || cliente.telefono
+      });
+      
+      if (updatedCase) {
+        console.log('✅ Cliente asignado exitosamente al caso');
+        setCaso(updatedCase);
+      } else {
+        throw new Error('No se recibió respuesta del webhook');
+      }
+      
+      // Cerrar modal de selección de cliente
+      setShowClienteQuickSelectModal(false);
+      setClienteQuickSearchTerm('');
+      
+      // Continuar con el cambio de estado a "En Proceso"
+      const stateToChange = pendingStateAfterClientSelect;
+      setPendingStateAfterClientSelect(null);
+      
+      setTransitionLoading(false);
+      
+      if (stateToChange) {
+        // Abrir modal de justificación para el cambio de estado
+        setPendingNewState(stateToChange);
+        setJustification('');
+        setErrorMessage('');
+        setShowJustificationModal(true);
+      }
+      
+    } catch (error) {
+      console.error('❌ Error al asignar cliente:', error);
+      setTransitionLoading(false);
+      alert('Error al asignar el cliente. Por favor, intente nuevamente.');
+    }
   };
 
   const handleClienteClear = () => {
@@ -655,43 +776,31 @@ const CaseDetail: React.FC = () => {
     try {
       setTransitionLoading(true);
       
-      // Construir payload de actualización
-      const updatePayload = {
-        case_id: id,
+      console.log('📝 Guardando cambios del caso:', {
+        caseId: id,
         subject: editedCase.subject || caso.subject,
         description: editedCase.description || caso.description,
+        cliente_id: editedCase.clienteId || caso.clienteId || caso.clientId,
+        client_name: editedCase.clientName || caso.clientName
+      });
+      
+      // Actualizar el caso en el webhook
+      const updatedCase = await updateCaseData(id, {
+        asunto: editedCase.subject || caso.subject,
+        descripcion: editedCase.description || caso.description,
         cliente_id: editedCase.clienteId || caso.clienteId || caso.clientId,
         client_name: editedCase.clientName || caso.clientName,
         client_email: editedCase.clientEmail || caso.clientEmail,
         client_phone: editedCase.clientPhone || caso.clientPhone
-      };
+      });
       
-      console.log('📝 Guardando cambios del caso:', updatePayload);
-      
-      // Actualizar el caso localmente (en el futuro esto debería llamar al webhook)
-      const updatedCase = {
-        ...caso,
-        subject: editedCase.subject || caso.subject,
-        description: editedCase.description || caso.description,
-        clienteId: editedCase.clienteId || caso.clienteId || caso.clientId,
-        clientId: editedCase.clienteId || caso.clienteId || caso.clientId,
-        clientName: editedCase.clientName || caso.clientName,
-        clientEmail: editedCase.clientEmail || caso.clientEmail,
-        clientPhone: editedCase.clientPhone || caso.clientPhone
-      };
-      
-      // Actualizar en localStorage
-      const cases = await api.getCases();
-      const caseIndex = cases.findIndex((c: any) => 
-        c.id === id || c.ticketNumber === id || c.idCaso === id
-      );
-      
-      if (caseIndex !== -1) {
-        cases[caseIndex] = updatedCase;
-        localStorage.setItem('intelfon_cases', JSON.stringify(cases));
+      if (updatedCase) {
+        console.log('✅ Caso actualizado exitosamente en el webhook');
+        setCaso(updatedCase);
+      } else {
+        throw new Error('No se recibió respuesta del webhook');
       }
       
-      setCaso(updatedCase);
       setIsEditing(false);
       setEditedCase({});
       setClienteSearchTerm('');
@@ -703,7 +812,7 @@ const CaseDetail: React.FC = () => {
         setShowSuccessAnimation(false);
       }, 2000);
       
-      console.log('✅ Caso actualizado exitosamente');
+      console.log('✅ Cambios guardados exitosamente');
     } catch (error) {
       console.error('❌ Error al guardar los cambios:', error);
       alert('Error al guardar los cambios. Por favor, intenta nuevamente.');
@@ -1655,6 +1764,144 @@ const CaseDetail: React.FC = () => {
       )}
 
       {/* Modal de Reasignación de Agente */}
+      {/* Modal de Selección Rápida de Cliente */}
+      {showClienteQuickSelectModal && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4 z-50" style={{backgroundColor: styles.modal.overlay}}>
+          <div className="rounded-xl w-full max-w-2xl overflow-hidden shadow-2xl border transform animate-in fade-in zoom-in" style={{...styles.modal, borderColor: styles.card.borderColor}}>
+            <div className="p-4 border-b flex justify-between items-center" style={{borderColor: styles.cardHeader.borderColor}}>
+              <div>
+                <h3 className="font-bold text-sm" style={{color: styles.text.primary}}>
+                  Asignar Cliente al Caso
+                </h3>
+                <p className="text-xs mt-1" style={{color: styles.text.tertiary}}>
+                  Debes seleccionar un cliente antes de cambiar a "En Proceso"
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowClienteQuickSelectModal(false);
+                  setPendingStateAfterClientSelect(null);
+                  setClienteQuickSearchTerm('');
+                }}
+                className="p-1.5 rounded-lg transition-colors"
+                style={{color: '#64748b'}}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f1f5f9';
+                  e.currentTarget.style.color = '#475569';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = '#64748b';
+                }}
+              >
+                <X className="w-4 h-4"/>
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              {/* Buscador de clientes */}
+              <div>
+                <label className="block text-xs font-bold mb-2" style={{color: styles.text.secondary}}>
+                  Buscar Cliente
+                </label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{color: styles.text.tertiary}} />
+                  <input
+                    type="text"
+                    value={clienteQuickSearchTerm}
+                    onChange={(e) => setClienteQuickSearchTerm(e.target.value)}
+                    placeholder="Buscar por ID, nombre, email o teléfono..."
+                    className="w-full pl-10 pr-4 py-2.5 border rounded-lg outline-none focus:ring-2 transition-all text-xs font-medium"
+                    style={{
+                      ...styles.input,
+                      borderColor: styles.input.borderColor
+                    }}
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              {/* Lista de clientes */}
+              <div>
+                <label className="block text-xs font-bold mb-2" style={{color: styles.text.secondary}}>
+                  Selecciona un Cliente <span className="text-red-500">*</span>
+                </label>
+                <div 
+                  className="space-y-2 max-h-96 overflow-y-auto border rounded-lg p-2" 
+                  style={{
+                    backgroundColor: theme === 'dark' ? 'rgba(15, 23, 42, 0.5)' : '#f8fafc',
+                    borderColor: styles.input.borderColor
+                  }}
+                >
+                  {filteredClientesQuick.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Building2 className="w-12 h-12 mx-auto mb-2 opacity-30" style={{color: styles.text.tertiary}} />
+                      <p className="text-xs font-medium" style={{color: styles.text.tertiary}}>
+                        {clienteQuickSearchTerm ? 'No se encontraron clientes' : 'Escribe para buscar clientes'}
+                      </p>
+                    </div>
+                  ) : (
+                    filteredClientesQuick.map((cliente) => (
+                      <div
+                        key={cliente.idCliente}
+                        onClick={() => handleQuickClienteSelect(cliente)}
+                        className="p-3 rounded-lg border cursor-pointer transition-all"
+                        style={{
+                          backgroundColor: styles.input.backgroundColor,
+                          borderColor: 'rgba(148, 163, 184, 0.2)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : '#eff6ff';
+                          e.currentTarget.style.borderColor = '#107ab4';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = styles.input.backgroundColor;
+                          e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.2)';
+                        }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <Building2 className="w-4 h-4 mt-0.5 flex-shrink-0" style={{color: '#107ab4'}} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              <span className="text-xs font-bold" style={{color: styles.text.primary}}>
+                                {cliente.nombreEmpresa}
+                              </span>
+                              <span className="text-xs font-semibold px-2 py-0.5 rounded" style={{
+                                backgroundColor: 'rgba(16, 122, 180, 0.1)',
+                                color: '#107ab4'
+                              }}>
+                                {cliente.idCliente}
+                              </span>
+                            </div>
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-2 text-xs" style={{color: styles.text.tertiary}}>
+                                <User className="w-3 h-3" />
+                                {cliente.contactoPrincipal}
+                              </div>
+                              {cliente.email && (
+                                <div className="flex items-center gap-2 text-xs" style={{color: styles.text.tertiary}}>
+                                  <Mail className="w-3 h-3" />
+                                  {cliente.email}
+                                </div>
+                              )}
+                              {cliente.telefono && (
+                                <div className="flex items-center gap-2 text-xs" style={{color: styles.text.tertiary}}>
+                                  <Phone className="w-3 h-3" />
+                                  {cliente.telefono}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showReassignModal && (
         <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4 z-50" style={{backgroundColor: styles.modal.overlay}}>
           <div className="rounded-xl w-full max-w-md overflow-hidden shadow-2xl border transform animate-in fade-in zoom-in" style={{...styles.modal, borderColor: styles.card.borderColor}}>

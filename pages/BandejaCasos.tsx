@@ -104,7 +104,7 @@ const BandejaCasos: React.FC = () => {
       
       // Enriquecer con cliente completo solo si no lo tiene o está vacío
       if (clientes.length > 0 && preservedClientId) {
-        const needsClientEnrichment = !caso.cliente || !caso.clientName || (typeof caso.clientName === 'string' && caso.clientName.trim() === '') || caso.clientName === 'Sin nombre';
+        const needsClientEnrichment = !caso.cliente || !caso.clientName || (typeof caso.clientName === 'string' && caso.clientName.trim() === '') || caso.clientName === 'Por definir';
         
         if (needsClientEnrichment) {
           // Normalizar el ID del caso para comparación
@@ -149,7 +149,7 @@ const BandejaCasos: React.FC = () => {
             // Preservar clientName si ya existe y es válido, sino usar el del cliente completo
             casoActualizado = {
               ...casoActualizado,
-              clientName: (caso.clientName && caso.clientName.trim() !== '' && caso.clientName !== 'Sin nombre') ? caso.clientName : clienteCompleto.nombreEmpresa,
+              clientName: (caso.clientName && caso.clientName.trim() !== '' && caso.clientName !== 'Por definir') ? caso.clientName : clienteCompleto.nombreEmpresa,
               clientId: clienteCompleto.idCliente || caso.clientId || preservedClientId,
               cliente: clienteCompleto,
               clientEmail: caso.clientEmail || clienteCompleto.email,
@@ -167,8 +167,8 @@ const BandejaCasos: React.FC = () => {
             // Si no se encuentra el cliente, preservar al menos los datos existentes
             casoActualizado = {
               ...casoActualizado,
-              clientId: caso.clientId || preservedClientId,
-              clientName: (caso.clientName && caso.clientName.trim() !== '' && caso.clientName !== 'Sin nombre') ? caso.clientName : preservedClientName || 'Sin nombre',
+              clientId: caso.clientId || preservedClientId || 'N/A',
+              clientName: (caso.clientName && caso.clientName.trim() !== '' && caso.clientName !== 'Por definir') ? caso.clientName : preservedClientName || 'Por definir',
               ticketNumber: caso.ticketNumber || preservedTicketNumber,
               id: caso.id || preservedTicketNumber,
             };
@@ -184,8 +184,8 @@ const BandejaCasos: React.FC = () => {
             ...casoActualizado,
             ticketNumber: caso.ticketNumber || preservedTicketNumber,
             id: caso.id || preservedTicketNumber,
-            clientId: caso.clientId || preservedClientId,
-            clientName: (caso.clientName && caso.clientName.trim() !== '' && caso.clientName !== 'Sin nombre') ? caso.clientName : preservedClientName || 'Sin nombre',
+            clientId: caso.clientId || preservedClientId || 'N/A',
+            clientName: (caso.clientName && caso.clientName.trim() !== '' && caso.clientName !== 'Por definir') ? caso.clientName : preservedClientName || 'Por definir',
           };
         }
       } else {
@@ -824,7 +824,7 @@ const BandejaCasos: React.FC = () => {
                           {caso.clientId || caso.cliente?.idCliente || 'N/A'}
                         </span>
                         <span className="text-xs font-semibold" style={{color: styles.text.primary}}>
-                          {caso.clientName || caso.cliente?.nombreEmpresa || 'Sin nombre'}
+                          {caso.clientName || caso.cliente?.nombreEmpresa || 'Por definir'}
                         </span>
                       </div>
                     </td>

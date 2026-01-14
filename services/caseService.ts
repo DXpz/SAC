@@ -124,41 +124,54 @@ const mapCaseToWebhookData = (caseData: any): CaseWebhookPayload['data'] => {
     data.case_id = caseData.case_id || caseData.id;
   }
   
-  if (caseData.contactChannel || caseData.origin) {
-    data.canal_origen = mapChannel(caseData.contactChannel || caseData.origin);
+  // Canal de origen
+  if (caseData.contactChannel || caseData.origin || caseData.canalOrigen) {
+    data.canal_origen = mapChannel(caseData.contactChannel || caseData.origin || caseData.canalOrigen);
   }
   
+  // Asunto
   if (caseData.subject || caseData.asunto) {
     data.asunto = caseData.subject || caseData.asunto;
   }
   
+  // Descripción
   if (caseData.description || caseData.descripcion) {
     data.descripcion = caseData.description || caseData.descripcion;
   }
   
+  // Cliente - Incluir todos los campos requeridos
   if (caseData.clienteId || caseData.clientId) {
     data.cliente = {
       cliente_id: caseData.clienteId || caseData.clientId,
-      email: caseData.clientEmail || caseData.email || '',
-      telefono: caseData.phone || caseData.telefono || caseData.clientPhone || ''
+      nombre_empresa: caseData.clientName || caseData.nombreEmpresa || caseData.cliente?.nombreEmpresa || 'Por definir',
+      contacto_principal: caseData.contactName || caseData.contactoPrincipal || caseData.clientName || caseData.cliente?.contactoPrincipal || 'Por definir',
+      email: caseData.clientEmail || caseData.email || caseData.cliente?.email || '',
+      telefono: caseData.phone || caseData.telefono || caseData.clientPhone || caseData.cliente?.telefono || ''
     };
   }
   
+  // Categoría - Incluir categoria_id y nombre
   if (caseData.categoriaId || caseData.categoryId) {
     data.categoria = {
-      categoria_id: caseData.categoriaId || caseData.categoryId
+      categoria_id: caseData.categoriaId || caseData.categoryId,
+      nombre: caseData.categoriaNombre || caseData.categoryName || caseData.categoria?.nombre || ''
     };
   }
   
+  // Estado (si existe)
   if (caseData.status || caseData.estado) {
     data.estado = caseData.status || caseData.estado;
   }
   
-  if (caseData.canal_notificacion || caseData.notificationChannel) {
-    data.canal_notificacion = mapChannel(caseData.notificationChannel || caseData.canal_notificacion);
+  // Canal de notificación
+  if (caseData.canal_notificacion || caseData.notificationChannel || caseData.canalNotificacion) {
+    data.canal_notificacion = mapChannel(caseData.notificationChannel || caseData.canal_notificacion || caseData.canalNotificacion);
   }
   
-  // El Round Robin se maneja en n8n, no enviamos información de agente
+  // IMPORTANTE: NO enviar información de agente
+  // Si el usuario que crea el caso es un AGENTE, el webhook automáticamente asignará el caso a ese agente
+  // Si el usuario es SUPERVISOR o GERENTE, el webhook hará Round Robin
+  // El webhook detecta esto desde el actor.role
   
   return data;
 };
@@ -508,6 +521,21 @@ const callCaseWebhook = async (payload: CaseWebhookPayload): Promise<CaseWebhook
       console.log('📥 Respuesta parseada (es array?):', Array.isArray(result));
       console.log('📥 Respuesta parseada (JSON):', JSON.stringify(result, null, 2));
       console.log('📥 Respuesta parseada (objeto):', result);
+      
+      // VERIFICACIÓN TEMPRANA: Detectar valid: false INMEDIATAMENTE después de parsear
+      if (result && typeof result === 'object' && !Array.isArray(result)) {
+        const validEarly = (result as any).valid;
+        console.log('🔍 [TEMPRANO] Verificando valid inmediatamente después de parsear...');
+        console.log('🔍 [TEMPRANO] Valor de valid:', validEarly);
+        console.log('🔍 [TEMPRANO] Tipo de valid:', typeof validEarly);
+        
+        if (validEarly === "false" || validEarly === false || validEarly === "False" || validEarly === "FALSE" || 
+            (typeof validEarly === 'string' && validEarly.toLowerCase().trim() === 'false')) {
+          console.error('❌ [TEMPRANO] ⚠️⚠️⚠️ DETECTADO valid: false INMEDIATAMENTE DESPUÉS DE PARSEAR ⚠️⚠️⚠️');
+          console.error('❌ [TEMPRANO] Esta respuesta será rechazada cuando se valide en updateCaseStatus');
+        }
+      }
+      
       if (Array.isArray(result) && result.length > 0) {
         console.log('📥 Longitud del array:', result.length);
         console.log('📥 Primer elemento:', result[0]);
@@ -581,42 +609,105 @@ export const createCase = async (caseData: {
     throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
   }
   
-  if (!caseData.clienteId || !caseData.categoriaId || !caseData.subject || !caseData.description) {
-    throw new Error('Faltan campos requeridos: cliente, categoría, asunto y descripción son obligatorios.');
+  // Validar campos requeridos (cliente puede ser opcional, se enviará "N/A" y "Por definir")
+  if (!caseData.categoriaId || !caseData.subject || !caseData.description) {
+    throw new Error('Faltan campos requeridos: categoría, asunto y descripción son obligatorios.');
+  }
+  
+  // Mapear datos al formato del webhook
+  const webhookData = mapCaseToWebhookData(caseData);
+  
+  // Asegurar que cliente siempre esté presente (aunque sea con valores por defecto)
+  if (!webhookData.cliente) {
+    webhookData.cliente = {
+      cliente_id: caseData.clienteId || 'N/A',
+      nombre_empresa: caseData.clientName || 'Por definir',
+      contacto_principal: caseData.contactName || caseData.clientName || 'Por definir',
+      email: caseData.clientEmail || '',
+      telefono: caseData.phone || caseData.clientPhone || ''
+    };
+  }
+  
+  // Asegurar que categoría siempre tenga nombre si está disponible
+  if (webhookData.categoria && !webhookData.categoria.nombre && caseData.categoriaNombre) {
+    webhookData.categoria.nombre = caseData.categoriaNombre;
   }
   
   const payload: CaseWebhookPayload = {
     action: 'case.create',
     actor,
-    data: mapCaseToWebhookData(caseData)
+    data: webhookData
   };
   
-  console.log('📤 ========== JSON ENVIADO AL WEBHOOK ==========');
-  console.log(JSON.stringify(payload, null, 2));
+  console.log('📤 ========== JSON ENVIADO AL WEBHOOK (case.create) ==========');
+  console.log('📤 Actor (usuario que crea el caso):', JSON.stringify(actor, null, 2));
+  console.log('📤 Si el actor.role es "AGENTE", el webhook asignará el caso a ese agente automáticamente');
+  console.log('5 Si el actor.role es "SUPERVISOR" o "GERENTE", el webhook hará Round Robin');
+  console.log('📤 Payload completo:', JSON.stringify(payload, null, 2));
   
   const response = await callCaseWebhook(payload);
   
-  console.log('📥 ========== RESPUESTA COMPLETA DEL WEBHOOK ==========');
+  console.log('📥 ========== RESPUESTA COMPLETA DEL WEBHOOK (createCase) ==========');
+  console.log('📥 RESPUESTA RAW (objeto):');
+  console.log(response);
+  console.log('📥 RESPUESTA JSON (stringified):');
   console.log(JSON.stringify(response, null, 2));
-  console.log('📥 Tipo de respuesta:', typeof response);
-  console.log('📥 Es array?:', Array.isArray(response));
-  console.log('📥 Tiene case?:', !!(response as any)?.case);
-  console.log('📥 Tiene cases?:', !!(response as any)?.cases);
-  console.log('📥 Tiene data?:', !!(response as any)?.data);
+  console.log('📥 ================================================');
+  console.log('📥 ANÁLISIS DE LA ESTRUCTURA:');
+  console.log('📥 - Tipo de respuesta:', typeof response);
+  console.log('📥 - Es array?:', Array.isArray(response));
+  console.log('📥 - Es null?:', response === null);
+  console.log('📥 - Es undefined?:', response === undefined);
+  console.log('📥 - Tiene case?:', !!(response as any)?.case);
+  console.log('📥 - Tiene cases?:', !!(response as any)?.cases);
+  console.log('📥 - Tiene data?:', !!(response as any)?.data);
+  if (response && typeof response === 'object' && !Array.isArray(response)) {
+    console.log('📥 - Propiedades (keys):', Object.keys(response));
+    console.log('📥 - Valores de cada propiedad:');
+    Object.keys(response).forEach(key => {
+      console.log(`📥   * ${key}:`, (response as any)[key]);
+    });
+  }
+  console.log('📥 ================================================');
   
   // Si el webhook retorna un caso, mapearlo
   if (response.case) {
-    console.log('📋 Caso retornado por webhook:', JSON.stringify(response.case, null, 2));
-    console.log('🔍 Agente en el caso retornado:', {
-      tieneAgente: !!(response.case as any).agente,
-      agente: (response.case as any).agente,
-      tieneAgenteAsignado: !!(response.case as any).agenteAsignado,
-      agenteAsignado: (response.case as any).agenteAsignado,
-      tieneAgentId: !!(response.case as any).agent_id,
-      agentId: (response.case as any).agent_id,
-      tieneAgentName: !!(response.case as any).agent_name,
-      agentName: (response.case as any).agent_name
-    });
+    console.log('📋 ========== CASO RETORNADO POR WEBHOOK ==========');
+    console.log('📋 CASO RAW (objeto):');
+    console.log(response.case);
+    console.log('📋 CASO JSON (stringified):');
+    console.log(JSON.stringify(response.case, null, 2));
+    console.log('📋 ================================================');
+    console.log('📋 DESGLOSE DE CAMPOS DEL CASO:');
+    console.log('📋 - case_id:', (response.case as any).case_id);
+    console.log('📋 - id:', (response.case as any).id);
+    console.log('📋 - ticketNumber:', (response.case as any).ticketNumber);
+    console.log('📋 CLIENTE:');
+    console.log('📋 - cliente_id:', (response.case as any).cliente_id);
+    console.log('📋 - clientId:', (response.case as any).clientId);
+    console.log('📋 - cliente_nombre:', (response.case as any).cliente_nombre);
+    console.log('📋 - clientName:', (response.case as any).clientName);
+    console.log('📋 - Objeto cliente:', (response.case as any).cliente);
+    console.log('📋 AGENTE:');
+    console.log('📋 - agente_id:', (response.case as any).agente_id);
+    console.log('📋 - agente_user_id:', (response.case as any).agente_user_id);
+    console.log('📋 - agentId:', (response.case as any).agentId);
+    console.log('📋 - agente_nombre:', (response.case as any).agente_nombre);
+    console.log('📋 - agente_name:', (response.case as any).agente_name);
+    console.log('📋 - agentename:', (response.case as any).agentename);
+    console.log('📋 - agentName:', (response.case as any).agentName);
+    console.log('📋 - Objeto agente:', (response.case as any).agente);
+    console.log('📋 - Objeto agenteAsignado:', (response.case as any).agenteAsignado);
+    console.log('📋 OTROS:');
+    console.log('📋 - estado:', (response.case as any).estado);
+    console.log('📋 - status:', (response.case as any).status);
+    console.log('📋 - asunto:', (response.case as any).asunto);
+    console.log('📋 - subject:', (response.case as any).subject);
+    console.log('📋 - descripcion:', (response.case as any).descripcion);
+    console.log('📋 - description:', (response.case as any).description);
+    console.log('📋 - fecha_creacion:', (response.case as any).fecha_creacion);
+    console.log('📋 - createdAt:', (response.case as any).createdAt);
+    console.log('📋 ================================================');
     
     const mappedCase = mapWebhookResponseToCase(response.case);
     if (mappedCase) {
@@ -972,13 +1063,47 @@ interface WebhookHistorialEntry {
 
 const mapWebhookHistorialToFrontend = (webhookHistorial: WebhookHistorialEntry[]): any[] => {
   return webhookHistorial.map(entry => {
-    // Convertir fechayhora de formato "05/01/2026 05:15:11" a ISO string
-    const fechaParts = entry.fechayhora.split(' ');
-    const fechaPart = fechaParts[0]; // "05/01/2026"
-    const horaPart = fechaParts[1] || '00:00:00'; // "05:15:11"
-    const [dia, mes, anio] = fechaPart.split('/');
-    const fechaISO = `${anio}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}T${horaPart}`;
-    
+    // Log básico para depurar problemas de fecha
+    console.log('🕒 [mapWebhookHistorialToFrontend] Entrada de historial recibida desde webhook:', entry);
+
+    let fechaISO: string;
+
+    try {
+      const rawFecha = entry.fechayhora || (entry as any).fecha || (entry as any).fecha_hora || '';
+      console.log('🕒 [mapWebhookHistorialToFrontend] Valor bruto de fecha/hora recibido:', rawFecha);
+
+      if (rawFecha) {
+        // Caso 1: Formato DD/MM/YYYY HH:mm:ss (ej: "05/01/2026 05:15:11")
+        const regexDMY = /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{2}:\d{2}:\d{2}))?$/;
+        const matchDMY = rawFecha.match(regexDMY);
+
+        if (matchDMY) {
+          const dia = matchDMY[1];
+          const mes = matchDMY[2];
+          const anio = matchDMY[3];
+          const horaPart = matchDMY[4] || '00:00:00';
+          fechaISO = `${anio}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}T${horaPart}`;
+          console.log('🕒 [mapWebhookHistorialToFrontend] Fecha interpretada como DMY:', fechaISO);
+        } else {
+          // Caso 2: Probar si el formato es directamente parseable por Date
+          const parsed = new Date(rawFecha);
+          if (!isNaN(parsed.getTime())) {
+            fechaISO = parsed.toISOString();
+            console.log('🕒 [mapWebhookHistorialToFrontend] Fecha parseada directamente por Date:', fechaISO);
+          } else {
+            console.warn('⚠️ [mapWebhookHistorialToFrontend] Formato de fecha no reconocido, usando fecha actual. Valor recibido:', rawFecha);
+            fechaISO = new Date().toISOString();
+          }
+        }
+      } else {
+        console.warn('⚠️ [mapWebhookHistorialToFrontend] No se recibió fechayhora, usando fecha actual.');
+        fechaISO = new Date().toISOString();
+      }
+    } catch (e) {
+      console.error('❌ [mapWebhookHistorialToFrontend] Error al parsear la fecha del historial, usando fecha actual.', e);
+      fechaISO = new Date().toISOString();
+    }
+
     // Determinar autor_rol basado en el email del usuario
     // Por ahora usamos 'agente' por defecto, pero podríamos buscar el usuario en localStorage
     let autor_rol: 'agente' | 'supervisor' | 'sistema' = 'agente';
@@ -990,10 +1115,10 @@ const mapWebhookHistorialToFrontend = (webhookHistorial: WebhookHistorialEntry[]
           autor_rol = 'supervisor';
         }
       }
-    } catch (e) {
+    } catch {
       // Si no se puede obtener el usuario, usar 'agente' por defecto
     }
-    
+
     return {
       tipo_evento: 'CAMBIO_ESTADO' as const,
       estado_anterior: entry.estado_anterior,
@@ -1046,7 +1171,7 @@ export const updateCaseStatus = async (
   
   console.log('📥 [3] ========== RESPUESTA DEL WEBHOOK ==========');
   console.log('📥 [3] Tipo:', typeof response);
-  console.log('📥 [3] Es Array:', Array.isArray(response));
+  console.log('📥 [3] Es Array?:', Array.isArray(response));
   console.log('📥 [3] Es null:', response === null);
   console.log('📥 [3] Es undefined:', response === undefined);
   
@@ -1065,45 +1190,118 @@ export const updateCaseStatus = async (
   console.log(response);
   console.log('📥 [3] ================================================');
   
-  // ========== VALIDACIÓN SIMPLE: SOLO CONTINUAR SI TIENE action: "case.update" ==========
-  console.log('🔍 [4] ========== VALIDANDO RESPUESTA ==========');
-  console.log('🔍 [4] Verificando si la respuesta tiene action: "case.update"...');
-  console.log('🔍 [4] ¿Es objeto?:', response && typeof response === 'object');
-  console.log('🔍 [4] ¿Tiene propiedad "action"?:', response && typeof response === 'object' && 'action' in response);
+  // ========== VALIDACIÓN INMEDIATA: Verificar si el webhook rechazó el comentario ==========
+  // IMPORTANTE: Esta validación debe ser LO PRIMERO que se haga después de recibir la respuesta
+  // El webhook puede retornar 200 OK pero con valid: "false" cuando rechaza
+  // O puede retornar un array (historial) cuando acepta
   
-  if (response && typeof response === 'object' && 'action' in response) {
-    console.log('🔍 [4] Valor de response.action:', response.action);
-    console.log('🔍 [4] Tipo de response.action:', typeof response.action);
-    console.log('🔍 [4] response.action === "case.update":', response.action === 'case.update');
+  console.log('🔍 [4] ========== VALIDACIÓN INMEDIATA DEL WEBHOOK ==========');
+  console.log('🔍 [4] Tipo de respuesta:', typeof response);
+  console.log('🔍 [4] Es Array?:', Array.isArray(response));
+  console.log('🔍 [4] Es objeto?:', response && typeof response === 'object' && !Array.isArray(response));
+  
+  // Verificar si el webhook rechazó el comentario (valid: "false" o valid: false)
+  // El webhook puede retornar valid como string "false" o booleano false
+  let validValue: any = undefined;
+  
+  if (response && typeof response === 'object' && !Array.isArray(response)) {
+    validValue = (response as any).valid;
+    console.log('🔍 [4] Respuesta es objeto, buscando campo "valid"...');
+    console.log('🔍 [4] ¿Tiene propiedad "valid"?:', 'valid' in response);
+    console.log('🔍 [4] Valor de valid encontrado:', validValue);
+    console.log('🔍 [4] Tipo de valid:', typeof validValue);
+  } else if (Array.isArray(response)) {
+    console.log('🔍 [4] Respuesta es array, NO tiene campo "valid" (es exitosa)');
   } else {
-    console.log('🔍 [4] La respuesta NO tiene propiedad "action"');
+    console.log('🔍 [4] Respuesta no es objeto ni array, tipo:', typeof response);
   }
   
-  // SOLO continuar si tiene action: "case.update"
-  if (response && typeof response === 'object' && response.action === 'case.update') {
-    console.log('✅ [5] ========== COMENTARIO VÁLIDO ==========');
-    console.log('✅ [5] La respuesta tiene action: "case.update"');
-    console.log('✅ [5] El webhook VALIDÓ y ACTUALIZÓ el caso');
-    console.log('✅ [5] Procediendo a obtener el caso actualizado con case.query...');
-    console.log('✅ [5] ===========================================');
-  } else {
-    console.error('❌ [5] ========== COMENTARIO NO VÁLIDO ==========');
-    console.error('❌ [5] La respuesta NO tiene action: "case.update"');
-    console.error('❌ [5] El webhook RECHAZÓ el comentario');
-    console.error('❌ [5] NO se hizo ningún cambio en el caso');
-    console.error('❌ [5] Respuesta completa:', response);
+  // Verificar todas las posibles formas de valid: false
+  const esComentarioInvalido = validValue === "false" || 
+                                validValue === false || 
+                                validValue === "False" || 
+                                validValue === "FALSE" ||
+                                validValue === 0 ||
+                                (typeof validValue === 'string' && validValue.toLowerCase().trim() === 'false');
+  
+  console.log('🔍 [4] ========== RESULTADO DE VALIDACIÓN ==========');
+  console.log('🔍 [4] Valor de valid del webhook:', validValue);
+  console.log('🔍 [4] Tipo de valid:', typeof validValue);
+  console.log('🔍 [4] ¿Es comentario inválido?:', esComentarioInvalido);
+  console.log('🔍 [4] ===========================================');
+  
+  // VALIDACIÓN CRÍTICA: Si es inválido, lanzar error INMEDIATAMENTE y DETENER ejecución
+  // ESTO DEBE SER LO PRIMERO - ANTES de cualquier otro código
+  if (esComentarioInvalido) {
+    console.error('❌ [5] ========== COMENTARIO RECHAZADO POR WEBHOOK ==========');
+    console.error('❌ [5] El webhook retornó valid: "false" o valid: false');
+    console.error('❌ [5] Respuesta completa:', JSON.stringify(response, null, 2));
+    console.error('❌ [5] NO se guardará ningún cambio en el caso');
+    console.error('❌ [5] NO se agregará nada al historial');
+    console.error('❌ [5] NO se actualizará el estado del caso');
+    console.error('❌ [5] NO se retornará ningún caso');
+    console.error('❌ [5] La función updateCaseStatus terminará aquí con un ERROR');
     
-    // Extraer mensaje de error de cualquier campo posible
+    // Extraer mensaje de error del campo "comentario"
     let mensajeError = 'El comentario no cumple con los requisitos necesarios.';
-    if (response && typeof response === 'object') {
-      mensajeError = response.comentario || response.message || response.error || response.feedback || mensajeError;
-      console.error('❌ [5] Mensaje de error extraído:', mensajeError);
+    if (response && typeof response === 'object' && !Array.isArray(response)) {
+      const comentarioError = (response as any).comentario;
+      console.error('❌ [5] Campo comentario en respuesta:', comentarioError);
+      if (comentarioError) {
+        mensajeError = typeof comentarioError === 'string' ? comentarioError : JSON.stringify(comentarioError);
+        console.error('❌ [5] Mensaje de validación del webhook extraído:', mensajeError);
+      } else {
+        console.error('❌ [5] El webhook rechazó pero no proporcionó mensaje en campo "comentario"');
+      }
     }
     
     console.error('❌ [5] ===========================================');
-    console.log('================== FIN updateCaseStatus (ERROR - COMENTARIO RECHAZADO) ==================');
-    throw new Error(`Comentario no válido: ${mensajeError}`);
+    console.error('❌ [5] LANZANDO ERROR AHORA - El código NO continuará después de esto');
+    console.error('❌ [5] Mensaje de error que se lanzará:', `Comentario no válido: ${mensajeError}`);
+    console.error('❌ [5] ===========================================');
+    
+    // LANZAR ERROR - esto detendrá la ejecución inmediatamente
+    // IMPORTANTE: Este throw detendrá TODA la ejecución de updateCaseStatus
+    const error = new Error(`Comentario no válido: ${mensajeError}`);
+    console.error('❌ [5] Error creado, lanzando ahora...');
+    console.error('❌ [5] Después de este throw, NO se ejecutará ningún código más en updateCaseStatus');
+    throw error;
+    // NUNCA se ejecutará código después de este throw
   }
+  
+  // Si llegamos aquí, significa que valid NO es false
+  console.log('✅ [4] Validación pasada - valid NO es false, continuando...');
+  
+  // Si llegamos aquí, el comentario NO fue rechazado (valid !== false)
+  // IMPORTANTE: Este código SOLO se ejecuta si valid NO es false
+  console.log('✅ [4] El comentario NO fue rechazado, continuando con flujo de éxito...');
+  // Verificar si es un array (historial) - significa que fue exitoso
+  const esRespuestaExitosa = Array.isArray(response) && response.length > 0;
+  
+  console.log('🔍 [4] Verificando si la respuesta es exitosa...');
+  console.log('🔍 [4] ¿Es array?:', Array.isArray(response));
+  console.log('🔍 [4] ¿Tiene longitud > 0?:', Array.isArray(response) ? response.length > 0 : false);
+  
+  if (esRespuestaExitosa) {
+    console.log('✅ [5] ========== COMENTARIO ACEPTADO POR WEBHOOK ==========');
+    console.log('✅ [5] El webhook retornó un array (historial), lo que indica éxito');
+    console.log('✅ [5] Cantidad de entradas en historial:', response.length);
+    console.log('✅ [5] El cambio se guardó correctamente en la base de datos');
+    console.log('✅ [5] Procediendo a obtener el caso actualizado con case.query...');
+    console.log('✅ [5] ===========================================');
+  } else {
+    // Si no es array ni tiene valid: false, asumir éxito (compatibilidad con otros formatos)
+    // PERO solo si NO tiene valid: false (ya validado arriba)
+    console.log('✅ [5] ========== CAMBIO ACEPTADO POR WEBHOOK ==========');
+    console.log('✅ [5] El webhook retornó 200 OK sin valid: "false"');
+    console.log('✅ [5] NO es un array, pero tampoco tiene valid: false');
+    console.log('✅ [5] Asumiendo que el cambio se guardó correctamente');
+    console.log('✅ [5] Procediendo a obtener el caso actualizado con case.query...');
+    console.log('✅ [5] ===========================================');
+  }
+  
+  // Continuar con la obtención del caso actualizado
+  // (el código que sigue después del else original)
   
   // El webhook YA actualizó el caso, ahora consultamos para obtener el caso actualizado
   console.log('🔄 [6] Consultando caso actualizado con case.query...');
@@ -1210,10 +1408,12 @@ export const updateCaseStatus = async (
         }
         
         console.log('📋 Datos del caso a mapear desde detalle_caso (con agente combinado):', casoData);
+        console.log('📋 Estado en casoData del webhook:', casoData.estado || casoData.status || casoData.estado_caso);
         const casoActualizado = mapWebhookResponseToCase(casoData);
         
         if (casoActualizado) {
           console.log('✅ Caso mapeado exitosamente:', casoActualizado.id);
+          console.log('📋 Estado después de mapear:', casoActualizado.status || casoActualizado.estado);
           
           // Inicializar historial si no existe
           if (!casoActualizado.historial) {
@@ -1265,18 +1465,44 @@ export const updateCaseStatus = async (
             }
           }
           
-          // Actualizar el estado del caso con el estado_nuevo de la última entrada del historial
+          // USAR SOLO EL ESTADO QUE RETORNA EL WEBHOOK - NO USAR newStatus COMO FALLBACK
+          console.log('🔍 ========== DETERMINANDO ESTADO DESDE WEBHOOK ==========');
+          
+          // 1. Intentar obtener el estado del historial (última entrada)
+          let estadoDelWebhook: string | undefined = undefined;
           if (historialMapeado.length > 0) {
             const ultimaEntrada = historialMapeado[0];
-            casoActualizado.status = ultimaEntrada.estado_nuevo || newStatus;
-            casoActualizado.estado = ultimaEntrada.estado_nuevo || newStatus;
-            console.log('✅ Estado actualizado desde historial:', ultimaEntrada.estado_nuevo);
-          } else {
-            // Si no hay historial, usar el estado del caso mapeado
-            casoActualizado.status = casoActualizado.status || newStatus;
-            casoActualizado.estado = casoActualizado.estado || newStatus;
-            console.log('✅ Estado actualizado desde caso mapeado:', casoActualizado.status);
+            estadoDelWebhook = ultimaEntrada.estado_nuevo;
+            console.log('🔍 Estado desde historial (estado_nuevo):', estadoDelWebhook);
           }
+          
+          // 2. Si no hay estado en historial, usar el estado del caso mapeado del webhook
+          if (!estadoDelWebhook) {
+            estadoDelWebhook = casoActualizado.status || casoActualizado.estado;
+            console.log('🔍 Estado desde caso mapeado:', estadoDelWebhook);
+          }
+          
+          // 3. Si aún no hay estado, buscar en casoData original del webhook
+          if (!estadoDelWebhook) {
+            estadoDelWebhook = casoData.estado || casoData.status || casoData.estado_caso;
+            console.log('🔍 Estado desde casoData original del webhook:', estadoDelWebhook);
+          }
+          
+          // 4. SOLO usar el estado del webhook, NO usar newStatus como fallback
+          if (estadoDelWebhook) {
+            casoActualizado.status = estadoDelWebhook;
+            casoActualizado.estado = estadoDelWebhook;
+            console.log('✅ Estado FINAL asignado desde webhook:', estadoDelWebhook);
+            console.log('⚠️ NO se usó newStatus como fallback - usando SOLO lo que retorna el webhook');
+          } else {
+            console.error('❌ ERROR: El webhook NO retornó ningún estado');
+            console.error('❌ casoData original:', casoData);
+            console.error('❌ casoActualizado después de mapear:', casoActualizado);
+            console.error('❌ historialMapeado:', historialMapeado);
+            throw new Error('El webhook no retornó el estado del caso. No se puede determinar el estado actual.');
+          }
+          
+          console.log('🔍 ================================================');
           
           console.log('✅ [FINAL] Retornando caso actualizado con historial:', {
             id: casoActualizado.id,
@@ -1423,3 +1649,48 @@ export const deleteCase = async (caseId: string): Promise<boolean> => {
   return response.success !== false && !response.error;
 };
 
+/**
+ * Actualiza los datos del caso (cliente, asunto, descripción, etc.)
+ */
+export const updateCaseData = async (
+  caseId: string,
+  updates: {
+    cliente_id?: string;
+    client_name?: string;
+    client_email?: string;
+    client_phone?: string;
+    asunto?: string;
+    descripcion?: string;
+    [key: string]: any;
+  }
+): Promise<Case | null> => {
+  const actor = getActor();
+  if (!actor) {
+    throw new Error('Usuario no autenticado');
+  }
+
+  console.log('📝 [updateCaseData] Actualizando caso con:', { caseId, updates });
+
+  const payload: CaseWebhookPayload = {
+    action: 'case.update',
+    actor,
+    data: {
+      case_id: caseId,
+      patch: updates
+    }
+  };
+
+  const response = await callCaseWebhook(payload);
+  
+  console.log('📥 [updateCaseData] Respuesta del webhook:', response);
+
+  // Obtener el caso actualizado
+  if (response.success !== false && !response.error) {
+    // Recargar el caso actualizado
+    const updatedCase = await getCaseById(caseId);
+    console.log('✅ [updateCaseData] Caso actualizado exitosamente');
+    return updatedCase;
+  }
+
+  throw new Error('Error al actualizar el caso');
+};

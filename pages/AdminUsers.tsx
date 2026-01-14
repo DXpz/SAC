@@ -8,8 +8,6 @@ import {
   Power, 
   PowerOff, 
   Sun, 
-  ChevronLeft, 
-  ChevronRight,
   X,
   CheckCircle2,
   AlertCircle,
@@ -49,10 +47,6 @@ const AdminUsers: React.FC = () => {
   const [users, setUsers] = useState<DemoUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('todos');
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const [hoveredUserId, setHoveredUserId] = useState<string | null>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
   
   // Estados para búsqueda
   const [searchTerm, setSearchTerm] = useState('');
@@ -187,14 +181,6 @@ const AdminUsers: React.FC = () => {
     // Ya no usamos setInterval, solo actualizamos cuando cambia la vista
   }, [location.pathname]);
 
-  // Calcular items por vista según el ancho
-  const itemsPerView = useMemo(() => {
-    if (typeof window === 'undefined') return 3;
-    const width = window.innerWidth;
-    if (width < 640) return 1;
-    if (width < 1024) return 2;
-    return 3;
-  }, []);
 
   // Filtrar usuarios por término de búsqueda
   const filteredUsersBySearch = useMemo(() => {
@@ -295,63 +281,6 @@ const AdminUsers: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Calcular total de páginas
-  useEffect(() => {
-    if (scrollContainerRef.current && filteredUsers.length > 0) {
-      const container = scrollContainerRef.current;
-      const containerWidth = container.offsetWidth;
-      const scrollWidth = container.scrollWidth;
-      const calculatedTotalPages = Math.max(1, Math.ceil(scrollWidth / containerWidth));
-      setTotalPages(calculatedTotalPages);
-    }
-  }, [filteredUsers.length, itemsPerView]);
-
-  // Scroll a índice específico
-  const scrollToIndex = (index: number) => {
-    if (!scrollContainerRef.current) return;
-    const container = scrollContainerRef.current;
-    const containerWidth = container.offsetWidth;
-    const scrollWidth = container.scrollWidth;
-    const calculatedTotalPages = Math.max(1, Math.ceil(scrollWidth / containerWidth));
-    const maxIndex = Math.max(0, calculatedTotalPages - 1);
-    const clampedIndex = Math.max(0, Math.min(index, maxIndex));
-    const scrollPosition = clampedIndex * containerWidth;
-    
-    container.scrollTo({
-      left: scrollPosition,
-      behavior: 'smooth'
-    });
-    setCurrentIndex(clampedIndex);
-  };
-
-  const handleScroll = () => {
-    if (!scrollContainerRef.current) return;
-    const container = scrollContainerRef.current;
-    const scrollPosition = container.scrollLeft;
-    const containerWidth = container.offsetWidth;
-    const scrollWidth = container.scrollWidth;
-    
-    const calculatedTotalPages = Math.max(1, Math.ceil(scrollWidth / containerWidth));
-    if (calculatedTotalPages !== totalPages) {
-      setTotalPages(calculatedTotalPages);
-    }
-    
-    const newIndex = Math.round(scrollPosition / containerWidth);
-    const clampedIndex = Math.max(0, Math.min(newIndex, calculatedTotalPages - 1));
-    setCurrentIndex(clampedIndex);
-  };
-
-  const nextPage = () => {
-    if (currentIndex < totalPages - 1) {
-      scrollToIndex(currentIndex + 1);
-    }
-  };
-
-  const prevPage = () => {
-    if (currentIndex > 0) {
-      scrollToIndex(currentIndex - 1);
-    }
-  };
 
   // ==================================================
   // FUNCIONES DE ACCIÓN
@@ -775,8 +704,8 @@ const AdminUsers: React.FC = () => {
         )}
       </div>
 
-      {/* Contenedor del carrusel */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ minHeight: 0 }}>
+      {/* Tabla de usuarios */}
+      <div className="flex-1 overflow-y-auto overflow-x-auto" style={{ minHeight: 0 }}>
         {loading ? (
           <div className="rounded-2xl border-2 p-16 text-center" style={{...styles.card}}>
             <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{
@@ -810,194 +739,164 @@ const AdminUsers: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="relative w-full flex-1" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0, maxHeight: '100%' }}>
+          <div className="rounded-xl border overflow-hidden" style={{...styles.card}}>
             {/* Mensaje de resultados de búsqueda */}
             {searchTerm && filteredUsers.length > 0 && (
-              <p className="text-xs text-center mb-2 flex-shrink-0" style={{color: styles.text.tertiary}}>
-                Mostrando {filteredUsers.length} resultado(s) para "{searchTerm}"
-              </p>
+              <div className="p-3 border-b" style={{borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+                <p className="text-xs text-center" style={{color: styles.text.tertiary}}>
+                  Mostrando {filteredUsers.length} resultado(s) para "{searchTerm}"
+                </p>
+              </div>
             )}
             
-            {/* Flechas de navegación */}
-            {filteredUsers.length > itemsPerView && (
-              <>
-                <button
-                  onClick={prevPage}
-                  disabled={currentIndex === 0}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 z-30 rounded-full p-3 shadow-xl hover:shadow-2xl transition-all duration-200 border-2"
-                  style={{
-                    backgroundColor: '#f1f5f9',
-                    borderColor: currentIndex === 0 ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)',
-                    opacity: currentIndex === 0 ? 0.4 : 1,
-                    cursor: currentIndex === 0 ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  <ChevronLeft className="w-6 h-6" style={{color: currentIndex === 0 ? styles.text.tertiary : styles.text.secondary}} />
-                </button>
-                <button
-                  onClick={nextPage}
-                  disabled={currentIndex >= totalPages - 1}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 z-30 rounded-full p-3 shadow-xl hover:shadow-2xl transition-all duration-200 border-2"
-                  style={{
-                    backgroundColor: '#f1f5f9',
-                    borderColor: currentIndex >= totalPages - 1 ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)',
-                    opacity: currentIndex >= totalPages - 1 ? 0.4 : 1,
-                    cursor: currentIndex >= totalPages - 1 ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  <ChevronRight className="w-6 h-6" style={{color: currentIndex >= totalPages - 1 ? styles.text.tertiary : styles.text.secondary}} />
-                </button>
-              </>
-            )}
+            {/* Tabla */}
+            <div className="overflow-x-auto">
+              <table className="w-full" style={{borderCollapse: 'separate', borderSpacing: 0}}>
+                <thead>
+                  <tr style={{backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc'}}>
+                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
+                      Usuario
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
+                      Email
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
+                      Rol
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
+                      Estado
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
+                      Acciones
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((user, index) => {
+                    const roleBadge = getRoleBadgeColor(user.rol);
+                    const statusColor = getStatusColor(user);
+                    const statusText = user.enVacaciones ? 'Vacaciones' : user.activo ? 'Activo' : 'Inactivo';
 
-            {/* Scroll Container */}
-            <div
-              ref={scrollContainerRef}
-              onScroll={handleScroll}
-              className="scrollbar-hide snap-x snap-mandatory"
-              style={{
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
-                WebkitScrollbar: { display: 'none' },
-                overflowX: 'auto',
-                overflowY: 'hidden',
-                paddingTop: '20px',
-                paddingBottom: '20px',
-                scrollBehavior: 'smooth',
-                width: '100%',
-                flex: '1 1 auto',
-                minHeight: 0,
-                maxHeight: '100%',
-                height: '100%'
-              } as React.CSSProperties}
-            >
-              <div className="flex gap-4 items-stretch" style={{ minHeight: '100%', alignItems: 'stretch' }}>
-                <div style={{ minWidth: 'calc(50% - 140px)', flexShrink: 0 }}></div>
-                {filteredUsers.map((user) => {
-                  const isHovered = hoveredUserId === user.id;
-                  const isAnyHovered = hoveredUserId !== null;
-                  const roleBadge = getRoleBadgeColor(user.rol);
-                  const statusColor = getStatusColor(user);
-                  const statusText = user.enVacaciones ? 'Vacaciones' : user.activo ? 'Activo' : 'Inactivo';
-
-                  return (
-                    <div
-                      key={user.id}
-                      className="snap-center flex-shrink-0 rounded-2xl border-2 shadow-sm overflow-visible group flex flex-col"
-                      style={{
-                        ...styles.card,
-                        width: `calc((100% - ${(itemsPerView - 1) * 16}px) / ${itemsPerView})`,
-                        minWidth: '280px',
-                        maxWidth: '280px',
-                        opacity: isAnyHovered && !isHovered ? 0.5 : 1,
-                        transform: isHovered ? 'scale(1.03) translateY(-4px)' : isAnyHovered ? 'scale(0.95)' : 'scale(1)',
-                        transformOrigin: 'center center',
-                        zIndex: isHovered ? 50 : 1,
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                        boxShadow: isHovered ? '0 20px 40px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.2)'
-                      }}
-                      onMouseEnter={() => setHoveredUserId(user.id)}
-                      onMouseLeave={() => setHoveredUserId(null)}
-                    >
-                      <div className="p-4 w-full flex flex-col">
-                        {/* Header: Avatar y nombre */}
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="relative flex-shrink-0">
-                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-700 to-slate-900 text-white flex items-center justify-center font-bold text-base shadow-md">
-                              {user.nombre.charAt(0)}
+                    return (
+                      <tr 
+                        key={user.id}
+                        className="hover:opacity-90 transition-opacity"
+                        style={{
+                          backgroundColor: index % 2 === 0 
+                            ? (theme === 'dark' ? '#1e293b' : '#ffffff')
+                            : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
+                          borderBottom: index < filteredUsers.length - 1 ? '1px solid rgba(148, 163, 184, 0.1)' : 'none'
+                        }}
+                      >
+                        {/* Usuario */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="relative flex-shrink-0">
+                              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-slate-700 to-slate-900 text-white flex items-center justify-center font-bold text-sm shadow-md">
+                                {user.nombre.charAt(0)}
+                              </div>
+                              <div className="absolute -inset-0.5 rounded-lg border-2" style={{borderColor: statusColor.dot}}></div>
                             </div>
-                            <div className="absolute -inset-0.5 rounded-xl border-2" style={{borderColor: statusColor.dot}}></div>
+                            <span className="text-sm font-semibold" style={{color: styles.text.primary}}>
+                              {user.nombre}
+                            </span>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-bold text-sm mb-1 truncate" style={{color: styles.text.primary}}>{user.nombre}</h4>
-                            <p className="text-xs truncate" style={{color: styles.text.tertiary}}>{user.email}</p>
-                          </div>
-                        </div>
-
-                        {/* Badges: Rol y Estado */}
-                        <div className="flex flex-wrap gap-2 mb-3">
-                          <span className="px-2 py-1 text-[10px] font-semibold rounded-lg border" style={{
+                        </td>
+                        
+                        {/* Email */}
+                        <td className="px-4 py-3">
+                          <span className="text-xs" style={{color: styles.text.secondary}}>{user.email}</span>
+                        </td>
+                        
+                        {/* Rol */}
+                        <td className="px-4 py-3">
+                          <span className="inline-flex px-2 py-1 text-[10px] font-semibold rounded-lg border" style={{
                             backgroundColor: roleBadge.bg,
                             color: roleBadge.text,
                             borderColor: roleBadge.border
                           }}>
                             {user.rol}
                           </span>
-                          <span className="px-2 py-1 text-[10px] font-semibold rounded-lg border" style={{
+                        </td>
+                        
+                        {/* Estado */}
+                        <td className="px-4 py-3">
+                          <span className="inline-flex px-2 py-1 text-[10px] font-semibold rounded-lg border" style={{
                             backgroundColor: statusColor.bg,
                             color: statusColor.text,
                             borderColor: statusColor.border
                           }}>
                             {statusText}
                           </span>
-                        </div>
-
+                        </td>
+                        
                         {/* Acciones */}
-                        <div className="flex flex-wrap gap-2 mt-auto">
-                          <button
-                            onClick={() => openEditModal(user)}
-                            className="flex-1 px-3 py-2 text-xs font-semibold rounded-lg border transition-all hover:shadow-md"
-                            style={{
-                              backgroundColor: 'transparent',
-                              borderColor: 'rgba(148, 163, 184, 0.3)',
-                              color: styles.text.secondary
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = theme === 'dark' ? '#334155' : '#f1f5f9';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = 'transparent';
-                            }}
-                          >
-                            <Edit className="w-3 h-3 inline mr-1" />
-                            Editar
-                          </button>
-                          <button
-                            onClick={() => toggleUserStatus(user.id)}
-                            className="px-3 py-2 text-xs font-semibold rounded-lg border transition-all hover:shadow-md"
-                            style={{
-                              backgroundColor: user.activo ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)',
-                              borderColor: user.activo ? 'rgba(239, 68, 68, 0.3)' : 'rgba(34, 197, 94, 0.3)',
-                              color: user.activo ? '#ef4444' : '#22c55e'
-                            }}
-                            title={user.activo ? 'Desactivar' : 'Activar'}
-                          >
-                            {user.activo ? <PowerOff className="w-3 h-3" /> : <Power className="w-3 h-3" />}
-                          </button>
-                          <button
-                            onClick={() => toggleVacaciones(user.id)}
-                            className="px-3 py-2 text-xs font-semibold rounded-lg border transition-all hover:shadow-md"
-                            style={{
-                              backgroundColor: user.enVacaciones ? 'rgba(245, 158, 11, 0.1)' : 'transparent',
-                              borderColor: user.enVacaciones ? 'rgba(245, 158, 11, 0.3)' : 'rgba(148, 163, 184, 0.3)',
-                              color: user.enVacaciones ? '#f59e0b' : styles.text.secondary
-                            }}
-                            title={user.enVacaciones ? 'Quitar vacaciones' : 'Marcar en vacaciones'}
-                          >
-                            <Sun className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setSelectedUser(user);
-                              setShowDeleteModal(true);
-                            }}
-                            className="px-3 py-2 text-xs font-semibold rounded-lg border transition-all hover:shadow-md"
-                            style={{
-                              backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                              borderColor: 'rgba(239, 68, 68, 0.3)',
-                              color: '#ef4444'
-                            }}
-                            title="Eliminar"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                <div style={{ minWidth: 'calc(50% - 140px)', flexShrink: 0 }}></div>
-              </div>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => openEditModal(user)}
+                              className="p-2 rounded-lg border transition-all hover:shadow-md"
+                              style={{
+                                backgroundColor: 'transparent',
+                                borderColor: 'rgba(148, 163, 184, 0.3)',
+                                color: styles.text.secondary
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = theme === 'dark' ? '#334155' : '#f1f5f9';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                              }}
+                              title="Editar"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => toggleUserStatus(user.id)}
+                              className="p-2 rounded-lg border transition-all hover:shadow-md"
+                              style={{
+                                backgroundColor: user.activo ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+                                borderColor: user.activo ? 'rgba(239, 68, 68, 0.3)' : 'rgba(34, 197, 94, 0.3)',
+                                color: user.activo ? '#ef4444' : '#22c55e'
+                              }}
+                              title={user.activo ? 'Desactivar' : 'Activar'}
+                            >
+                              {user.activo ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                            </button>
+                            <button
+                              onClick={() => toggleVacaciones(user.id)}
+                              className="p-2 rounded-lg border transition-all hover:shadow-md"
+                              style={{
+                                backgroundColor: user.enVacaciones ? 'rgba(245, 158, 11, 0.1)' : 'transparent',
+                                borderColor: user.enVacaciones ? 'rgba(245, 158, 11, 0.3)' : 'rgba(148, 163, 184, 0.3)',
+                                color: user.enVacaciones ? '#f59e0b' : styles.text.secondary
+                              }}
+                              title={user.enVacaciones ? 'Quitar vacaciones' : 'Marcar en vacaciones'}
+                            >
+                              <Sun className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedUser(user);
+                                setShowDeleteModal(true);
+                              }}
+                              className="p-2 rounded-lg border transition-all hover:shadow-md"
+                              style={{
+                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                borderColor: 'rgba(239, 68, 68, 0.3)',
+                                color: '#ef4444'
+                              }}
+                              title="Eliminar"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

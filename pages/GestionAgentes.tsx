@@ -12,8 +12,6 @@ import {
   Trash2, 
   X, 
   AlertTriangle,
-  ChevronLeft,
-  ChevronRight,
   Briefcase,
   RotateCcw,
   Activity,
@@ -29,10 +27,6 @@ const GestionAgentes: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [agenteToDelete, setAgenteToDelete] = useState<Agente | null>(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [hoveredAgenteId, setHoveredAgenteId] = useState<string | null>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { theme } = useTheme();
   const navigate = useNavigate();
   
@@ -43,24 +37,6 @@ const GestionAgentes: React.FC = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
-  const [itemsPerView, setItemsPerView] = useState(3);
-  const [totalPages, setTotalPages] = useState(1);
-
-  useEffect(() => {
-    const updateItemsPerView = () => {
-      if (window.innerWidth < 640) {
-        setItemsPerView(1);
-      } else if (window.innerWidth < 1024) {
-        setItemsPerView(2);
-      } else {
-        setItemsPerView(3);
-      }
-    };
-    
-    updateItemsPerView();
-    window.addEventListener('resize', updateItemsPerView);
-    return () => window.removeEventListener('resize', updateItemsPerView);
-  }, []);
 
   useEffect(() => {
     // Limpiar caché de agentes al montar el componente para forzar recálculo
@@ -79,41 +55,6 @@ const GestionAgentes: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (scrollContainerRef.current && agentes.length > 0) {
-      const container = scrollContainerRef.current;
-      container.scrollLeft = 0;
-      
-      setTimeout(() => {
-        if (scrollContainerRef.current) {
-          const containerWidth = scrollContainerRef.current.offsetWidth;
-          const scrollWidth = scrollContainerRef.current.scrollWidth;
-          const calculatedTotalPages = Math.max(1, Math.ceil(scrollWidth / containerWidth));
-          setTotalPages(calculatedTotalPages);
-        }
-      }, 100);
-    }
-  }, [agentes.length, itemsPerView]);
-
-  useEffect(() => {
-    const updatePages = () => {
-      if (scrollContainerRef.current && agentes.length > 0) {
-        const container = scrollContainerRef.current;
-        const containerWidth = container.offsetWidth;
-        const scrollWidth = container.scrollWidth;
-        const calculatedTotalPages = Math.max(1, Math.ceil(scrollWidth / containerWidth));
-        setTotalPages(calculatedTotalPages);
-      }
-    };
-
-    window.addEventListener('resize', updatePages);
-    const timeoutId = setTimeout(updatePages, 100);
-    
-    return () => {
-      window.removeEventListener('resize', updatePages);
-      clearTimeout(timeoutId);
-    };
-  }, [agentes.length, itemsPerView]);
 
   const loadAgentes = async () => {
     setLoading(true);
@@ -187,12 +128,13 @@ const GestionAgentes: React.FC = () => {
   const handleDeleteConfirm = async () => {
     if (!agenteToDelete) return;
     
-    const success = await api.deleteAgente(agenteToDelete.idAgente);
-    if (success) {
-      setShowDeleteModal(false);
-      setAgenteToDelete(null);
-    loadAgentes();
-    }
+    // TODO: Implementar deleteAgente en api.ts
+    // const success = await api.deleteAgente(agenteToDelete.idAgente);
+    // Por ahora, solo removemos del estado local
+    setAgentes(agentes.filter(a => a.idAgente !== agenteToDelete.idAgente));
+    setShowDeleteModal(false);
+    setAgenteToDelete(null);
+    // loadAgentes();
   };
 
   const handleDeleteCancel = () => {
@@ -200,65 +142,6 @@ const GestionAgentes: React.FC = () => {
     setAgenteToDelete(null);
   };
 
-  const scrollToIndex = (index: number) => {
-    if (!scrollContainerRef.current) return;
-    const container = scrollContainerRef.current;
-    const containerWidth = container.offsetWidth;
-    const scrollWidth = container.scrollWidth;
-    
-    const calculatedTotalPages = Math.max(1, Math.ceil(scrollWidth / containerWidth));
-    if (calculatedTotalPages !== totalPages) {
-      setTotalPages(calculatedTotalPages);
-    }
-    
-    const maxIndex = Math.max(0, calculatedTotalPages - 1);
-    const clampedIndex = Math.max(0, Math.min(index, maxIndex));
-    const scrollPosition = clampedIndex * containerWidth;
-    
-    container.scrollTo({
-      left: scrollPosition,
-      behavior: 'smooth'
-    });
-    setCurrentIndex(clampedIndex);
-  };
-
-  const handleScroll = () => {
-    if (!scrollContainerRef.current) return;
-    const container = scrollContainerRef.current;
-    const scrollPosition = container.scrollLeft;
-    const containerWidth = container.offsetWidth;
-    const scrollWidth = container.scrollWidth;
-    
-    const calculatedTotalPages = Math.max(1, Math.ceil(scrollWidth / containerWidth));
-    if (calculatedTotalPages !== totalPages) {
-      setTotalPages(calculatedTotalPages);
-    }
-    
-    const newIndex = Math.round(scrollPosition / containerWidth);
-    const clampedIndex = Math.max(0, Math.min(newIndex, calculatedTotalPages - 1));
-    
-    setCurrentIndex(clampedIndex);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (scrollIntervalRef.current) {
-        clearInterval(scrollIntervalRef.current);
-      }
-    };
-  }, []);
-
-  const nextPage = () => {
-    if (currentIndex < totalPages - 1) {
-      scrollToIndex(currentIndex + 1);
-    }
-  };
-
-  const prevPage = () => {
-    if (currentIndex > 0) {
-      scrollToIndex(currentIndex - 1);
-    }
-  };
 
   const getEstadoRingColor = (estado: string) => {
     switch (estado) {
@@ -569,23 +452,16 @@ const GestionAgentes: React.FC = () => {
          </div>
       </div>
 
-      {/* Contenedor con scroll vertical para el carrusel */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ minHeight: 0 }}>
+      {/* Tabla de agentes */}
+      <div className="flex-1 overflow-y-auto overflow-x-auto" style={{ minHeight: 0 }}>
       {loading && agentes.length === 0 ? (
-        <div className="flex gap-4">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="flex-shrink-0 rounded-2xl border-2 p-4 w-80 animate-pulse" style={{...styles.card}}>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 rounded-xl" style={{backgroundColor: 'rgba(148, 163, 184, 0.2)'}}></div>
-                <div className="flex-1">
-                  <div className="h-4 rounded w-24 mb-2" style={{backgroundColor: 'rgba(148, 163, 184, 0.2)'}}></div>
-                  <div className="h-3 rounded w-16" style={{backgroundColor: 'rgba(148, 163, 184, 0.2)'}}></div>
-                </div>
-              </div>
-              <div className="h-16 rounded-xl mb-3" style={{backgroundColor: 'rgba(148, 163, 184, 0.2)'}}></div>
-              <div className="h-10 rounded-xl" style={{backgroundColor: 'rgba(148, 163, 184, 0.2)'}}></div>
-            </div>
-          ))}
+        <div className="rounded-2xl border-2 p-16 text-center" style={{...styles.card}}>
+          <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{
+            backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc'
+          }}>
+            <RefreshCw className="w-10 h-10 animate-spin" style={{color: styles.text.tertiary}} />
+          </div>
+          <h3 className="text-base font-bold mb-2" style={{color: styles.text.primary}}>Cargando agentes...</h3>
         </div>
       ) : filteredAgentes.length === 0 ? (
         <div className="rounded-2xl border-2 p-16 text-center" style={{...styles.card}}>
@@ -629,415 +505,228 @@ const GestionAgentes: React.FC = () => {
           )}
         </div>
       ) : (
-        <div className="relative w-full flex-1" style={{ overflow: 'hidden', minHeight: 0, display: 'flex', flexDirection: 'column', maxHeight: '100%' }}>
-          {/* Microcopy */}
-          {filteredAgentes.length > itemsPerView && (
-            <p className="text-xs text-center mb-2 flex-shrink-0" style={{color: '#94a3b8'}}>
-              {searchTerm ? `Mostrando ${filteredAgentes.length} resultado(s) para "${searchTerm}"` : 'Desliza para ver más agentes'}
-            </p>
-          )}
-
-          <div className="relative w-full flex-1" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0, maxHeight: '100%' }}>
-            {/* Flechas de Navegación Mejoradas */}
-            {filteredAgentes.length > itemsPerView && (
-              <>
-                <button
-                  onClick={prevPage}
-                  disabled={currentIndex === 0}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 z-30 rounded-full p-3 shadow-xl hover:shadow-2xl transition-all duration-200 border-2"
-                  style={{
-                    backgroundColor: '#f1f5f9',
-                    borderColor: currentIndex === 0 ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)',
-                    opacity: currentIndex === 0 ? 0.4 : 1,
-                    cursor: currentIndex === 0 ? 'not-allowed' : 'pointer'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (currentIndex !== 0) {
-                      e.currentTarget.style.transform = 'translateY(-50%) scale(1.1)';
-                      e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.4)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
-                    e.currentTarget.style.borderColor = currentIndex === 0 ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)';
-                  }}
-                  aria-label="Anterior"
-                >
-                  <ChevronLeft className="w-6 h-6" style={{color: currentIndex === 0 ? styles.text.tertiary : styles.text.secondary}} />
-                </button>
-                <button
-                  onClick={nextPage}
-                  disabled={currentIndex >= totalPages - 1}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 z-30 rounded-full p-3 shadow-xl hover:shadow-2xl transition-all duration-200 border-2"
-                  style={{
-                    backgroundColor: '#f1f5f9',
-                    borderColor: currentIndex >= totalPages - 1 ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)',
-                    opacity: currentIndex >= totalPages - 1 ? 0.4 : 1,
-                    cursor: currentIndex >= totalPages - 1 ? 'not-allowed' : 'pointer'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (currentIndex < totalPages - 1) {
-                      e.currentTarget.style.transform = 'translateY(-50%) scale(1.1)';
-                      e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.4)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
-                    e.currentTarget.style.borderColor = currentIndex >= totalPages - 1 ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)';
-                  }}
-                  aria-label="Siguiente"
-                >
-                  <ChevronRight className="w-6 h-6" style={{color: currentIndex >= totalPages - 1 ? styles.text.tertiary : styles.text.secondary}} />
-                </button>
-              </>
+          <div className="rounded-xl border overflow-hidden" style={{...styles.card}}>
+            {/* Mensaje de resultados de búsqueda */}
+            {searchTerm && filteredAgentes.length > 0 && (
+              <div className="p-3 border-b" style={{borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+                <p className="text-xs text-center" style={{color: styles.text.tertiary}}>
+                  Mostrando {filteredAgentes.length} resultado(s) para "{searchTerm}"
+                </p>
+              </div>
             )}
-
-            {/* Scroll Container */}
-            <div
-              ref={scrollContainerRef}
-              onScroll={handleScroll}
-              className="scrollbar-hide snap-x snap-mandatory"
-              style={{
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
-                WebkitScrollbar: { display: 'none' },
-                overflowX: 'auto',
-                overflowY: 'hidden',
-                paddingTop: '20px',
-                paddingBottom: '20px',
-                paddingLeft: '0',
-                paddingRight: '0',
-                scrollBehavior: 'smooth',
-                width: '100%',
-                marginLeft: '0',
-                marginRight: '0',
-                flex: '1 1 auto',
-                minHeight: 0,
-                maxHeight: '100%',
-                height: '100%'
-              } as React.CSSProperties}
-            >
-              <div className="flex gap-4 items-stretch" style={{ minHeight: '100%', alignItems: 'stretch', boxSizing: 'border-box', height: '100%' }}>
-                <div style={{ minWidth: 'calc(50% - 140px)', flexShrink: 0 }}></div>
-          {filteredAgentes.map((agente, idx) => {
-                  const isHovered = hoveredAgenteId === agente.idAgente;
-                  const isAnyHovered = hoveredAgenteId !== null;
-                  const estadoOperativo = getEstadoOperativo(agente);
-                  const cargaPercent = getCargaWorkloadPercent(agente.casosActivos);
-                  const cargaColor = getCargaWorkloadColor(agente.casosActivos);
-                  const casosHoy = getCasosHoy(agente);
-                  const estadoBadge = getEstadoBadge(agente.estado);
             
-            return (
-              <div 
-                key={agente.idAgente} 
-                    className="snap-center flex-shrink-0 rounded-2xl border-2 shadow-sm overflow-visible group flex flex-col"
-                    style={{
-          ...styles.card,
-                      width: `calc((100% - ${(itemsPerView - 1) * 16}px) / ${itemsPerView})`,
-                      minWidth: '280px',
-                      maxWidth: '280px',
-                      opacity: isAnyHovered && !isHovered ? 0.5 : 1,
-                      transform: isHovered ? 'scale(1.03) translateY(-4px)' : isAnyHovered ? 'scale(0.95)' : 'scale(1)',
-                      transformOrigin: 'center center',
-                      zIndex: isHovered ? 50 : 1,
-                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                      pointerEvents: 'auto',
-                      visibility: 'visible',
-                      flexShrink: 0,
-                      boxShadow: isHovered ? '0 20px 40px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.2)'
-                    }}
-                    onMouseEnter={() => setHoveredAgenteId(agente.idAgente)}
-                    onMouseLeave={() => setHoveredAgenteId(null)}
-              >
-                    <div 
-                      className="p-2.5 w-full flex flex-col" 
-                    >
-                      {/* Header: Avatar con Ring de Estado */}
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="relative flex-shrink-0">
-                          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-slate-700 to-slate-900 text-white flex items-center justify-center font-bold text-sm shadow-md">
-                        {agente.nombre.charAt(0)}
-                      </div>
-                          <div className="absolute -inset-0.5 rounded-lg border-2" style={{borderColor: getEstadoRingColor(agente.estado)}}></div>
-                        </div>
-                        <div className="flex-1 min-w-0 overflow-hidden">
-                          <h4 className="font-bold text-xs mb-0.5 truncate" style={{color: styles.text.primary}}>{agente.nombre}</h4>
-                          <div className="flex items-center gap-1 flex-wrap">
-                            <span className="text-[10px] font-semibold uppercase tracking-wide" style={{
-                              color: estadoBadge.text
+            {/* Tabla */}
+            <div className="overflow-x-auto">
+              <table className="w-full" style={{borderCollapse: 'separate', borderSpacing: 0}}>
+                <thead>
+                  <tr style={{backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc'}}>
+                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
+                      Agente
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
+                      Estado
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
+                      Casos Activos
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
+                      Round Robin
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
+                      Acciones
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAgentes.map((agente, index) => {
+                    const estadoOperativo = getEstadoOperativo(agente);
+                    const cargaPercent = getCargaWorkloadPercent(agente.casosActivos);
+                    const cargaColor = getCargaWorkloadColor(agente.casosActivos);
+                    const estadoBadge = getEstadoBadge(agente.estado);
+                    const ordenRoundRobin = agente.ordenRoundRobin || 999;
+                    const esSiguiente = ordenRoundRobin === 1 && agente.estado === 'Activo';
+                    const esActivo = agente.estado === 'Activo';
+                    
+                    // Formatear fecha del último caso
+                    const formatFechaUltimoCaso = (fecha: string) => {
+                      if (!fecha || fecha === 'N/A') return 'Sin casos';
+                      try {
+                        let date;
+                        if (fecha.includes('T')) {
+                          date = new Date(fecha);
+                        } else if (fecha.includes('/')) {
+                          const [day, month, year] = fecha.split('/');
+                          date = new Date(`${year}-${month}-${day}`);
+                        } else {
+                          date = new Date(fecha);
+                        }
+                        if (isNaN(date.getTime())) return 'Sin casos';
+                        const day = String(date.getDate()).padStart(2, '0');
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const year = date.getFullYear();
+                        return `${day}/${month}/${year}`;
+                      } catch {
+                        return 'Sin casos';
+                      }
+                    };
+
+                    return (
+                      <tr 
+                        key={agente.idAgente}
+                        className="hover:opacity-90 transition-opacity"
+                        style={{
+                          backgroundColor: index % 2 === 0 
+                            ? (theme === 'dark' ? '#1e293b' : '#ffffff')
+                            : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
+                          borderBottom: index < filteredAgentes.length - 1 ? '1px solid rgba(148, 163, 184, 0.1)' : 'none'
+                        }}
+                      >
+                        {/* Agente */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="relative flex-shrink-0">
+                              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-slate-700 to-slate-900 text-white flex items-center justify-center font-bold text-sm shadow-md">
+                                {agente.nombre.charAt(0)}
+                              </div>
+                              <div className="absolute -inset-0.5 rounded-lg border-2" style={{borderColor: getEstadoRingColor(agente.estado)}}></div>
+                            </div>
+                            <div>
+                              <div className="text-sm font-semibold" style={{color: styles.text.primary}}>
+                                {agente.nombre}
+                              </div>
+                              <div className="text-xs" style={{color: styles.text.tertiary}}>
+                                {agente.email}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        
+                        {/* Estado */}
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col gap-1">
+                            <span className="inline-flex px-2 py-1 text-[10px] font-semibold rounded-lg border w-fit" style={{
+                              backgroundColor: estadoBadge.bg,
+                              color: estadoBadge.text,
+                              borderColor: estadoBadge.border
                             }}>
                               {agente.estado}
                             </span>
                             {estadoOperativo && (
-                              <span className="inline-flex items-center gap-0.5 text-[10px] font-medium" style={{color: estadoOperativo.color}}>
-                                <estadoOperativo.icon className="w-2 h-2" />
+                              <span className="inline-flex items-center gap-1 text-[10px] font-medium" style={{color: estadoOperativo.color}}>
+                                <estadoOperativo.icon className="w-3 h-3" />
                                 {estadoOperativo.texto}
                               </span>
                             )}
-                      </div>
-                    </div>
-                      </div>
-
-                      {/* Métricas con barra de carga */}
-                      {(() => {
-                        // Orden Round Robin calculado en el frontend
-                        const ordenRoundRobin = agente.ordenRoundRobin || 999;
-                        const esSiguiente = ordenRoundRobin === 1 && agente.estado === 'Activo';
-                        const esActivo = agente.estado === 'Activo';
+                          </div>
+                        </td>
                         
-                        // Formatear fecha del último caso
-                        const formatFechaUltimoCaso = (fecha: string) => {
-                          if (!fecha || fecha === 'N/A') return 'Sin casos';
-                          try {
-                            // Intentar parsear la fecha (puede venir como ISO string o DD/MM/YYYY)
-                            let date;
-                            if (fecha.includes('T')) {
-                              // Formato ISO
-                              date = new Date(fecha);
-                            } else if (fecha.includes('/')) {
-                              // Formato DD/MM/YYYY del webhook
-                              const [day, month, year] = fecha.split('/');
-                              date = new Date(`${year}-${month}-${day}`);
-                            } else {
-                              date = new Date(fecha);
-                            }
-                            
-                            if (isNaN(date.getTime())) return 'Sin casos';
-                            
-                            // Formatear a DD/MM/YYYY
-                            const day = String(date.getDate()).padStart(2, '0');
-                            const month = String(date.getMonth() + 1).padStart(2, '0');
-                            const year = date.getFullYear();
-                            return `${day}/${month}/${year}`;
-                          } catch {
-                            return 'Sin casos';
-                          }
-                        };
-                        
-                        return (
-                          <div className="space-y-1.5 mb-1.5">
-                            {/* Casos Activos con Barra de Carga */}
-                            <div className="p-2 rounded-lg border" style={{
-                              backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
-                              borderColor: 'rgba(148, 163, 184, 0.2)'
-                            }}>
-                              <div className="flex items-center justify-between mb-1">
-                                <div className="flex items-center gap-1">
-                                  <Briefcase className="w-3 h-3 flex-shrink-0" style={{color: styles.text.tertiary}} />
-                                  <span className="text-[10px] font-medium" style={{color: styles.text.tertiary}}>Casos Activos</span>
-                                </div>
+                        {/* Casos Activos */}
+                        <td className="px-4 py-3">
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1">
+                                <Briefcase className="w-3 h-3" style={{color: styles.text.tertiary}} />
                                 <span className="text-xs font-bold" style={{color: styles.text.primary}}>{agente.casosActivos}</span>
                               </div>
-                              {/* Barra de carga visual */}
-                              <div className="w-full rounded-full h-1 overflow-hidden" style={{backgroundColor: 'rgba(148, 163, 184, 0.2)'}}>
-                                <div
-                                  className="h-full rounded-full transition-all duration-300"
-                                  style={{ 
-                                    width: `${cargaPercent}%`,
-                                    backgroundColor: cargaColor
-                                  }}
-                                />
-                              </div>
                             </div>
-
-                            {/* Round Robin - Orden de Asignación */}
-                            <div className="p-2 rounded-lg border-2 transition-all" style={{
-                              backgroundColor: esSiguiente ? 'rgba(34, 197, 94, 0.15)' : esActivo ? 'rgba(59, 130, 246, 0.1)' : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
-                              borderColor: esSiguiente ? 'rgba(34, 197, 94, 0.4)' : esActivo ? 'rgba(59, 130, 246, 0.3)' : 'rgba(148, 163, 184, 0.2)'
-                            }}>
-                              <div className="flex items-center justify-between mb-1">
-                                <div className="flex items-center gap-1">
-                                  <RotateCcw className="w-3 h-3 flex-shrink-0" style={{color: esSiguiente ? '#22c55e' : esActivo ? '#3b82f6' : '#94a3b8'}} />
-                                  <span className="text-[10px] font-medium" style={{color: esSiguiente ? '#22c55e' : esActivo ? '#3b82f6' : '#94a3b8'}}>
-                                    Round Robin
-                                  </span>
-                                </div>
-                                {esSiguiente && (
-                                  <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-semibold" style={{
-                                    backgroundColor: 'rgba(34, 197, 94, 0.2)',
-                                    color: '#22c55e'
-                                  }}>
-                                    <TrendingUp className="w-2 h-2" />
-                                    Siguiente
-                                  </span>
-                                )}
-                              </div>
-                              <div className="space-y-0.5">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-[9px] font-medium" style={{color: '#64748b'}}>Orden:</span>
-                                  <span className="text-sm font-black" style={{color: esSiguiente ? '#22c55e' : esActivo ? '#3b82f6' : '#94a3b8'}}>
-                                    #{ordenRoundRobin === 999 ? '—' : ordenRoundRobin}
-                                  </span>
-                                </div>
-                                {esActivo && (
-                                  <div className="pt-0.5 border-t" style={{borderColor: 'rgba(148, 163, 184, 0.15)'}}>
-                                    <div className="text-[9px] space-y-0.5" style={{color: '#94a3b8'}}>
-                                      <div className="flex items-center justify-between">
-                                        <span>Último caso:</span>
-                                        <span className="font-medium" style={{color: '#64748b'}}>
-                                          {formatFechaUltimoCaso(agente.ultimoCasoAsignado)}
-                                        </span>
-                                      </div>
-                                      <div className="text-[8px] italic" style={{color: '#94a3b8'}}>
-                                        {ordenRoundRobin === 1 
-                                          ? 'Menor carga • Siguiente asignación'
-                                          : ordenRoundRobin === 2
-                                          ? 'Segundo en cola'
-                                          : `Posición ${ordenRoundRobin} en cola`
-                                        }
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
-                                {!esActivo && (
-                                  <div className="pt-0.5 border-t" style={{borderColor: 'rgba(148, 163, 184, 0.15)'}}>
-                                    <div className="text-[9px] italic" style={{color: '#94a3b8'}}>
-                                      No participa en round robin
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
+                            <div className="w-full rounded-full h-1.5 overflow-hidden" style={{backgroundColor: 'rgba(148, 163, 184, 0.2)'}}>
+                              <div
+                                className="h-full rounded-full transition-all duration-300"
+                                style={{ 
+                                  width: `${cargaPercent}%`,
+                                  backgroundColor: cargaColor
+                                }}
+                              />
                             </div>
                           </div>
-                        );
-                      })()}
-
-                      {/* Acciones */}
-                      <div className="space-y-1 mt-auto">
-                        {/* Acción Primaria: Activar/Desactivar */}
-                    <button 
-                      onClick={() => toggleEstado(agente.idAgente, agente.estado)}
-                          className="w-full py-1.5 text-[10px] font-semibold rounded-lg transition-all flex items-center justify-center gap-1 shadow-sm hover:shadow-md border"
-                          style={agente.estado === 'Activo' ? {
-                            backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
-                            color: styles.text.secondary,
-                            borderColor: 'rgba(148, 163, 184, 0.2)'
-                          } : {
-                            background: 'linear-gradient(to right, var(--color-brand-red), var(--color-accent-red))',
-                            boxShadow: '0 8px 20px rgba(200, 21, 27, 0.2)',
-                            color: '#1e293b',
-                            borderColor: 'transparent'
-                          }}
-                      onMouseEnter={(e) => {
-                            if (agente.estado === 'Activo') {
-                              e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
-                            } else {
-                              e.currentTarget.style.background = 'linear-gradient(to right, var(--color-accent-red), var(--color-brand-red))';
-                              e.currentTarget.style.boxShadow = '0 10px 24px rgba(245, 41, 56, 0.25)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                            if (agente.estado === 'Activo') {
-                              e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f8fafc';
-                            } else {
-                              e.currentTarget.style.background = 'linear-gradient(to right, var(--color-brand-red), var(--color-accent-red))';
-                              e.currentTarget.style.boxShadow = '0 8px 20px rgba(200, 21, 27, 0.2)';
-                        }
-                      }}
-                          title={agente.estado === 'Activo' ? 'Desactivar agente' : 'Activar agente'}
-                    >
-                          {agente.estado === 'Activo' ? <UserX className="w-2.5 h-2.5 flex-shrink-0" /> : <UserCheck className="w-2.5 h-2.5 flex-shrink-0" />}
-                          <span className="truncate text-[10px]">{agente.estado === 'Activo' ? 'Desactivar' : 'Activar'}</span>
-                    </button>
-
-                        {/* Acciones Secundarias */}
-                        <div className="flex gap-1">
-                    <button 
-                      onClick={() => setVacaciones(agente.idAgente)}
-                            disabled={agente.estado === 'Vacaciones'}
-                            className="flex-1 py-1.5 rounded-lg transition-all border shadow-sm hover:shadow-md flex items-center justify-center gap-0.5 min-w-0 text-[10px]"
-                            style={agente.estado === 'Vacaciones' ? {
-                              backgroundColor: 'rgba(245, 158, 11, 0.2)',
-                              color: '#f59e0b',
-                              borderColor: 'rgba(245, 158, 11, 0.3)',
-                              cursor: 'not-allowed'
-                            } : {
-                              backgroundColor: 'rgba(245, 158, 11, 0.15)',
-                              color: '#f59e0b',
-                              borderColor: 'rgba(245, 158, 11, 0.3)'
-                            }}
-                            onMouseEnter={(e) => {
-                              if (agente.estado !== 'Vacaciones') {
-                                e.currentTarget.style.backgroundColor = 'rgba(245, 158, 11, 0.25)';
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              if (agente.estado !== 'Vacaciones') {
-                                e.currentTarget.style.backgroundColor = 'rgba(245, 158, 11, 0.15)';
-                              }
-                            }}
-                            title={agente.estado === 'Vacaciones' ? 'Ya está en vacaciones' : 'Marcar en vacaciones'}
-                          >
-                            <Sun className="w-2.5 h-2.5 flex-shrink-0" />
-                            <span className="text-[10px] font-semibold truncate">Vacaciones</span>
-                          </button>
-                        </div>
-
-                        {/* Acción Destructiva Separada */}
-                        <button 
-                          onClick={() => handleDeleteClick(agente)}
-                          className="w-full py-1.5 px-2 rounded-lg transition-all border shadow-sm hover:shadow-md flex items-center justify-center gap-1 group"
-                          style={{
-                            backgroundColor: 'rgba(220, 38, 38, 0.15)',
-                            color: '#f87171',
-                            borderColor: 'rgba(220, 38, 38, 0.3)'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.25)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.15)';
-                          }}
-                          title="Eliminar agente permanentemente"
-                        >
-                          <Trash2 className="w-2.5 h-2.5 group-hover:scale-110 transition-transform flex-shrink-0" />
-                          <span className="text-[10px] font-semibold">Eliminar</span>
-                    </button>
-                  </div>
-                    </div>
-              </div>
-            );
-          })}
-                <div style={{ minWidth: 'calc(50% - 140px)', flexShrink: 0 }}></div>
-              </div>
+                        </td>
+                        
+                        {/* Round Robin */}
+                        <td className="px-4 py-3">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1">
+                              <RotateCcw className="w-3 h-3" style={{color: esSiguiente ? '#22c55e' : esActivo ? '#3b82f6' : '#94a3b8'}} />
+                              <span className="text-xs font-bold" style={{color: esSiguiente ? '#22c55e' : esActivo ? '#3b82f6' : '#94a3b8'}}>
+                                #{ordenRoundRobin === 999 ? '—' : ordenRoundRobin}
+                              </span>
+                              {esSiguiente && (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold" style={{
+                                  backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                                  color: '#22c55e'
+                                }}>
+                                  <TrendingUp className="w-2.5 h-2.5" />
+                                  Siguiente
+                                </span>
+                              )}
+                            </div>
+                            {esActivo && (
+                              <div className="text-[10px]" style={{color: styles.text.tertiary}}>
+                                Último: {formatFechaUltimoCaso(agente.ultimoCasoAsignado)}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        
+                        {/* Acciones */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => toggleEstado(agente.idAgente, agente.estado)}
+                              className="p-2 rounded-lg border transition-all hover:shadow-md"
+                              style={agente.estado === 'Activo' ? {
+                                backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                                borderColor: 'rgba(148, 163, 184, 0.2)',
+                                color: styles.text.secondary
+                              } : {
+                                background: 'linear-gradient(to right, var(--color-brand-red), var(--color-accent-red))',
+                                borderColor: 'transparent',
+                                color: '#ffffff'
+                              }}
+                              title={agente.estado === 'Activo' ? 'Desactivar agente' : 'Activar agente'}
+                            >
+                              {agente.estado === 'Activo' ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                            </button>
+                            <button
+                              onClick={() => setVacaciones(agente.idAgente)}
+                              disabled={agente.estado === 'Vacaciones'}
+                              className="p-2 rounded-lg border transition-all hover:shadow-md"
+                              style={agente.estado === 'Vacaciones' ? {
+                                backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                                color: '#f59e0b',
+                                borderColor: 'rgba(245, 158, 11, 0.3)',
+                                cursor: 'not-allowed',
+                                opacity: 0.5
+                              } : {
+                                backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                                color: '#f59e0b',
+                                borderColor: 'rgba(245, 158, 11, 0.3)'
+                              }}
+                              title={agente.estado === 'Vacaciones' ? 'Ya está en vacaciones' : 'Marcar en vacaciones'}
+                            >
+                              <Sun className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteClick(agente)}
+                              className="p-2 rounded-lg border transition-all hover:shadow-md"
+                              style={{
+                                backgroundColor: 'rgba(220, 38, 38, 0.15)',
+                                color: '#f87171',
+                                borderColor: 'rgba(220, 38, 38, 0.3)'
+                              }}
+                              title="Eliminar agente permanentemente"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
-
-          {/* Indicadores de Posición Mejorados - Siempre visible */}
-          {filteredAgentes.length > 0 && (
-            <div className="flex justify-center items-center gap-3 mt-4 flex-shrink-0">
-              {totalPages > 1 && Array.from({ length: totalPages }).map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => scrollToIndex(index)}
-                  className="h-2 rounded-full transition-all duration-300"
-                  style={{
-                    width: index === currentIndex ? '40px' : '10px',
-                    backgroundColor: index === currentIndex ? 'var(--color-accent-blue)' : 'rgba(148, 163, 184, 0.3)'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (index !== currentIndex) {
-                      e.currentTarget.style.backgroundColor = 'rgba(148, 163, 184, 0.5)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (index !== currentIndex) {
-                      e.currentTarget.style.backgroundColor = 'rgba(148, 163, 184, 0.3)';
-                    }
-                  }}
-                  aria-label={`Ir a página ${index + 1}`}
-                />
-              ))}
-              <span className="ml-2 text-xs font-semibold" style={{
-                color: '#475569'
-              }}>
-                {currentIndex + 1} / {totalPages}
-              </span>
-            </div>
-          )}
-        </div>
-      )}
+        )}
 
       {/* Modal de confirmación para eliminar agente */}
       {showDeleteModal && agenteToDelete && (
@@ -1118,24 +807,6 @@ const GestionAgentes: React.FC = () => {
       )}
       </div>
 
-      {/* Estilos para scrollbar personalizado */}
-      <style>{`
-        .scrollbar-hide::-webkit-scrollbar {
-          width: 6px;
-          height: 6px;
-        }
-        .scrollbar-hide::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .scrollbar-hide::-webkit-scrollbar-thumb {
-          background-color: rgba(148, 163, 184, 0.3);
-          border-radius: 3px;
-          border: none;
-        }
-        .scrollbar-hide::-webkit-scrollbar-thumb:hover {
-          background-color: rgba(148, 163, 184, 0.5);
-        }
-      `}</style>
     </div>
   );
 };
