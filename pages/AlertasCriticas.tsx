@@ -235,130 +235,205 @@ const AlertasCriticas: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Total Críticos */}
         <div 
-          className="p-5 rounded-xl border-2 cursor-pointer transition-all duration-200"
+          className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden"
           style={{
-            ...styles.card
+            ...styles.card,
+            borderColor: criticos.length > 0 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(148, 163, 184, 0.2)',
+            backgroundColor: criticos.length > 0 ? (theme === 'dark' ? 'rgba(239, 68, 68, 0.05)' : 'rgba(239, 68, 68, 0.02)') : styles.card.backgroundColor
           }}
           onClick={() => navigate('/app/casos')}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.4)';
+            e.currentTarget.style.borderColor = criticos.length > 0 ? 'rgba(239, 68, 68, 0.4)' : 'rgba(148, 163, 184, 0.4)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.2)';
+            e.currentTarget.style.borderColor = criticos.length > 0 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(148, 163, 184, 0.2)';
             e.currentTarget.style.boxShadow = '';
           }}
         >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{color: styles.text.tertiary}}>Total Críticos</p>
-              <p className="text-3xl font-black" style={{color: styles.text.primary}}>
+          {/* Icono con glow en esquina superior derecha */}
+          {criticos.length > 0 && (
+            <div className="absolute top-3 right-3">
+              <div className="icon-glow-critical">
+                <ShieldAlert className="w-6 h-6" style={{
+                  color: '#ef4444'
+                }} />
+              </div>
+            </div>
+          )}
+          {criticos.length === 0 && (
+            <div className="absolute top-3 right-3">
+              <ShieldAlert className="w-6 h-6" style={{
+                color: styles.text.secondary
+              }} />
+            </div>
+          )}
+          <div className="flex items-start justify-between mb-2 pr-8">
+            <div className="flex-1">
+              <p className="text-4xl font-black leading-none mb-1.5" style={{
+                color: criticos.length > 0 ? '#ef4444' : styles.text.primary
+              }}>
                 <AnimatedNumber value={criticos.length} />
               </p>
-            </div>
-            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{
-              backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
-              border: '2px solid rgba(148, 163, 184, 0.2)'
-            }}>
-              <ShieldAlert className="w-6 h-6" style={{color: styles.text.tertiary}} />
+              <div className="flex items-center gap-1.5">
+                <ShieldAlert className="w-4 h-4 flex-shrink-0" style={{
+                  color: criticos.length > 0 ? '#ef4444' : styles.text.secondary
+                }} />
+                <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Total Críticos</p>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Fuera de SLA */}
         <div 
-          className="p-5 rounded-xl border-2 cursor-pointer transition-all duration-200"
+          className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden"
           style={{
             ...styles.card,
-            borderColor: casosFueraSLA > 0 ? 'rgba(200, 21, 27, 0.3)' : 'rgba(148, 163, 184, 0.2)'
+            borderColor: casosFueraSLA > 0 ? 'rgba(245, 158, 11, 0.3)' : 'rgba(148, 163, 184, 0.2)',
+            backgroundColor: casosFueraSLA > 0 ? (theme === 'dark' ? 'rgba(245, 158, 11, 0.05)' : 'rgba(245, 158, 11, 0.02)') : styles.card.backgroundColor
           }}
           onClick={() => navigate('/app/casos')}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = casosFueraSLA > 0 ? 'rgba(200, 21, 27, 0.5)' : 'rgba(148, 163, 184, 0.4)';
+            e.currentTarget.style.borderColor = casosFueraSLA > 0 ? 'rgba(245, 158, 11, 0.45)' : 'rgba(148, 163, 184, 0.4)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = casosFueraSLA > 0 ? 'rgba(200, 21, 27, 0.3)' : 'rgba(148, 163, 184, 0.2)';
+            e.currentTarget.style.borderColor = casosFueraSLA > 0 ? 'rgba(245, 158, 11, 0.3)' : 'rgba(148, 163, 184, 0.2)';
             e.currentTarget.style.boxShadow = '';
           }}
         >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{color: styles.text.tertiary}}>Fuera de SLA</p>
-              <p className="text-3xl font-black" style={{color: casosFueraSLA > 0 ? '#c8151b' : styles.text.primary}}>
+          {/* Icono con glow en esquina superior derecha */}
+          {casosFueraSLA > 0 && (
+            <div className="absolute top-3 right-3">
+              <div className="icon-glow-sla">
+                <Timer className="w-6 h-6" style={{
+                  color: '#f59e0b'
+                }} />
+              </div>
+            </div>
+          )}
+          {casosFueraSLA === 0 && (
+            <div className="absolute top-3 right-3">
+              <Timer className="w-6 h-6" style={{
+                color: styles.text.secondary
+              }} />
+            </div>
+          )}
+          <div className="flex items-start justify-between mb-2 pr-8">
+            <div className="flex-1">
+              <p className="text-4xl font-black leading-none mb-1.5" style={{
+                color: casosFueraSLA > 0 ? '#f59e0b' : styles.text.primary
+              }}>
                 <AnimatedNumber value={casosFueraSLA} />
               </p>
-            </div>
-            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{
-              backgroundColor: casosFueraSLA > 0 ? 'rgba(200, 21, 27, 0.1)' : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
-              border: `2px solid ${casosFueraSLA > 0 ? 'rgba(200, 21, 27, 0.2)' : 'rgba(148, 163, 184, 0.2)'}`
-            }}>
-              <Timer className="w-6 h-6" style={{color: casosFueraSLA > 0 ? '#c8151b' : styles.text.tertiary}} />
+              <div className="flex items-center gap-1.5">
+                <Timer className="w-4 h-4 flex-shrink-0" style={{
+                  color: casosFueraSLA > 0 ? '#f59e0b' : styles.text.secondary
+                }} />
+                <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Fuera de SLA</p>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Vencen en 24h */}
         <div 
-          className="p-5 rounded-xl border-2 cursor-pointer transition-all duration-200"
+          className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden"
           style={{
-            ...styles.card
+            ...styles.card,
+            borderColor: casosVencen24h > 0 ? 'rgba(249, 115, 22, 0.3)' : 'rgba(148, 163, 184, 0.2)',
+            backgroundColor: casosVencen24h > 0 ? (theme === 'dark' ? 'rgba(249, 115, 22, 0.05)' : 'rgba(249, 115, 22, 0.02)') : styles.card.backgroundColor
           }}
           onClick={() => navigate('/app/casos')}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.4)';
+            e.currentTarget.style.borderColor = casosVencen24h > 0 ? 'rgba(249, 115, 22, 0.45)' : 'rgba(148, 163, 184, 0.4)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.2)';
+            e.currentTarget.style.borderColor = casosVencen24h > 0 ? 'rgba(249, 115, 22, 0.3)' : 'rgba(148, 163, 184, 0.2)';
             e.currentTarget.style.boxShadow = '';
           }}
         >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{color: styles.text.tertiary}}>Vencen &lt;24h</p>
-              <p className="text-3xl font-black" style={{color: styles.text.primary}}>
+          {/* Icono con glow en esquina superior derecha */}
+          <div className="absolute top-3 right-3">
+            <div 
+              className="icon-glow-24h"
+              style={{
+                filter: casosVencen24h > 0 ? 'drop-shadow(0 0 8px rgba(249, 115, 22, 0.6)) drop-shadow(0 0 12px rgba(249, 115, 22, 0.4))' : 'none',
+                animation: casosVencen24h > 0 ? 'glow-pulse 2s ease-in-out infinite' : 'none'
+              }}
+            >
+              <Clock className="w-6 h-6" style={{
+                color: casosVencen24h > 0 ? '#f97316' : styles.text.secondary
+              }} />
+            </div>
+          </div>
+          <div className="flex items-start justify-between mb-2 pr-8">
+            <div className="flex-1">
+              <p className="text-4xl font-black leading-none mb-1.5" style={{
+                color: casosVencen24h > 0 ? '#f97316' : styles.text.primary
+              }}>
                 <AnimatedNumber value={casosVencen24h} />
               </p>
-            </div>
-            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{
-              backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
-              border: '2px solid rgba(148, 163, 184, 0.2)'
-            }}>
-              <Clock className="w-6 h-6" style={{color: styles.text.tertiary}} />
+              <div className="flex items-center gap-1.5">
+                <Clock className="w-4 h-4 flex-shrink-0" style={{
+                  color: casosVencen24h > 0 ? '#f97316' : styles.text.secondary
+                }} />
+                <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Vencen &lt;24h</p>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Escalados */}
         <div 
-          className="p-5 rounded-xl border-2 cursor-pointer transition-all duration-200"
+          className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden"
           style={{
             ...styles.card,
-            borderColor: casosEscalados > 0 ? 'rgba(200, 21, 27, 0.3)' : 'rgba(148, 163, 184, 0.2)'
+            borderColor: casosEscalados > 0 ? 'rgba(220, 38, 38, 0.35)' : 'rgba(148, 163, 184, 0.2)',
+            backgroundColor: casosEscalados > 0 ? (theme === 'dark' ? 'rgba(220, 38, 38, 0.08)' : 'rgba(220, 38, 38, 0.03)') : styles.card.backgroundColor
           }}
           onClick={() => navigate('/app/casos')}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = casosEscalados > 0 ? 'rgba(200, 21, 27, 0.5)' : 'rgba(148, 163, 184, 0.4)';
+            e.currentTarget.style.borderColor = casosEscalados > 0 ? 'rgba(220, 38, 38, 0.5)' : 'rgba(148, 163, 184, 0.4)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = casosEscalados > 0 ? 'rgba(200, 21, 27, 0.3)' : 'rgba(148, 163, 184, 0.2)';
+            e.currentTarget.style.borderColor = casosEscalados > 0 ? 'rgba(220, 38, 38, 0.35)' : 'rgba(148, 163, 184, 0.2)';
             e.currentTarget.style.boxShadow = '';
           }}
         >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{color: styles.text.tertiary}}>Escalados</p>
-              <p className="text-3xl font-black" style={{color: casosEscalados > 0 ? '#c8151b' : styles.text.primary}}>
+          {/* Icono con glow en esquina superior derecha */}
+          {casosEscalados > 0 && (
+            <div className="absolute top-3 right-3">
+              <div className="icon-glow-escalados">
+                <AlertTriangle className="w-6 h-6" style={{
+                  color: '#dc2626'
+                }} />
+              </div>
+            </div>
+          )}
+          {casosEscalados === 0 && (
+            <div className="absolute top-3 right-3">
+              <AlertTriangle className="w-6 h-6" style={{
+                color: styles.text.secondary
+              }} />
+            </div>
+          )}
+          <div className="flex items-start justify-between mb-2 pr-8">
+            <div className="flex-1">
+              <p className="text-4xl font-black leading-none mb-1.5" style={{
+                color: casosEscalados > 0 ? '#dc2626' : styles.text.primary
+              }}>
                 <AnimatedNumber value={casosEscalados} />
               </p>
-            </div>
-            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{
-              backgroundColor: casosEscalados > 0 ? 'rgba(200, 21, 27, 0.1)' : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
-              border: `2px solid ${casosEscalados > 0 ? 'rgba(200, 21, 27, 0.2)' : 'rgba(148, 163, 184, 0.2)'}`
-            }}>
-              <TrendingUp className="w-6 h-6" style={{color: casosEscalados > 0 ? '#c8151b' : styles.text.tertiary}} />
+              <div className="flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{
+                  color: casosEscalados > 0 ? '#dc2626' : styles.text.secondary
+                }} />
+                <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Escalados</p>
+              </div>
             </div>
           </div>
         </div>
@@ -519,6 +594,69 @@ const AlertasCriticas: React.FC = () => {
             </p>
           </div>
         )}
+      
+      {/* Estilos para animación de glow */}
+      <style>{`
+        @keyframes glow-pulse-critical {
+          0%, 100% {
+            filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.6)) drop-shadow(0 0 10px rgba(239, 68, 68, 0.4));
+            opacity: 1;
+          }
+          50% {
+            filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.8)) drop-shadow(0 0 14px rgba(239, 68, 68, 0.6)) drop-shadow(0 0 18px rgba(239, 68, 68, 0.4));
+            opacity: 0.95;
+          }
+        }
+        
+        @keyframes glow-pulse-sla {
+          0%, 100% {
+            filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.6)) drop-shadow(0 0 10px rgba(245, 158, 11, 0.4));
+            opacity: 1;
+          }
+          50% {
+            filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.8)) drop-shadow(0 0 14px rgba(245, 158, 11, 0.6)) drop-shadow(0 0 18px rgba(245, 158, 11, 0.4));
+            opacity: 0.95;
+          }
+        }
+        
+        @keyframes glow-pulse-24h {
+          0%, 100% {
+            filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.6)) drop-shadow(0 0 10px rgba(249, 115, 22, 0.4));
+            opacity: 1;
+          }
+          50% {
+            filter: drop-shadow(0 0 10px rgba(249, 115, 22, 0.8)) drop-shadow(0 0 14px rgba(249, 115, 22, 0.6)) drop-shadow(0 0 18px rgba(249, 115, 22, 0.4));
+            opacity: 0.95;
+          }
+        }
+        
+        @keyframes glow-pulse-escalados {
+          0%, 100% {
+            filter: drop-shadow(0 0 6px rgba(220, 38, 38, 0.7)) drop-shadow(0 0 10px rgba(220, 38, 38, 0.5));
+            opacity: 1;
+          }
+          50% {
+            filter: drop-shadow(0 0 10px rgba(220, 38, 38, 0.9)) drop-shadow(0 0 14px rgba(220, 38, 38, 0.7)) drop-shadow(0 0 18px rgba(220, 38, 38, 0.5));
+            opacity: 0.95;
+          }
+        }
+        
+        .icon-glow-critical {
+          animation: glow-pulse-critical 2s ease-in-out infinite;
+        }
+        
+        .icon-glow-sla {
+          animation: glow-pulse-sla 2s ease-in-out infinite;
+        }
+        
+        .icon-glow-24h {
+          animation: glow-pulse-24h 2s ease-in-out infinite;
+        }
+        
+        .icon-glow-escalados {
+          animation: glow-pulse-escalados 2s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 };

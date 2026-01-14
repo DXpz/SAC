@@ -1017,7 +1017,7 @@ const SupervisorPanel: React.FC = () => {
                   const stats = getAgenteStats(agente.idAgente);
                   
                   return (
-                    <div key={agente.idAgente} className="p-4 rounded-xl transition-all border-2 shadow-sm" 
+                    <div key={agente.idAgente} className="p-3.5 rounded-xl transition-all border-2 shadow-sm" 
                       style={{
                         ...styles.card,
                         borderColor: estado.borderColor,
@@ -1035,58 +1035,73 @@ const SupervisorPanel: React.FC = () => {
                         e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
                         e.currentTarget.style.transform = 'translateY(0)';
                       }}>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div 
-                            className="w-3.5 h-3.5 rounded-full flex-shrink-0 border-2" 
-                            style={{
-                              backgroundColor: estado.dotColor,
-                              borderColor: styles.card.backgroundColor,
-                              boxShadow: `0 0 0 2px ${estado.dotColor}40`
-                            }}
-                          ></div>
-                          <p className="text-sm font-bold truncate" style={{color: styles.text.primary}}>{agente.nombre}</p>
-                        </div>
-                        <span 
-                          className="text-[10px] font-semibold uppercase tracking-wide flex-shrink-0"
+                      {/* Header: Avatar, Nombre y Badge de Estado */}
+                      <div className="flex items-center gap-2 mb-3">
+                        {/* Avatar con inicial */}
+                        <div 
+                          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 font-bold text-sm shadow-sm"
                           style={{
-                            color: estado.textColor
+                            backgroundColor: theme === 'dark' ? '#334155' : '#e2e8f0',
+                            color: styles.text.primary
                           }}
                         >
-                          {estado.status}
-                        </span>
+                          {agente.nombre.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-sm font-bold truncate" style={{color: styles.text.primary}}>{agente.nombre}</p>
+                            {/* Badge discreto de estado */}
+                            <span 
+                              className="text-[10px] font-medium flex-shrink-0 flex items-center gap-0.5"
+                              style={{
+                                color: estado.textColor
+                              }}
+                            >
+                              <span style={{fontSize: '8px'}}>●</span>
+                              {estado.status}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-3 text-xs mb-3">
-                        <div className="min-w-0">
-                          <p className="font-semibold mb-1 truncate text-[10px]" style={{color: styles.text.tertiary}}>Casos</p>
-                          <p className="text-base font-black" style={{color: styles.text.primary}}>{stats.casos}</p>
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-semibold mb-1 truncate text-[10px]" style={{color: styles.text.tertiary}}>Críticos</p>
-                          <p className="text-base font-black" style={stats.criticos > 0 ? {color: '#dc2626'} : {color: styles.text.secondary}}>
-                            {stats.criticos}
-                          </p>
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-semibold mb-1 truncate text-[10px]" style={{color: styles.text.tertiary}}>SLA</p>
+                      
+                      {/* SLA como KPI principal */}
+                      <div className="mb-2.5">
+                        <div className="flex items-baseline gap-1.5">
                           <p 
-                            className="text-base font-black"
+                            className="text-2xl font-black leading-none"
                             style={{
-                              color: stats.cumplimientoSLA === null ? styles.text.tertiary :
-                                     stats.cumplimientoSLA >= 90 ? '#16a34a' :
-                                     stats.cumplimientoSLA >= 70 ? '#d97706' :
-                                     '#dc2626'
+                              color: stats.cumplimientoSLA === null ? '#94a3b8' :
+                                     stats.cumplimientoSLA >= 90 ? '#22c55e' :
+                                     stats.cumplimientoSLA >= 70 ? '#f59e0b' :
+                                     '#ef4444'
                             }}
                           >
                             {stats.cumplimientoSLA === null ? 'N/A' : `${stats.cumplimientoSLA}%`}
                           </p>
+                          <span className="text-[10px] font-semibold" style={{color: styles.text.tertiary}}>SLA</span>
                         </div>
                       </div>
-                      <div className="pt-3 border-t" style={{borderColor: 'rgba(148, 163, 184, 0.15)'}}>
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-medium truncate" style={{color: styles.text.tertiary}}>Tiempo promedio</span>
-                          <span className="font-bold flex-shrink-0 ml-2" style={{color: styles.text.secondary}}>{stats.tiempoPromedio}</span>
+                      
+                      {/* Casos y Críticos en una línea */}
+                      <div className="mb-2.5">
+                        <p className="text-xs font-medium" style={{color: styles.text.secondary}}>
+                          <span style={{color: styles.text.primary}}>Casos: {stats.casos}</span>
+                          <span className="mx-1.5" style={{color: styles.text.tertiary}}>•</span>
+                          <span style={{color: stats.criticos > 0 ? '#dc2626' : styles.text.primary}}>Críticos: {stats.criticos}</span>
+                        </p>
+                      </div>
+                      
+                      {/* Tiempo promedio con icono */}
+                      <div className="pt-2.5 border-t" style={{borderColor: 'rgba(148, 163, 184, 0.15)'}}>
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="text-xs">⏱</span>
+                          <span className="text-xs font-bold" style={{
+                            color: stats.tiempoPromedio === 'N/A' ? '#94a3b8' : styles.text.primary
+                          }}>
+                            {stats.tiempoPromedio}
+                          </span>
                         </div>
+                        <p className="text-[10px] font-medium" style={{color: styles.text.tertiary}}>Tiempo promedio</p>
                       </div>
                     </div>
                   );
