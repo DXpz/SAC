@@ -38,30 +38,15 @@ const GerenteDashboard: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      console.log('🔄 [GerenteDashboard] Iniciando carga de datos...');
       const [casosData, kpisData] = await Promise.all([
         api.getCases(),
         api.getKPIs()
       ]);
       
-      console.log('📊 [GerenteDashboard] Casos recibidos del webhook:', casosData.length);
-      console.log('📊 [GerenteDashboard] Detalle completo de casos:', casosData);
-      console.log('📊 [GerenteDashboard] Detalle de casos (resumen):', casosData.map(c => ({
-        id: c.id,
-        ticketNumber: c.ticketNumber,
-        status: c.status,
-        statusNormalized: normalizeStatus(c.status),
-        subject: c.subject,
-        diasAbierto: c.diasAbierto,
-        createdAt: c.createdAt
-      })));
-      
       // Verificar que los casos tengan datos válidos
       const casosValidos = casosData.filter(c => c && c.id);
-      console.log('📊 [GerenteDashboard] Casos válidos:', casosValidos.length);
       
       if (casosValidos.length !== casosData.length) {
-        console.warn('⚠️ [GerenteDashboard] Algunos casos no tienen ID válido');
       }
       
       setCasos(casosValidos);
@@ -71,7 +56,6 @@ const GerenteDashboard: React.FC = () => {
       const updateTime = new Date();
       localStorage.setItem('bandeja_last_update', updateTime.toISOString());
     } catch (error) {
-      console.error('❌ [GerenteDashboard] Error loading data:', error);
       // En caso de error, mantener los casos anteriores o establecer array vacío
       if (casos.length === 0) {
         setCasos([]);
@@ -218,13 +202,6 @@ const GerenteDashboard: React.FC = () => {
   // Normalizar estados antes de comparar para que coincidan con los valores del webhook
   // Incluir TODOS los estados posibles del webhook
   const chartData = useMemo(() => {
-    console.log('📊 [GerenteDashboard] Calculando distribución de casos. Total casos:', casos.length);
-    console.log('📊 [GerenteDashboard] Estados de casos:', casos.map(c => ({
-      id: c.id,
-      status: c.status,
-      normalized: normalizeStatus(c.status)
-    })));
-    
     const data = [
       { name: 'Nuevos', value: casos.filter(c => normalizeStatus(c.status) === CaseStatus.NUEVO).length },
       { name: 'En Proceso', value: casos.filter(c => normalizeStatus(c.status) === CaseStatus.EN_PROCESO).length },
@@ -234,7 +211,6 @@ const GerenteDashboard: React.FC = () => {
       { name: 'Cerrados', value: casos.filter(c => normalizeStatus(c.status) === CaseStatus.CERRADO).length },
     ];
     
-    console.log('📊 [GerenteDashboard] Distribución calculada:', data);
     return data;
   }, [casos]);
 

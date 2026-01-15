@@ -68,7 +68,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     
     // Si no hay token, el usuario no está autenticado correctamente
     if (!token) {
-      console.warn('Token no encontrado. Redirigiendo al login.');
       api.logout();
       navigate('/login');
       return;
@@ -76,7 +75,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     
     // Validar estructura del usuario
     if (!user || !user.id || !user.name || !user.role) {
-      console.warn('Usuario con estructura inválida. Redirigiendo al login.');
       api.logout();
       navigate('/login');
       return;
@@ -84,7 +82,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     
     // Validar rol (permite cuentas demo y cuentas de n8n)
     if (!['AGENTE', 'SUPERVISOR', 'GERENTE', 'ADMIN'].includes(user.role)) {
-      console.warn('Usuario con rol inválido. Redirigiendo al login.');
       api.logout();
       navigate('/login');
       return;

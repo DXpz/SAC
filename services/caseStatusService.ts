@@ -131,11 +131,9 @@ export async function sendStatusChangeToWebhook(payload: WebhookPayload): Promis
   //     body: JSON.stringify(payload)
   //   });
   // } catch (error) {
-  //   console.error('Error al enviar cambio de estado al webhook:', error);
   //   throw error;
   // }
   
-  console.log('📤 [Webhook] Payload preparado (no enviado aún):', payload);
 }
 
 // ==================================================

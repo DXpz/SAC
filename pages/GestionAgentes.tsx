@@ -60,13 +60,6 @@ const GestionAgentes: React.FC = () => {
     setLoading(true);
     const data = await api.getAgentes();
     
-    console.log('📊 Agentes recibidos en GestionAgentes:', data.map(a => ({
-      nombre: a.nombre,
-      casosActivos: a.casosActivos,
-      ordenRoundRobin: a.ordenRoundRobin,
-      ultimoCasoAsignado: a.ultimoCasoAsignado,
-      estado: a.estado
-    })));
     
     // Ordenar agentes por ordenRoundRobin (1, 2, 3...) para mostrar el orden del round robin
     // Los agentes activos con orden 1, 2, 3... primero, luego los inactivos/vacaciones
@@ -101,7 +94,6 @@ const GestionAgentes: React.FC = () => {
       });
       await loadAgentes();
     } catch (error: any) {
-      console.error('Error al cambiar estado del agente:', error);
       alert(error.message || 'Error al cambiar el estado del agente');
     }
   };
@@ -115,7 +107,6 @@ const GestionAgentes: React.FC = () => {
       });
       await loadAgentes();
     } catch (error: any) {
-      console.error('Error al marcar agente en vacaciones:', error);
       alert(error.message || 'Error al marcar el agente en vacaciones');
     }
   };

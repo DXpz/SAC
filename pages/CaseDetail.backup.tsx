@@ -53,7 +53,6 @@ const CaseDetail: React.FC = () => {
       const data = await api.getClientes();
       setClientes(data);
     } catch (err) {
-      console.error('Error al cargar clientes:', err);
     }
   };
 
@@ -157,7 +156,6 @@ const CaseDetail: React.FC = () => {
   
   // Debug: si no hay transiciones, verificar el estado
   if (validTransitions.length === 0 && !isCaseClosed) {
-    console.log('Estado del caso:', caso.status, 'Estado normalizado:', normalizedStatus, 'Transiciones disponibles:', Object.keys(STATE_TRANSITIONS));
   }
 
   // Estilos dinámicos basados en el tema

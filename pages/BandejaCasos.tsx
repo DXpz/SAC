@@ -58,7 +58,6 @@ const BandejaCasos: React.FC = () => {
         // Luego cargar casos
         await loadCasos();
       } catch (err) {
-        console.error('Error inicializando datos:', err);
       }
     };
     initializeData();
@@ -87,12 +86,6 @@ const BandejaCasos: React.FC = () => {
     if (!casosNecesitanEnriquecimiento) {
       return; // Todos los casos ya están enriquecidos
     }
-    
-    console.log('🔄 Enriqueciendo casos...', {
-      totalCasos: casos.length,
-      totalClientes: clientes.length,
-      totalCategorias: categorias.length
-    });
     
     const casosEnriquecidos = casos.map(caso => {
       let casoActualizado = { ...caso };
@@ -158,11 +151,6 @@ const BandejaCasos: React.FC = () => {
               ticketNumber: caso.ticketNumber || preservedTicketNumber,
               id: caso.id || preservedTicketNumber,
             };
-            console.log(`✅ Cliente enriquecido para caso ${caso.ticketNumber || preservedTicketNumber}:`, {
-              casoClientId: caso.clientId || preservedClientId,
-              clienteId: clienteCompleto.idCliente,
-              clientName: clienteCompleto.nombreEmpresa
-            });
           } else {
             // Si no se encuentra el cliente, preservar al menos los datos existentes
             casoActualizado = {
@@ -172,11 +160,6 @@ const BandejaCasos: React.FC = () => {
               ticketNumber: caso.ticketNumber || preservedTicketNumber,
               id: caso.id || preservedTicketNumber,
             };
-            console.warn(`⚠️ No se encontró cliente para caso ${caso.ticketNumber || preservedTicketNumber}:`, {
-              casoClientId: caso.clientId || preservedClientId,
-              casoClientIdNormalized,
-              clientesDisponibles: clientes.map(c => c.idCliente).slice(0, 10)
-            });
           }
         } else {
           // Si no necesita enriquecimiento, asegurar que los datos críticos estén presentes
@@ -235,33 +218,26 @@ const BandejaCasos: React.FC = () => {
     });
     
     if (hasChanges) {
-      console.log('✅ Casos enriquecidos, actualizando estado');
       setCasos(casosEnriquecidos);
     }
   }, [casos, clientes, categorias]); // Incluir casos para que se ejecute cuando se cargan nuevos casos
 
   const loadClientes = async () => {
     try {
-      console.log('📥 Cargando clientes...');
     const data = await api.getClientes();
-      console.log('✅ Clientes cargados:', data.length);
     setClientes(data);
       return data;
     } catch (err) {
-      console.error('❌ Error al cargar clientes:', err);
       return [];
     }
   };
 
   const loadCategorias = async () => {
     try {
-      console.log('📥 Cargando categorías...');
       const data = await api.getCategorias();
-      console.log('✅ Categorías cargadas:', data.length);
       setCategorias(data);
       return data;
     } catch (err) {
-      console.error('❌ Error al cargar categorías:', err);
       return [];
     }
   };
@@ -270,50 +246,20 @@ const BandejaCasos: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      console.log('📥 Cargando casos...');
       const data = await api.getCases();
-      console.log('✅ Casos cargados:', data.length);
       
       // Obtener usuario actual para debugging
       const currentUser = api.getUser();
-      console.log('👤 Usuario actual:', currentUser);
       
         // Log detallado de todos los casos y sus agentes asignados
         if (data.length > 0) {
-          console.log('📋 [BandejaCasos] Análisis de casos y agentes asignados:');
           data.forEach((caso, index) => {
             const agentObject = (caso as any).agent || caso.agenteAsignado || null;
             const agenteIdFromAgent = agentObject?.idAgente || agentObject?.id || agentObject?.id_agente || agentObject?.agente_id || agentObject?.user_id || '';
             const agenteIdFromObject = caso.agenteAsignado?.idAgente || caso.agenteAsignado?.id || (caso.agenteAsignado as any)?.id_agente || (caso.agenteAsignado as any)?.agente_id;
             const agenteIdFromCase = caso.agentId || (caso as any).agente_id || (caso as any).agente_user_id;
             const agenteId = agenteIdFromAgent || agenteIdFromObject || agenteIdFromCase;
-            
-            console.log(`  Caso ${index + 1}:`, {
-              ticketNumber: caso.ticketNumber || caso.id,
-              tieneAgent: !!(caso as any).agent,
-              agentObject: (caso as any).agent,
-              agentId: caso.agentId,
-              agenteId: agenteId,
-              agenteIdFromAgent,
-              agenteAsignado: caso.agenteAsignado ? {
-                idAgente: caso.agenteAsignado.idAgente,
-                nombre: caso.agenteAsignado.nombre,
-                email: caso.agenteAsignado.email
-              } : null,
-              agenteIdFromObject,
-              agenteIdFromCase,
-              todosLosCamposAgente: Object.keys(caso).filter(k => 
-                k.toLowerCase().includes('agent') || 
-                k.toLowerCase().includes('agente') ||
-                k.toLowerCase().includes('user')
-              ).reduce((acc, key) => {
-                acc[key] = (caso as any)[key];
-                return acc;
-              }, {} as any)
-            });
           });
-        } else {
-          console.warn('⚠️ [BandejaCasos] No se cargaron casos desde el webhook');
         }
       
       // Guardar casos directamente, el useEffect de enriquecimiento se ejecutará automáticamente
@@ -326,7 +272,6 @@ const BandejaCasos: React.FC = () => {
       
       return data;
     } catch (err: any) {
-      console.error('❌ Error al cargar casos:', err);
       setError(err.message || 'Error al cargar los casos desde el servidor. Por favor, intenta nuevamente.');
       setCasos([]);
       return [];
@@ -343,12 +288,6 @@ const BandejaCasos: React.FC = () => {
     // Si es agente, filtrar solo sus casos asignados
     let casosParaFiltrar = casos;
     if (isAgente && currentUser?.id) {
-      console.log('🔍 [BandejaCasos] Filtrando casos para agente:', {
-        userId: currentUser.id,
-        userName: currentUser.name,
-        role: currentUser.role,
-        totalCasos: casos.length
-      });
       
       casosParaFiltrar = casos.filter(c => {
         // Intentar obtener el ID del agente de múltiples fuentes
@@ -420,34 +359,15 @@ const BandejaCasos: React.FC = () => {
         
         // Loggear información de debugging para los primeros casos
         if (casosParaFiltrar.length < 10) {
-          console.log('🔍 [BandejaCasos] Verificando caso:', c.ticketNumber || c.id, {
-            tieneAgent: !!(c as any).agent,
-            agentObject: (c as any).agent,
-            agenteIdFromAgent,
-            agenteIdFromObject,
-            agenteIdFromCase,
-            agenteId: agenteIdStr,
-            currentUserId: userIdStr,
-            asignado: casoAsignado,
-            tieneAgenteAsignado: !!c.agenteAsignado,
-            agenteAsignadoCompleto: c.agenteAsignado
-          });
+          // Debug info available if needed
         }
         
         return casoAsignado;
       });
       
-      console.log('✅ [BandejaCasos] Casos del agente:', casosParaFiltrar.length, 'de', casos.length, 'total');
       
       // Si no hay casos asignados, mostrar un mensaje de advertencia con análisis detallado
       if (casosParaFiltrar.length === 0 && casos.length > 0) {
-        console.warn('⚠️ [BandejaCasos] No se encontraron casos asignados al agente. Verificando estructura de datos...');
-        console.warn('⚠️ [BandejaCasos] Usuario buscado:', {
-          userId: currentUser.id,
-          userName: currentUser.name,
-          role: currentUser.role
-        });
-        
         // Analizar los primeros 5 casos para ver qué IDs tienen
         casos.slice(0, 5).forEach((caso, idx) => {
           const agentObject = (caso as any).agent || caso.agenteAsignado || null;
@@ -484,18 +404,6 @@ const BandejaCasos: React.FC = () => {
             })(),
             parteNumerica: extractIdNumber(agenteIdStr) === extractIdNumber(userIdStr) || normalizeId(extractIdNumber(agenteIdStr)) === normalizeId(extractIdNumber(userIdStr))
           };
-          
-          console.warn(`⚠️ [BandejaCasos] Caso ${idx + 1} (${caso.ticketNumber || caso.id}):`, {
-            tieneAgent: !!(caso as any).agent,
-            agentObject: (caso as any).agent,
-            agenteIdFromAgent,
-            agenteIdEnCaso: agenteIdStr,
-            userIdBuscado: userIdStr,
-            agenteAsignadoCompleto: caso.agenteAsignado,
-            agentId: caso.agentId,
-            comparaciones,
-            coincide: Object.values(comparaciones).some(v => v === true)
-          });
         });
       }
     }

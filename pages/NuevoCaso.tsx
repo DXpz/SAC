@@ -157,17 +157,12 @@ const NuevoCaso: React.FC = () => {
       if (currentUser?.role === 'AGENTE' && agentEmail) {
         casePayload.agentEmail = agentEmail;
         casePayload.agenteEmail = agentEmail;
-        console.log('👤 Agente creando caso. Email del agente:', agentEmail);
       }
 
-      console.log('📝 ========== INICIANDO CREACIÓN DE CASO ==========');
-      console.log('📋 Datos del formulario:', casePayload);
-      console.log('👤 Usuario actual:', currentUser);
 
       const result = await api.createCase(casePayload);
 
       if (result) {
-        console.log('✅ ========== CASO CREADO EXITOSAMENTE ==========');
         
         setShowSuccessAnimation(true);
         setTimeout(() => {
@@ -175,14 +170,9 @@ const NuevoCaso: React.FC = () => {
           navigate('/app/casos');
         }, 2000);
       } else {
-        console.error('❌ Error: api.createCase retornó false');
         setToast({ message: 'Error al crear el caso. Por favor, intenta nuevamente.', type: 'error' });
       }
     } catch (err: any) {
-      console.error('❌ ========== ERROR AL CREAR CASO ==========');
-      console.error('Error completo:', err);
-      console.error('Mensaje:', err.message);
-      console.error('Stack:', err.stack);
       setToast({ message: err.message || 'Error al crear el caso. Por favor, intenta nuevamente.', type: 'error' });
     } finally {
       setLoading(false);

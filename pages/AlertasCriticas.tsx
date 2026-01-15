@@ -37,7 +37,6 @@ const AlertasCriticas: React.FC = () => {
       setClientes(clientesList);
       return clientesList;
     } catch (error) {
-      console.error('Error loading clientes:', error);
       return [];
     }
   };
@@ -69,7 +68,6 @@ const AlertasCriticas: React.FC = () => {
       const prioritized = prioritizeCases(filtered);
       setCriticos(prioritized);
     } catch (error) {
-      console.error('Error loading critical cases:', error);
     } finally {
       setLoading(false);
     }

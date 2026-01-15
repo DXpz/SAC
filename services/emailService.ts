@@ -40,7 +40,6 @@ const getStoredCodes = (): EmailRecord[] => {
     const stored = localStorage.getItem(STORAGE_KEY);
     return stored ? JSON.parse(stored) : [];
   } catch (error) {
-    console.error('Error al leer códigos almacenados:', error);
     return [];
   }
 };
@@ -50,7 +49,6 @@ const saveCodes = (codes: EmailRecord[]): void => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(codes));
   } catch (error) {
-    console.error('Error al guardar códigos:', error);
   }
 };
 
@@ -68,7 +66,6 @@ const getSentEmails = (): SentEmail[] => {
     const stored = localStorage.getItem(EMAILS_STORAGE_KEY);
     return stored ? JSON.parse(stored) : [];
   } catch (error) {
-    console.error('Error al leer correos enviados:', error);
     return [];
   }
 };
@@ -81,7 +78,6 @@ const saveSentEmails = (emails: SentEmail[]): void => {
     const limited = sorted.slice(0, MAX_STORED_EMAILS);
     localStorage.setItem(EMAILS_STORAGE_KEY, JSON.stringify(limited));
   } catch (error) {
-    console.error('Error al guardar correos enviados:', error);
   }
 };
 
@@ -168,10 +164,6 @@ export const emailService = {
       );
       
       if (existingCode) {
-        console.log('📧 [EMAIL SERVICE] Ya existe un código válido pendiente para este email');
-        console.log('   🔑 Código existente:', existingCode.code);
-        console.log('   ⏰ Expira:', new Date(existingCode.expiresAt).toLocaleString('es-ES'));
-        console.log('   ℹ️ No se enviará un nuevo correo. Usa el código existente.');
         
         return {
           code: existingCode.code,
@@ -182,13 +174,11 @@ export const emailService = {
     }
     
     // Si no hay código válido o se fuerza uno nuevo, generar uno
-    console.log('📧 [EMAIL SERVICE] Generando nuevo código de recuperación');
     
     // Marcar todos los códigos anteriores del mismo email como usados
     codes.forEach(c => {
       if (c.email === emailLower && c.type === 'password_reset' && !c.used) {
         c.used = true;
-        console.log('   🗑️ Código anterior marcado como usado:', c.code);
       }
     });
     
@@ -227,17 +217,6 @@ export const emailService = {
     const sentEmails = getSentEmails();
     sentEmails.push(sentEmail);
     saveSentEmails(sentEmails);
-    
-    // Log detallado para desarrollo
-    console.group('📧 [EMAIL SERVICE] Correo de recuperación enviado');
-    console.log('📬 Para:', email);
-    console.log('📋 Asunto:', subject);
-    console.log('🔑 Código:', code);
-    console.log('⏰ Expira:', new Date(expiresAt).toLocaleString('es-ES'));
-    console.log('📝 ID del correo:', sentEmail.id);
-    console.log('⚠️ Este es un servicio temporal. En producción, el correo se enviaría automáticamente.');
-    console.log('💡 Puedes ver todos los correos enviados con: emailService.getAllSentEmails()');
-    console.groupEnd();
     
     return { code, expiresAt, isNew: true };
   },
@@ -284,9 +263,6 @@ export const emailService = {
     // Generar token temporal
     const tempToken = `temp-${record.email}-${Date.now()}`;
     
-    console.log('✅ [EMAIL SERVICE] Código verificado correctamente');
-    console.log('   Email:', email);
-    console.log('   Token temporal generado');
     
     return { valid: true, tempToken };
   },
@@ -320,7 +296,6 @@ export const emailService = {
       }
       
       const latest = allRecords[0];
-      console.warn('⚠️ El código más reciente está expirado o usado:', latest.code);
       return {
         code: latest.code,
         expiresAt: latest.expiresAt,
@@ -343,7 +318,6 @@ export const emailService = {
   // Limpiar todos los códigos (útil para testing)
   clearAllCodes(): void {
     localStorage.removeItem(STORAGE_KEY);
-    console.log('🗑️ [EMAIL SERVICE] Todos los códigos han sido eliminados');
   },
 
   // Obtener todos los correos enviados (solo para desarrollo/testing)
@@ -368,14 +342,11 @@ export const emailService = {
   // Limpiar todos los correos enviados (útil para testing)
   clearAllSentEmails(): void {
     localStorage.removeItem(EMAILS_STORAGE_KEY);
-    console.log('🗑️ [EMAIL SERVICE] Todos los correos enviados han sido eliminados');
   },
 
   // Mostrar resumen de correos en consola (útil para desarrollo)
   showEmailSummary(): void {
     const emails = getSentEmails();
-    console.group('📊 [EMAIL SERVICE] Resumen de correos enviados');
-    console.log(`Total de correos: ${emails.length}`);
     
     if (emails.length > 0) {
       const byType = emails.reduce((acc, email) => {
@@ -383,16 +354,12 @@ export const emailService = {
         return acc;
       }, {} as Record<string, number>);
       
-      console.log('Por tipo:', byType);
-      console.log('Últimos 5 correos:');
       emails
         .sort((a, b) => b.timestamp - a.timestamp)
         .slice(0, 5)
         .forEach((email, idx) => {
-          console.log(`  ${idx + 1}. [${new Date(email.timestamp).toLocaleString()}] ${email.type} → ${email.to}`);
         });
     }
-    console.groupEnd();
   },
 };
 

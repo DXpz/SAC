@@ -17,11 +17,12 @@ const cache: {
   cases?: CacheEntry;
   clientes?: CacheEntry;
   agentes?: CacheEntry;
+  usuarios?: CacheEntry;
 } = {};
 
 // Helper para obtener datos del caché o hacer la llamada
 const getCachedOrFetch = async <T>(
-  key: 'cases' | 'clientes' | 'agentes',
+  key: 'cases' | 'clientes' | 'agentes' | 'usuarios',
   fetchFn: () => Promise<T>,
   maxAge: number = CACHE_DURATION
 ): Promise<T> => {
@@ -30,18 +31,15 @@ const getCachedOrFetch = async <T>(
   
   // Si hay datos en caché y no han expirado, retornarlos
   if (cached && cached.data && (now - cached.timestamp) < maxAge) {
-    console.log(`📦 [CACHE] Retornando ${key} desde caché (${Math.round((now - cached.timestamp) / 1000)}s)`);
     return cached.data as T;
   }
   
   // Si ya hay una petición en curso, esperar a que termine
   if (cached?.promise) {
-    console.log(`⏳ [CACHE] Esperando petición en curso para ${key}...`);
     return await cached.promise as T;
   }
   
   // Hacer nueva petición
-  console.log(`🌐 [CACHE] Haciendo nueva petición para ${key}...`);
   const promise = fetchFn();
   cache[key] = {
     data: null,
@@ -66,13 +64,11 @@ const getCachedOrFetch = async <T>(
 };
 
 // Limpiar caché manualmente
-const clearCache = (key?: 'cases' | 'clientes' | 'agentes') => {
+const clearCache = (key?: 'cases' | 'clientes' | 'agentes' | 'usuarios') => {
   if (key) {
     delete cache[key];
-    console.log(`🗑️ [CACHE] Caché de ${key} limpiado`);
   } else {
     Object.keys(cache).forEach(k => delete cache[k as keyof typeof cache]);
-    console.log('🗑️ [CACHE] Todo el caché limpiado');
   }
 };
 
@@ -111,12 +107,8 @@ const callWebhookGeneric = async <T = any>(
   }
 
   try {
-    console.log(`🌐 [callWebhookGeneric] Iniciando ${method} a ${url}`);
-    console.log(`📋 [callWebhookGeneric] Headers:`, headers);
     if (body) {
       const bodyString = JSON.stringify(body);
-      console.log(`📤 [callWebhookGeneric] Body (primeros 500 chars):`, bodyString.substring(0, 500));
-      console.log(`📏 [callWebhookGeneric] Tamaño del body:`, bodyString.length, 'bytes');
     }
     
     const startTime = Date.now();
@@ -132,23 +124,14 @@ const callWebhookGeneric = async <T = any>(
     clearTimeout(timeoutId);
     const duration = Date.now() - startTime;
 
-    console.log(`📥 [callWebhookGeneric] Respuesta recibida (${duration}ms):`, {
-      status: response.status,
-      statusText: response.statusText,
-      ok: response.ok,
-      headers: Object.fromEntries(response.headers.entries())
-    });
-
     if (!response.ok) {
       // Intentar extraer mensaje de error del backend
       let errorMessage = `Error ${response.status}: ${response.statusText}`;
       let errorBody = null;
       try {
         const text = await response.text();
-        console.error('❌ [callWebhookGeneric] Cuerpo de error (texto):', text);
         try {
           errorBody = JSON.parse(text);
-          console.error('❌ [callWebhookGeneric] Cuerpo de error (JSON):', errorBody);
           if (errorBody?.message) {
             errorMessage = errorBody.message;
           }
@@ -164,28 +147,20 @@ const callWebhookGeneric = async <T = any>(
 
     // Algunos flujos podrían responder 204 sin cuerpo
     if (response.status === 204) {
-      console.log('ℹ️ [callWebhookGeneric] Respuesta 204 (sin contenido)');
       return undefined as unknown as T;
     }
 
     const text = await response.text();
-    console.log('📄 [callWebhookGeneric] Respuesta (texto, primeros 1000 chars):', text.substring(0, 1000));
     
     let data: T;
     try {
       data = JSON.parse(text) as T;
-      console.log('✅ [callWebhookGeneric] Respuesta parseada (JSON):', JSON.stringify(data, null, 2).substring(0, 1000));
     } catch (parseError) {
-      console.warn('⚠️ [callWebhookGeneric] No se pudo parsear como JSON, retornando texto');
-      console.warn('⚠️ [callWebhookGeneric] Error de parseo:', parseError);
       data = text as unknown as T;
     }
     
     return data;
   } catch (error: any) {
-    console.error('❌ [callWebhookGeneric] Error capturado:', error);
-    console.error('❌ [callWebhookGeneric] Tipo:', typeof error);
-    console.error('❌ [callWebhookGeneric] Nombre:', error?.name);
     if (error.name === 'AbortError') {
       throw new Error('Timeout al comunicarse con el backend (n8n).');
     }
@@ -199,23 +174,14 @@ const callCasesWebhook = async <T = any>(
   method: 'GET' | 'POST',
   body?: unknown
 ): Promise<T> => {
-  console.log(`🌐 [callCasesWebhook] ${method} ${CASES_WEBHOOK_URL}`);
   if (body) {
-    console.log('📤 [callCasesWebhook] Body a enviar:', JSON.stringify(body, null, 2));
-    console.log('📏 [callCasesWebhook] Tamaño del body:', JSON.stringify(body).length, 'bytes');
   }
   
   try {
     const result = await callWebhookGeneric<T>(CASES_WEBHOOK_URL, method, body);
-    console.log('✅ [callCasesWebhook] Respuesta recibida exitosamente');
-    console.log('📥 [callCasesWebhook] Datos de respuesta:', result);
     return result;
   } catch (error: any) {
-    console.error('❌ [callCasesWebhook] Error en la petición:', error);
-    console.error('❌ [callCasesWebhook] Mensaje:', error?.message);
-    console.error('❌ [callCasesWebhook] Stack:', error?.stack);
     if (error?.response) {
-      console.error('❌ [callCasesWebhook] Response del error:', error.response);
     }
     throw error;
   }
@@ -534,11 +500,9 @@ export const api = {
       try {
         const cases = await caseService.getCases();
         // Retornar incluso si está vacío, solo si no hay error
-        console.log(`✅ Obtenidos ${cases?.length || 0} casos desde caseService (n8n)`);
         return cases || [];
       } catch (err: any) {
         // No usar localStorage como fallback, lanzar el error
-        console.error('❌ Error al obtener casos desde caseService:', err);
         throw err;
           }
     });
@@ -552,7 +516,6 @@ export const api = {
         return caso;
       }
     } catch (err) {
-      console.warn('⚠️ Error al obtener caso desde caseService, usando método legacy:', err);
     }
 
     // Fallback: buscar en la lista de casos
@@ -566,7 +529,6 @@ export const api = {
     // Actualizar usando caseService (conecta con n8n)
     // NO usar fallback local, si falla debe lanzar error
     await caseService.updateCaseStatus(id, status, detail || `Cambio de estado a ${status}`);
-    console.log('✅ Caso actualizado exitosamente usando caseService');
     
     // Limpiar caché de casos para forzar actualización
     clearCache('cases');
@@ -577,17 +539,12 @@ export const api = {
   async createCase(caseData: any): Promise<boolean> {
     const user = this.getUser();
 
-    console.log('🔵 ========== [api.createCase] INICIANDO ==========');
-    console.log('📦 Datos recibidos del formulario:', JSON.stringify(caseData, null, 2));
-    console.log('👤 Usuario:', JSON.stringify(user, null, 2));
 
     // Inicializar agenteAsignado para que esté disponible en todo el scope
     let agenteAsignado: any = null;
 
     // 1) Intentar crear el caso usando el nuevo caseService (conecta con n8n)
     try {
-      console.log('🌐 ========== INICIANDO CREACIÓN DE CASO ==========');
-      console.log('📤 Datos que se enviarán al webhook:');
       const dataToSend = {
         clienteId: caseData.clienteId || '',
         categoriaId: caseData.categoriaId || '7',
@@ -602,52 +559,15 @@ export const api = {
         notificationChannel: caseData.notificationChannel || caseData.contactChannel || caseData.canalNotificacion || 'Email',
         ...caseData
       };
-      console.log(JSON.stringify(dataToSend, null, 2));
-      console.log('🌐 Llamando a caseService.createCase...');
-      console.log('🌐 Usuario que crea el caso:', user?.role);
-      console.log('🌐 Si el usuario es AGENTE, el webhook asignará el caso a ese agente automáticamente');
-      console.log('🌐 Si el usuario es SUPERVISOR o GERENTE, el webhook hará Round Robin');
       
       const newCase = await caseService.createCase(dataToSend);
       
-      console.log('✅ ========== CASO CREADO EXITOSAMENTE ==========');
-      console.log('📥 ========== RESPUESTA COMPLETA DEL WEBHOOK ==========');
-      console.log('📥 Tipo de respuesta:', typeof newCase);
-      console.log('📥 Es array?:', Array.isArray(newCase));
-      console.log('📥 Tiene propiedades?:', newCase && typeof newCase === 'object' ? Object.keys(newCase) : 'N/A');
-      console.log('📥 OBJETO COMPLETO (JSON):');
-      console.log(JSON.stringify(newCase, null, 2));
-      console.log('📥 OBJETO COMPLETO (RAW):');
-      console.log(newCase);
-      console.log('📥 ================================================');
       
-      console.log('🔍 ========== DESGLOSE DE CAMPOS DEL CASO ==========');
-      console.log('🔍 ID del caso:', newCase.id || newCase.ticketNumber);
-      console.log('🔍 CLIENTE:');
-      console.log('  - clientId:', newCase.clientId);
-      console.log('  - clientName:', newCase.clientName);
-      console.log('  - clientEmail:', newCase.clientEmail);
-      console.log('  - clientPhone:', newCase.clientPhone);
-      console.log('  - Objeto cliente completo:', newCase.cliente);
-      console.log('🔍 AGENTE:');
-      console.log('  - agentId:', newCase.agentId);
-      console.log('  - agentName:', newCase.agentName);
-      console.log('  - Objeto agenteAsignado:', newCase.agenteAsignado);
-      console.log('🔍 OTROS DATOS:');
-      console.log('  - status:', newCase.status);
-      console.log('  - subject:', newCase.subject);
-      console.log('  - description:', newCase.description);
-      console.log('  - category:', newCase.category);
-      console.log('  - origin:', newCase.origin);
-      console.log('  - createdAt:', newCase.createdAt);
-      console.log('  - historial:', newCase.historial);
-      console.log('🔍 ================================================');
       
       // Limpiar caché de casos para forzar actualización
       clearCache('cases');
       return true;
     } catch (err: any) {
-      console.warn('⚠️ Error al crear caso en caseService, intentando método legacy:', err);
       
       // Fallback: Método legacy
     // Buscar la categoría seleccionada
@@ -655,7 +575,6 @@ export const api = {
       ? MOCK_CATEGORIAS.find(cat => cat.idCategoria === caseData.categoriaId)
       : null;
 
-    console.log('📂 Categoría seleccionada:', categoriaSeleccionada);
 
     // Determinar categoria_id y nombre para el JSON
     const categoriaId = categoriaSeleccionada 
@@ -663,20 +582,14 @@ export const api = {
       : DEFAULT_CATEGORY.categoria_id;
     const categoriaNombre = categoriaSeleccionada?.nombre || DEFAULT_CATEGORY.nombre;
 
-    console.log('📂 Categoría procesada:', { categoriaId, categoriaNombre });
 
     // Obtener agentes para la asignación
-    console.log('👤 ========== ASIGNACIÓN DE AGENTE ==========');
-    console.log('Usuario actual:', user);
-    console.log('Rol del usuario:', user?.role);
     
     const agentes = await this.getAgentes();
-    console.log('📋 Agentes disponibles:', agentes.map(a => ({ id: a.idAgente, nombre: a.nombre, email: a.email, estado: a.estado })));
     
     // Determinar agente asignado según el rol del usuario que crea el caso
     if (user?.role === 'AGENTE') {
       // Si es un agente, asignar el caso a él mismo
-      console.log('🔍 Buscando agente con email:', user.email, 'o ID:', user.id);
       
       agenteAsignado = agentes.find(a => 
         a.email?.toLowerCase() === user.email?.toLowerCase() || 
@@ -684,20 +597,15 @@ export const api = {
       );
       
       if (!agenteAsignado) {
-        console.warn('⚠️ No se encontró el agente actual en la lista, usando primer agente disponible');
         agenteAsignado = agentes.find(a => a.estado === 'Activo') || agentes[0];
       } else {
-        console.log('✅ Agente creó su propio caso. Asignado a:', agenteAsignado.nombre, '(ID:', agenteAsignado.idAgente, ')');
       }
     } else {
       // Si es supervisor o gerente, usar round robin (primer agente activo con menos casos)
       const agentesActivos = agentes.filter(a => a.estado === 'Activo');
       agenteAsignado = agentesActivos.length > 0 ? agentesActivos[0] : agentes[0];
-      console.log('✅ Supervisor/Gerente creó caso. Usando round robin. Asignado a:', agenteAsignado?.nombre, '(ID:', agenteAsignado?.idAgente, ')');
     }
     
-    console.log('📌 Agente final asignado:', agenteAsignado);
-    console.log('==========================================');
 
     // Construir el payload completo para n8n
     const actorPayload = buildActorPayload(user);
@@ -732,39 +640,21 @@ export const api = {
       },
     };
 
-      console.log('📤 ========== PAYLOAD COMPLETO PARA N8N (LEGACY) ==========');
-    console.log('URL del webhook:', CASES_WEBHOOK_URL);
-    console.log('Payload JSON:', JSON.stringify(n8nPayload, null, 2));
-    console.log('Payload tamaño:', JSON.stringify(n8nPayload).length, 'bytes');
 
       // Intentar crear el caso en el backend n8n usando el contrato CRUD.CREATE (no bloquea la creación local)
     try {
-        console.log('🌐 Enviando petición POST a n8n (legacy)...');
       const startTime = Date.now();
       
       const response = await callCasesWebhook('POST', n8nPayload);
       
       const duration = Date.now() - startTime;
-      console.log(`✅ ========== RESPUESTA DE N8N (${duration}ms) ==========`);
-      console.log('Respuesta recibida:', JSON.stringify(response, null, 2));
-      console.log('Tipo de respuesta:', typeof response);
-      console.log('Es array:', Array.isArray(response));
       
       if (response && typeof response === 'object') {
-        console.log('Propiedades de la respuesta:', Object.keys(response));
       }
       
-        console.log('✅ Caso enviado exitosamente a n8n (legacy)');
       } catch (err2: any) {
-        console.error('❌ ========== ERROR AL ENVIAR A N8N (LEGACY) ==========');
-        console.error('Error completo:', err2);
-        console.error('Tipo de error:', typeof err2);
-        console.error('Mensaje:', err2?.message);
-        console.error('Stack:', err2?.stack);
         if (err2?.response) {
-          console.error('Response del error:', err2.response);
       }
-      console.warn('⚠️ Error al crear caso en n8n, usando modo local como fallback.');
       }
     }
 
@@ -805,7 +695,6 @@ export const api = {
     
     // Limpiar caché para que el dashboard actualice
     clearCache('cases');
-    console.log('✅ Caso creado exitosamente:', newId);
     
     return true;
   },
@@ -906,7 +795,6 @@ export const api = {
         }
       };
 
-      console.log('📤 Consultando agentes con payload:', JSON.stringify(payload, null, 2));
 
       // Llamar al webhook de agentes
       const controller = new AbortController();
@@ -942,7 +830,6 @@ export const api = {
         }
 
         const result = await response.json();
-        console.log('📥 Respuesta del webhook de agentes (agent.read):', result);
 
         // Verificar si hay error en la respuesta
         if (result.error === true) {
@@ -974,7 +861,6 @@ export const api = {
           }
         }
         
-        console.log('📋 Agentes extraídos:', agents);
         
         if (Array.isArray(agents) && agents.length > 0) {
           // Mapear los agentes al formato esperado por el frontend
@@ -1077,19 +963,10 @@ export const api = {
             
             // Combinar: primero activos ordenados, luego inactivos
             mappedAgents = [...agentesActivosConOrden, ...agentesInactivosConOrden];
-            
-            console.log('✅ Orden Round Robin calculado:', mappedAgents.map(a => ({
-              nombre: a.nombre,
-              orden: a.ordenRoundRobin,
-              casosActivos: a.casosActivos,
-              ultimoCaso: a.ultimoCasoAsignado
-            })));
           } catch (error) {
-            console.warn('⚠️ Error calculando orden Round Robin, usando valores del webhook:', error);
             // Si falla, mantener los valores originales
           }
           
-          console.log('✅ Agentes mapeados:', mappedAgents);
           
           // Guardar en localStorage como cache
           localStorage.setItem('intelfon_agents', JSON.stringify(mappedAgents));
@@ -1097,12 +974,10 @@ export const api = {
         }
 
         // Si no hay agentes, usar fallback local
-        console.warn('⚠️ No se recibieron agentes del webhook, usando fallback local');
         initStorage();
         const data = localStorage.getItem('intelfon_agents');
         return data ? JSON.parse(data) : MOCK_AGENTES;
       } catch (err: any) {
-        console.warn('⚠️ Error al obtener agentes desde webhook, usando fallback local:', err.message || err);
         // Fallback: usar datos locales
         initStorage();
         const data = localStorage.getItem('intelfon_agents');
@@ -1118,7 +993,6 @@ export const api = {
       const currentUser = this.getUser();
       
       if (!currentUser) {
-        console.warn('⚠️ No hay usuario autenticado, retornando array vacío');
         return [];
       }
 
@@ -1137,7 +1011,6 @@ export const api = {
         }
       };
 
-      console.log('📤 Consultando usuarios con payload:', JSON.stringify(payload, null, 2));
 
       // Llamar al webhook de crear usuario (que también lista usuarios)
       const controller = new AbortController();
@@ -1173,7 +1046,6 @@ export const api = {
         }
 
         const result = await response.json();
-        console.log('📥 Respuesta del webhook de usuarios:', JSON.stringify(result, null, 2));
 
         // Verificar si hay error en la respuesta
         if (result.error === true) {
@@ -1188,43 +1060,30 @@ export const api = {
         let usuarios: any[] = [];
         
         if (Array.isArray(result)) {
-          console.log('📋 Resultado es un array, verificando estructura...');
           // Si es un array, verificar si el primer elemento tiene una propiedad "data"
           if (result.length > 0 && result[0] && typeof result[0] === 'object' && 'data' in result[0]) {
-            console.log('📋 Array contiene objeto con propiedad "data", extrayendo...');
             // Es un array como [{ data: [...] }], extraer el array interno
             if (Array.isArray(result[0].data)) {
               usuarios = result[0].data;
-              console.log('✅ Usuarios extraídos de result[0].data:', usuarios.length);
             } else {
-              console.warn('⚠️ result[0].data no es un array');
               usuarios = result;
             }
           } else {
-            console.log('📋 Array directo de usuarios');
             usuarios = result;
           }
         } else if (result.users && Array.isArray(result.users)) {
-          console.log('📋 Usuarios en result.users');
           usuarios = result.users;
         } else if (result.usuarios && Array.isArray(result.usuarios)) {
-          console.log('📋 Usuarios en result.usuarios');
           usuarios = result.usuarios;
         } else if (result.data && Array.isArray(result.data)) {
-          console.log('📋 Usuarios en result.data');
           usuarios = result.data;
         } else if (result.data && result.data.users && Array.isArray(result.data.users)) {
-          console.log('📋 Usuarios en result.data.users');
           usuarios = result.data.users;
         } else if (result.data && result.data.usuarios && Array.isArray(result.data.usuarios)) {
-          console.log('📋 Usuarios en result.data.usuarios');
           usuarios = result.data.usuarios;
         } else {
-          console.warn('⚠️ No se pudo identificar la estructura de usuarios en la respuesta');
         }
 
-        console.log('✅ Usuarios obtenidos:', usuarios.length);
-        console.log('📋 Lista de usuarios:', JSON.stringify(usuarios, null, 2));
 
         return usuarios;
       } catch (error: any) {
@@ -1234,7 +1093,6 @@ export const api = {
           throw new Error('Timeout: El servidor no respondió a tiempo. Verifica tu conexión.');
         }
         
-        console.error('❌ Error al obtener usuarios desde webhook:', error.message || error);
         throw error;
       }
     });
@@ -1289,15 +1147,12 @@ export const api = {
 
       if (clientesArray.length > 0) {
           const mapped = clientesArray.map(mapCliente);
-          console.log(`✅ Obtenidos ${mapped.length} clientes desde n8n`);
           return mapped;
       }
 
       // Si la respuesta no tiene el formato esperado, usar fallback
-      console.warn('Respuesta de n8n no tiene el formato esperado, usando datos mock', response);
       return MOCK_CLIENTES;
     } catch (err) {
-      console.warn('Error al obtener clientes desde n8n, usando datos mock como fallback.', err);
       return MOCK_CLIENTES;
     }
     });
@@ -1318,8 +1173,6 @@ export const api = {
   },
 
   async updateAgente(id: string, data: any): Promise<boolean> {
-    console.log('🔵 [updateAgente] Actualizando agente:', id);
-    console.log('📝 [updateAgente] Datos a actualizar:', data);
     
     // Obtener el usuario actual (actor)
     const currentUser = this.getUser();
@@ -1345,7 +1198,6 @@ export const api = {
       }
     };
 
-    console.log('📤 [updateAgente] Payload enviado al webhook:', JSON.stringify(payload, null, 2));
 
     try {
       // Enviar actualización al webhook de agentes
@@ -1371,17 +1223,14 @@ export const api = {
       }
 
       const result = await response.json();
-      console.log('📥 [updateAgente] Respuesta del webhook:', result);
 
       // Limpiar caché para forzar recarga
-      clearCache('agents');
+      clearCache('agentes');
       
       return true;
     } catch (error: any) {
-      console.error('❌ [updateAgente] Error al actualizar agente en webhook:', error);
       
       // Fallback: actualizar en localStorage
-      console.warn('⚠️ [updateAgente] Actualizando solo en localStorage como fallback');
       const agentes = await this.getAgentes();
       const idx = agentes.findIndex(a => a.idAgente === id);
       if (idx !== -1) {
@@ -1406,7 +1255,6 @@ export const api = {
     // Intentar usar emailService primero (para desarrollo/testing)
     try {
       const result = emailService.sendPasswordResetCode(email, false);
-      console.log('✅ Código de recuperación generado usando emailService');
       // También intentar enviar al webhook si está disponible
       try {
         await callWebhook('reset_password', { 
@@ -1414,11 +1262,9 @@ export const api = {
           action: 'request_reset' 
         });
       } catch (webhookErr) {
-        console.warn('⚠️ Webhook no disponible, usando solo emailService:', webhookErr);
       }
       return true;
     } catch (err) {
-      console.warn('⚠️ Error en emailService, intentando solo webhook:', err);
     }
     
     // Fallback: solo webhook
@@ -1440,7 +1286,6 @@ export const api = {
     try {
       const result = emailService.verifyCode(email, code);
       if (result.valid && result.tempToken) {
-        console.log('✅ Código verificado usando emailService');
         // También intentar verificar en el webhook si está disponible
         try {
           const webhookData = await callWebhook('reset_password', {
@@ -1455,7 +1300,6 @@ export const api = {
             };
           }
         } catch (webhookErr) {
-          console.warn('⚠️ Webhook no disponible, usando solo emailService:', webhookErr);
         }
         return { 
           ok: true, 
@@ -1465,7 +1309,6 @@ export const api = {
         throw new Error(result.message || 'Código inválido');
       }
     } catch (err: any) {
-      console.warn('⚠️ Error en emailService, intentando solo webhook:', err);
     }
     
     // Fallback: solo webhook
@@ -1509,10 +1352,6 @@ export const api = {
   // Crear nueva cuenta de usuario con webhook de crear usuario
   // El usuario se almacena directamente en el sistema a través del webhook
   async createAccount(email: string, password: string, name: string, additionalData?: any): Promise<User> {
-    console.log('🔵 [API] createAccount iniciada');
-    console.log('📧 [API] Email:', email);
-    console.log('👤 [API] Nombre:', name);
-    console.log('📦 [API] Datos adicionales:', additionalData);
 
     // Validaciones previas
     if (!email || !email.trim()) {
@@ -1550,7 +1389,6 @@ export const api = {
     };
 
     const passwordFinal = password && password.trim() ? password.trim() : generarPasswordAleatoria();
-    console.log('🔐 [API] Contraseña generada:', passwordFinal);
 
     // Determinar si es un agente o un usuario administrativo
     const rolUsuario = additionalData?.rol || 'AGENTE';
@@ -1562,7 +1400,6 @@ export const api = {
     
     if (esAgente) {
       // Para AGENTES: usar agent.create y webhook de agentes
-      console.log('👤 [API] Creando AGENTE con agent.create');
       payload = {
         action: 'agent.create',
         actor: {
@@ -1581,10 +1418,8 @@ export const api = {
         }
       };
       webhookUrl = API_CONFIG.WEBHOOK_AGENTES_URL;
-      console.log('🔗 [API] Usando webhook de agentes:', webhookUrl);
     } else {
       // Para usuarios administrativos (SUPERVISOR, GERENTE, ADMINISTRADOR): usar user.create
-      console.log('👤 [API] Creando usuario administrativo con user.create');
       payload = {
         action: 'user.create',
         actor: {
@@ -1600,17 +1435,14 @@ export const api = {
         }
       };
       webhookUrl = API_CONFIG.WEBHOOK_CREAR_USUARIO_URL;
-      console.log('🔗 [API] Usando webhook de crear usuario:', webhookUrl);
     }
 
-    console.log('📤 Creando usuario con payload:', JSON.stringify(payload, null, 2));
     
     // Llamar al webhook correspondiente
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
 
     try {
-      console.log('🌐 [API] Iniciando fetch a:', webhookUrl);
       const response = await fetch(webhookUrl, {
         method: 'POST',
         mode: 'cors',
@@ -1625,15 +1457,12 @@ export const api = {
 
       clearTimeout(timeoutId);
 
-      console.log('✅ [API] Response status:', response.status, response.statusText);
-      console.log('📋 [API] Response headers:', [...response.headers.entries()]);
 
       if (!response.ok) {
         if (response.status === 0) {
           throw new Error('Error de CORS: El servidor no está permitiendo peticiones desde este origen.');
         }
         const errorText = await response.text();
-        console.log('❌ [API] Error response text:', errorText);
         let errorData;
         try {
           errorData = JSON.parse(errorText);
@@ -1645,10 +1474,8 @@ export const api = {
 
       // Verificar si la respuesta tiene contenido antes de parsear JSON
       const contentType = response.headers.get('content-type');
-      console.log('📄 [API] Content-Type:', contentType);
       
       const responseText = await response.text();
-      console.log('📥 [API] Response text:', responseText);
 
       if (!responseText || responseText.trim() === '') {
         throw new Error('El webhook no devolvió ninguna respuesta. Verifica que el flujo de n8n esté configurado correctamente y devuelva los datos del usuario creado.');
@@ -1657,10 +1484,7 @@ export const api = {
       let result;
       try {
         result = JSON.parse(responseText);
-        console.log('📥 Respuesta del webhook de crear usuario:', JSON.stringify(result, null, 2));
       } catch (parseError) {
-        console.error('❌ [API] Error al parsear JSON:', parseError);
-        console.error('📄 [API] Texto recibido:', responseText);
         throw new Error(`El webhook devolvió una respuesta inválida. Respuesta: ${responseText.substring(0, 200)}`);
       }
 
@@ -1676,8 +1500,6 @@ export const api = {
       
       // Si el webhook retorna un array de usuarios
       if (Array.isArray(userData)) {
-        console.log('📋 El webhook retornó una lista de usuarios:', userData.length);
-        console.log('👥 Todos los usuarios del flujo:', JSON.stringify(userData, null, 2));
         
         // Buscar el usuario recién creado (el último o el que coincida con el email)
         const emailLower = email.trim().toLowerCase();
@@ -1685,7 +1507,6 @@ export const api = {
           (u.email || '').toLowerCase() === emailLower
         ) || userData[userData.length - 1] || userData[0];
         
-        console.log('✅ Usuario recién creado extraído:', userData);
       }
       
       // Crear un objeto User desde los datos del usuario
@@ -1768,7 +1589,6 @@ export const api = {
         }
       });
     } catch (err) {
-      console.warn('Error al actualizar reasignación en n8n, aplicando cambio solo en local.', err);
     }
 
     localStorage.setItem('intelfon_cases', JSON.stringify(cases));
@@ -1810,7 +1630,6 @@ export const api = {
         }
       });
     } catch (err) {
-      console.warn('Error al actualizar comentario en n8n, aplicando cambio solo en local.', err);
     }
 
     localStorage.setItem('intelfon_cases', JSON.stringify(cases));

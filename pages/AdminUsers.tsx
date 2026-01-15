@@ -75,14 +75,10 @@ const AdminUsers: React.FC = () => {
   const loadUsers = async () => {
     setLoading(true);
     try {
-      console.log('🔄 [AdminUsers] Cargando usuarios desde webhook de usuarios...');
       
       // Obtener usuarios del webhook de crear usuario (que también lista usuarios)
       // El webhook devuelve todos los usuarios creados desde ese flujo
       const usuariosWebhook = await api.getUsuarios();
-      console.log('📊 [AdminUsers] Datos recibidos del webhook:', usuariosWebhook.length);
-      console.log('📊 [AdminUsers] Primer usuario (ejemplo):', usuariosWebhook[0]);
-      console.log('📊 [AdminUsers] Todos los usuarios recibidos:', JSON.stringify(usuariosWebhook, null, 2));
       
       // Mapear todos los usuarios del webhook
       // El webhook puede devolver usuarios con diferentes roles (agentes, gerentes, supervisores, admin)
@@ -100,7 +96,6 @@ const AdminUsers: React.FC = () => {
                       usuario.position ||
                       '';
         
-        console.log('🔍 [AdminUsers] Usuario:', usuario.nombre || usuario.name, 'Rol raw:', rolRaw);
         
         if (rolRaw) {
           const rolUpper = String(rolRaw).toUpperCase().trim();
@@ -114,7 +109,6 @@ const AdminUsers: React.FC = () => {
             rol = 'AGENTE';
           } else {
             // Si no coincide con ningún rol conocido, mantener como AGENTE por defecto
-            console.warn('⚠️ [AdminUsers] Rol desconocido:', rolRaw, 'para usuario:', usuario.nombre || usuario.name);
             rol = 'AGENTE';
           }
         } else {
@@ -146,28 +140,8 @@ const AdminUsers: React.FC = () => {
         };
       });
       
-      console.log('✅ [AdminUsers] Usuarios mapeados:', usuariosMapeados.length);
-      console.log('📋 [AdminUsers] Distribución por rol:', {
-        AGENTE: usuariosMapeados.filter(u => u.rol === 'AGENTE').length,
-        SUPERVISOR: usuariosMapeados.filter(u => u.rol === 'SUPERVISOR').length,
-        GERENTE: usuariosMapeados.filter(u => u.rol === 'GERENTE').length,
-        ADMIN: usuariosMapeados.filter(u => u.rol === 'ADMIN').length
-      });
-      
-      // Mostrar detalles de cada usuario para debug
-      usuariosMapeados.forEach((u, idx) => {
-        console.log(`👤 [AdminUsers] Usuario ${idx + 1}:`, {
-          nombre: u.nombre,
-          email: u.email,
-          rol: u.rol,
-          activo: u.activo,
-          enVacaciones: u.enVacaciones
-        });
-      });
-      
       setUsers(usuariosMapeados);
     } catch (error) {
-      console.error('❌ [AdminUsers] Error al cargar usuarios:', error);
       // En caso de error, mantener array vacío
       setUsers([]);
     } finally {
@@ -287,8 +261,6 @@ const AdminUsers: React.FC = () => {
   // ==================================================
 
   const createUser = async () => {
-    console.log('🔵 [AdminUsers] Función createUser iniciada');
-    console.log('📝 [AdminUsers] FormData:', formData);
     
     if (!formData.nombre.trim() || !formData.email.trim()) {
       alert('El nombre y el email son obligatorios');
@@ -303,8 +275,6 @@ const AdminUsers: React.FC = () => {
 
     try {
       setLoading(true);
-      console.log('📤 [AdminUsers] Creando usuario...', formData.nombre, formData.email);
-      console.log('🌐 [AdminUsers] Llamando a api.createAccount...');
       
       // Llamar al webhook para crear usuario
       // La contraseña se genera automáticamente (8 caracteres aleatorios)
@@ -317,7 +287,6 @@ const AdminUsers: React.FC = () => {
         }
       );
       
-      console.log('✅ [AdminUsers] Usuario creado:', result);
       
       // Recargar la lista de usuarios desde el webhook
       // El webhook debe devolver todos los usuarios
@@ -327,13 +296,6 @@ const AdminUsers: React.FC = () => {
       setFormData({ nombre: '', email: '', rol: 'AGENTE', activo: true, enVacaciones: false });
       showSuccessFeedback();
     } catch (error: any) {
-      console.error('❌ [AdminUsers] Error al crear usuario:', error);
-      console.error('❌ [AdminUsers] Error completo:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
-      
       // Mensaje de error más detallado para debugging
       let errorMessage = error.message || 'Error desconocido al crear el usuario';
       
@@ -467,9 +429,7 @@ const AdminUsers: React.FC = () => {
   //   //     })
   //   //   });
   //   // } catch (error) {
-  //   //   console.error('Error al enviar al webhook:', error);
   //   // }
-  //   console.log('Simulando envío a webhook:', { action, data });
   // }
 
   // ==================================================

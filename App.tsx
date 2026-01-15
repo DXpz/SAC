@@ -28,18 +28,15 @@ const App: React.FC = () => {
       // Ignorar errores de extensiones del navegador
       const errorMessage = event.reason?.message || event.reason?.toString() || '';
       if (errorMessage.includes('message channel') || errorMessage.includes('listener')) {
-        console.warn('⚠️ Error de extensión del navegador ignorado:', event.reason);
         event.preventDefault();
         return;
       }
-      console.error('❌ Error no manejado en promesa:', event.reason);
     };
 
     const handleError = (event: ErrorEvent) => {
       // Ignorar errores de extensiones del navegador
       const errorMessage = event.message || event.error?.message || '';
       if (errorMessage.includes('message channel') || errorMessage.includes('listener')) {
-        console.warn('⚠️ Error de extensión del navegador ignorado:', event.error);
         event.preventDefault();
         return;
       }
@@ -62,23 +59,19 @@ const App: React.FC = () => {
     
     // Si hay usuario pero NO hay token, limpiar (no está registrado en n8n ni es cuenta demo)
     if (user && !token) {
-      console.warn('Usuario sin token detectado. Limpiando datos inválidos.');
       api.logout();
     }
     
     // Si hay token pero NO hay usuario, limpiar
     if (token && !user) {
-      console.warn('Token sin usuario detectado. Limpiando datos inválidos.');
       api.logout();
     }
     
     // Si hay ambos, validar estructura (permite cuentas demo y cuentas de n8n)
     if (user && token) {
       if (!user.id || !user.name || !user.role) {
-        console.warn('Usuario con estructura inválida. Limpiando datos.');
         api.logout();
       } else if (!['AGENTE', 'SUPERVISOR', 'GERENTE', 'ADMIN'].includes(user.role)) {
-        console.warn('Usuario con rol inválido. Limpiando datos.');
         api.logout();
       }
     }

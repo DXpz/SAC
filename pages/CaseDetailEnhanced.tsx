@@ -53,7 +53,6 @@ const CaseDetail: React.FC = () => {
       const data = await api.getClientes();
       setClientes(data);
     } catch (err) {
-      console.error('Error al cargar clientes:', err);
     }
   };
 

@@ -59,7 +59,6 @@ const getActor = (): Actor | null => {
       role: user.role || undefined
     };
   } catch (error) {
-    console.error('Error obteniendo actor:', error);
     return null;
   }
 };
@@ -106,7 +105,6 @@ const mapWebhookResponseToAgent = (webhookData: any): Agente | null => {
       casosActivos: webhookData.casos_activos !== undefined ? webhookData.casos_activos : (webhookData.casosActivos || 0)
     };
   } catch (error) {
-    console.error('Error mapeando respuesta del webhook:', error);
     return null;
   }
 };
@@ -129,7 +127,6 @@ const mapWebhookResponseToAgents = (webhookData: any): Agente[] => {
       .map(mapWebhookResponseToAgent)
       .filter((a): a is Agente => a !== null);
   } catch (error) {
-    console.error('Error mapeando array de agentes del webhook:', error);
     return [];
   }
 };
@@ -142,7 +139,6 @@ const callRoundRobinWebhook = async (payload: AgentWebhookPayload): Promise<Agen
   const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
   
   try {
-    console.log('📤 Enviando petición al webhook de Round Robin:', {
       url: WEBHOOK_ROUND_ROBIN_URL,
       action: payload.action,
       payload
@@ -167,14 +163,10 @@ const callRoundRobinWebhook = async (payload: AgentWebhookPayload): Promise<Agen
         throw new Error('Error de CORS: El servidor no está permitiendo peticiones desde este origen.');
       }
       if (response.status === 404) {
-        console.warn('⚠️ Webhook de Round Robin no encontrado (404). El flujo puede no estar activo en n8n o la URL del webhook es incorrecta.');
-        console.warn('⚠️ URL intentada:', WEBHOOK_ROUND_ROBIN_URL);
-        console.warn('⚠️ Verifica que el webhook "/webhook-test/case-create-round-robin" exista y esté activo en n8n.');
         // Retornar respuesta vacía en lugar de lanzar error para que la app pueda usar fallback
         return { success: false, error: true, message: 'Webhook no disponible (404)', agents: [] };
       }
       // Para otros errores HTTP, también retornar respuesta con error en lugar de lanzar excepción
-      console.warn(`⚠️ Error HTTP ${response.status} al llamar al webhook de Round Robin: ${response.statusText}`);
       return { success: false, error: true, message: `Error ${response.status}: ${response.statusText}`, agents: [] };
     }
     
@@ -189,19 +181,16 @@ const callRoundRobinWebhook = async (payload: AgentWebhookPayload): Promise<Agen
       }
     } catch (parseError) {
       if (response.ok) {
-        console.log('Respuesta no-JSON recibida, considerando como éxito');
         result = { success: true };
       } else {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
     }
     
-    console.log('📥 Respuesta del webhook de Round Robin:', result);
     
     // Verificar si hay error en la respuesta
     // Si el error es 404 o webhook no disponible, no lanzar excepción, solo retornar el resultado
     if (result && result.error === true && result.message?.includes('404')) {
-      console.warn('⚠️ Webhook retornó error 404, usando fallback local');
       return result; // Retornar el resultado con error para que getAgents lo maneje
     }
     
@@ -227,7 +216,6 @@ const callRoundRobinWebhook = async (payload: AgentWebhookPayload): Promise<Agen
             }
             
             if (error.message && error.message.includes('404')) {
-              console.warn('⚠️ Webhook de Round Robin no encontrado (404). El flujo puede no estar activo en n8n.');
               // Retornar respuesta con error pero sin lanzar excepción para que la app pueda usar fallback
               return { success: false, error: true, message: 'Webhook no disponible', agents: [] };
             }
@@ -246,7 +234,6 @@ const callRoundRobinWebhook = async (payload: AgentWebhookPayload): Promise<Agen
  */
 export const getAgents = async (): Promise<Agente[]> => {
   // Webhook de round robin deshabilitado - retornar array vacío
-  console.warn('⚠️ Webhook de Round Robin deshabilitado. Usar api.getAgentes() en su lugar.');
   return [];
 };
 
@@ -260,7 +247,6 @@ export const updateAgentStatus = async (
   vacaciones: boolean = false
 ): Promise<boolean> => {
   // Webhook de round robin deshabilitado
-  console.warn('⚠️ Webhook de Round Robin deshabilitado. updateAgentStatus no disponible.');
   return false;
   const actor = getActor();
   
@@ -297,7 +283,6 @@ export const createAgent = async (
   pais: string
 ): Promise<boolean> => {
   // Webhook de round robin deshabilitado
-  console.warn('⚠️ Webhook de Round Robin deshabilitado. Usar api.createAccount() en su lugar.');
   return false;
 };
 

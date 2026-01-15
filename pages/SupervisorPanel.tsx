@@ -33,7 +33,6 @@ const SupervisorPanel: React.FC = () => {
       setClientes(clientesList);
       return clientesList;
     } catch (error) {
-      console.error('Error loading clientes:', error);
       return [];
     }
   };
@@ -64,7 +63,6 @@ const SupervisorPanel: React.FC = () => {
       const updateTime = new Date();
       localStorage.setItem('bandeja_last_update', updateTime.toISOString());
     } catch (error) {
-      console.error('Error loading data:', error);
     } finally {
       setLoading(false);
     }
@@ -255,7 +253,6 @@ const SupervisorPanel: React.FC = () => {
 
   const handleNotificar = (e: React.MouseEvent, casoId: string) => {
     e.stopPropagation();
-    console.log('Notificar agente:', casoId);
   };
 
   const getSeverityColor = (caso: Caso) => {

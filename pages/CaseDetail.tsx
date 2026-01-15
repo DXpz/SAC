@@ -48,16 +48,13 @@ const CaseDetail: React.FC = () => {
         await Promise.all([loadClientes(), loadAgentes()]);
         if (id) await loadCaso(id);
       } catch (error) {
-        console.error('Error inicializando datos:', error);
       }
     };
     initializeData().catch((error) => {
       // Capturar errores no manejados de extensiones del navegador
       if (error?.message?.includes('message channel') || error?.message?.includes('listener')) {
-        console.warn('⚠️ Error de extensión del navegador ignorado:', error);
         return;
       }
-      console.error('Error no manejado:', error);
     });
   }, [id]);
 
@@ -113,7 +110,6 @@ const CaseDetail: React.FC = () => {
       const data = await api.getClientes();
       setClientes(data);
     } catch (err) {
-      console.error('Error al cargar clientes:', err);
     }
   };
 
@@ -122,21 +118,12 @@ const CaseDetail: React.FC = () => {
       const data = await api.getAgentes();
       setAgentes(data);
     } catch (err) {
-      console.error('Error al cargar agentes:', err);
     }
   };
 
   // Enriquecer nombres desde webhooks de clientes y agentes
   // IMPORTANTE: Solo enriquecer si faltan datos, NO sobrescribir datos existentes
   useEffect(() => {
-    console.log('🔄 [CaseDetail] useEffect de enriquecimiento ejecutándose...', {
-      tieneCaso: !!caso,
-      casoId: caso?.id || caso?.ticketNumber,
-      clientIdEnCaso: caso?.clientId || caso?.clienteId,
-      clientNameEnCaso: caso?.clientName,
-      cantidadClientes: clientes.length,
-      cantidadAgentes: agentes.length
-    });
     
     if (caso && (clientes.length > 0 || agentes.length > 0)) {
       let updated = false;
@@ -146,8 +133,6 @@ const CaseDetail: React.FC = () => {
       if (clientes.length > 0 && (casoActualizado.clientId || casoActualizado.clienteId)) {
         const clientIdBuscar = casoActualizado.clientId || casoActualizado.clienteId || '';
         
-        console.log('🔍 [CaseDetail] Buscando cliente con ID:', clientIdBuscar);
-        console.log('📋 [CaseDetail] Clientes disponibles:', clientes.map(c => `${c.idCliente} - ${c.nombreEmpresa}`));
         
         // Función para normalizar IDs
         const normalizeId = (id: string) => {
@@ -177,42 +162,25 @@ const CaseDetail: React.FC = () => {
         });
         
         if (cliente) {
-          console.log('✅ [CaseDetail] Cliente encontrado para enriquecimiento:', cliente.idCliente, cliente.nombreEmpresa);
           
           // Enriquecer con datos del cliente
           if (!casoActualizado.clientName || casoActualizado.clientName === 'Sin cliente' || casoActualizado.clientName.trim() === '') {
-            console.log('📝 [CaseDetail] Actualizando clientName de', casoActualizado.clientName, 'a', cliente.nombreEmpresa);
             casoActualizado.clientName = cliente.nombreEmpresa;
             updated = true;
           }
           if (!casoActualizado.cliente) {
-            console.log('📝 [CaseDetail] Agregando objeto cliente completo');
             casoActualizado.cliente = cliente;
             updated = true;
           }
           if (!casoActualizado.clientEmail && cliente.email) {
-            console.log('📝 [CaseDetail] Actualizando clientEmail a', cliente.email);
             casoActualizado.clientEmail = cliente.email;
             updated = true;
           }
           if (!casoActualizado.clientPhone && cliente.telefono) {
-            console.log('📝 [CaseDetail] Actualizando clientPhone a', cliente.telefono);
             casoActualizado.clientPhone = cliente.telefono;
             updated = true;
           }
-        } else {
-          console.warn('⚠️ [CaseDetail] No se encontró cliente para el caso:', {
-            clientIdBuscar,
-            clientIdNormalized,
-            clientesDisponibles: clientes.map(c => c.idCliente)
-          });
         }
-      } else {
-        console.log('⚠️ [CaseDetail] No hay clientes cargados o caso no tiene clientId:', {
-          clientes: clientes.length,
-          clientId: casoActualizado.clientId,
-          clienteId: casoActualizado.clienteId
-        });
       }
 
       // Enriquecer con agente completo SOLO si falta
@@ -232,18 +200,8 @@ const CaseDetail: React.FC = () => {
       }
 
       if (updated) {
-        console.log('✅ [CaseDetail] Actualizando caso con datos enriquecidos:', {
-          casoId: casoActualizado.id || casoActualizado.ticketNumber,
-          clientId: casoActualizado.clientId,
-          clientName: casoActualizado.clientName,
-          tieneObjetoCliente: !!casoActualizado.cliente
-        });
         setCaso(casoActualizado);
-      } else {
-        console.log('ℹ️ [CaseDetail] No se requirieron actualizaciones en el caso');
       }
-    } else {
-      console.log('⚠️ [CaseDetail] No se ejecuta enriquecimiento: caso o clientes/agentes no disponibles');
     }
   }, [caso?.id, clientes, agentes]);
 
@@ -294,58 +252,26 @@ const CaseDetail: React.FC = () => {
     }
     
     // Fallback: retornar NUEVO si no se puede determinar
-    console.warn('⚠️ No se pudo normalizar el estado:', statusStr, 'usando NUEVO como fallback');
     return CaseStatus.NUEVO;
   };
 
   const loadCaso = async (caseId: string) => {
     try {
-      console.log('📤 ========== CARGANDO DETALLE DEL CASO ==========');
-      console.log('📤 Case ID solicitado:', caseId);
-      console.log('📤 Llamando a api.getCasoById...');
       const data = await api.getCasoById(caseId);
-      console.log('📤 ================================================');
       
       if (!data) {
-        console.error('❌ Caso no encontrado en webhook:', caseId);
         return;
       }
       
-      console.log('📥 ========== CASO RECIBIDO DEL WEBHOOK ==========');
-      console.log('📥 ID del caso:', data.id || data.ticketNumber);
-      console.log('📥 DATOS DEL CLIENTE:');
-      console.log('  - clientId:', data.clientId);
-      console.log('  - clienteId:', data.clienteId);
-      console.log('  - clientName:', data.clientName);
-      console.log('  - clientEmail:', data.clientEmail);
-      console.log('  - clientPhone:', data.clientPhone);
-      console.log('  - Objeto cliente completo:', data.cliente);
-      console.log('📥 DATOS DEL AGENTE:');
-      console.log('  - agentId:', data.agentId);
-      console.log('  - agentName:', data.agentName);
-      console.log('  - Objeto agenteAsignado:', data.agenteAsignado);
-      console.log('📥 OTROS DATOS:');
-      console.log('  - status:', data.status);
-      console.log('  - subject:', data.subject);
-      console.log('  - description:', data.description);
-      console.log('  - createdAt:', data.createdAt);
-      console.log('  - historial entries:', data.historial?.length || 0);
-      console.log('📥 OBJETO COMPLETO (JSON):');
-      console.log(JSON.stringify(data, null, 2));
-      console.log('📥 ================================================');
       
       // ENRIQUECER CON DATOS DEL CLIENTE SI FALTA EL NOMBRE
       const clientIdDelCaso = data.clientId || data.clienteId;
       const clientNameDelCaso = data.clientName;
       
       if (clientIdDelCaso && (!clientNameDelCaso || clientNameDelCaso === 'Sin cliente' || clientNameDelCaso.trim() === '')) {
-        console.log('🔍 ========== ENRIQUECIENDO DATOS DEL CLIENTE ==========');
-        console.log('🔍 Cliente sin nombre completo, buscando en API de clientes...');
-        console.log('🔍 Client ID a buscar:', clientIdDelCaso);
         
         // Si ya tenemos clientes cargados, buscar ahí primero
         if (clientes.length > 0) {
-          console.log('📋 Clientes ya disponibles en memoria:', clientes.length);
           const clienteEncontrado = clientes.find(c => 
             c.idCliente === clientIdDelCaso || 
             c.idCliente.toLowerCase() === clientIdDelCaso.toLowerCase() ||
@@ -353,21 +279,16 @@ const CaseDetail: React.FC = () => {
           );
           
           if (clienteEncontrado) {
-            console.log('✅ Cliente encontrado en memoria:', clienteEncontrado.idCliente, '-', clienteEncontrado.nombreEmpresa);
             data.clientName = clienteEncontrado.nombreEmpresa;
             data.cliente = clienteEncontrado;
             if (!data.clientEmail) data.clientEmail = clienteEncontrado.email;
             if (!data.clientPhone) data.clientPhone = clienteEncontrado.telefono;
           } else {
-            console.warn('⚠️ Cliente NO encontrado en memoria');
-            console.log('📋 IDs de clientes disponibles:', clientes.map(c => c.idCliente));
           }
         } else {
           // Si no hay clientes en memoria, cargarlos ahora
-          console.log('📋 No hay clientes en memoria, cargando desde API...');
           try {
             const clientesDesdeAPI = await api.getClientes();
-            console.log('📋 Clientes cargados desde API:', clientesDesdeAPI.length);
             setClientes(clientesDesdeAPI);
             
             const clienteEncontrado = clientesDesdeAPI.find(c => 
@@ -377,23 +298,17 @@ const CaseDetail: React.FC = () => {
             );
             
             if (clienteEncontrado) {
-              console.log('✅ Cliente encontrado en API:', clienteEncontrado.idCliente, '-', clienteEncontrado.nombreEmpresa);
               data.clientName = clienteEncontrado.nombreEmpresa;
               data.cliente = clienteEncontrado;
               if (!data.clientEmail) data.clientEmail = clienteEncontrado.email;
               if (!data.clientPhone) data.clientPhone = clienteEncontrado.telefono;
             } else {
-              console.warn('⚠️ Cliente NO encontrado en API');
-              console.log('📋 IDs de clientes disponibles:', clientesDesdeAPI.map(c => c.idCliente));
             }
           } catch (error) {
-            console.error('❌ Error al cargar clientes desde API:', error);
           }
         }
         
-        console.log('🔍 ====================================================');
       } else {
-        console.log('ℹ️ Cliente ya tiene nombre completo:', clientNameDelCaso);
       }
       
       // Normalizar el estado para asegurar que sea válido
@@ -426,10 +341,8 @@ const CaseDetail: React.FC = () => {
         data.history = historialInicial;
       }
       
-      console.log('✅ Caso cargado completamente desde webhook');
       setCaso(data);
     } catch (error) {
-      console.error('❌ Error al cargar el caso desde webhook:', error);
       throw error; // Lanzar el error en lugar de usar fallback local
     }
   };
@@ -457,14 +370,9 @@ const CaseDetail: React.FC = () => {
 
     setTransitionLoading(true);
     try {
-      console.log('🔄 Iniciando cambio de estado...');
-      console.log('🔄 Estado actual:', caso?.estado || caso?.status);
-      console.log('🔄 Nuevo estado:', newState);
-      console.log('🔄 Justificación:', justificacion);
       
       // Enviar actualización directamente al webhook
       // NO usar lógica local, todo debe ir al webhook
-      console.log('🔄 Llamando a updateCaseStatus...');
       const resultado = await updateCaseStatus(
         caso.id || caso.ticketNumber || caso.idCaso || id,
         newState,
@@ -472,8 +380,6 @@ const CaseDetail: React.FC = () => {
       );
       
       // Si llegamos aquí, el webhook ACEPTÓ el cambio (NO hubo error)
-      console.log('✅ updateCaseStatus completó SIN errores');
-      console.log('✅ Estado actualizado exitosamente por el webhook, recargando caso...');
       
       // Recargar el caso desde el servidor para asegurar que tenemos los datos más actualizados
       await loadCaso(id);
@@ -485,29 +391,17 @@ const CaseDetail: React.FC = () => {
       setErrorMessage('');
       
       // Mostrar animación de éxito SOLO si llegamos aquí (webhook aceptó y NO hubo error)
-      console.log('✅ Mostrando animación de éxito - el cambio fue exitoso');
       setShowSuccessAnimation(true);
       setTimeout(() => {
         setShowSuccessAnimation(false);
       }, 2000);
       
     } catch (err: any) {
-      console.error('❌ ========== ERROR CAPTURADO EN handleStateChange ==========');
-      console.error('❌ Error completo:', err);
-      console.error('❌ Error message:', err?.message);
-      console.error('❌ Error toString:', err?.toString());
       const errorMsg = err?.message || err?.toString() || 'Error al actualizar el estado del caso';
       
-      console.log('🔍 Analizando error:', errorMsg);
-      console.log('🔍 ¿Contiene "Comentario no válido:"?:', errorMsg.includes('Comentario no válido:'));
       
       // Verificar si es un error de validación de comentario
       if (errorMsg.includes('Comentario no válido:')) {
-        console.log('🚫 ========== ERROR DE VALIDACIÓN DETECTADO ==========');
-        console.log('🚫 NO se mostrará animación de éxito');
-        console.log('🚫 NO se cerrará el modal');
-        console.log('🚫 NO se recargará el caso');
-        console.log('🚫 Solo se mostrará el mensaje de error');
         
         // Extraer el mensaje de retroalimentación
         const feedback = errorMsg.replace('Comentario no válido: ', '');
@@ -529,12 +423,9 @@ const CaseDetail: React.FC = () => {
           // NO limpiar errorMessage aquí para que permanezca visible
         }, 5000);
         
-        // IMPORTANTE: Salir aquí para NO ejecutar código de éxito
-        console.log('🚫 Saliendo de handleStateChange - NO se ejecutará código de éxito');
-        setTransitionLoading(false);
-        return; // SALIR INMEDIATAMENTE - NO continuar con código de éxito
+        // IMPORTANTE: NO hacer return aquí, dejar que el finally maneje transitionLoading
+        // El finally se ejecutará y reseteará transitionLoading correctamente
       } else {
-        console.log('⚠️ Error diferente a validación de comentario:', errorMsg);
         // Para otros errores, cerrar el modal y mostrar el error
         setShowJustificationModal(false);
         setPendingNewState(null);
@@ -657,12 +548,6 @@ const CaseDetail: React.FC = () => {
     try {
       setTransitionLoading(true);
       
-      console.log('📝 Asignando cliente al caso:', {
-        caseId: id,
-        clienteId: cliente.idCliente,
-        clientName: cliente.nombreEmpresa
-      });
-      
       // Actualizar el caso en el webhook con el cliente seleccionado
       const updatedCase = await updateCaseData(id, {
         cliente_id: cliente.idCliente,
@@ -672,7 +557,6 @@ const CaseDetail: React.FC = () => {
       });
       
       if (updatedCase) {
-        console.log('✅ Cliente asignado exitosamente al caso');
         setCaso(updatedCase);
       } else {
         throw new Error('No se recibió respuesta del webhook');
@@ -697,7 +581,6 @@ const CaseDetail: React.FC = () => {
       }
       
     } catch (error) {
-      console.error('❌ Error al asignar cliente:', error);
       setTransitionLoading(false);
       alert('Error al asignar el cliente. Por favor, intente nuevamente.');
     }
@@ -761,9 +644,7 @@ const CaseDetail: React.FC = () => {
         setShowSuccessAnimation(false);
       }, 2000);
 
-      console.log('✅ Caso reasignado exitosamente');
     } catch (error) {
-      console.error('❌ Error al reasignar el caso:', error);
       alert('Error al reasignar el caso. Por favor, intenta nuevamente.');
     } finally {
       setTransitionLoading(false);
@@ -776,26 +657,23 @@ const CaseDetail: React.FC = () => {
     try {
       setTransitionLoading(true);
       
-      console.log('📝 Guardando cambios del caso:', {
-        caseId: id,
-        subject: editedCase.subject || caso.subject,
-        description: editedCase.description || caso.description,
-        cliente_id: editedCase.clienteId || caso.clienteId || caso.clientId,
-        client_name: editedCase.clientName || caso.clientName
-      });
-      
       // Actualizar el caso en el webhook
+      // Si editedCase tiene clienteId, usarlo (incluso si es una cadena vacía, significa que se limpió)
+      // Si no, usar el clienteId del caso original
+      const clienteIdToSend = editedCase.hasOwnProperty('clienteId') 
+        ? editedCase.clienteId 
+        : (caso.clienteId || caso.clientId);
+      
       const updatedCase = await updateCaseData(id, {
         asunto: editedCase.subject || caso.subject,
         descripcion: editedCase.description || caso.description,
-        cliente_id: editedCase.clienteId || caso.clienteId || caso.clientId,
+        cliente_id: clienteIdToSend,
         client_name: editedCase.clientName || caso.clientName,
         client_email: editedCase.clientEmail || caso.clientEmail,
         client_phone: editedCase.clientPhone || caso.clientPhone
       });
       
       if (updatedCase) {
-        console.log('✅ Caso actualizado exitosamente en el webhook');
         setCaso(updatedCase);
       } else {
         throw new Error('No se recibió respuesta del webhook');
@@ -812,9 +690,7 @@ const CaseDetail: React.FC = () => {
         setShowSuccessAnimation(false);
       }, 2000);
       
-      console.log('✅ Cambios guardados exitosamente');
     } catch (error) {
-      console.error('❌ Error al guardar los cambios:', error);
       alert('Error al guardar los cambios. Por favor, intenta nuevamente.');
     } finally {
       setTransitionLoading(false);
