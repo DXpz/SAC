@@ -39,11 +39,12 @@ const GestionAgentes: React.FC = () => {
 
 
   useEffect(() => {
-    // Limpiar caché de agentes al montar el componente para forzar recálculo
-    localStorage.removeItem('intelfon_agents');
+    // Solo cargar agentes al montar el componente
+    // No limpiar caché automáticamente para evitar recargas innecesarias
     loadAgentes();
     
     const handleAgenteCreado = () => {
+      // Solo recargar cuando se dispara el evento explícitamente
       localStorage.removeItem('intelfon_agents');
       loadAgentes();
     };

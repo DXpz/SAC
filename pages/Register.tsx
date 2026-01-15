@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import { UserPlus, Loader2, AlertCircle, ArrowLeft, ChevronRight } from 'lucide-react';
+import { UserPlus, Loader2, AlertCircle, ArrowLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 const Register: React.FC = () => {
@@ -10,6 +10,7 @@ const Register: React.FC = () => {
   const [pais, setPais] = useState('El Salvador');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const navigate = useNavigate();
   const { theme } = useTheme();
 
@@ -41,13 +42,17 @@ const Register: React.FC = () => {
       });
       
       // Si llegamos aquí, el usuario fue creado y almacenado exitosamente en n8n
-      // Mostrar mensaje de éxito antes de redirigir
+      // Mostrar animación de éxito
       setError('');
+      setShowSuccessAnimation(true);
       
-      // Después de crear la cuenta, volver a gestión de agentes
+      // Después de mostrar la animación, volver a gestión de agentes
       setTimeout(() => {
+        setShowSuccessAnimation(false);
+        // Disparar evento para que GestionAgentes recargue sin auto-recargar
+        window.dispatchEvent(new CustomEvent('agente-creado'));
         navigate('/app/agentes');
-      }, 500);
+      }, 2000);
     } catch (err: any) {
       // Mejorar mensajes de error para indicar problemas con n8n
       const errorMessage = err.message || 'Error al crear la cuenta. Intenta de nuevo.';
@@ -223,6 +228,136 @@ const Register: React.FC = () => {
           </form>
         </div>
       </div>
+
+      {/* Animación de éxito a pantalla completa */}
+      {showSuccessAnimation && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{
+            backgroundColor: 'rgba(15, 23, 42, 0.7)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            animation: 'fadeIn 0.3s ease-out'
+          }}
+        >
+          <div 
+            className="flex flex-col items-center justify-center"
+            style={{
+              animation: 'scaleInBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+            }}
+          >
+            {/* Icono de check animado */}
+            <div
+              className="relative mb-6"
+              style={{
+                animation: 'checkMark 0.5s ease-out 0.3s both'
+              }}
+            >
+              <div
+                className="w-24 h-24 rounded-full flex items-center justify-center"
+                style={{
+                  background: 'linear-gradient(135deg, var(--color-brand-red), var(--color-accent-red))',
+                  boxShadow: '0 20px 60px rgba(200, 21, 27, 0.4)'
+                }}
+              >
+                <CheckCircle2 
+                  className="w-14 h-14 text-white" 
+                  style={{
+                    strokeWidth: 2.5
+                  }}
+                />
+              </div>
+              {/* Anillo de expansión */}
+              <div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  border: '3px solid var(--color-brand-red)',
+                  animation: 'ringExpand 0.8s ease-out 0.2s',
+                  opacity: 0
+                }}
+              />
+            </div>
+            
+            {/* Mensaje */}
+            <h2
+              className="text-2xl font-bold mb-2"
+              style={{
+                color: '#ffffff',
+                animation: 'fadeInUp 0.5s ease-out 0.4s both'
+              }}
+            >
+              ¡Agente creado exitosamente!
+            </h2>
+            <p
+              className="text-base"
+              style={{
+                color: 'rgba(255, 255, 255, 0.8)',
+                animation: 'fadeInUp 0.5s ease-out 0.5s both'
+              }}
+            >
+              Redirigiendo a la gestión de agentes...
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Estilos de animación inline */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes scaleInBounce {
+          0% {
+            transform: scale(0);
+            opacity: 0;
+          }
+          50% {
+            transform: scale(1.1);
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes checkMark {
+          0% {
+            transform: scale(0);
+            opacity: 0;
+          }
+          50% {
+            transform: scale(1.2);
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes ringExpand {
+          0% {
+            transform: scale(1);
+            opacity: 0.8;
+          }
+          100% {
+            transform: scale(1.5);
+            opacity: 0;
+          }
+        }
+        
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 };

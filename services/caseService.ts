@@ -1269,11 +1269,12 @@ export const updateCaseStatus = async (
 /**
  * Reasigna un agente a un caso
  * Según documentación: update_type: "reassign", case_id, agent_id
+ * Retorna void - el frontend debe recargar el caso después de la reasignación
  */
 export const reassignCase = async (
   caseId: string,
   agentId: string
-): Promise<Case> => {
+): Promise<void> => {
   const actor = getActor();
   
   if (!actor) {
@@ -1294,7 +1295,7 @@ export const reassignCase = async (
     }
   };
   
-  // Enviar reasignación
+  // Enviar reasignación al webhook de casos
   const response = await callCaseWebhook(payload);
   
   // Verificar respuesta exitosa
@@ -1303,14 +1304,9 @@ export const reassignCase = async (
     throw new Error(errorMsg);
   }
   
-  // Obtener el caso actualizado después de la reasignación
-  const updatedCase = await getCaseById(caseId);
-  
-  if (!updatedCase) {
-    throw new Error('No se pudo obtener el caso actualizado después de la reasignación');
-  }
-  
-  return updatedCase;
+  // Si el webhook no retornó error, la reasignación fue exitosa
+  // El frontend se encargará de recargar el caso para mostrar los cambios
+  return;
 };
 
 /**
@@ -1366,17 +1362,18 @@ export const updateCaseData = async (
   
   // Mapear los campos según la documentación de case.edit
   // Usar valores de updates si están presentes, sino usar valores del caso actual
+  // Asegurar que todos los campos sean strings (incluso si están vacíos, enviar "")
   const payload: CaseWebhookPayload = {
     action: 'case.edit',
     actor,
     data: {
       case_id: caseId,
-      asunto: updates.asunto !== undefined ? updates.asunto : (currentCase?.subject || ''),
-      descripcion: updates.descripcion !== undefined ? updates.descripcion : (currentCase?.description || ''),
-      cliente_id: updates.cliente_id !== undefined ? updates.cliente_id : (currentCase?.clientId || ''),
-      cliente_nombre: updates.client_name !== undefined ? updates.client_name : (currentCase?.clientName || ''),
-      email_cliente: updates.client_email !== undefined ? updates.client_email : (currentCase?.clientEmail || ''),
-      telefono_cliente: updates.client_phone !== undefined ? updates.client_phone : (currentCase?.clientPhone || '')
+      asunto: (updates.asunto !== undefined ? updates.asunto : (currentCase?.subject || '')) || '',
+      descripcion: (updates.descripcion !== undefined ? updates.descripcion : (currentCase?.description || '')) || '',
+      cliente_id: (updates.cliente_id !== undefined ? updates.cliente_id : (currentCase?.clientId || '')) || '',
+      cliente_nombre: (updates.client_name !== undefined ? updates.client_name : (currentCase?.clientName || '')) || '',
+      email_cliente: (updates.client_email !== undefined ? updates.client_email : (currentCase?.clientEmail || '')) || '',
+      telefono_cliente: (updates.client_phone !== undefined ? updates.client_phone : (currentCase?.clientPhone || '')) || ''
     }
   };
 

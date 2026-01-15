@@ -184,17 +184,47 @@ const CaseDetail: React.FC = () => {
         }
       }
 
-      // Enriquecer con agente completo SOLO si falta
-      if (agentes.length > 0 && casoActualizado.agentId) {
-        const agente = agentes.find(a => a.idAgente === casoActualizado.agentId);
-        if (agente) {
-          // Solo actualizar si falta el nombre o el objeto agente
-          if (!casoActualizado.agentName || casoActualizado.agentName === 'Sin asignar') {
+      // Enriquecer con agente completo - buscar por múltiples campos
+      if (agentes.length > 0) {
+        // Buscar agente por múltiples campos posibles
+        const agentIdToSearch = casoActualizado.agentId || 
+                                casoActualizado.agenteAsignado?.idAgente || 
+                                (casoActualizado as any).agente_id ||
+                                (casoActualizado as any).agente_user_id ||
+                                '';
+        
+        if (agentIdToSearch) {
+          // Buscar agente por idAgente (comparación flexible)
+          let agente = agentes.find(a => {
+            const aId = String(a.idAgente || '').trim();
+            const searchId = String(agentIdToSearch).trim();
+            
+            // Comparación exacta
+            if (aId === searchId) return true;
+            
+            // Comparación sin prefijos (AG-0001 vs 0001)
+            const aIdNum = aId.replace(/^AG-?/i, '').replace(/^0+/, '');
+            const searchIdNum = searchId.replace(/^AG-?/i, '').replace(/^0+/, '');
+            if (aIdNum && searchIdNum && aIdNum === searchIdNum) return true;
+            
+            // Comparación numérica pura
+            const aIdPure = aId.replace(/\D/g, '');
+            const searchIdPure = searchId.replace(/\D/g, '');
+            if (aIdPure && searchIdPure && aIdPure === searchIdPure) return true;
+            
+            return false;
+          });
+          
+          if (agente) {
+            // Actualizar siempre el agente después de reasignación
+            casoActualizado.agentId = agente.idAgente;
             casoActualizado.agentName = agente.nombre;
-            updated = true;
-          }
-          if (!casoActualizado.agenteAsignado) {
             casoActualizado.agenteAsignado = agente;
+            updated = true;
+          } else if (!casoActualizado.agentName || casoActualizado.agentName === 'Sin asignar') {
+            // Si no se encontró el agente pero hay un agentId, marcar como sin asignar
+            casoActualizado.agentName = 'Sin asignar';
+            casoActualizado.agenteAsignado = null;
             updated = true;
           }
         }
@@ -310,6 +340,75 @@ const CaseDetail: React.FC = () => {
         }
         
       } else {
+      }
+      
+      // ENRIQUECER CON DATOS DEL AGENTE SI FALTA EL NOMBRE
+      const agentIdDelCaso = data.agentId || data.agenteAsignado?.idAgente || (data as any).agente_id || (data as any).agente_user_id || '';
+      const agentNameDelCaso = data.agentName || data.agenteAsignado?.nombre || '';
+      
+      if (agentIdDelCaso && (!agentNameDelCaso || agentNameDelCaso === 'Sin asignar' || agentNameDelCaso.trim() === '')) {
+        // Si ya tenemos agentes cargados, buscar ahí primero
+        if (agentes.length > 0) {
+          const agenteEncontrado = agentes.find(a => {
+            const aId = String(a.idAgente || '').trim();
+            const searchId = String(agentIdDelCaso).trim();
+            
+            // Comparación exacta
+            if (aId === searchId) return true;
+            
+            // Comparación sin prefijos (AG-0001 vs 0001)
+            const aIdNum = aId.replace(/^AG-?/i, '').replace(/^0+/, '');
+            const searchIdNum = searchId.replace(/^AG-?/i, '').replace(/^0+/, '');
+            if (aIdNum && searchIdNum && aIdNum === searchIdNum) return true;
+            
+            // Comparación numérica pura
+            const aIdPure = aId.replace(/\D/g, '');
+            const searchIdPure = searchId.replace(/\D/g, '');
+            if (aIdPure && searchIdPure && aIdPure === searchIdPure) return true;
+            
+            return false;
+          });
+          
+          if (agenteEncontrado) {
+            data.agentId = agenteEncontrado.idAgente;
+            data.agentName = agenteEncontrado.nombre;
+            data.agenteAsignado = agenteEncontrado;
+          }
+        } else {
+          // Si no hay agentes en memoria, cargarlos ahora
+          try {
+            const agentesDesdeAPI = await api.getAgentes();
+            setAgentes(agentesDesdeAPI);
+            
+            const agenteEncontrado = agentesDesdeAPI.find(a => {
+              const aId = String(a.idAgente || '').trim();
+              const searchId = String(agentIdDelCaso).trim();
+              
+              // Comparación exacta
+              if (aId === searchId) return true;
+              
+              // Comparación sin prefijos
+              const aIdNum = aId.replace(/^AG-?/i, '').replace(/^0+/, '');
+              const searchIdNum = searchId.replace(/^AG-?/i, '').replace(/^0+/, '');
+              if (aIdNum && searchIdNum && aIdNum === searchIdNum) return true;
+              
+              // Comparación numérica pura
+              const aIdPure = aId.replace(/\D/g, '');
+              const searchIdPure = searchId.replace(/\D/g, '');
+              if (aIdPure && searchIdPure && aIdPure === searchIdPure) return true;
+              
+              return false;
+            });
+            
+            if (agenteEncontrado) {
+              data.agentId = agenteEncontrado.idAgente;
+              data.agentName = agenteEncontrado.nombre;
+              data.agenteAsignado = agenteEncontrado;
+            }
+          } catch (error) {
+            // Si falla cargar agentes, continuar sin enriquecer
+          }
+        }
       }
       
       // Normalizar el estado para asegurar que sea válido
@@ -619,7 +718,7 @@ const CaseDetail: React.FC = () => {
   };
 
   const handleConfirmReassign = async () => {
-    if (!caso || !id || !selectedAgentId || !reassignJustification.trim()) {
+    if (!caso || !id || !selectedAgentId) {
       return;
     }
 
@@ -632,11 +731,29 @@ const CaseDetail: React.FC = () => {
     try {
       setTransitionLoading(true);
 
-      // Llamar a la API para reasignar
-      await api.reassignCase(id, selectedAgentId, reassignJustification);
+      // Llamar a la API para reasignar (sin justificación)
+      await api.reassignCase(id, selectedAgentId, '');
 
-      // Recargar el caso para obtener los datos actualizados
+      // Esperar un momento para que el webhook procese la reasignación
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Recargar el caso para obtener los datos actualizados con el nuevo agente
       await loadCaso(id);
+      
+      // Forzar actualización del agente después de recargar
+      // Buscar el agente seleccionado en la lista de agentes
+      if (agentes.length > 0) {
+        const agenteReasignado = agentes.find(a => a.idAgente === selectedAgentId);
+        if (agenteReasignado && caso) {
+          // Actualizar el caso con el nuevo agente
+          setCaso({
+            ...caso,
+            agentId: agenteReasignado.idAgente,
+            agentName: agenteReasignado.nombre,
+            agenteAsignado: agenteReasignado
+          });
+        }
+      }
 
       // Cerrar modal
       setShowReassignModal(false);
@@ -649,8 +766,8 @@ const CaseDetail: React.FC = () => {
         setShowSuccessAnimation(false);
       }, 2000);
 
-    } catch (error) {
-      alert('Error al reasignar el caso. Por favor, intenta nuevamente.');
+    } catch (error: any) {
+      alert(`Error al reasignar el caso: ${error.message || 'Error desconocido'}`);
     } finally {
       setTransitionLoading(false);
     }
@@ -663,19 +780,29 @@ const CaseDetail: React.FC = () => {
       setTransitionLoading(true);
       
       // Actualizar el caso en el webhook
-      // Si editedCase tiene clienteId, usarlo (incluso si es una cadena vacía, significa que se limpió)
-      // Si no, usar el clienteId del caso original
+      // Si editedCase tiene una propiedad, usarla (incluso si es una cadena vacía)
+      // Si no, usar el valor del caso original
       const clienteIdToSend = editedCase.hasOwnProperty('clienteId') 
-        ? editedCase.clienteId 
-        : (caso.clienteId || caso.clientId);
+        ? (editedCase.clienteId || '')
+        : (caso.clienteId || caso.clientId || '');
       
       const updatedCase = await updateCaseData(id, {
-        asunto: editedCase.subject || caso.subject,
-        descripcion: editedCase.description || caso.description,
+        asunto: editedCase.hasOwnProperty('subject') 
+          ? (editedCase.subject || '')
+          : (caso.subject || ''),
+        descripcion: editedCase.hasOwnProperty('description')
+          ? (editedCase.description || '')
+          : (caso.description || ''),
         cliente_id: clienteIdToSend,
-        client_name: editedCase.clientName || caso.clientName,
-        client_email: editedCase.clientEmail || caso.clientEmail,
-        client_phone: editedCase.clientPhone || caso.clientPhone
+        client_name: editedCase.hasOwnProperty('clientName')
+          ? (editedCase.clientName || '')
+          : (caso.clientName || ''),
+        client_email: editedCase.hasOwnProperty('clientEmail')
+          ? (editedCase.clientEmail || '')
+          : (caso.clientEmail || ''),
+        client_phone: editedCase.hasOwnProperty('clientPhone')
+          ? (editedCase.clientPhone || '')
+          : (caso.clientPhone || '')
       });
       
       if (updatedCase) {
@@ -1140,24 +1267,53 @@ const CaseDetail: React.FC = () => {
                     {historialOrdenado.map((entry: HistorialEntry | any, idx: number) => {
                       // Formatear texto del evento según tipo
                       let textoEvento = '';
-                      if (entry.tipo_evento === 'CAMBIO_ESTADO') {
+                      // Detectar si es realmente un cambio de estado o una edición/reasignación
+                      const esCambioEstadoReal = entry.tipo_evento === 'CAMBIO_ESTADO' && 
+                                                 entry.estado_anterior && 
+                                                 entry.estado_nuevo &&
+                                                 entry.estado_anterior !== 'N/A' && 
+                                                 entry.estado_nuevo !== 'N/A' &&
+                                                 entry.estado_anterior !== entry.estado_nuevo;
+                      
+                      // Detectar si es una edición (contiene "Se ha editado" o similar en el detalle)
+                      const justificacion = entry.justificacion || entry.detalle || '';
+                      const esEdicion = justificacion.toUpperCase().includes('SE HA EDITADO') || 
+                                       justificacion.toUpperCase().includes('EDITADO') ||
+                                       justificacion.toUpperCase().includes('ACTUALIZADO') ||
+                                       (entry.estado_anterior === 'N/A' && entry.estado_nuevo === 'N/A' && entry.tipo_evento === 'CAMBIO_ESTADO');
+                      
+                      // Detectar si es reasignación
+                      const esReasignacion = justificacion.toUpperCase().includes('REASIGN') || 
+                                            justificacion.toUpperCase().includes('ASIGNAR');
+                      
+                      if (esCambioEstadoReal && !esEdicion && !esReasignacion) {
+                        // Es un cambio de estado real: mostrar "Estado cambiado de X a Y"
+                        textoEvento = `Estado cambiado de ${entry.estado_anterior} a ${entry.estado_nuevo}`;
+                      } else if (entry.tipo_evento === 'CAMBIO_ESTADO') {
                         // Si es el primer cambio de estado (de N/A a NUEVO), es la creación del caso
                         const esCreacion = (entry.estado_anterior === 'N/A' || !entry.estado_anterior) && 
                                           (entry.estado_nuevo === 'NUEVO' || entry.estado_nuevo === 'Nuevo');
                         
                         if (esCreacion) {
                           textoEvento = 'Caso registrado en el sistema';
+                        } else if (esEdicion || esReasignacion) {
+                          // Es una edición o reasignación marcada como CAMBIO_ESTADO
+                          textoEvento = 'Actualización del caso';
                         } else {
-                          textoEvento = `Estado cambiado de ${entry.estado_anterior || 'N/A'} a ${entry.estado_nuevo || 'N/A'}`;
+                          // Cambio de estado pero con valores N/A o iguales
+                          textoEvento = 'Actualización del caso';
                         }
                       } else {
-                        // Compatibilidad con formato anterior
+                        // Para otros tipos de eventos (edición, reasignación, etc.), mostrar texto genérico
                         let textoOriginal = entry.detalle || entry.descripcion || entry.accion || 'Evento del caso';
                         
                         // Reemplazar "INGRESO DE NUEVO CASO" por texto más profesional
                         if (textoOriginal.toUpperCase().includes('INGRESO DE NUEVO CASO') || 
                             textoOriginal.toUpperCase().includes('INGRESO NUEVO CASO')) {
                           textoEvento = 'Caso registrado en el sistema';
+                        } else if (!textoOriginal || textoOriginal.trim() === '') {
+                          // Si no hay texto específico, mostrar genérico
+                          textoEvento = 'Actualización del caso';
                         } else {
                           textoEvento = textoOriginal;
                         }
@@ -1166,7 +1322,7 @@ const CaseDetail: React.FC = () => {
                       const fecha = entry.fecha || entry.fechaHora || entry.createdAt || new Date().toISOString();
                       const autorNombre = entry.autor_nombre || entry.usuario || entry.user || 'Sistema';
                       const autorRol = entry.autor_rol || 'sistema';
-                      const justificacion = entry.justificacion || entry.detalle || '';
+                      // justificacion ya está declarada arriba
 
                       return (
                         <div key={idx} className="relative pl-12 border-l-2" style={{borderColor: 'rgba(59, 130, 246, 0.2)'}}>
@@ -1873,39 +2029,6 @@ const CaseDetail: React.FC = () => {
                 </div>
               </div>
 
-              {/* Justificación */}
-              <div>
-                <label className="block text-xs font-bold mb-2" style={{color: styles.text.secondary}}>
-                  Justificación de la reasignación <span className="text-red-500">*</span>
-                </label>
-                <textarea 
-                  className="w-full h-24 p-3 rounded-lg border outline-none focus:ring-2 transition-all text-xs resize-none"
-                  style={{
-                    backgroundColor: styles.input.backgroundColor,
-                    borderColor: reassignJustification.trim() ? styles.input.borderColor : 'rgba(220, 38, 38, 0.4)',
-                    color: styles.input.color
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#107ab4';
-                    e.target.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#ffffff';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(16, 122, 180, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    if (!reassignJustification.trim()) {
-                      e.target.style.borderColor = 'rgba(220, 38, 38, 0.5)';
-                    } else {
-                      e.target.style.borderColor = styles.input.borderColor;
-                    }
-                    e.target.style.backgroundColor = styles.input.backgroundColor;
-                    e.target.style.boxShadow = 'none';
-                  }}
-                  placeholder="Describe el motivo de la reasignación..."
-                  value={reassignJustification}
-                  onChange={e => setReassignJustification(e.target.value)}
-                  required
-                />
-              </div>
-
               <div className="flex gap-2.5 pt-2">
                 <button 
                   type="button"
@@ -1929,7 +2052,7 @@ const CaseDetail: React.FC = () => {
                 </button>
                 <button 
                   onClick={handleConfirmReassign}
-                  disabled={transitionLoading || !selectedAgentId || !reassignJustification.trim()}
+                  disabled={transitionLoading || !selectedAgentId}
                   className="flex-1 py-2.5 text-xs font-semibold text-white rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{backgroundColor: '#c8151b'}}
                   onMouseEnter={(e) => {

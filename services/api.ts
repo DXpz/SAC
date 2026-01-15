@@ -1393,52 +1393,31 @@ export const api = {
 
     const passwordFinal = password && password.trim() ? password.trim() : generarPasswordAleatoria();
 
-    // Determinar si es un agente o un usuario administrativo
+    // Determinar el rol del usuario
     const rolUsuario = additionalData?.rol || 'AGENTE';
-    const esAgente = rolUsuario === 'AGENTE';
     
-    // Construir el payload según el tipo de usuario
-    let payload: any;
-    let webhookUrl: string;
+    // Construir el payload - SIEMPRE usar user.create para crear usuarios desde el panel admin
+    // Esto incluye agentes, supervisores, gerentes, etc.
+    const payload: any = {
+      action: 'user.create',
+      actor: {
+        user_id: Number(actor.user_id) || 0,
+        email: actor.email,
+        role: actor.role
+      },
+      data: {
+        nombre: name.trim(),
+        email: email.trim().toLowerCase(),
+        password: passwordFinal, // IMPORTANTE: incluir la contraseña generada
+        role: rolUsuario, // IMPORTANTE: usar 'role' no 'rol'
+        pais: additionalData?.pais || 'El_Salvador' // Incluir país si está disponible
+      }
+    };
     
-    if (esAgente) {
-      // Para AGENTES: usar agent.create y webhook de agentes
-      payload = {
-        action: 'agent.create',
-        actor: {
-          user_id: Number(actor.user_id) || 0,
-          email: actor.email,
-          role: actor.role
-        },
-        data: {
-          agent_id: '', // Vacío para crear nuevo agente
-          nombre: name.trim(),
-          email: email.trim().toLowerCase(),
-          pais: additionalData?.pais || 'El Salvador',
-          rol: 'AGENTE',
-          estado: additionalData?.estado || 'ACTIVO',
-          password: passwordFinal
-        }
-      };
-      webhookUrl = API_CONFIG.WEBHOOK_AGENTES_URL;
-    } else {
-      // Para usuarios administrativos (SUPERVISOR, GERENTE, ADMINISTRADOR): usar user.create
-      payload = {
-        action: 'user.create',
-        actor: {
-          user_id: Number(actor.user_id) || 0,
-          email: actor.email,
-          role: actor.role
-        },
-        data: {
-          nombre: name.trim(),
-          email: email.trim().toLowerCase(),
-          password: passwordFinal,
-          role: rolUsuario
-        }
-      };
-      webhookUrl = API_CONFIG.WEBHOOK_CREAR_USUARIO_URL;
-    }
+    // Log para debugging
+    console.log('Payload user.create:', JSON.stringify(payload, null, 2));
+    
+    const webhookUrl = API_CONFIG.WEBHOOK_CREAR_USUARIO_URL;
 
     
     // Llamar al webhook correspondiente

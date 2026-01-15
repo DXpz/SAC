@@ -60,13 +60,13 @@ const AdminUsers: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<DemoUser | null>(null);
-  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   
   // Formulario
   const [formData, setFormData] = useState({
     nombre: '',
     email: '',
     rol: 'AGENTE' as UserRole,
+    pais: 'El_Salvador',
     activo: true,
     enVacaciones: false
   });
@@ -278,12 +278,14 @@ const AdminUsers: React.FC = () => {
       
       // Llamar al webhook para crear usuario
       // La contraseña se genera automáticamente (8 caracteres aleatorios)
+      // Por defecto el usuario se crea activo
       const result = await api.createAccount(
         formData.email.trim(),
         '', // Vacío para que se genere automáticamente
         formData.nombre.trim(),
         {
-          rol: formData.rol // Se enviará como 'role' en el payload
+          rol: formData.rol, // Se enviará como 'role' en el payload
+          pais: formData.pais // Incluir país
         }
       );
       
@@ -293,8 +295,7 @@ const AdminUsers: React.FC = () => {
       await loadUsers();
       
       setShowCreateModal(false);
-      setFormData({ nombre: '', email: '', rol: 'AGENTE', activo: true, enVacaciones: false });
-      showSuccessFeedback();
+      setFormData({ nombre: '', email: '', rol: 'AGENTE', pais: 'El_Salvador', activo: true, enVacaciones: false });
     } catch (error: any) {
       // Mensaje de error más detallado para debugging
       let errorMessage = error.message || 'Error desconocido al crear el usuario';
@@ -318,7 +319,6 @@ const AdminUsers: React.FC = () => {
     setUsers(users.map(u => 
       u.id === userId ? { ...u, rol: newRole } : u
     ));
-    showSuccessFeedback();
     
     // TODO: Preparar para webhook n8n
     // await sendUserToWebhook('update', { id: userId, rol: newRole });
@@ -328,7 +328,6 @@ const AdminUsers: React.FC = () => {
     setUsers(users.map(u => 
       u.id === userId ? { ...u, activo: !u.activo, enVacaciones: false } : u
     ));
-    showSuccessFeedback();
     
     // TODO: Preparar para webhook n8n
     // await sendUserToWebhook('update', { id: userId, activo: !users.find(u => u.id === userId)?.activo });
@@ -341,7 +340,6 @@ const AdminUsers: React.FC = () => {
     setUsers(users.map(u => 
       u.id === userId ? { ...u, enVacaciones: !u.enVacaciones, activo: u.enVacaciones ? true : u.activo } : u
     ));
-    showSuccessFeedback();
     
     // TODO: Preparar para webhook n8n
     // await sendUserToWebhook('update', { id: userId, enVacaciones: !user.enVacaciones });
@@ -353,7 +351,6 @@ const AdminUsers: React.FC = () => {
     setUsers(users.filter(u => u.id !== selectedUser.id));
     setShowDeleteModal(false);
     setSelectedUser(null);
-    showSuccessFeedback();
     
     // TODO: Preparar para webhook n8n
     // await sendUserToWebhook('delete', { id: selectedUser.id });
@@ -365,6 +362,7 @@ const AdminUsers: React.FC = () => {
       nombre: user.nombre,
       email: user.email,
       rol: user.rol,
+      pais: 'El_Salvador', // Por defecto, se puede agregar campo de país al usuario si es necesario
       activo: user.activo,
       enVacaciones: user.enVacaciones || false
     });
@@ -396,16 +394,10 @@ const AdminUsers: React.FC = () => {
     ));
     setShowEditModal(false);
     setSelectedUser(null);
-    setFormData({ nombre: '', email: '', rol: 'AGENTE', activo: true, enVacaciones: false });
-    showSuccessFeedback();
+    setFormData({ nombre: '', email: '', rol: 'AGENTE', pais: 'El_Salvador', activo: true, enVacaciones: false });
     
     // TODO: Preparar para webhook n8n
     // await sendUserToWebhook('update', { id: selectedUser.id, ...formData });
-  };
-
-  const showSuccessFeedback = () => {
-    setShowSuccessAnimation(true);
-    setTimeout(() => setShowSuccessAnimation(false), 2000);
   };
 
   // ==================================================
@@ -904,6 +896,22 @@ const AdminUsers: React.FC = () => {
                 />
               </div>
               <div>
+                <label className="block text-xs font-semibold mb-1" style={{color: styles.text.secondary}}>País</label>
+                <select
+                  value={formData.pais}
+                  onChange={(e) => setFormData({...formData, pais: e.target.value})}
+                  className="w-full px-3 py-2 rounded-lg border text-sm"
+                  style={{
+                    backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
+                    borderColor: 'rgba(148, 163, 184, 0.3)',
+                    color: styles.text.primary
+                  }}
+                >
+                  <option value="El_Salvador">El Salvador</option>
+                  <option value="Guatemala">Guatemala</option>
+                </select>
+              </div>
+              <div>
                 <label className="block text-xs font-semibold mb-1" style={{color: styles.text.secondary}}>Rol</label>
                 <select
                   value={formData.rol}
@@ -920,26 +928,6 @@ const AdminUsers: React.FC = () => {
                   <option value="GERENTE">GERENTE</option>
                   <option value="ADMIN">ADMIN</option>
                 </select>
-              </div>
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.activo}
-                    onChange={(e) => setFormData({...formData, activo: e.target.checked})}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-xs" style={{color: styles.text.secondary}}>Activo</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.enVacaciones}
-                    onChange={(e) => setFormData({...formData, enVacaciones: e.target.checked})}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-xs" style={{color: styles.text.secondary}}>En vacaciones</span>
-                </label>
               </div>
             </div>
             <div className="flex gap-3 mt-6">
@@ -1105,13 +1093,6 @@ const AdminUsers: React.FC = () => {
         </div>
       )}
 
-      {/* Animación de éxito */}
-      {showSuccessAnimation && (
-        <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-xl flex items-center gap-2 animate-slide-in">
-          <CheckCircle2 className="w-5 h-5" />
-          <span className="font-semibold">Operación exitosa</span>
-        </div>
-      )}
     </div>
   );
 };
