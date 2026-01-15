@@ -41,6 +41,7 @@ const CaseDetail: React.FC = () => {
   const [showClienteQuickSelectModal, setShowClienteQuickSelectModal] = useState(false);
   const [clienteQuickSearchTerm, setClienteQuickSearchTerm] = useState('');
   const [pendingStateAfterClientSelect, setPendingStateAfterClientSelect] = useState<string | null>(null);
+  const [pendingClienteForStateChange, setPendingClienteForStateChange] = useState<Cliente | null>(null);
 
   useEffect(() => {
     const initializeData = async () => {
@@ -370,13 +371,38 @@ const CaseDetail: React.FC = () => {
 
     setTransitionLoading(true);
     try {
+      // Obtener cliente_id: primero del cliente pendiente (si hay uno seleccionado), sino del caso actual
+      let clienteId = '';
+      let clienteToUpdate: Cliente | null = null;
+      
+      if (pendingClienteForStateChange) {
+        // Si hay un cliente pendiente de la selección rápida, usarlo
+        clienteId = pendingClienteForStateChange.idCliente;
+        clienteToUpdate = pendingClienteForStateChange;
+        // Limpiar el cliente pendiente después de usarlo
+        setPendingClienteForStateChange(null);
+      } else {
+        // Si no hay cliente pendiente, usar el del caso actual
+        clienteId = caso?.clientId || caso?.clienteId || caso?.cliente?.idCliente || '';
+      }
+      
+      // Si hay un cliente pendiente, actualizar el caso primero con el cliente
+      if (clienteToUpdate && id) {
+        await updateCaseData(id, {
+          cliente_id: clienteToUpdate.idCliente,
+          client_name: clienteToUpdate.nombreEmpresa,
+          client_email: caso?.clientEmail || clienteToUpdate.email,
+          client_phone: caso?.clientPhone || clienteToUpdate.telefono
+        });
+      }
       
       // Enviar actualización directamente al webhook
       // NO usar lógica local, todo debe ir al webhook
       const resultado = await updateCaseStatus(
         caso.id || caso.ticketNumber || caso.idCaso || id,
         newState,
-        justificacion
+        justificacion,
+        clienteId
       );
       
       // Si llegamos aquí, el webhook ACEPTÓ el cambio (NO hubo error)
@@ -542,47 +568,26 @@ const CaseDetail: React.FC = () => {
   };
   
   // Selección rápida de cliente desde el modal (sin entrar en modo edición)
-  const handleQuickClienteSelect = async (cliente: Cliente) => {
+  const handleQuickClienteSelect = (cliente: Cliente) => {
     if (!caso || !id) return;
     
-    try {
-      setTransitionLoading(true);
-      
-      // Actualizar el caso en el webhook con el cliente seleccionado
-      const updatedCase = await updateCaseData(id, {
-        cliente_id: cliente.idCliente,
-        client_name: cliente.nombreEmpresa,
-        client_email: caso.clientEmail || cliente.email,
-        client_phone: caso.clientPhone || cliente.telefono
-      });
-      
-      if (updatedCase) {
-        setCaso(updatedCase);
-      } else {
-        throw new Error('No se recibió respuesta del webhook');
-      }
-      
-      // Cerrar modal de selección de cliente
-      setShowClienteQuickSelectModal(false);
-      setClienteQuickSearchTerm('');
-      
-      // Continuar con el cambio de estado a "En Proceso"
-      const stateToChange = pendingStateAfterClientSelect;
-      setPendingStateAfterClientSelect(null);
-      
-      setTransitionLoading(false);
-      
-      if (stateToChange) {
-        // Abrir modal de justificación para el cambio de estado
-        setPendingNewState(stateToChange);
-        setJustification('');
-        setErrorMessage('');
-        setShowJustificationModal(true);
-      }
-      
-    } catch (error) {
-      setTransitionLoading(false);
-      alert('Error al asignar el cliente. Por favor, intente nuevamente.');
+    // Guardar el cliente seleccionado en el estado (NO enviarlo aún)
+    setPendingClienteForStateChange(cliente);
+    
+    // Cerrar modal de selección de cliente
+    setShowClienteQuickSelectModal(false);
+    setClienteQuickSearchTerm('');
+    
+    // Continuar con el cambio de estado a "En Proceso"
+    const stateToChange = pendingStateAfterClientSelect;
+    setPendingStateAfterClientSelect(null);
+    
+    if (stateToChange) {
+      // Abrir modal de justificación para el cambio de estado
+      setPendingNewState(stateToChange);
+      setJustification('');
+      setErrorMessage('');
+      setShowJustificationModal(true);
     }
   };
 

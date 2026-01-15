@@ -8,7 +8,7 @@ import { calculateBusinessDaysElapsed, calculateSLADelayDays } from '../utils/sl
 const WEBHOOK_CASOS_URL = API_CONFIG.WEBHOOK_CASOS_URL || '/api/casos';
 
 // Tipos para las acciones del webhook
-type CaseAction = 'case.create' | 'case.update' | 'case.read' | 'case.delete' | 'case.query' | 'case.agent';
+type CaseAction = 'case.create' | 'case.update' | 'case.edit' | 'case.read' | 'case.delete' | 'case.query' | 'case.agent';
 
 interface Actor {
   user_id: number;
@@ -43,6 +43,12 @@ interface CaseWebhookPayload {
     categoria?: CategoriaData;
     estado?: string;
     comentario?: string;
+    agent_id?: string; // Para reasignación de agente
+    // Campos para case.edit y case.update según documentación
+    cliente_id?: string;
+    cliente_nombre?: string;
+    email_cliente?: string;
+    telefono_cliente?: string;
     patch?: any; // Mantener para compatibilidad con otros usos
     [key: string]: any; // Para campos adicionales que pueda retornar el webhook
   };
@@ -920,7 +926,8 @@ const mapWebhookHistorialToFrontend = (webhookHistorial: WebhookHistorialEntry[]
 export const updateCaseStatus = async (
   caseId: string,
   newStatus: string,
-  detail?: string
+  detail?: string,
+  clienteId?: string
 ): Promise<Case> => {
   const actor = getActor();
   
@@ -939,7 +946,8 @@ export const updateCaseStatus = async (
       update_type: 'update',
       case_id: caseId,
       estado: newStatus,
-      comentario: detail || `Cambio de estado a ${newStatus}`
+      comentario: detail || `Cambio de estado a ${newStatus}`,
+      cliente_id: clienteId || undefined
     }
   };
   
@@ -1259,6 +1267,53 @@ export const updateCaseStatus = async (
 };
 
 /**
+ * Reasigna un agente a un caso
+ * Según documentación: update_type: "reassign", case_id, agent_id
+ */
+export const reassignCase = async (
+  caseId: string,
+  agentId: string
+): Promise<Case> => {
+  const actor = getActor();
+  
+  if (!actor) {
+    throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
+  }
+  
+  if (!caseId || !agentId) {
+    throw new Error('ID de caso y ID de agente son requeridos.');
+  }
+  
+  const payload: CaseWebhookPayload = {
+    action: 'case.update',
+    actor,
+    data: {
+      update_type: 'reassign',
+      case_id: caseId,
+      agent_id: agentId
+    }
+  };
+  
+  // Enviar reasignación
+  const response = await callCaseWebhook(payload);
+  
+  // Verificar respuesta exitosa
+  if (response && typeof response === 'object' && response.success === false) {
+    const errorMsg = typeof response.error === 'string' ? response.error : 'Error al reasignar el caso';
+    throw new Error(errorMsg);
+  }
+  
+  // Obtener el caso actualizado después de la reasignación
+  const updatedCase = await getCaseById(caseId);
+  
+  if (!updatedCase) {
+    throw new Error('No se pudo obtener el caso actualizado después de la reasignación');
+  }
+  
+  return updatedCase;
+};
+
+/**
  * Elimina un caso
  */
 export const deleteCase = async (caseId: string): Promise<boolean> => {
@@ -1287,6 +1342,7 @@ export const deleteCase = async (caseId: string): Promise<boolean> => {
 
 /**
  * Actualiza los datos del caso (cliente, asunto, descripción, etc.)
+ * Según documentación: action: "case.edit" con cliente_id, cliente_nombre, email_cliente, telefono_cliente, asunto, descripcion
  */
 export const updateCaseData = async (
   caseId: string,
@@ -1305,13 +1361,22 @@ export const updateCaseData = async (
     throw new Error('Usuario no autenticado');
   }
 
-
+  // Obtener el caso actual para usar sus valores como base si no se proporcionan en updates
+  const currentCase = await getCaseById(caseId);
+  
+  // Mapear los campos según la documentación de case.edit
+  // Usar valores de updates si están presentes, sino usar valores del caso actual
   const payload: CaseWebhookPayload = {
-    action: 'case.update',
+    action: 'case.edit',
     actor,
     data: {
       case_id: caseId,
-      patch: updates
+      asunto: updates.asunto !== undefined ? updates.asunto : (currentCase?.subject || ''),
+      descripcion: updates.descripcion !== undefined ? updates.descripcion : (currentCase?.description || ''),
+      cliente_id: updates.cliente_id !== undefined ? updates.cliente_id : (currentCase?.clientId || ''),
+      cliente_nombre: updates.client_name !== undefined ? updates.client_name : (currentCase?.clientName || ''),
+      email_cliente: updates.client_email !== undefined ? updates.client_email : (currentCase?.clientEmail || ''),
+      telefono_cliente: updates.client_phone !== undefined ? updates.client_phone : (currentCase?.clientPhone || '')
     }
   };
 

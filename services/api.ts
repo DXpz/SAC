@@ -526,9 +526,12 @@ export const api = {
   async updateCaseStatus(id: string, status: string, detail: string, extra?: any): Promise<boolean> {
     const user = this.getUser();
 
+    // Obtener cliente_id del caso si está disponible en extra o del caso actual
+    const clienteId = extra?.clienteId || extra?.cliente_id || extra?.clientId || null;
+
     // Actualizar usando caseService (conecta con n8n)
     // NO usar fallback local, si falla debe lanzar error
-    await caseService.updateCaseStatus(id, status, detail || `Cambio de estado a ${status}`);
+    await caseService.updateCaseStatus(id, status, detail || `Cambio de estado a ${status}`, clienteId || undefined);
     
     // Limpiar caché de casos para forzar actualización
     clearCache('cases');
@@ -1542,57 +1545,13 @@ export const api = {
   },
 
   async reassignCase(caseId: string, newAgentId: string, justification: string): Promise<boolean> {
-    const user = this.getUser();
-    const cases = await this.getCases();
-    const idx = cases.findIndex((c: any) => (c.id === caseId || c.idCaso === caseId || c.ticketNumber === caseId));
+    // Usar caseService.reassignCase según la documentación
+    // Formato: update_type: "reassign", case_id, agent_id
+    await caseService.reassignCase(caseId, newAgentId);
     
-    if (idx === -1) {
-      throw new Error('Caso no encontrado');
-    }
-
-    const caso = cases[idx];
-    const agentes = await this.getAgentes();
-    const nuevoAgente = agentes.find((a: any) => a.idAgente === newAgentId || a.id === newAgentId);
-    
-    if (!nuevoAgente) {
-      throw new Error('Agente no encontrado');
-    }
-
-    const agenteAnterior = caso.agenteAsignado?.nombre || caso.agentName || 'Sin asignar';
-    const agenteNuevo = nuevoAgente.nombre;
-
-    // Actualizar agente asignado
-    cases[idx].agenteAsignado = nuevoAgente;
-    cases[idx].agentId = nuevoAgente.idAgente;
-    cases[idx].agentName = nuevoAgente.nombre;
-
-    // Registrar en historial
-    if (!cases[idx].historial) cases[idx].historial = [];
-    const detalleCompleto = justification || `Reasignación de "${agenteAnterior}" a "${agenteNuevo}"`;
-    cases[idx].historial.unshift({
-      fechaHora: new Date().toISOString(),
-      detalle: detalleCompleto,
-      usuario: this.getUser()?.name || 'Sistema'
-    });
-
-    // Intentar actualizar en el backend
-    try {
-      await callCasesWebhook('POST', {
-        action: 'case.update',
-        actor: buildActorPayload(user),
-        data: {
-          case_id: caseId,
-          patch: {
-            agente_id: newAgentId,
-            descripcion: detalleCompleto
-          }
-        }
-      });
-    } catch (err) {
-    }
-
-    localStorage.setItem('intelfon_cases', JSON.stringify(cases));
+    // Limpiar caché de casos para forzar actualización
     clearCache('cases');
+    
     return true;
   },
 
