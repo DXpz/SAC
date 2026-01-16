@@ -5,7 +5,7 @@ import { Case, CaseStatus, Cliente, AutorRol, HistorialEntry } from '../types';
 import { CASE_TRANSITIONS, CASE_STATES, getStateColor, getStateBadgeColor } from '../constants';
 import { getAllowedTransitions } from '../services/caseStatusService';
 import { updateCaseStatus, updateCaseData } from '../services/caseService';
-import { ArrowLeft, MessageSquare, User, Building2, Phone, Mail, CheckCircle2, Clock, X, AlertTriangle, Lock, History, Users, TrendingUp, AlertCircle, Edit, Save, Search } from 'lucide-react';
+import { ArrowLeft, MessageSquare, User, Building2, Phone, Mail, CheckCircle2, Clock, X, AlertTriangle, Lock, History, Users, TrendingUp, AlertCircle, Edit, Save, Search, Folder } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 const CaseDetail: React.FC = () => {
@@ -296,10 +296,17 @@ const CaseDetail: React.FC = () => {
       
       
       // ENRIQUECER CON DATOS DEL CLIENTE SI FALTA EL NOMBRE
-      const clientIdDelCaso = data.clientId || data.clienteId;
-      const clientNameDelCaso = data.clientName;
+      const clientIdDelCaso = data.clientId || data.clienteId || data.cliente?.idCliente;
+      const clientNameDelCaso = data.clientName || data.cliente?.nombreEmpresa || '';
       
-      if (clientIdDelCaso && (!clientNameDelCaso || clientNameDelCaso === 'Sin cliente' || clientNameDelCaso.trim() === '')) {
+      // Verificar si necesita enriquecimiento: si hay clientId pero no hay nombre válido
+      const necesitaEnriquecimiento = clientIdDelCaso && 
+        (!clientNameDelCaso || 
+         clientNameDelCaso === 'Sin cliente' || 
+         clientNameDelCaso.trim() === '' ||
+         clientNameDelCaso === 'Por definir');
+      
+      if (necesitaEnriquecimiento) {
         
         // Si ya tenemos clientes cargados, buscar ahí primero
         if (clientes.length > 0) {
@@ -312,9 +319,12 @@ const CaseDetail: React.FC = () => {
           if (clienteEncontrado) {
             data.clientName = clienteEncontrado.nombreEmpresa;
             data.cliente = clienteEncontrado;
-            if (!data.clientEmail) data.clientEmail = clienteEncontrado.email;
-            if (!data.clientPhone) data.clientPhone = clienteEncontrado.telefono;
-          } else {
+            if (!data.clientEmail || data.clientEmail.trim() === '') {
+              data.clientEmail = clienteEncontrado.email;
+            }
+            if (!data.clientPhone || data.clientPhone.trim() === '') {
+              data.clientPhone = clienteEncontrado.telefono;
+            }
           }
         } else {
           // Si no hay clientes en memoria, cargarlos ahora
@@ -331,15 +341,30 @@ const CaseDetail: React.FC = () => {
             if (clienteEncontrado) {
               data.clientName = clienteEncontrado.nombreEmpresa;
               data.cliente = clienteEncontrado;
-              if (!data.clientEmail) data.clientEmail = clienteEncontrado.email;
-              if (!data.clientPhone) data.clientPhone = clienteEncontrado.telefono;
-            } else {
+              if (!data.clientEmail || data.clientEmail.trim() === '') {
+                data.clientEmail = clienteEncontrado.email;
+              }
+              if (!data.clientPhone || data.clientPhone.trim() === '') {
+                data.clientPhone = clienteEncontrado.telefono;
+              }
             }
           } catch (error) {
+            // Error al cargar clientes, continuar sin enriquecer
           }
         }
-        
-      } else {
+      } else if (clientIdDelCaso && clientNameDelCaso && clientNameDelCaso.trim() !== '') {
+        // Si ya tiene nombre pero no tiene el objeto cliente completo, intentar enriquecerlo
+        if (!data.cliente && clientes.length > 0) {
+          const clienteEncontrado = clientes.find(c => 
+            c.idCliente === clientIdDelCaso || 
+            c.idCliente.toLowerCase() === clientIdDelCaso.toLowerCase() ||
+            c.idCliente.replace(/\D/g, '') === clientIdDelCaso.replace(/\D/g, '')
+          );
+          
+          if (clienteEncontrado) {
+            data.cliente = clienteEncontrado;
+          }
+        }
       }
       
       // ENRIQUECER CON DATOS DEL AGENTE SI FALTA EL NOMBRE
@@ -468,6 +493,12 @@ const CaseDetail: React.FC = () => {
       return;
     }
 
+    // Asegurar que las animaciones estén desactivadas al inicio
+    setShowSuccessAnimation(false);
+    setShowInvalidCommentAnimation(false);
+    setShowErrorAnimation(false);
+    setErrorMessage('');
+
     setTransitionLoading(true);
     try {
       // Obtener cliente_id: primero del cliente pendiente (si hay uno seleccionado), sino del caso actual
@@ -497,6 +528,9 @@ const CaseDetail: React.FC = () => {
       
       // Enviar actualización directamente al webhook
       // NO usar lógica local, todo debe ir al webhook
+      // IMPORTANTE: Asegurar que la animación de éxito esté desactivada ANTES de llamar al webhook
+      setShowSuccessAnimation(false);
+      
       const resultado = await updateCaseStatus(
         caso.id || caso.ticketNumber || caso.idCaso || id,
         newState,
@@ -505,6 +539,10 @@ const CaseDetail: React.FC = () => {
       );
       
       // Si llegamos aquí, el webhook ACEPTÓ el cambio (NO hubo error)
+      // IMPORTANTE: Asegurar que las animaciones de error estén desactivadas
+      setShowInvalidCommentAnimation(false);
+      setShowErrorAnimation(false);
+      setErrorMessage('');
       
       // Recargar el caso desde el servidor para asegurar que tenemos los datos más actualizados
       await loadCaso(id);
@@ -513,23 +551,61 @@ const CaseDetail: React.FC = () => {
       setShowJustificationModal(false);
       setPendingNewState(null);
       setJustification('');
-      setErrorMessage('');
       
       // Mostrar animación de éxito SOLO si llegamos aquí (webhook aceptó y NO hubo error)
+      // IMPORTANTE: Solo mostrar si NO hubo error (esto se verifica porque estamos en el try)
+      // Asegurar que las animaciones de error estén desactivadas antes de mostrar éxito
+      setShowInvalidCommentAnimation(false);
+      setShowErrorAnimation(false);
+      
+      // Pequeño delay para asegurar que los estados anteriores se hayan actualizado
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      // Mostrar animación de éxito (si llegamos aquí es porque no hubo error)
       setShowSuccessAnimation(true);
       setTimeout(() => {
         setShowSuccessAnimation(false);
       }, 2000);
       
     } catch (err: any) {
+      // CRÍTICO: Asegurar que la animación de éxito NO se muestre cuando hay cualquier error
+      // Esto debe ser LO PRIMERO en el catch
+      setShowSuccessAnimation(false);
+      
+      // DEBUG: Log temporal para verificar que el error se captura (remover después)
+      console.log('[DEBUG] Error capturado en handleStateChange:', err?.message || err?.toString());
+      
+      // Pequeño delay para asegurar que el estado se actualice antes de mostrar otras animaciones
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
       const errorMsg = err?.message || err?.toString() || 'Error al actualizar el estado del caso';
       
-      
       // Verificar si es un error de validación de comentario
-      if (errorMsg.includes('Comentario no válido:')) {
+      // Buscar de múltiples formas para asegurar que se detecte
+      const esComentarioInvalido = errorMsg.includes('Comentario no válido:') || 
+                                    errorMsg.includes('Comentario no válido') ||
+                                    errorMsg.toLowerCase().includes('comentario no válido') ||
+                                    errorMsg.toLowerCase().includes('comentario invalido') ||
+                                    errorMsg.toLowerCase().includes('comentario no valido') ||
+                                    (err?.message && err.message.toLowerCase().includes('comentario')) ||
+                                    (err?.message && err.message.toLowerCase().includes('valid') && err.message.toLowerCase().includes('false'));
+      
+      if (esComentarioInvalido) {
         
         // Extraer el mensaje de retroalimentación
-        const feedback = errorMsg.replace('Comentario no válido: ', '');
+        let feedback = errorMsg
+          .replace(/Comentario no válido:\s*/i, '')
+          .replace(/Comentario no válido\s*/i, '')
+          .replace(/Comentario invalido:\s*/i, '')
+          .replace(/Comentario invalido\s*/i, '')
+          .replace(/Comentario no valido:\s*/i, '')
+          .replace(/Comentario no valido\s*/i, '')
+          .trim();
+        
+        if (!feedback || feedback === '') {
+          feedback = 'El comentario no cumple con los requisitos necesarios.';
+        }
+        
         setErrorMessage(feedback);
         
         // IMPORTANTE: NO cerrar el modal, mantenerlo abierto para que el usuario vea el error
@@ -538,8 +614,8 @@ const CaseDetail: React.FC = () => {
         // setPendingNewState(null); // COMENTADO - mantener estado pendiente
         // setJustification(''); // COMENTADO - mantener justificación para corrección
         
-        // NO mostrar animación de éxito - solo mostrar error
-        // setShowSuccessAnimation NO se ejecuta aquí
+        // Asegurar que la animación de éxito esté desactivada
+        setShowSuccessAnimation(false);
         
         // Mostrar animación de comentario no válido
         setShowInvalidCommentAnimation(true);
@@ -548,8 +624,9 @@ const CaseDetail: React.FC = () => {
           // NO limpiar errorMessage aquí para que permanezca visible
         }, 5000);
         
-        // IMPORTANTE: NO hacer return aquí, dejar que el finally maneje transitionLoading
-        // El finally se ejecutará y reseteará transitionLoading correctamente
+        // IMPORTANTE: Salir temprano para evitar ejecutar el código de otros errores
+        setTransitionLoading(false);
+        return;
       } else {
         // Para otros errores, cerrar el modal y mostrar el error
         setShowJustificationModal(false);
@@ -630,21 +707,26 @@ const CaseDetail: React.FC = () => {
   // ==================================================
   const handleEditClick = () => {
     setIsEditing(true);
+    // Obtener el nombre del cliente desde diferentes fuentes posibles
+    const clientName = caso?.clientName || caso?.cliente?.nombreEmpresa || '';
+    const clientEmail = caso?.clientEmail || caso?.cliente?.email || '';
+    const clientPhone = caso?.clientPhone || caso?.cliente?.telefono || '';
+    
     // Inicializar con los valores actuales del caso
     setEditedCase({
       subject: caso?.subject,
       description: caso?.description,
       clienteId: caso?.clienteId || caso?.clientId,
-      clientName: caso?.clientName,
-      clientEmail: caso?.clientEmail,
-      clientPhone: caso?.clientPhone
+      clientName: clientName,
+      clientEmail: clientEmail,
+      clientPhone: clientPhone
     });
     // Inicializar el término de búsqueda con el ID y nombre del cliente actual
     const clienteActual = clientes.find(c => c.idCliente === (caso?.clienteId || caso?.clientId));
     if (clienteActual) {
       setClienteSearchTerm(`${clienteActual.idCliente} - ${clienteActual.nombreEmpresa}`);
-    } else if (caso?.clientName) {
-      setClienteSearchTerm(caso.clientName);
+    } else if (clientName) {
+      setClienteSearchTerm(clientName);
     }
   };
 
@@ -786,27 +868,54 @@ const CaseDetail: React.FC = () => {
         ? (editedCase.clienteId || '')
         : (caso.clienteId || caso.clientId || '');
       
-      const updatedCase = await updateCaseData(id, {
-        asunto: editedCase.hasOwnProperty('subject') 
-          ? (editedCase.subject || '')
-          : (caso.subject || ''),
-        descripcion: editedCase.hasOwnProperty('description')
-          ? (editedCase.description || '')
-          : (caso.description || ''),
-        cliente_id: clienteIdToSend,
-        client_name: editedCase.hasOwnProperty('clientName')
-          ? (editedCase.clientName || '')
-          : (caso.clientName || ''),
-        client_email: editedCase.hasOwnProperty('clientEmail')
-          ? (editedCase.clientEmail || '')
-          : (caso.clientEmail || ''),
-        client_phone: editedCase.hasOwnProperty('clientPhone')
-          ? (editedCase.clientPhone || '')
-          : (caso.clientPhone || '')
-      });
+      // Obtener el nombre del cliente original desde diferentes fuentes
+      const originalClientName = caso?.clientName || caso?.cliente?.nombreEmpresa || '';
+      const originalClientEmail = caso?.clientEmail || caso?.cliente?.email || '';
+      const originalClientPhone = caso?.clientPhone || caso?.cliente?.telefono || '';
+      
+      // Construir el objeto de actualización
+      // Solo incluir campos que fueron realmente editados
+      const updates: any = {
+        cliente_id: clienteIdToSend
+      };
+      
+      // Solo enviar asunto si fue editado
+      if (editedCase.hasOwnProperty('subject')) {
+        updates.asunto = editedCase.subject || '';
+      }
+      
+      // Solo enviar descripción si fue editada
+      if (editedCase.hasOwnProperty('description')) {
+        updates.descripcion = editedCase.description || '';
+      }
+      
+      // Para client_name: solo enviar si fue editado explícitamente
+      // Si el usuario no tocó el campo, no enviarlo (dejar que use el valor del caso actual)
+      // Si el usuario lo editó, enviar el valor (incluso si es cadena vacía, para permitir borrarlo)
+      if (editedCase.hasOwnProperty('clientName')) {
+        // Si el valor editado es diferente al original, enviarlo
+        if (editedCase.clientName !== originalClientName) {
+          updates.client_name = editedCase.clientName || '';
+        }
+        // Si es igual, no enviarlo (dejar que use el valor del caso actual)
+      }
+      
+      // Solo enviar client_email si fue editado y es diferente al original
+      if (editedCase.hasOwnProperty('clientEmail') && editedCase.clientEmail !== originalClientEmail) {
+        updates.client_email = editedCase.clientEmail || '';
+      }
+      
+      // Solo enviar client_phone si fue editado y es diferente al original
+      if (editedCase.hasOwnProperty('clientPhone') && editedCase.clientPhone !== originalClientPhone) {
+        updates.client_phone = editedCase.clientPhone || '';
+      }
+      
+      const updatedCase = await updateCaseData(id, updates);
       
       if (updatedCase) {
-        setCaso(updatedCase);
+        // Recargar el caso completo para asegurar que todos los datos estén enriquecidos
+        // Esto es importante porque el webhook puede no retornar todos los datos del cliente
+        await loadCaso(id);
       } else {
         throw new Error('No se recibió respuesta del webhook');
       }
@@ -851,13 +960,38 @@ const CaseDetail: React.FC = () => {
   const now = new Date();
   const totalMs = slaDeadline.getTime() - createdDate.getTime();
   const elapsedMs = now.getTime() - createdDate.getTime();
-  const slaProgress = Math.min(100, Math.max(0, (elapsedMs / totalMs) * 100));
   
   const daysOverdue = caso.slaExpired ? Math.floor((now.getTime() - slaDeadline.getTime()) / (1000 * 60 * 60 * 24)) : 0;
   const hoursOverdue = caso.slaExpired ? Math.floor(((now.getTime() - slaDeadline.getTime()) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)) : 0;
 
   const daysRemaining = !caso.slaExpired ? Math.floor((slaDeadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
   const hoursRemaining = !caso.slaExpired ? Math.floor(((slaDeadline.getTime() - now.getTime()) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)) : 0;
+
+  // Calcular progreso basado en el estado del caso
+  // 0% = Nuevo, 25% = En Proceso, 50% = Pendiente Cliente, 75% = Escalado, 100% = Resuelto/Cerrado
+  const getProgressByStatus = (status: string | CaseStatus): number => {
+    const statusStr = String(status).trim();
+    
+    if (statusStr === CaseStatus.CERRADO || statusStr === 'Cerrado') {
+      return 100;
+    }
+    if (statusStr === CaseStatus.RESUELTO || statusStr === 'Resuelto') {
+      return 100;
+    }
+    if (statusStr === CaseStatus.ESCALADO || statusStr === 'Escalado') {
+      return 75;
+    }
+    if (statusStr === CaseStatus.PENDIENTE_CLIENTE || statusStr === 'Pendiente Cliente') {
+      return 50;
+    }
+    if (statusStr === CaseStatus.EN_PROCESO || statusStr === 'En Proceso') {
+      return 25;
+    }
+    // Nuevo o cualquier otro estado
+    return 0;
+  };
+
+  const caseProgress = getProgressByStatus(estadoActual);
 
   const isEscalated = caso.status === CaseStatus.ESCALADO;
   const showAlert = isEscalated && caso.slaExpired;
@@ -941,6 +1075,17 @@ const CaseDetail: React.FC = () => {
                     {estadoActual}
                   </span>
                     </div>
+                    {(caso.category || caso.categoria?.nombre) && (
+                      <div className="flex items-center gap-1.5">
+                        <Folder className="w-3.5 h-3.5" style={{color: '#64748b'}} />
+                        <span 
+                          className="text-xs font-semibold"
+                          style={{color: styles.text.secondary}}
+                        >
+                          {caso.category || caso.categoria?.nombre}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5" style={{color: caso.slaExpired ? '#dc2626' : '#16a34a'}} />
                       <span 
@@ -1093,22 +1238,24 @@ const CaseDetail: React.FC = () => {
                 )}
               </div>
 
-              {/* Barra de progreso SLA */}
+              {/* Barra de progreso basada en estado del caso */}
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <p className="text-xs font-semibold" style={{color: styles.text.secondary}}>
-                    {caso.slaExpired ? 'Excedido' : 'Progreso'}: {caso.slaExpired ? daysOverdue : daysRemaining} días {caso.slaExpired ? 'hábiles' : 'restantes'}
+                    Progreso del caso: {estadoActual}
                   </p>
-                  <p className="text-xs font-bold" style={{color: caso.slaExpired ? '#dc2626' : '#16a34a'}}>
-                    {Math.min(Math.round(slaProgress), 100)}%
+                  <p className="text-xs font-bold" style={{
+                    color: caseProgress === 100 ? '#16a34a' : caseProgress >= 75 ? '#f59e0b' : caseProgress >= 50 ? '#3b82f6' : '#64748b'
+                  }}>
+                    {caseProgress}%
                   </p>
                 </div>
                 <div className="w-full h-3 rounded-full overflow-hidden" style={{backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.15)'}}>
                   <div 
                     className="h-full rounded-full transition-all duration-500"
                     style={{
-                      width: `${Math.min(slaProgress, 100)}%`,
-                      backgroundColor: caso.slaExpired ? '#dc2626' : '#16a34a'
+                      width: `${caseProgress}%`,
+                      backgroundColor: caseProgress === 100 ? '#16a34a' : caseProgress >= 75 ? '#f59e0b' : caseProgress >= 50 ? '#3b82f6' : '#64748b'
                     }}
                   />
                 </div>

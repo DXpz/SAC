@@ -955,52 +955,89 @@ export const updateCaseStatus = async (
   // Enviar actualización de estado
   const response = await callCaseWebhook(payload);
   
-  
-  if (response && typeof response === 'object') {
-    for (const key of Object.keys(response)) {
-    }
-  }
-  
-  
   // ========== VALIDACIÓN INMEDIATA: Verificar si el webhook rechazó el comentario ==========
   // IMPORTANTE: Esta validación debe ser LO PRIMERO que se haga después de recibir la respuesta
   // El webhook puede retornar 200 OK pero con valid: "false" cuando rechaza
   // O puede retornar un array (historial) cuando acepta
   
+  // Función auxiliar para verificar si un valor es "false" en cualquier formato
+  const esValorFalse = (value: any): boolean => {
+    if (value === undefined || value === null) return false;
+    if (value === false) return true;
+    if (value === 0) return false; // 0 no es false en este contexto
+    if (typeof value === 'string') {
+      const trimmed = value.trim().toLowerCase();
+      return trimmed === 'false' || trimmed === '"false"' || trimmed === "'false'";
+    }
+    return false;
+  };
   
   // Verificar si el webhook rechazó el comentario (valid: "false" o valid: false)
   // El webhook puede retornar valid como string "false" o booleano false
   let validValue: any = undefined;
+  let responseObj: any = null;
   
-  if (response && typeof response === 'object' && !Array.isArray(response)) {
-    validValue = (response as any).valid;
-  } else if (Array.isArray(response)) {
-  } else {
+  // Intentar extraer valid de diferentes estructuras de respuesta
+  if (response && typeof response === 'object') {
+    if (Array.isArray(response)) {
+      // Si es un array, buscar en el primer elemento
+      if (response.length > 0 && typeof response[0] === 'object') {
+        responseObj = response[0];
+        validValue = responseObj.valid;
+      }
+    } else {
+      // Si es un objeto, buscar directamente
+      responseObj = response;
+      validValue = (response as any).valid;
+      
+      // También buscar en data si existe
+      if (validValue === undefined && (response as any).data) {
+        validValue = (response as any).data.valid;
+        if (validValue !== undefined) {
+          responseObj = (response as any).data;
+        }
+      }
+      
+      // También buscar en el nivel raíz si no se encontró
+      if (validValue === undefined) {
+        // Intentar buscar en cualquier propiedad que contenga "valid"
+        for (const key in response) {
+          if (key.toLowerCase().includes('valid')) {
+            validValue = (response as any)[key];
+            break;
+          }
+        }
+      }
+    }
   }
   
-  // Verificar todas las posibles formas de valid: false
-  const esComentarioInvalido = validValue === "false" || 
-                                validValue === false || 
-                                validValue === "False" || 
-                                validValue === "FALSE" ||
-                                validValue === 0 ||
-                                (typeof validValue === 'string' && validValue.toLowerCase().trim() === 'false');
+  // Verificar si el comentario fue rechazado
+  const esComentarioInvalido = esValorFalse(validValue);
   
+  // DEBUG: Log temporal para verificar la detección (remover después)
+  if (validValue !== undefined) {
+    console.log('[DEBUG] Valid value detected:', validValue, 'Type:', typeof validValue, 'Is invalid:', esComentarioInvalido);
+  }
   
   // VALIDACIÓN CRÍTICA: Si es inválido, lanzar error INMEDIATAMENTE y DETENER ejecución
   // ESTO DEBE SER LO PRIMERO - ANTES de cualquier otro código
   if (esComentarioInvalido) {
+    console.log('[DEBUG] Lanzando error de comentario inválido');
     
-    // Extraer mensaje de error del campo "comentario"
+    // Extraer mensaje de error del campo "comentario" o "message" o "error"
     let mensajeError = 'El comentario no cumple con los requisitos necesarios.';
-    if (response && typeof response === 'object' && !Array.isArray(response)) {
-      const comentarioError = (response as any).comentario;
+    
+    if (responseObj) {
+      const comentarioError = responseObj.comentario || responseObj.message || responseObj.error || responseObj.feedback;
       if (comentarioError) {
         mensajeError = typeof comentarioError === 'string' ? comentarioError : JSON.stringify(comentarioError);
-      } else {
+      }
+    } else if (response && typeof response === 'object' && !Array.isArray(response)) {
+      const comentarioError = (response as any).comentario || (response as any).message || (response as any).error;
+      if (comentarioError) {
+        mensajeError = typeof comentarioError === 'string' ? comentarioError : JSON.stringify(comentarioError);
       }
     }
-    
     
     // LANZAR ERROR - esto detendrá la ejecución inmediatamente
     // IMPORTANTE: Este throw detendrá TODA la ejecución de updateCaseStatus
@@ -1363,6 +1400,12 @@ export const updateCaseData = async (
   // Mapear los campos según la documentación de case.edit
   // Usar valores de updates si están presentes, sino usar valores del caso actual
   // Asegurar que todos los campos sean strings (incluso si están vacíos, enviar "")
+  // IMPORTANTE: Si un campo no está en updates, usar el valor del caso actual
+  // Obtener el nombre del cliente desde diferentes fuentes posibles
+  const currentClientName = currentCase?.clientName || currentCase?.cliente?.nombreEmpresa || '';
+  const currentClientEmail = currentCase?.clientEmail || currentCase?.cliente?.email || '';
+  const currentClientPhone = currentCase?.clientPhone || currentCase?.cliente?.telefono || '';
+  
   const payload: CaseWebhookPayload = {
     action: 'case.edit',
     actor,
@@ -1371,9 +1414,12 @@ export const updateCaseData = async (
       asunto: (updates.asunto !== undefined ? updates.asunto : (currentCase?.subject || '')) || '',
       descripcion: (updates.descripcion !== undefined ? updates.descripcion : (currentCase?.description || '')) || '',
       cliente_id: (updates.cliente_id !== undefined ? updates.cliente_id : (currentCase?.clientId || '')) || '',
-      cliente_nombre: (updates.client_name !== undefined ? updates.client_name : (currentCase?.clientName || '')) || '',
-      email_cliente: (updates.client_email !== undefined ? updates.client_email : (currentCase?.clientEmail || '')) || '',
-      telefono_cliente: (updates.client_phone !== undefined ? updates.client_phone : (currentCase?.clientPhone || '')) || ''
+      // Para cliente_nombre: si está en updates, usar ese valor; si no, usar el del caso actual
+      cliente_nombre: updates.client_name !== undefined 
+        ? (updates.client_name || '') 
+        : (currentClientName || ''),
+      email_cliente: (updates.client_email !== undefined ? updates.client_email : currentClientEmail) || '',
+      telefono_cliente: (updates.client_phone !== undefined ? updates.client_phone : currentClientPhone) || ''
     }
   };
 
