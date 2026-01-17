@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
-import { Caso, CaseStatus, Agente, Cliente } from '../types';
+import { Caso, CaseStatus } from '../types';
 import { STATE_COLORS } from '../constants';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
@@ -10,7 +10,6 @@ import {
   AlertTriangle, 
   Eye,
   CheckCircle2,
-  TrendingUp,
   Timer,
   ChevronRight
 } from 'lucide-react';
@@ -26,7 +25,7 @@ interface CaseWithPriority extends Caso {
 const AlertasCriticas: React.FC = () => {
   const [criticos, setCriticos] = useState<CaseWithPriority[]>([]);
   const [loading, setLoading] = useState(true);
-  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [clientes, setClientes] = useState<any[]>([]);
   const navigate = useNavigate();
   const { theme } = useTheme();
   const location = useLocation();
@@ -41,7 +40,7 @@ const AlertasCriticas: React.FC = () => {
     }
   };
 
-  const enrichCasesWithClients = (cases: Caso[], clientesList: Cliente[]): Caso[] => {
+  const enrichCasesWithClients = (cases: Caso[], clientesList: any[]): Caso[] => {
     return cases.map(caso => {
       const cliente = clientesList.find(c => c.idCliente === caso.clientId);
       return {
@@ -229,7 +228,7 @@ const AlertasCriticas: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header con Métricas Destacadas */}
+      {/* Header con Métricas Destacadas - Alertas Críticas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Total Críticos */}
         <div 

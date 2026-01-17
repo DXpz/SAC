@@ -12,8 +12,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Filter,
-  Search,
-  RefreshCw
+  Search
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { api } from '../services/api';
@@ -511,24 +510,6 @@ const AdminUsers: React.FC = () => {
             )}
           </div>
           <div className="flex items-center gap-3">
-            {/* Botón de recargar */}
-            <button
-              onClick={loadUsers}
-              disabled={loading}
-              className="px-3 py-2 text-xs font-semibold rounded-lg border transition-all hover:shadow-md flex items-center gap-2"
-              style={{
-                backgroundColor: 'transparent',
-                borderColor: 'rgba(148, 163, 184, 0.3)',
-                color: styles.text.secondary,
-                opacity: loading ? 0.5 : 1,
-                cursor: loading ? 'not-allowed' : 'pointer'
-              }}
-              title="Recargar usuarios"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              {loading ? 'Cargando...' : 'Recargar'}
-            </button>
-            
             {/* Campo de búsqueda */}
             <div className="relative" style={{ minWidth: '250px' }}>
               <div className="relative">
@@ -663,7 +644,7 @@ const AdminUsers: React.FC = () => {
             <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{
               backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc'
             }}>
-              <RefreshCw className="w-10 h-10 animate-spin" style={{color: styles.text.tertiary}} />
+              <Users className="w-10 h-10 animate-pulse" style={{color: styles.text.tertiary}} />
             </div>
             <h3 className="text-base font-bold mb-2" style={{color: styles.text.primary}}>Cargando usuarios...</h3>
             <p className="text-sm" style={{color: styles.text.tertiary}}>

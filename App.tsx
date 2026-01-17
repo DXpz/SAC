@@ -15,8 +15,11 @@ import Unauthorized from './pages/Unauthorized';
 import GerenteDashboard from './pages/GerenteDashboard';
 import SupervisorPanel from './pages/SupervisorPanel';
 import AlertasCriticas from './pages/AlertasCriticas';
+import AdminPanel from './pages/AdminPanel';
 import GestionAgentes from './pages/GestionAgentes';
 import AdminUsers from './pages/AdminUsers';
+import Settings from './pages/Settings';
+import AdminBandejaCasos from './pages/AdminBandejaCasos';
 import { UserRole } from './types';
 import { api } from './services/api';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -125,9 +128,24 @@ const App: React.FC = () => {
                   </ProtectedRoute>
                 } />
                 
+                {/* Panel Admin - Dashboard completo */}
+                <Route path="admin" element={
+                  <AdminPanel />
+                } />
+                
+                {/* Bandeja de Casos Admin - Vista completa con filtros avanzados */}
+                <Route path="admin/casos" element={
+                  <AdminBandejaCasos />
+                } />
+                
                 {/* Administración de Usuarios - Solo para ADMIN (Demo) */}
                 <Route path="admin/usuarios" element={
                   <AdminUsers />
+                } />
+                
+                {/* Configuración - Solo para ADMIN */}
+                <Route path="admin/settings" element={
+                  <Settings />
                 } />
                 
                 {/* Crear nueva cuenta - Solo para supervisores */}

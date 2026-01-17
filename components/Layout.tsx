@@ -3,7 +3,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { Role } from '../types';
-import { LayoutDashboard, Ticket, Users, BarChart3, LogOut, ShieldAlert, Sun, Moon, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Ticket, Users, BarChart3, LogOut, ShieldAlert, Sun, Moon, Menu, X, Settings } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface LayoutProps {
@@ -143,9 +143,27 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         roles: ['SUPERVISOR', 'GERENTE'] as Role[]
     },
     { 
+        name: 'Panel Admin', 
+        path: '/app/admin', 
+        icon: LayoutDashboard,
+        roles: ['ADMIN'] as Role[]
+    },
+    { 
+        name: 'Bandeja de Casos', 
+        path: '/app/admin/casos', 
+        icon: Ticket,
+        roles: ['ADMIN'] as Role[]
+    },
+    { 
         name: 'Administración de Usuarios', 
         path: '/app/admin/usuarios', 
         icon: Users,
+        roles: ['ADMIN'] as Role[]
+    },
+    { 
+        name: 'Configuración', 
+        path: '/app/admin/settings', 
+        icon: Settings,
         roles: ['ADMIN'] as Role[]
     },
   ];
@@ -188,7 +206,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     if (location.pathname.includes('/casos/nuevo')) return 'Nuevo Caso';
     if (location.pathname.includes('/casos/')) return 'Detalle de Caso';
     if (location.pathname === '/app/crear-cuenta') return 'Crear nueva cuenta';
+    if (location.pathname === '/app/admin') return 'Panel Admin';
+    if (location.pathname === '/app/admin/casos') return 'Bandeja de Casos';
     if (location.pathname === '/app/admin/usuarios') return 'Administración de Usuarios';
+    if (location.pathname === '/app/admin/settings') return 'Configuración';
     return 'Sistema SAC';
   };
 

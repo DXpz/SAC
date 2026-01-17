@@ -119,7 +119,7 @@ const Login: React.FC = () => {
       let targetPath = '/app/agente';
       if (user.role === 'SUPERVISOR') targetPath = '/app/supervisor';
       if (user.role === 'GERENTE') targetPath = '/app/gerencia';
-      if (user.role === 'ADMIN') targetPath = '/app/admin/usuarios';
+      if (user.role === 'ADMIN') targetPath = '/app/admin';
       
       // Esperar un momento para mostrar la animación antes de redirigir
       setTimeout(() => {

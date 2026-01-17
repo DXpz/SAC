@@ -426,5 +426,141 @@ button {
   color: var(--color-accent-blue);
 }
 
+/* Ocultar spinners nativos de inputs number - FORZADO */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  margin: 0 !important;
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  pointer-events: none !important;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
+}
+
+input.number-input-custom::-webkit-inner-spin-button,
+input.number-input-custom::-webkit-outer-spin-button {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  margin: 0 !important;
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Estilos mejorados para checkboxes */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+input[type="checkbox"]:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+input[type="checkbox"]:hover:not(:disabled):not(:checked) {
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+}
+
+/* Estilos para gráficas de recharts - Evitar sombras blancas y colores incorrectos */
+.recharts-bar-rectangle,
+.recharts-bar-rectangle:hover {
+  filter: none !important;
+  -webkit-filter: none !important;
+  box-shadow: none !important;
+}
+
+.recharts-tooltip-wrapper {
+  filter: none !important;
+  -webkit-filter: none !important;
+  box-shadow: none !important;
+}
+
+.recharts-active-bar {
+  filter: none !important;
+  -webkit-filter: none !important;
+  box-shadow: none !important;
+}
+
+/* Asegurar que los tooltips de recharts usen los colores correctos */
+.recharts-tooltip-cursor {
+  fill: transparent !important;
+}
+
+.recharts-default-tooltip {
+  background-color: var(--tooltip-bg, #1e293b) !important;
+  border: 1px solid var(--tooltip-border, rgba(148, 163, 184, 0.2)) !important;
+  border-radius: 8px !important;
+  color: var(--tooltip-text, #f1f5f9) !important;
+  box-shadow: var(--tooltip-shadow, 0 4px 12px rgba(0, 0, 0, 0.4)) !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+}
+
+.recharts-default-tooltip .recharts-tooltip-label {
+  color: var(--tooltip-text, #f1f5f9) !important;
+  font-weight: bold !important;
+}
+
+.recharts-default-tooltip .recharts-tooltip-item {
+  color: var(--tooltip-text, #f1f5f9) !important;
+}
+
+.recharts-default-tooltip .recharts-tooltip-item-name {
+  color: var(--tooltip-text, #f1f5f9) !important;
+}
+
+.recharts-default-tooltip .recharts-tooltip-item-value {
+  color: var(--tooltip-text, #f1f5f9) !important;
+}
+
+/* Tooltip personalizado de Recharts */
+.recharts-custom-tooltip {
+  filter: none !important;
+  -webkit-filter: none !important;
+  box-shadow: none !important;
+}
+
+.recharts-tooltip-wrapper .recharts-custom-tooltip {
+  filter: none !important;
+  -webkit-filter: none !important;
+  box-shadow: none !important;
+}
+
+/* Prevenir sombras blancas en hover de barras */
+.recharts-bar-rectangle:hover {
+  fill-opacity: 0.85 !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+  box-shadow: none !important;
+}
+
 
 
