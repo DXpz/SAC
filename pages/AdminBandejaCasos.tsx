@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { Case, CaseStatus, Cliente, Categoria, Agente } from '../types';
-import { Search, Plus, Filter, ChevronRight, X, Calendar, User, Clock, AlertTriangle, Timer } from 'lucide-react';
+import { Search, Plus, Filter, ChevronRight, X, Calendar, User, Clock, AlertTriangle, Timer, HelpCircle } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 const AdminBandejaCasos: React.FC = () => {
@@ -500,6 +500,48 @@ const AdminBandejaCasos: React.FC = () => {
               color: categoriaFilter === 'all' ? styles.text.tertiary : '#107ab4',
               transform: 'rotate(90deg)'
             }} />
+            {categoriaFilter !== 'all' && (() => {
+              const categoriaSeleccionada = categorias.find(c => String(c.idCategoria) === String(categoriaFilter));
+              return categoriaSeleccionada && (categoriaSeleccionada.descripcion || (categoriaSeleccionada as any).description) ? (
+                <div className="absolute right-10 top-1/2 -translate-y-1/2 group">
+                  <HelpCircle 
+                    className="w-3.5 h-3.5 cursor-help transition-colors flex-shrink-0" 
+                    style={{ color: styles.text.tertiary }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = theme === 'dark' ? '#94a3b8' : '#64748b';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = styles.text.tertiary;
+                    }}
+                  />
+                  <div 
+                    className="absolute left-full ml-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-normal opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none"
+                    style={{
+                      backgroundColor: theme === 'dark' ? '#1e293b' : '#0f172a',
+                      color: theme === 'dark' ? '#f1f5f9' : '#ffffff',
+                      border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`,
+                      boxShadow: theme === 'dark' 
+                        ? '0 4px 12px rgba(0, 0, 0, 0.5)' 
+                        : '0 4px 12px rgba(0, 0, 0, 0.3)',
+                      width: 'max-content',
+                      maxWidth: '300px',
+                      top: '50%',
+                      transform: 'translateY(-50%)'
+                    }}
+                  >
+                    {categoriaSeleccionada.descripcion || (categoriaSeleccionada as any).description || 'Sin descripción disponible'}
+                    <div 
+                      className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0"
+                      style={{
+                        borderTop: '4px solid transparent',
+                        borderBottom: '4px solid transparent',
+                        borderRight: `4px solid ${theme === 'dark' ? '#1e293b' : '#0f172a'}`
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : null;
+            })()}
           </div>
 
           {/* Cliente */}
@@ -750,13 +792,54 @@ const AdminBandejaCasos: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="inline-flex items-center text-[10px] font-semibold px-2.5 py-1.5 rounded-xl border shadow-sm" style={{
-                          backgroundColor: theme === 'dark' ? '#0f172a' : '#f1f5f9',
-                          color: styles.text.secondary,
-                          borderColor: 'rgba(148, 163, 184, 0.2)'
-                        }}>
-                          {caso.category || caso.categoria?.nombre || 'General'}
-                        </span>
+                        <div className="inline-flex items-center gap-1.5">
+                          <span className="inline-flex items-center text-[10px] font-semibold px-2.5 py-1.5 rounded-xl border shadow-sm" style={{
+                            backgroundColor: theme === 'dark' ? '#0f172a' : '#f1f5f9',
+                            color: styles.text.secondary,
+                            borderColor: 'rgba(148, 163, 184, 0.2)'
+                          }}>
+                            {caso.category || caso.categoria?.nombre || 'General'}
+                          </span>
+                          {caso.categoria && (caso.categoria.descripcion || (caso.categoria as any).description) && (
+                            <div className="relative group">
+                              <HelpCircle 
+                                className="w-3.5 h-3.5 cursor-help transition-colors flex-shrink-0" 
+                                style={{ color: styles.text.tertiary }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.color = theme === 'dark' ? '#94a3b8' : '#64748b';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.color = styles.text.tertiary;
+                                }}
+                              />
+                              <div 
+                                className="absolute left-full ml-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-normal opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none"
+                                style={{
+                                  backgroundColor: theme === 'dark' ? '#1e293b' : '#0f172a',
+                                  color: theme === 'dark' ? '#f1f5f9' : '#ffffff',
+                                  border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`,
+                                  boxShadow: theme === 'dark' 
+                                    ? '0 4px 12px rgba(0, 0, 0, 0.5)' 
+                                    : '0 4px 12px rgba(0, 0, 0, 0.3)',
+                                  width: 'max-content',
+                                  maxWidth: '300px',
+                                  top: '50%',
+                                  transform: 'translateY(-50%)'
+                                }}
+                              >
+                                {caso.categoria.descripcion || (caso.categoria as any).description || 'Sin descripción disponible'}
+                                <div 
+                                  className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0"
+                                  style={{
+                                    borderTop: '4px solid transparent',
+                                    borderBottom: '4px solid transparent',
+                                    borderRight: `4px solid ${theme === 'dark' ? '#1e293b' : '#0f172a'}`
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <span 

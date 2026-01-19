@@ -20,6 +20,10 @@ export const API_CONFIG = {
   // En desarrollo usa el proxy de Vite (/api/round-robin), en producción usa la URL completa
   WEBHOOK_ROUND_ROBIN_URL: import.meta.env.VITE_WEBHOOK_ROUND_ROBIN_URL || '/api/round-robin',
   
+  // URL del webhook de n8n para gestión de categorías
+  // En desarrollo usa el proxy de Vite (/api/categorias), en producción usa la URL completa
+  WEBHOOK_CATEGORIAS_URL: (import.meta.env as any).VITE_WEBHOOK_CATEGORIAS_URL || '/api/categorias',
+  
   // URLs completas de n8n (para referencia y uso en producción)
   // Estas URLs se usan cuando VITE_WEBHOOK_*_URL está definido o en producción
   WEBHOOK_URL_FULL: 'https://n8n.red.com.sv/webhook/6f27bb4b-bfcd-4776-b554-5194569be2a7',
@@ -28,6 +32,7 @@ export const API_CONFIG = {
   WEBHOOK_CASOS_URL_FULL: 'https://n8n.red.com.sv/webhook-test/97a6c0f7-ea50-4542-b99e-710b96b58652',
   WEBHOOK_ROUND_ROBIN_URL_FULL: 'https://n8n.red.com.sv/webhook-test/case-create-round-robin',
   WEBHOOK_CLIENTES_URL_FULL: 'https://n8n.red.com.sv/webhook/b30aeff4-1d3a-4b40-b8da-141b4e1fc5b6',
+  WEBHOOK_CATEGORIAS_URL_FULL: 'https://n8n.red.com.sv/webhook/8c0719d8-1d51-47ce-a8df-73dbfeffc757',
   
   // Timeout para las peticiones (en milisegundos)
   TIMEOUT: 30000, // Aumentado a 30 segundos para dar más tiempo

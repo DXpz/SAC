@@ -81,7 +81,7 @@ const AdminUsers: React.FC = () => {
       
       // Mapear todos los usuarios del webhook
       // El webhook puede devolver usuarios con diferentes roles (agentes, gerentes, supervisores, admin)
-      const usuariosMapeados: DemoUser[] = usuariosWebhook.map((usuario: any) => {
+      const usuariosMapeados: DemoUser[] = usuariosWebhook.map((usuario: any, index: number) => {
         // Determinar el rol: el webhook puede tener diferentes campos para el rol
         let rol: UserRole = 'AGENTE'; // Por defecto es agente
         
@@ -129,8 +129,20 @@ const AdminUsers: React.FC = () => {
         const activo = estado === 'Activo' || estado === 'ACTIVO' || estado === 'active' || estado === 'ACTIVE';
         const enVacaciones = estado === 'Vacaciones' || estado === 'VACACIONES' || estado === 'vacations' || estado === 'VACATIONS';
         
+        // Generar ID único: usar el ID del webhook o generar uno único basado en email + índice
+        // IMPORTANTE: El índice garantiza unicidad incluso si varios usuarios no tienen ID del webhook
+        const userId = usuario.idAgente || 
+                      usuario.id_agente || 
+                      usuario.id || 
+                      usuario.id_usuario || 
+                      usuario.user_id ||
+                      `U-${index}-${usuario.email || 'unknown'}-${Date.now()}`;
+        
+        // Validar que el ID sea único (no debería pasar, pero por seguridad)
+        const idFinal = userId || `U-FALLBACK-${index}-${Date.now()}`;
+        
         return {
-          id: usuario.idAgente || usuario.id_agente || usuario.id || usuario.id_usuario || `U-${usuario.email || Date.now()}`,
+          id: idFinal,
           nombre: usuario.nombre || usuario.name || 'Sin nombre',
           email: usuario.email || '',
           rol: rol,
@@ -139,7 +151,23 @@ const AdminUsers: React.FC = () => {
         };
       });
       
-      setUsers(usuariosMapeados);
+      // Validar que todos los IDs sean únicos antes de establecer el estado
+      const ids = usuariosMapeados.map(u => u.id);
+      const uniqueIds = new Set(ids);
+      
+      if (ids.length !== uniqueIds.size) {
+        console.warn('[WARNING] Se detectaron IDs duplicados. Regenerando IDs únicos...');
+        // Si hay IDs duplicados, regenerar usando índice
+        const usuariosConIdsUnicos = usuariosMapeados.map((u, idx) => ({
+          ...u,
+          id: u.id && !ids.slice(0, idx).includes(u.id) 
+            ? u.id 
+            : `U-${idx}-${u.email || 'unknown'}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+        }));
+        setUsers(usuariosConIdsUnicos);
+      } else {
+        setUsers(usuariosMapeados);
+      }
     } catch (error) {
       // En caso de error, mantener array vacío
       setUsers([]);
@@ -324,24 +352,86 @@ const AdminUsers: React.FC = () => {
   };
 
   const toggleUserStatus = (userId: string) => {
-    setUsers(users.map(u => 
-      u.id === userId ? { ...u, activo: !u.activo, enVacaciones: false } : u
-    ));
+    // Validar que userId no esté vacío o undefined
+    if (!userId || userId === 'undefined' || userId === 'null') {
+      console.error('[ERROR] toggleUserStatus recibió un userId inválido:', userId);
+      return;
+    }
+    
+    // Usar función de actualización para garantizar que usamos el estado más reciente
+    setUsers(prevUsers => {
+      // Buscar el usuario específico primero
+      const userToUpdate = prevUsers.find(u => {
+        const uId = String(u.id || '').trim();
+        const targetId = String(userId || '').trim();
+        return uId === targetId && uId !== '';
+      });
+      
+      if (!userToUpdate) {
+        console.error('[ERROR] No se encontró usuario con ID:', userId);
+        console.log('[DEBUG] IDs disponibles:', prevUsers.map(u => ({ id: u.id, nombre: u.nombre })));
+        return prevUsers; // No hacer cambios si no se encuentra el usuario
+      }
+      
+      // Actualizar solo el usuario encontrado
+      return prevUsers.map(u => {
+        const uId = String(u.id || '').trim();
+        const targetId = String(userId || '').trim();
+        
+        // Comparación estricta: solo actualizar si el ID coincide exactamente
+        if (uId === targetId && uId !== '') {
+          return { ...u, activo: !u.activo, enVacaciones: false };
+        }
+        return u; // Mantener sin cambios
+      });
+    });
     
     // TODO: Preparar para webhook n8n
-    // await sendUserToWebhook('update', { id: userId, activo: !users.find(u => u.id === userId)?.activo });
+    // const user = users.find(u => u.id === userId);
+    // if (user) {
+    //   await sendUserToWebhook('update', { id: userId, activo: !user.activo });
+    // }
   };
 
   const toggleVacaciones = (userId: string) => {
-    const user = users.find(u => u.id === userId);
-    if (!user) return;
+    // Validar que userId no esté vacío o undefined
+    if (!userId || userId === 'undefined' || userId === 'null') {
+      console.error('[ERROR] toggleVacaciones recibió un userId inválido:', userId);
+      return;
+    }
     
-    setUsers(users.map(u => 
-      u.id === userId ? { ...u, enVacaciones: !u.enVacaciones, activo: u.enVacaciones ? true : u.activo } : u
-    ));
+    // Usar función de actualización para garantizar que usamos el estado más reciente
+    setUsers(prevUsers => {
+      // Buscar el usuario específico primero
+      const userToUpdate = prevUsers.find(u => {
+        const uId = String(u.id || '').trim();
+        const targetId = String(userId || '').trim();
+        return uId === targetId && uId !== '';
+      });
+      
+      if (!userToUpdate) {
+        console.error('[ERROR] No se encontró usuario con ID:', userId);
+        return prevUsers; // No hacer cambios si no se encuentra el usuario
+      }
+      
+      // Actualizar solo el usuario encontrado
+      return prevUsers.map(u => {
+        const uId = String(u.id || '').trim();
+        const targetId = String(userId || '').trim();
+        
+        // Comparación estricta: solo actualizar si el ID coincide exactamente
+        if (uId === targetId && uId !== '') {
+          return { ...u, enVacaciones: !u.enVacaciones, activo: u.enVacaciones ? true : u.activo };
+        }
+        return u; // Mantener sin cambios
+      });
+    });
     
     // TODO: Preparar para webhook n8n
-    // await sendUserToWebhook('update', { id: userId, enVacaciones: !user.enVacaciones });
+    // const user = users.find(u => u.id === userId);
+    // if (user) {
+    //   await sendUserToWebhook('update', { id: userId, enVacaciones: !user.enVacaciones });
+    // }
   };
 
   const deleteUser = () => {
@@ -785,7 +875,11 @@ const AdminUsers: React.FC = () => {
                               <Edit className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => toggleUserStatus(user.id)}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                toggleUserStatus(user.id);
+                              }}
                               className="p-2 rounded-lg border transition-all hover:shadow-md"
                               style={{
                                 backgroundColor: user.activo ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)',
@@ -797,7 +891,11 @@ const AdminUsers: React.FC = () => {
                               {user.activo ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
                             </button>
                             <button
-                              onClick={() => toggleVacaciones(user.id)}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                toggleVacaciones(user.id);
+                              }}
                               className="p-2 rounded-lg border transition-all hover:shadow-md"
                               style={{
                                 backgroundColor: user.enVacaciones ? 'rgba(245, 158, 11, 0.1)' : 'transparent',

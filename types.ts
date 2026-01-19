@@ -54,6 +54,7 @@ export interface Categoria {
   diasAlertaSupervisor: number;
   diasAlertaGerente: number;
   activa: boolean;
+  descripcion?: string;
 }
 
 export interface Agente {

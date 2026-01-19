@@ -195,6 +195,19 @@ const callClientsWebhook = async <T = any>(
   return callWebhookGeneric<T>(CLIENTS_WEBHOOK_URL, method, body);
 };
 
+// Helper para llamadas al webhook de categorías en n8n
+const callCategoriesWebhook = async <T = any>(
+  method: 'GET' | 'POST',
+  body?: unknown
+): Promise<T> => {
+  // Usar la URL completa del webhook de categorías o la URL relativa en desarrollo
+  const CATEGORIES_WEBHOOK_URL = (import.meta.env as any).VITE_WEBHOOK_CATEGORIAS_URL 
+    || API_CONFIG.WEBHOOK_CATEGORIAS_URL_FULL 
+    || API_CONFIG.WEBHOOK_CATEGORIAS_URL 
+    || '/api/categorias';
+  return callWebhookGeneric<T>(CATEGORIES_WEBHOOK_URL, method, body);
+};
+
 // Helpers para construir el payload estándar esperado por n8n
 const buildActorPayload = (user: User | null) => {
   if (!user) {
@@ -1175,6 +1188,312 @@ export const api = {
     return MOCK_CATEGORIAS.filter(cat => cat.activa);
   },
 
+  // Crear nueva categoría mediante webhook
+  async createCategory(categoryData: {
+    category_name: string;
+    description: string;
+    sla: number;
+  }): Promise<any> {
+    const user = this.getUser();
+    if (!user) {
+      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
+    }
+
+    // Construir el actor con el formato esperado
+    const actor = buildActorPayload(user);
+    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
+    const roleMap: Record<string, string> = {
+      'ADMIN': 'ADMINISTRADOR',
+      'AGENTE': 'AGENTE',
+      'SUPERVISOR': 'SUPERVISOR',
+      'GERENTE': 'GERENTE'
+    };
+    const mappedRole = roleMap[actor.role] || actor.role;
+
+    // Construir el payload según el formato especificado
+    const payload = {
+      action: 'category.create',
+      actor: {
+        user_id: actor.user_id,
+        email: actor.email,
+        role: mappedRole
+      },
+      data: {
+        id: '', // Vacío según el formato especificado
+        category_name: categoryData.category_name,
+        description: categoryData.description,
+        sla: String(categoryData.sla) // Convertir a string según el formato
+      }
+    };
+
+    try {
+      const response = await callCategoriesWebhook('POST', payload);
+      return response;
+    } catch (error: any) {
+      console.error('Error al crear categoría:', error);
+      throw new Error(error.message || 'Error al crear la categoría');
+    }
+  },
+
+  // Actualizar categoría existente mediante webhook
+  async updateCategory(categoryData: {
+    id: string;
+    category_name: string;
+    description: string;
+    sla: number;
+  }): Promise<any> {
+    const user = this.getUser();
+    if (!user) {
+      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
+    }
+
+    // Construir el actor con el formato esperado
+    const actor = buildActorPayload(user);
+    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
+    const roleMap: Record<string, string> = {
+      'ADMIN': 'ADMINISTRADOR',
+      'AGENTE': 'AGENTE',
+      'SUPERVISOR': 'SUPERVISOR',
+      'GERENTE': 'GERENTE'
+    };
+    const mappedRole = roleMap[actor.role] || actor.role;
+
+    // Construir el payload según el formato especificado
+    const payload = {
+      action: 'category.update',
+      actor: {
+        user_id: actor.user_id,
+        email: actor.email,
+        role: mappedRole
+      },
+      data: {
+        id: categoryData.id,
+        category_name: categoryData.category_name || '',
+        description: categoryData.description || '',
+        sla: String(categoryData.sla) // Convertir a string según el formato
+      }
+    };
+
+    try {
+      const response = await callCategoriesWebhook('POST', payload);
+      return response;
+    } catch (error: any) {
+      console.error('Error al actualizar categoría:', error);
+      throw new Error(error.message || 'Error al actualizar la categoría');
+    }
+  },
+
+  // Eliminar categoría mediante webhook
+  async deleteCategory(categoryId: string): Promise<any> {
+    const user = this.getUser();
+    if (!user) {
+      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
+    }
+
+    // Construir el actor con el formato esperado
+    const actor = buildActorPayload(user);
+    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
+    const roleMap: Record<string, string> = {
+      'ADMIN': 'ADMINISTRADOR',
+      'AGENTE': 'AGENTE',
+      'SUPERVISOR': 'SUPERVISOR',
+      'GERENTE': 'GERENTE'
+    };
+    const mappedRole = roleMap[actor.role] || actor.role;
+
+    // Construir el payload según el formato especificado
+    const payload = {
+      action: 'category.delete',
+      actor: {
+        user_id: actor.user_id,
+        email: actor.email,
+        role: mappedRole
+      },
+      data: {
+        id: categoryId
+      }
+    };
+
+    try {
+      const response = await callCategoriesWebhook('POST', payload);
+      return response;
+    } catch (error: any) {
+      console.error('Error al eliminar categoría:', error);
+      throw new Error(error.message || 'Error al eliminar la categoría');
+    }
+  },
+
+  // Leer todas las categorías mediante webhook
+  async readCategories(): Promise<any[]> {
+    const user = this.getUser();
+    if (!user) {
+      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
+    }
+
+    // Construir el actor con el formato esperado
+    const actor = buildActorPayload(user);
+    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
+    const roleMap: Record<string, string> = {
+      'ADMIN': 'ADMINISTRADOR',
+      'AGENTE': 'AGENTE',
+      'SUPERVISOR': 'SUPERVISOR',
+      'GERENTE': 'GERENTE'
+    };
+    const mappedRole = roleMap[actor.role] || actor.role;
+
+    // Construir el payload según el formato especificado
+    // Para obtener todas las categorías, el data.id puede estar vacío o ser "all"
+    const payload = {
+      action: 'category.read',
+      actor: {
+        user_id: actor.user_id,
+        email: actor.email,
+        role: mappedRole
+      },
+      data: {
+        id: '' // Vacío para obtener todas las categorías
+      }
+    };
+
+    try {
+      const response = await callCategoriesWebhook('POST', payload);
+      console.log('Respuesta del webhook category.read:', response);
+      console.log('Tipo de respuesta:', typeof response);
+      console.log('Es array?', Array.isArray(response));
+      
+      // El webhook retorna un formato específico:
+      // [
+      //   {
+      //     "data": [
+      //       {
+      //         "id": 2,
+      //         "caegoria": "Facturación",  // Nota: typo en "caegoria"
+      //         "descripcion": "",
+      //         "valor SLA": 5
+      //       },
+      //       ...
+      //     ]
+      //   }
+      // ]
+      let categories: any[] = [];
+      
+      // Manejar el formato específico del webhook
+      if (Array.isArray(response) && response.length > 0) {
+        // Si es un array, buscar el objeto que contiene "data"
+        const firstItem = response[0];
+        if (firstItem && typeof firstItem === 'object' && firstItem.data) {
+          categories = Array.isArray(firstItem.data) ? firstItem.data : [];
+          console.log('Categorías encontradas en response[0].data:', categories);
+        } else if (Array.isArray(firstItem)) {
+          // Si el primer elemento es directamente un array
+          categories = firstItem;
+          console.log('Categorías encontradas directamente en response[0]:', categories);
+        } else {
+          // Intentar otros formatos comunes
+          categories = firstItem.categories || 
+                       firstItem.categorias || 
+                       firstItem.result ||
+                       firstItem.results ||
+                       (Array.isArray(firstItem.items) ? firstItem.items : []);
+        }
+      } else if (response && typeof response === 'object') {
+        // Si no es array, buscar propiedades comunes
+        categories = response.categories || 
+                     response.categorias || 
+                     response.data || 
+                     response.result ||
+                     response.results ||
+                     (Array.isArray(response.items) ? response.items : []) ||
+                     [];
+      }
+
+      console.log('Categorías extraídas:', categories);
+      console.log('Número de categorías extraídas:', categories.length);
+
+      // Si no hay categorías, retornar array vacío (no null ni undefined)
+      if (!categories || categories.length === 0) {
+        console.log('No se encontraron categorías en la respuesta del webhook');
+        return [];
+      }
+
+      // Mapear las categorías del webhook al formato local
+      // El webhook usa: "caegoria" (typo), "descripcion", "valor SLA"
+      const mappedCategories = categories.map((cat: any, index: number) => {
+        const mapped = {
+          id: String(cat.id || cat.idCategoria || cat.category_id || cat.id_categoria || String(index + 1)),
+          name: cat.name || 
+                cat.nombre || 
+                cat.category_name || 
+                cat.categoryName || 
+                cat.caegoria ||  // Manejar el typo del webhook
+                cat.categoria ||
+                'Sin nombre',
+          slaDays: Number(cat.slaDays || 
+                         cat.slaDias || 
+                         cat.sla || 
+                         cat.sla_dias || 
+                         cat['valor SLA'] ||  // Manejar "valor SLA" con espacio
+                         cat.valorSLA ||
+                         3),
+          description: String(cat.description || 
+                            cat.descripcion || 
+                            cat.desc || 
+                            '')
+        };
+        console.log('Categoría mapeada:', mapped);
+        return mapped;
+      });
+
+      console.log('Total de categorías mapeadas:', mappedCategories.length);
+      return mappedCategories;
+    } catch (error: any) {
+      console.error('Error al leer categorías:', error);
+      console.error('Stack trace:', error.stack);
+      // No lanzar error, retornar array vacío para que use las categorías por defecto
+      return [];
+    }
+  },
+
+  // Buscar categoría por ID mediante webhook
+  async queryCategory(categoryId: string): Promise<any> {
+    const user = this.getUser();
+    if (!user) {
+      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
+    }
+
+    // Construir el actor con el formato esperado
+    const actor = buildActorPayload(user);
+    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
+    const roleMap: Record<string, string> = {
+      'ADMIN': 'ADMINISTRADOR',
+      'AGENTE': 'AGENTE',
+      'SUPERVISOR': 'SUPERVISOR',
+      'GERENTE': 'GERENTE'
+    };
+    const mappedRole = roleMap[actor.role] || actor.role;
+
+    // Construir el payload según el formato especificado
+    const payload = {
+      action: 'category.query',
+      actor: {
+        user_id: actor.user_id,
+        email: actor.email,
+        role: mappedRole
+      },
+      data: {
+        id: categoryId
+      }
+    };
+
+    try {
+      const response = await callCategoriesWebhook('POST', payload);
+      return response;
+    } catch (error: any) {
+      console.error('Error al buscar categoría:', error);
+      throw new Error(error.message || 'Error al buscar la categoría');
+    }
+  },
+
   async updateAgente(id: string, data: any): Promise<boolean> {
     
     // Obtener el usuario actual (actor)
@@ -1528,8 +1847,15 @@ export const api = {
     // Formato: update_type: "reassign", case_id, agent_id
     await caseService.reassignCase(caseId, newAgentId);
     
-    // Limpiar caché de casos para forzar actualización
+    // Limpiar caché de casos y agentes para forzar actualización
+    // Los agentes necesitan actualizarse porque el número de casos activos cambió
     clearCache('cases');
+    clearCache('agentes');
+    
+    // Disparar evento para que GestionAgentes recargue los agentes
+    window.dispatchEvent(new CustomEvent('caso-reasignado', {
+      detail: { caseId, newAgentId }
+    }));
     
     return true;
   },

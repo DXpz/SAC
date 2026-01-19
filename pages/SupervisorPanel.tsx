@@ -5,6 +5,7 @@ import { Caso, CaseStatus, Agente, Cliente } from '../types';
 import { STATE_COLORS } from '../constants';
 import { AlertCircle, Clock, Users, ArrowUpRight, ChevronRight, Activity, Info, Filter, UserPlus, Bell, ArrowRightLeft, TrendingUp, TrendingDown, X, User, CheckCircle2, Eye } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import AnimatedNumber from '../components/AnimatedNumber';
 
 type FilterPeriod = 'hoy' | 'semana' | 'mes';
 type FilterType = 'todos' | 'criticos' | 'vencidos' | string;
@@ -129,11 +130,12 @@ const SupervisorPanel: React.FC = () => {
   }, [casos, periodFilter, typeFilter, agentFilter]);
   
   const casosVencidos = useMemo(() => {
-    return casosAbiertos.filter(c => {
+    const vencidos = casos.filter(c => {
       const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-      return c.diasAbierto > slaDias;
+      return c.status !== CaseStatus.RESUELTO && c.status !== CaseStatus.CERRADO && c.diasAbierto > slaDias;
     });
-  }, [casosAbiertos]);
+    return filterByAgent(vencidos);
+  }, [casos, agentFilter]);
   
   const casosEnRiesgo = useMemo(() => {
     return casosAbiertos.filter(c => {
@@ -629,115 +631,274 @@ const SupervisorPanel: React.FC = () => {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 items-stretch">
         <Tooltip id="casos-abiertos" content="Total de casos activos en el sistema">
           <div 
-            className="p-4 rounded-xl border shadow-sm hover:shadow-md transition-all cursor-help relative h-full"
-            style={{...styles.card}}
-            onMouseEnter={() => setShowTooltip('casos-abiertos')}
-            onMouseLeave={() => setShowTooltip(null)}
+            className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
+            style={{
+              ...styles.card,
+              borderColor: 'rgba(59, 130, 246, 0.25)',
+              backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.05)' : 'rgba(59, 130, 246, 0.02)'
+            }}
+            onMouseEnter={(e) => {
+              setShowTooltip('casos-abiertos');
+              e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+            }}
+            onMouseLeave={(e) => {
+              setShowTooltip(null);
+              e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.25)';
+              e.currentTarget.style.boxShadow = '';
+            }}
           >
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5">
-                <p className="text-[9px] font-bold uppercase tracking-widest" style={{color: styles.text.tertiary}}>Casos Abiertos</p>
-                <Info className="w-3 h-3 flex-shrink-0" style={{color: styles.text.tertiary}} />
-              </div>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{backgroundColor: 'rgb(15, 23, 42)'}}>
-                <Activity className="w-4 h-4 text-white" />
+            <div className="absolute top-3 right-3">
+              <Activity className="w-6 h-6" style={{color: '#3b82f6'}} />
+            </div>
+            <div className="flex items-start justify-between mb-2 pr-8">
+              <div className="flex-1">
+                <p className="text-4xl font-black leading-none mb-1.5" style={{color: '#3b82f6'}}>
+                  <AnimatedNumber value={casosAbiertos.length} />
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <Activity className="w-4 h-4 flex-shrink-0" style={{color: '#3b82f6'}} />
+                  <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Casos Abiertos</p>
+                </div>
+                <p className="text-[10px] mt-1" style={{color: styles.text.tertiary}}>
+                  Activos
+                </p>
               </div>
             </div>
-            <h3 className="text-lg font-black mb-0.5" style={{color: styles.text.primary}}>{casosAbiertos.length}</h3>
-            <p className="text-[10px] font-medium" style={{color: styles.text.tertiary}}>Normal</p>
+          </div>
+        </Tooltip>
+
+        <Tooltip id="casos-vencidos" content="Casos que han excedido el tiempo de SLA">
+          <div 
+            className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
+            style={{
+              ...styles.card,
+              borderColor: casosVencidos.length > 0 ? 'rgba(220, 38, 38, 0.25)' : 'rgba(148, 163, 184, 0.2)',
+              backgroundColor: casosVencidos.length > 0 
+                ? (theme === 'dark' ? 'rgba(220, 38, 38, 0.05)' : 'rgba(220, 38, 38, 0.02)')
+                : styles.card.backgroundColor
+            }}
+            onMouseEnter={(e) => {
+              setShowTooltip('casos-vencidos');
+              e.currentTarget.style.borderColor = casosVencidos.length > 0 ? 'rgba(220, 38, 38, 0.4)' : 'rgba(148, 163, 184, 0.3)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+            }}
+            onMouseLeave={(e) => {
+              setShowTooltip(null);
+              e.currentTarget.style.borderColor = casosVencidos.length > 0 ? 'rgba(220, 38, 38, 0.25)' : 'rgba(148, 163, 184, 0.2)';
+              e.currentTarget.style.boxShadow = '';
+            }}
+          >
+            <div className="absolute top-3 right-3">
+              <AlertCircle className="w-6 h-6" style={{color: casosVencidos.length > 0 ? '#ef4444' : styles.text.tertiary}} />
+            </div>
+            <div className="flex items-start justify-between mb-2 pr-8">
+              <div className="flex-1">
+                <p className="text-4xl font-black leading-none mb-1.5" style={{color: casosVencidos.length > 0 ? '#ef4444' : styles.text.secondary}}>
+                  <AnimatedNumber value={casosVencidos.length} />
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" style={{color: casosVencidos.length > 0 ? '#ef4444' : styles.text.secondary}} />
+                  <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Casos Vencidos</p>
+                </div>
+                <p className="text-[10px] mt-1" style={{color: casosVencidos.length > 0 ? '#ef4444' : styles.text.tertiary}}>
+                  {casosVencidos.length > 0 ? 'SLA excedido' : 'En tiempo'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </Tooltip>
+
+        <Tooltip id="casos-totales" content="Total de casos en el sistema">
+          <div 
+            className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
+            style={{
+              ...styles.card,
+              borderColor: 'rgba(59, 130, 246, 0.25)',
+              backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.05)' : 'rgba(59, 130, 246, 0.02)'
+            }}
+            onMouseEnter={(e) => {
+              setShowTooltip('casos-totales');
+              e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+            }}
+            onMouseLeave={(e) => {
+              setShowTooltip(null);
+              e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.25)';
+              e.currentTarget.style.boxShadow = '';
+            }}
+          >
+            <div className="absolute top-3 right-3">
+              <Activity className="w-6 h-6" style={{color: '#3b82f6'}} />
+            </div>
+            <div className="flex items-start justify-between mb-2 pr-8">
+              <div className="flex-1">
+                <p className="text-4xl font-black leading-none mb-1.5" style={{color: '#3b82f6'}}>
+                  <AnimatedNumber value={casos.length} />
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <Activity className="w-4 h-4 flex-shrink-0" style={{color: '#3b82f6'}} />
+                  <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Casos Totales</p>
+                </div>
+                <p className="text-[10px] mt-1" style={{color: styles.text.tertiary}}>
+                  Todos los casos
+                </p>
+              </div>
+            </div>
           </div>
         </Tooltip>
 
         <Tooltip id="casos-criticos" content="Casos que requieren atención inmediata">
           <div 
-            className="p-4 rounded-xl border-2 shadow-sm hover:shadow-md transition-all cursor-help relative h-full"
-            onMouseEnter={() => setShowTooltip('casos-criticos')}
-            onMouseLeave={() => setShowTooltip(null)}
+            className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
             style={{
               ...styles.card,
-              borderColor: casosCriticos.length > 0 ? 'rgba(200, 21, 27, 0.4)' : 'rgba(148, 163, 184, 0.2)'
+              borderColor: casosCriticos.length > 0 ? 'rgba(200, 21, 27, 0.25)' : 'rgba(148, 163, 184, 0.2)',
+              backgroundColor: casosCriticos.length > 0 
+                ? (theme === 'dark' ? 'rgba(200, 21, 27, 0.05)' : 'rgba(200, 21, 27, 0.02)')
+                : styles.card.backgroundColor
+            }}
+            onMouseEnter={(e) => {
+              setShowTooltip('casos-criticos');
+              e.currentTarget.style.borderColor = casosCriticos.length > 0 ? 'rgba(200, 21, 27, 0.4)' : 'rgba(148, 163, 184, 0.3)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+            }}
+            onMouseLeave={(e) => {
+              setShowTooltip(null);
+              e.currentTarget.style.borderColor = casosCriticos.length > 0 ? 'rgba(200, 21, 27, 0.25)' : 'rgba(148, 163, 184, 0.2)';
+              e.currentTarget.style.boxShadow = '';
             }}
           >
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5">
-                <p className="text-[9px] font-bold uppercase tracking-widest" style={{color: styles.text.tertiary}}>Casos Críticos</p>
-                <Info className="w-3 h-3 flex-shrink-0" style={{color: styles.text.tertiary}} />
-              </div>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"               style={{
-                backgroundColor: casosCriticos.length > 0 ? 'rgba(200, 21, 27, 0.2)' : (theme === 'dark' ? '#0f172a' : '#f8fafc')
-              }}>
-                <AlertCircle className="w-4 h-4" style={{color: casosCriticos.length > 0 ? '#f87171' : styles.text.tertiary}} />
+            <div className="absolute top-3 right-3">
+              <AlertCircle className="w-6 h-6" style={{color: casosCriticos.length > 0 ? '#f87171' : styles.text.tertiary}} />
+            </div>
+            <div className="flex items-start justify-between mb-2 pr-8">
+              <div className="flex-1">
+                <p className="text-4xl font-black leading-none mb-1.5" style={{color: casosCriticos.length > 0 ? '#f87171' : styles.text.secondary}}>
+                  <AnimatedNumber value={casosCriticos.length} />
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" style={{color: casosCriticos.length > 0 ? '#f87171' : styles.text.secondary}} />
+                  <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Casos Críticos</p>
+                </div>
+                <p className="text-[10px] mt-1" style={{color: casosCriticos.length > 0 ? '#f87171' : styles.text.tertiary}}>
+                  {casosCriticos.length > 0 ? 'Requiere acción' : 'Bajo control'}
+                </p>
               </div>
             </div>
-            <h3 className="text-lg font-black mb-0.5" style={{color: casosCriticos.length > 0 ? '#f87171' : styles.text.secondary}}>{casosCriticos.length}</h3>
-            <p className="text-[10px] font-medium" style={{color: casosCriticos.length > 0 ? '#f87171' : styles.text.tertiary}}>
-              {casosCriticos.length > 0 ? 'Requiere acción' : 'Bajo control'}
-            </p>
           </div>
         </Tooltip>
 
         <Tooltip id="sla-promedio" content="Porcentaje de casos cumpliendo SLA">
           <div 
-            className="p-4 rounded-xl border shadow-sm hover:shadow-md transition-all cursor-help relative h-full"
-            style={{...styles.card}}
-            onMouseEnter={() => setShowTooltip('sla-promedio')}
-            onMouseLeave={() => setShowTooltip(null)}
+            className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
+            style={{
+              ...styles.card,
+              borderColor: slaPromedio === null 
+                ? 'rgba(148, 163, 184, 0.2)'
+                : slaPromedio >= 90 
+                  ? 'rgba(34, 197, 94, 0.25)' 
+                  : slaPromedio >= 70 
+                    ? 'rgba(245, 158, 11, 0.25)'
+                    : 'rgba(200, 21, 27, 0.25)',
+              backgroundColor: slaPromedio === null
+                ? styles.card.backgroundColor
+                : slaPromedio >= 90
+                  ? (theme === 'dark' ? 'rgba(34, 197, 94, 0.05)' : 'rgba(34, 197, 94, 0.02)')
+                  : slaPromedio >= 70
+                    ? (theme === 'dark' ? 'rgba(245, 158, 11, 0.05)' : 'rgba(245, 158, 11, 0.02)')
+                    : (theme === 'dark' ? 'rgba(200, 21, 27, 0.05)' : 'rgba(200, 21, 27, 0.02)')
+            }}
+            onMouseEnter={(e) => {
+              setShowTooltip('sla-promedio');
+              const currentBorder = e.currentTarget.style.borderColor;
+              e.currentTarget.style.borderColor = currentBorder.replace('0.25', '0.4').replace('0.2', '0.3');
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+            }}
+            onMouseLeave={(e) => {
+              setShowTooltip(null);
+              const currentBorder = e.currentTarget.style.borderColor;
+              e.currentTarget.style.borderColor = currentBorder.replace('0.4', '0.25').replace('0.3', '0.2');
+              e.currentTarget.style.boxShadow = '';
+            }}
           >
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5">
-                <p className="text-[9px] font-bold uppercase tracking-widest" style={{color: styles.text.tertiary}}>SLA Promedio</p>
-                <Info className="w-3 h-3 flex-shrink-0" style={{color: styles.text.tertiary}} />
-              </div>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{
-                backgroundColor: slaPromedio === null ? 'rgba(148, 163, 184, 0.2)' :
-                                 slaPromedio >= 90 ? 'rgba(34, 197, 94, 0.2)' : 
-                                 slaPromedio >= 70 ? 'rgba(245, 158, 11, 0.2)' : 
-                                 'rgba(200, 21, 27, 0.2)'
-              }}>
-                <Clock className="w-4 h-4" style={{
+            <div className="absolute top-3 right-3">
+              <Clock className="w-6 h-6" style={{
+                color: slaPromedio === null ? styles.text.tertiary :
+                       slaPromedio >= 90 ? '#22c55e' : 
+                       slaPromedio >= 70 ? '#fbbf24' : 
+                       '#f87171'
+              }} />
+            </div>
+            <div className="flex items-start justify-between mb-2 pr-8">
+              <div className="flex-1">
+                <p className="text-4xl font-black leading-none mb-1.5" style={{
                   color: slaPromedio === null ? styles.text.tertiary :
                          slaPromedio >= 90 ? '#22c55e' : 
                          slaPromedio >= 70 ? '#fbbf24' : 
                          '#f87171'
-                }} />
+                }}>
+                  {slaPromedio === null ? 'N/A' : <><AnimatedNumber value={slaPromedio} />%</>}
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 flex-shrink-0" style={{
+                    color: slaPromedio === null ? styles.text.secondary :
+                           slaPromedio >= 90 ? '#22c55e' : 
+                           slaPromedio >= 70 ? '#fbbf24' : 
+                           styles.text.secondary
+                  }} />
+                  <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>SLA Promedio</p>
+                </div>
+                <p className="text-[10px] mt-1" style={{color: styles.text.tertiary}}>
+                  {slaPromedio === null ? 'Sin datos' : 
+                   slaPromedio >= 90 ? 'Normal' : 
+                   slaPromedio >= 70 ? 'En riesgo' : 
+                   'Bajo el objetivo'}
+                </p>
               </div>
             </div>
-            <h3 className="text-lg font-black mb-0.5" style={{
-              color: slaPromedio === null ? styles.text.tertiary :
-                     slaPromedio >= 90 ? '#22c55e' : 
-                     slaPromedio >= 70 ? '#fbbf24' : 
-                     '#f87171'
-            }}>{slaPromedio === null ? 'N/A' : `${slaPromedio}%`}</h3>
-            <p className="text-[10px] font-medium" style={{color: styles.text.tertiary}}>
-              {slaPromedio === null ? 'Sin datos' : 
-               slaPromedio >= 90 ? 'Normal' : 
-               slaPromedio >= 70 ? 'En riesgo' : 
-               'Bajo el objetivo'}
-            </p>
           </div>
         </Tooltip>
 
         <Tooltip id="agentes-online" content="Agentes disponibles del total">
           <div 
-            className="p-4 rounded-xl border shadow-sm hover:shadow-md transition-all cursor-help relative h-full"
-            style={{...styles.card}}
-            onMouseEnter={() => setShowTooltip('agentes-online')}
-            onMouseLeave={() => setShowTooltip(null)}
+            className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
+            style={{
+              ...styles.card,
+              borderColor: 'rgba(34, 197, 94, 0.25)',
+              backgroundColor: theme === 'dark' ? 'rgba(34, 197, 94, 0.05)' : 'rgba(34, 197, 94, 0.02)'
+            }}
+            onMouseEnter={(e) => {
+              setShowTooltip('agentes-online');
+              e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.4)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+            }}
+            onMouseLeave={(e) => {
+              setShowTooltip(null);
+              e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.25)';
+              e.currentTarget.style.boxShadow = '';
+            }}
           >
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5">
-                <p className="text-[9px] font-bold uppercase tracking-widest" style={{color: styles.text.tertiary}}>Agentes Online</p>
-                <Info className="w-3 h-3 flex-shrink-0" style={{color: styles.text.tertiary}} />
-              </div>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{backgroundColor: 'rgba(34, 197, 94, 0.2)'}}>
-                <Users className="w-4 h-4 text-green-400" />
+            <div className="absolute top-3 right-3">
+              <Users className="w-6 h-6" style={{color: '#22c55e'}} />
+            </div>
+            <div className="flex items-start justify-between mb-2 pr-8">
+              <div className="flex-1">
+                <p className="text-4xl font-black leading-none mb-1.5" style={{color: '#22c55e'}}>
+                  <AnimatedNumber value={agentesActivos} />/<AnimatedNumber value={totalAgentes} />
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <Users className="w-4 h-4 flex-shrink-0" style={{color: '#22c55e'}} />
+                  <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Agentes Online</p>
+                </div>
+                <p className="text-[10px] mt-1" style={{color: styles.text.tertiary}}>
+                  Disponibles
+                </p>
               </div>
             </div>
-            <h3 className="text-lg font-black mb-0.5" style={{color: '#22c55e'}}>{agentesActivos}/{totalAgentes}</h3>
-            <p className="text-[10px] font-medium" style={{color: styles.text.tertiary}}>Disponibles</p>
           </div>
         </Tooltip>
       </div>

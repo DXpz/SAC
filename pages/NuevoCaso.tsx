@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { CaseStatus, Cliente, Categoria, Channel } from '../types';
-import { Search, X, Building2, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Search, X, Building2, ArrowLeft, CheckCircle2, HelpCircle, ChevronDown } from 'lucide-react';
 import Toast, { ToastType } from '../components/Toast';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -11,6 +11,7 @@ const NuevoCaso: React.FC = () => {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [clienteSearchTerm, setClienteSearchTerm] = useState('');
   const [showClienteDropdown, setShowClienteDropdown] = useState(false);
+  const [showCategoriaDropdown, setShowCategoriaDropdown] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -49,15 +50,18 @@ const NuevoCaso: React.FC = () => {
       if (showClienteDropdown && !target.closest('.cliente-selector-container')) {
         setShowClienteDropdown(false);
       }
+      if (showCategoriaDropdown && !target.closest('.categoria-selector-container')) {
+        setShowCategoriaDropdown(false);
+      }
     };
 
-    if (showClienteDropdown) {
+    if (showClienteDropdown || showCategoriaDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => {
         document.removeEventListener('mousedown', handleClickOutside);
       };
     }
-  }, [showClienteDropdown]);
+  }, [showClienteDropdown, showCategoriaDropdown]);
 
   const loadClientes = async () => {
     const data = await api.getClientes();
@@ -112,6 +116,14 @@ const NuevoCaso: React.FC = () => {
     });
     setClienteSearchTerm('');
     setShowClienteDropdown(false);
+  };
+
+  const handleCategoriaSelect = (categoria: Categoria) => {
+    setNewCase({
+      ...newCase,
+      categoriaId: categoria.idCategoria,
+    });
+    setShowCategoriaDropdown(false);
   };
 
   const handleCreateCase = async (e: React.FormEvent) => {
@@ -506,36 +518,185 @@ const NuevoCaso: React.FC = () => {
                 </h2>
 
                 <div>
-                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>Categoría <span className="text-red-500">*</span></label>
-                  <select
-                    required
-                    value={newCase.categoriaId}
-                    onChange={(e) => setNewCase({...newCase, categoriaId: e.target.value})}
-                    className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs appearance-none cursor-pointer shadow-sm hover:shadow-md"
-                    style={{
-                      ...styles.input
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = styles.input.backgroundColor;
-                    }}
-                  >
-                    <option value="">Seleccione una categoría...</option>
-                    {categorias.length > 0 ? (
-                      categorias.map((categoria) => (
-                        <option key={categoria.idCategoria} value={categoria.idCategoria}>
-                          {categoria.nombre} — SLA {categoria.slaDias} días
-                        </option>
-                      ))
-                    ) : (
-                      <option value="" disabled>Cargando categorías...</option>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <label className="block text-xs font-semibold tracking-normal" style={{color: styles.text.secondary}}>Categoría <span className="text-red-500">*</span></label>
+                    {newCase.categoriaId && (() => {
+                      const categoriaSeleccionada = categorias.find(c => c.idCategoria === newCase.categoriaId);
+                      return categoriaSeleccionada && (categoriaSeleccionada.descripcion || (categoriaSeleccionada as any).description) ? (
+                        <div className="relative group">
+                          <HelpCircle 
+                            className="w-3.5 h-3.5 cursor-help transition-colors flex-shrink-0" 
+                            style={{ color: styles.text.tertiary }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.color = theme === 'dark' ? '#94a3b8' : '#64748b';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.color = styles.text.tertiary;
+                            }}
+                          />
+                          <div 
+                            className="absolute left-full ml-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-normal opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none"
+                            style={{
+                              backgroundColor: theme === 'dark' ? '#1e293b' : '#0f172a',
+                              color: theme === 'dark' ? '#f1f5f9' : '#ffffff',
+                              border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`,
+                              boxShadow: theme === 'dark' 
+                                ? '0 4px 12px rgba(0, 0, 0, 0.5)' 
+                                : '0 4px 12px rgba(0, 0, 0, 0.3)',
+                              width: 'max-content',
+                              maxWidth: '300px',
+                              top: '50%',
+                              transform: 'translateY(-50%)'
+                            }}
+                          >
+                              {categoriaSeleccionada.descripcion || (categoriaSeleccionada as any).description || 'Sin descripción disponible'}
+                            <div 
+                              className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0"
+                              style={{
+                                borderTop: '4px solid transparent',
+                                borderBottom: '4px solid transparent',
+                                borderRight: `4px solid ${theme === 'dark' ? '#1e293b' : '#0f172a'}`
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+                  <div className="relative categoria-selector-container">
+                    <button
+                      type="button"
+                      onClick={() => setShowCategoriaDropdown(!showCategoriaDropdown)}
+                      className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs appearance-none cursor-pointer shadow-sm hover:shadow-md text-left flex items-center justify-between"
+                      style={{
+                        ...styles.input
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = styles.input.backgroundColor;
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = 'var(--color-accent-blue)';
+                        e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
+                        e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = styles.input.borderColor;
+                        e.target.style.boxShadow = '';
+                        e.target.style.backgroundColor = styles.input.backgroundColor;
+                      }}
+                    >
+                      <span style={{ color: newCase.categoriaId ? styles.text.primary : styles.text.tertiary }}>
+                        {newCase.categoriaId 
+                          ? (() => {
+                              const categoriaSeleccionada = categorias.find(c => c.idCategoria === newCase.categoriaId);
+                              return categoriaSeleccionada 
+                                ? `${categoriaSeleccionada.nombre} — SLA ${categoriaSeleccionada.slaDias} días`
+                                : 'Seleccione una categoría...';
+                            })()
+                          : 'Seleccione una categoría...'
+                        }
+                      </span>
+                      <ChevronDown 
+                        className={`w-4 h-4 transition-transform ${showCategoriaDropdown ? 'rotate-180' : ''}`}
+                        style={{ color: styles.text.tertiary }}
+                      />
+                    </button>
+                    {showCategoriaDropdown && categorias.length > 0 && (
+                      <div className="absolute z-30 w-full mt-2 rounded-xl shadow-2xl max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200 border" style={{...styles.card}}>
+                        <div className="p-2 border-b sticky top-0" style={{
+                          backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                          borderColor: 'rgba(148, 163, 184, 0.2)'
+                        }}>
+                          <p className="text-xs font-semibold" style={{color: styles.text.secondary}}>
+                            {categorias.length} {categorias.length === 1 ? 'categoría disponible' : 'categorías disponibles'}
+                          </p>
+                        </div>
+                        {categorias.map((categoria) => {
+                          const isSelected = newCase.categoriaId === categoria.idCategoria;
+                          const descripcion = categoria.descripcion || (categoria as any).description || categoria.nombre || 'Sin descripción disponible';
+                          return (
+                            <div
+                              key={categoria.idCategoria}
+                              onClick={() => handleCategoriaSelect(categoria)}
+                              className="p-4 cursor-pointer border-b last:border-b-0 transition-all group relative"
+                              style={{
+                                borderColor: 'rgba(184, 148, 153, 0.1)',
+                                backgroundColor: isSelected 
+                                  ? (theme === 'dark' ? 'rgba(16, 122, 180, 0.2)' : 'rgba(16, 122, 180, 0.1)')
+                                  : 'transparent'
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isSelected) {
+                                  e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(248, 250, 252, 0.1)' : 'rgba(248, 250, 252, 0.5)';
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isSelected) {
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                }
+                              }}
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex-1">
+                                  <div className="text-sm font-medium mb-0.5" style={{color: styles.text.primary}}>
+                                    {categoria.nombre}
+                                  </div>
+                                  <div className="text-xs" style={{color: styles.text.secondary}}>
+                                    SLA {categoria.slaDias} días
+                                  </div>
+                                </div>
+                                <div className="relative group/tooltip flex-shrink-0">
+                                  <HelpCircle 
+                                    className="w-4 h-4 cursor-help transition-colors" 
+                                    style={{ 
+                                      color: theme === 'dark' ? '#cbd5e1' : '#475569'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.color = theme === 'dark' ? '#f1f5f9' : '#0f172a';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.color = theme === 'dark' ? '#cbd5e1' : '#475569';
+                                    }}
+                                  />
+                                  <div 
+                                    className="absolute right-full mr-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-normal opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all z-[100] pointer-events-none"
+                                    style={{
+                                      backgroundColor: theme === 'dark' ? '#1e293b' : '#0f172a',
+                                      color: theme === 'dark' ? '#f1f5f9' : '#ffffff',
+                                      border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`,
+                                      boxShadow: theme === 'dark' 
+                                        ? '0 4px 12px rgba(0, 0, 0, 0.5)' 
+                                        : '0 4px 12px rgba(0, 0, 0, 0.3)',
+                                      width: 'max-content',
+                                      maxWidth: '300px',
+                                      top: '50%',
+                                      transform: 'translateY(-50%)'
+                                    }}
+                                  >
+                                    {descripcion}
+                                    <div 
+                                      className="absolute left-full top-1/2 -translate-y-1/2 w-0 h-0"
+                                      style={{
+                                        borderTop: '4px solid transparent',
+                                        borderBottom: '4px solid transparent',
+                                        borderLeft: `4px solid ${theme === 'dark' ? '#1e293b' : '#0f172a'}`
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
-                  </select>
-                  {categorias.length === 0 && (
-                    <p className="text-xs mt-1" style={{color: styles.text.tertiary}}>Cargando categorías...</p>
-                  )}
+                    {categorias.length === 0 && (
+                      <p className="text-xs mt-1" style={{color: styles.text.tertiary}}>Cargando categorías...</p>
+                    )}
+                  </div>
                 </div>
 
                 <div>

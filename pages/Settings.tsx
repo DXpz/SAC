@@ -20,7 +20,9 @@ import {
   ChevronUp,
   ChevronDown,
   HelpCircle,
-  X
+  X,
+  AlertTriangle,
+  Search
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { api } from '../services/api';
@@ -36,17 +38,35 @@ const Settings: React.FC = () => {
     managerAlertDays: 3
   });
 
-  const [categories, setCategories] = useState([
-    { id: '1', name: 'Soporte Técnico', slaDays: 5 },
-    { id: '2', name: 'Facturación', slaDays: 5 },
-    { id: '3', name: 'Reclamos', slaDays: 3 },
-    { id: '4', name: 'Consultas Comerciales', slaDays: 2 }
-  ]);
+  const initialCategories = [
+    { id: '1', name: 'Soporte Técnico', slaDays: 5, description: 'Casos relacionados con problemas técnicos, configuración de equipos y soporte de sistemas.' },
+    { id: '2', name: 'Facturación', slaDays: 5, description: 'Consultas y problemas relacionados con facturas, pagos y estados de cuenta.' },
+    { id: '3', name: 'Reclamos', slaDays: 3, description: 'Reclamos de clientes sobre servicios, productos o atención recibida.' },
+    { id: '4', name: 'Consultas Comerciales', slaDays: 2, description: 'Consultas sobre productos, servicios, precios y ofertas comerciales.' }
+  ];
+
+  const [categories, setCategories] = useState(initialCategories);
 
   const [newCategory, setNewCategory] = useState({
     name: '',
-    slaDays: 3
+    slaDays: 3,
+    description: ''
   });
+
+  const [categorySearchTerm, setCategorySearchTerm] = useState('');
+  const [filteredCategories, setFilteredCategories] = useState<typeof categories>(initialCategories);
+
+  const [editingCategory, setEditingCategory] = useState<{
+    id: string;
+    name: string;
+    slaDays: number | string;
+    description: string;
+  } | null>(null);
+
+  const [deletingCategory, setDeletingCategory] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const [states, setStates] = useState([
     { id: '1', name: 'Nuevo', order: 1, isFinal: false },
@@ -141,9 +161,22 @@ const Settings: React.FC = () => {
         const nombre = usuario.nombre || usuario.name || 'Sin nombre';
         const code = generateUserCode(nombre);
         
-        // Generar fullName (formato: CODE Nombre AGT-XXX)
+        // Generar fullName (formato: CODE Nombre AGT-INT-XXXX)
+        // Intentar obtener el ID del agente del webhook, si tiene formato AGT-INT-XXXX, usarlo directamente
         const idAgente = usuario.idAgente || usuario.id_agente || usuario.id || usuario.id_usuario || String(index + 1);
-        const agenteCode = `AGT-${String(idAgente).padStart(3, '0')}`;
+        // Si el ID ya tiene formato AGT-INT-XXXX, usarlo directamente, sino generar AGT-XXX
+        let agenteCode = '';
+        if (String(idAgente).includes('AGT-')) {
+          agenteCode = String(idAgente);
+        } else {
+          // Intentar detectar si es un ID numérico que necesita formato AGT-INT-XXXX
+          const numericId = String(idAgente).replace(/\D/g, '');
+          if (numericId) {
+            agenteCode = `AGT-INT-${numericId.padStart(4, '0')}`;
+          } else {
+            agenteCode = `AGT-${String(idAgente).padStart(3, '0')}`;
+          }
+        }
         const fullName = `${code} ${nombre} ${agenteCode}`;
         
         // Round Robin Order (por defecto 0 para no agentes, o el orden si existe)
@@ -178,6 +211,59 @@ const Settings: React.FC = () => {
     }
   }, [activeTab]);
 
+  // Cargar categorías desde el webhook
+  const loadCategories = async () => {
+    try {
+      const categoriesFromWebhook = await api.readCategories();
+      console.log('Categorías recibidas del webhook:', categoriesFromWebhook);
+      console.log('Tipo de respuesta:', typeof categoriesFromWebhook);
+      console.log('Es array?', Array.isArray(categoriesFromWebhook));
+      console.log('Longitud:', categoriesFromWebhook?.length);
+      
+      // Solo actualizar si el webhook retorna categorías válidas
+      if (categoriesFromWebhook && Array.isArray(categoriesFromWebhook) && categoriesFromWebhook.length > 0) {
+        console.log('Actualizando categorías desde webhook:', categoriesFromWebhook);
+        setCategories(categoriesFromWebhook);
+        setFilteredCategories(categoriesFromWebhook);
+      } else {
+        console.log('No se recibieron categorías del webhook o el array está vacío. Manteniendo categorías por defecto.');
+        console.log('Categorías actuales:', categories);
+        // Si no hay categorías del webhook, mantener las categorías por defecto
+        // No actualizar el estado para mantener las categorías iniciales
+      }
+    } catch (error: any) {
+      console.error('Error al cargar categorías:', error);
+      console.error('Detalles del error:', error.message, error.stack);
+      // Si falla, mantener las categorías por defecto
+      // No actualizar el estado para mantener las categorías iniciales
+    }
+  };
+
+  // Cargar categorías cuando se activa el tab de categorías
+  useEffect(() => {
+    if (activeTab === 'categorias') {
+      loadCategories();
+    }
+  }, [activeTab]);
+
+  // Inicializar filteredCategories con las categorías cuando cambian
+  useEffect(() => {
+    console.log('useEffect categories cambió. categories.length:', categories.length);
+    console.log('categories:', categories);
+    console.log('filteredCategories actual:', filteredCategories);
+    
+    // Siempre sincronizar filteredCategories con categories
+    if (categories.length > 0) {
+      console.log('Actualizando filteredCategories con:', categories);
+      setFilteredCategories([...categories]);
+    } else {
+      console.log('categories está vacío, restaurando initialCategories');
+      // Si categories está vacío, restaurar las categorías iniciales
+      setCategories([...initialCategories]);
+      setFilteredCategories([...initialCategories]);
+    }
+  }, [categories]);
+
   const handleSlaChange = (key: string, value: number) => {
     setSlaSettings(prev => ({
       ...prev,
@@ -193,27 +279,205 @@ const Settings: React.FC = () => {
     // Aquí se podría mostrar un toast de éxito
   };
 
-  const handleAddCategory = () => {
+  const handleAddCategory = async () => {
     if (!newCategory.name.trim()) {
       alert('El nombre de la categoría es obligatorio');
       return;
     }
     
-    const newId = String(Date.now());
-    setCategories([...categories, {
-      id: newId,
-      name: newCategory.name.trim(),
-      slaDays: newCategory.slaDays
-    }]);
+    if (!newCategory.description.trim()) {
+      alert('La descripción de la categoría es obligatoria');
+      return;
+    }
     
-    setNewCategory({ name: '', slaDays: 3 });
-    // TODO: Guardar en backend
+    try {
+      // Enviar al webhook de categorías
+      // TODO: La URL del webhook de categorías está definida en config.ts pero aún no está disponible
+      await api.createCategory({
+        category_name: newCategory.name.trim(),
+        description: newCategory.description.trim(),
+        sla: newCategory.slaDays
+      });
+
+      // Si el webhook responde correctamente, agregar a la lista local
+      const newId = String(Date.now());
+      setCategories([...categories, {
+        id: newId,
+        name: newCategory.name.trim(),
+        slaDays: newCategory.slaDays,
+        description: newCategory.description.trim()
+      }]);
+      
+      setNewCategory({ name: '', slaDays: 3, description: '' });
+      setHasChanges(true);
+    } catch (error: any) {
+      console.error('Error al crear categoría:', error);
+      alert(error.message || 'Error al crear la categoría. Por favor, intente nuevamente.');
+    }
   };
 
-  const handleDeleteCategory = (id: string) => {
-    if (window.confirm('¿Está seguro de que desea eliminar esta categoría?')) {
-      setCategories(categories.filter(cat => cat.id !== id));
-      // TODO: Eliminar en backend
+  const handleEditCategory = (category: { id: string; name: string; slaDays: number; description: string }) => {
+    setEditingCategory({
+      id: category.id,
+      name: category.name,
+      slaDays: category.slaDays,
+      description: category.description
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCategory(null);
+  };
+
+  const handleUpdateCategory = async () => {
+    if (!editingCategory) return;
+
+    if (!editingCategory.name.trim()) {
+      alert('El nombre de la categoría es obligatorio');
+      return;
+    }
+    
+    if (!editingCategory.description.trim()) {
+      alert('La descripción de la categoría es obligatoria');
+      return;
+    }
+
+    const slaValue = typeof editingCategory.slaDays === 'string' 
+      ? (editingCategory.slaDays === '' ? 0 : parseInt(editingCategory.slaDays) || 0)
+      : editingCategory.slaDays;
+
+    if (!slaValue || slaValue < 1) {
+      alert('El SLA debe ser un número mayor o igual a 1');
+      return;
+    }
+
+    try {
+      // Enviar al webhook de categorías
+      await api.updateCategory({
+        id: editingCategory.id,
+        category_name: editingCategory.name.trim(),
+        description: editingCategory.description.trim(),
+        sla: slaValue
+      });
+
+      // Si el webhook responde correctamente, actualizar en la lista local
+      setCategories(categories.map(cat => 
+        cat.id === editingCategory.id 
+          ? {
+              id: cat.id,
+              name: editingCategory.name.trim(),
+              slaDays: slaValue,
+              description: editingCategory.description.trim()
+            }
+          : cat
+      ));
+      
+      setEditingCategory(null);
+      setHasChanges(true);
+    } catch (error: any) {
+      console.error('Error al actualizar categoría:', error);
+      alert(error.message || 'Error al actualizar la categoría. Por favor, intente nuevamente.');
+    }
+  };
+
+  const handleDeleteCategory = (category: { id: string; name: string }) => {
+    setDeletingCategory(category);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingCategory) return;
+
+    try {
+      // Enviar al webhook de categorías
+      await api.deleteCategory(deletingCategory.id);
+
+      // Si el webhook responde correctamente, eliminar de la lista local
+      setCategories(categories.filter(cat => cat.id !== deletingCategory.id));
+      setHasChanges(true);
+      setDeletingCategory(null);
+    } catch (error: any) {
+      console.error('Error al eliminar categoría:', error);
+      alert(error.message || 'Error al eliminar la categoría. Por favor, intente nuevamente.');
+      setDeletingCategory(null);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setDeletingCategory(null);
+  };
+
+  // Función para normalizar texto (remover tildes y convertir a minúsculas)
+  const normalizeText = (text: string): string => {
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  };
+
+  // Inicializar categorías filtradas con todas las categorías
+  useEffect(() => {
+    setFilteredCategories(categories);
+  }, []);
+
+  // Filtrar categorías por término de búsqueda (búsqueda por frases que coincidan, sin tildes y sin mayúsculas)
+  useEffect(() => {
+    if (!categorySearchTerm.trim()) {
+      setFilteredCategories(categories);
+      return;
+    }
+
+    const searchTerm = normalizeText(categorySearchTerm.trim());
+    const filtered = categories.filter(cat => {
+      const normalizedName = normalizeText(cat.name);
+      const normalizedDescription = cat.description ? normalizeText(cat.description) : '';
+      const normalizedId = normalizeText(cat.id);
+      
+      // Buscar si la frase completa está contenida en el nombre, descripción o ID
+      // Esto funciona tanto para frases completas como para palabras individuales
+      const nameMatch = normalizedName.includes(searchTerm);
+      const descriptionMatch = normalizedDescription.includes(searchTerm);
+      const idMatch = normalizedId.includes(searchTerm);
+      
+      // También buscar por palabras individuales si la búsqueda contiene múltiples palabras
+      const searchWords = searchTerm.split(/\s+/).filter(word => word.length > 0);
+      let allWordsMatch = false;
+      
+      if (searchWords.length > 1) {
+        // Si hay múltiples palabras, verificar que todas estén presentes
+        allWordsMatch = searchWords.every(word => 
+          normalizedName.includes(word) || 
+          normalizedDescription.includes(word) ||
+          normalizedId.includes(word)
+        );
+      }
+      
+      return nameMatch || descriptionMatch || idMatch || allWordsMatch;
+    });
+
+    setFilteredCategories(filtered);
+  }, [categorySearchTerm, categories]);
+
+  const handleSearchCategory = async () => {
+    if (!categorySearchTerm.trim()) {
+      setFilteredCategories(categories);
+      return;
+    }
+
+    // La búsqueda local ya se hace automáticamente con useEffect
+    // Si el término de búsqueda parece ser un ID numérico, también buscar en el webhook
+    const isNumericId = /^\d+$/.test(categorySearchTerm.trim());
+    
+    if (isNumericId && filteredCategories.length === 0) {
+      // Solo buscar en webhook si no se encontró nada localmente
+      try {
+        const result = await api.queryCategory(categorySearchTerm.trim());
+        if (result && result.id) {
+          alert(`Categoría encontrada en el sistema: ${result.category_name || result.name || 'Sin nombre'}`);
+        }
+      } catch (error: any) {
+        // Si falla el webhook, la búsqueda local ya mostró los resultados
+        console.log('Búsqueda en webhook no disponible');
+      }
     }
   };
 
@@ -565,7 +829,7 @@ const Settings: React.FC = () => {
 
     return (
       <div>
-        <label className="block text-sm font-semibold mb-2" style={{ color: styles.text.primary }}>
+        <label className="block text-sm font-semibold mb-2.5" style={{ color: styles.text.primary }}>
           {label}
         </label>
         <div className="relative inline-block" style={{ width: '120px' }}>
@@ -578,33 +842,52 @@ const Settings: React.FC = () => {
               const numValue = parseInt(e.target.value) || min;
               onChange(Math.max(min, max !== undefined ? Math.min(numValue, max) : numValue));
             }}
-            className="w-full px-3 py-2 pr-10 rounded-lg border text-sm number-input-custom"
+            className="w-full px-3.5 py-2.5 pr-11 rounded-xl border text-sm number-input-custom transition-all"
             style={{
               backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
-              borderColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.5)' : 'rgba(148, 163, 184, 0.4)',
+              borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.25)' : 'rgba(148, 163, 184, 0.3)',
               color: styles.text.primary,
               appearance: 'none',
               MozAppearance: 'textfield',
-              WebkitAppearance: 'none'
+              WebkitAppearance: 'none',
+              boxShadow: theme === 'dark' 
+                ? '0 1px 2px rgba(0, 0, 0, 0.15)' 
+                : '0 1px 2px rgba(0, 0, 0, 0.05)'
             }}
             onWheel={(e) => e.currentTarget.blur()}
             onFocus={(e) => {
               e.currentTarget.style.borderColor = theme === 'dark' ? '#3b82f6' : '#2563eb';
+              e.currentTarget.style.boxShadow = theme === 'dark' 
+                ? '0 0 0 3px rgba(59, 130, 246, 0.15)' 
+                : '0 0 0 3px rgba(37, 99, 235, 0.1)';
             }}
             onBlur={(e) => {
-              e.currentTarget.style.borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)';
+              e.currentTarget.style.borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.25)' : 'rgba(148, 163, 184, 0.3)';
+              e.currentTarget.style.boxShadow = theme === 'dark' 
+                ? '0 1px 2px rgba(0, 0, 0, 0.15)' 
+                : '0 1px 2px rgba(0, 0, 0, 0.05)';
+            }}
+            onMouseEnter={(e) => {
+              if (document.activeElement !== e.currentTarget) {
+                e.currentTarget.style.borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.35)' : 'rgba(148, 163, 184, 0.4)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (document.activeElement !== e.currentTarget) {
+                e.currentTarget.style.borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.25)' : 'rgba(148, 163, 184, 0.3)';
+              }
             }}
           />
-          <div className="absolute right-0 top-0 bottom-0 flex flex-col border-l rounded-r-lg" style={{
-            borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
-            backgroundColor: theme === 'dark' ? '#0f172a' : '#e2e8f0',
-            width: '24px'
+          <div className="absolute right-0 top-0 bottom-0 flex flex-col border-l rounded-r-xl" style={{
+            borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.25)',
+            backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+            width: '26px'
           }}>
             <button
               type="button"
               onClick={handleIncrement}
               disabled={max !== undefined && value >= max}
-              className="flex-1 flex items-center justify-center transition-colors"
+              className="flex-1 flex items-center justify-center transition-all rounded-tr-xl"
               style={{
                 cursor: (max !== undefined && value >= max) ? 'not-allowed' : 'pointer',
                 backgroundColor: 'transparent',
@@ -612,7 +895,7 @@ const Settings: React.FC = () => {
               }}
               onMouseEnter={(e) => {
                 if (max === undefined || value < max) {
-                  e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.2)';
+                  e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.12)' : 'rgba(148, 163, 184, 0.15)';
                 }
               }}
               onMouseLeave={(e) => {
@@ -620,25 +903,25 @@ const Settings: React.FC = () => {
               }}
             >
               <ChevronUp 
-                className="w-3 h-3" 
+                className="w-3.5 h-3.5" 
                 style={{
                   color: (max !== undefined && value >= max) 
                     ? (theme === 'dark' ? '#334155' : '#94a3b8')
-                    : (theme === 'dark' ? '#475569' : '#64748b'),
+                    : (theme === 'dark' ? '#64748b' : '#475569'),
                   stroke: (max !== undefined && value >= max) 
                     ? (theme === 'dark' ? '#334155' : '#94a3b8')
-                    : (theme === 'dark' ? '#475569' : '#64748b'),
+                    : (theme === 'dark' ? '#64748b' : '#475569'),
                   strokeWidth: 2.5,
                   fill: 'none'
                 }}
               />
             </button>
-            <div className="h-px" style={{ backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)' }} />
+            <div className="h-px" style={{ backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.2)' }} />
             <button
               type="button"
               onClick={handleDecrement}
               disabled={value <= min}
-              className="flex-1 flex items-center justify-center transition-colors"
+              className="flex-1 flex items-center justify-center transition-all rounded-br-xl"
               style={{
                 cursor: value <= min ? 'not-allowed' : 'pointer',
                 backgroundColor: 'transparent',
@@ -646,7 +929,7 @@ const Settings: React.FC = () => {
               }}
               onMouseEnter={(e) => {
                 if (value > min) {
-                  e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.2)';
+                  e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.12)' : 'rgba(148, 163, 184, 0.15)';
                 }
               }}
               onMouseLeave={(e) => {
@@ -654,14 +937,14 @@ const Settings: React.FC = () => {
               }}
             >
               <ChevronDown 
-                className="w-3 h-3" 
+                className="w-3.5 h-3.5" 
                 style={{
                   color: value <= min 
                     ? (theme === 'dark' ? '#334155' : '#94a3b8')
-                    : (theme === 'dark' ? '#475569' : '#64748b'),
+                    : (theme === 'dark' ? '#64748b' : '#475569'),
                   stroke: value <= min 
                     ? (theme === 'dark' ? '#334155' : '#94a3b8')
-                    : (theme === 'dark' ? '#475569' : '#64748b'),
+                    : (theme === 'dark' ? '#64748b' : '#475569'),
                   strokeWidth: 2.5,
                   fill: 'none'
                 }}
@@ -670,7 +953,10 @@ const Settings: React.FC = () => {
           </div>
         </div>
         {description && (
-          <p className="text-xs mt-2" style={{ color: styles.text.tertiary }}>
+          <p className="text-xs mt-2.5 leading-relaxed" style={{ 
+            color: styles.text.tertiary,
+            opacity: 0.8
+          }}>
             {description}
           </p>
         )}
@@ -779,13 +1065,22 @@ const Settings: React.FC = () => {
       {/* Contenido según tab activo */}
       <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
         {activeTab === 'configuracion' && (
-          <div className="p-6 rounded-lg border" style={{...styles.card}}>
+          <div className="p-6 rounded-xl border" style={{
+            ...styles.card,
+            boxShadow: theme === 'dark' 
+              ? '0 2px 8px rgba(0, 0, 0, 0.25)' 
+              : '0 2px 8px rgba(0, 0, 0, 0.08)',
+            borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.2)'
+          }}>
             {/* Sección: Parámetros Globales SLA */}
-            <div className="mb-6">
-              <h2 className="text-lg font-bold mb-2" style={{ color: styles.text.primary }}>
+            <div className="mb-8">
+              <h2 className="text-xl font-bold mb-1.5" style={{ color: styles.text.primary }}>
                 Parámetros Globales SLA
               </h2>
-              <p className="text-sm mb-4" style={{ color: styles.text.tertiary }}>
+              <p className="text-xs mb-6 leading-relaxed" style={{ 
+                color: styles.text.tertiary,
+                opacity: 0.85
+              }}>
                 Defina los tiempos y alertas para el cumplimiento de acuerdos de nivel de servicio.
               </p>
 
@@ -800,12 +1095,12 @@ const Settings: React.FC = () => {
             </div>
 
             {/* Sección: Reglas de Escalamiento */}
-            <div className="mb-6">
-              <h2 className="text-lg font-bold mb-4" style={{ color: styles.text.primary }}>
+            <div className="mb-8">
+              <h2 className="text-xl font-bold mb-6" style={{ color: styles.text.primary }}>
                 Reglas de Escalamiento
               </h2>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Alerta Supervisor */}
                 <NumberInput
                   value={slaSettings.supervisorAlertDays}
@@ -827,8 +1122,8 @@ const Settings: React.FC = () => {
             </div>
 
             {/* Botón Guardar Parámetros */}
-            <div className="flex justify-end pt-4 border-t" style={{
-              borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'
+            <div className="flex justify-end pt-5 border-t" style={{
+              borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.2)'
             }}>
               <button
                 onClick={handleSave}
@@ -868,66 +1163,143 @@ const Settings: React.FC = () => {
               backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
               border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
             }}>
-              <div className="flex items-end gap-4">
+              <div className="space-y-4">
+                <div className="flex items-end gap-4">
+                  <div className="flex-1">
+                    <label 
+                      className="block text-sm font-semibold mb-2" 
+                      style={{ color: styles.text.primary }}
+                    >
+                      Nombre Categoría
+                    </label>
+                    <input
+                      type="text"
+                      value={newCategory.name}
+                      onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
+                      placeholder="Ej. Soporte Redes"
+                      className="w-full px-3 py-2 rounded-lg border text-sm"
+                      style={{
+                        backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                        borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                        color: styles.text.primary
+                      }}
+                    />
+                  </div>
+                  <div className="w-32">
+                    <label 
+                      className="block text-sm font-semibold mb-2" 
+                      style={{ color: styles.text.primary }}
+                    >
+                      SLA (Días)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={newCategory.slaDays}
+                      onChange={(e) => setNewCategory({ ...newCategory, slaDays: parseInt(e.target.value) || 1 })}
+                      className="w-full px-3 py-2 rounded-lg border text-sm"
+                      style={{
+                        backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                        borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                        color: styles.text.primary
+                      }}
+                    />
+                  </div>
+                  <button
+                    onClick={handleAddCategory}
+                    className="px-6 py-2 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
+                    style={{
+                      backgroundColor: theme === 'dark' ? '#22c55e' : '#16a34a',
+                      boxShadow: theme === 'dark' 
+                        ? '0 4px 12px rgba(34, 197, 94, 0.3)' 
+                        : '0 4px 12px rgba(22, 163, 74, 0.3)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#16a34a' : '#15803d';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#22c55e' : '#16a34a';
+                    }}
+                  >
+                    <Plus className="w-4 h-4" />
+                    Agregar
+                  </button>
+                </div>
+                <div>
+                  <label 
+                    className="block text-sm font-semibold mb-2" 
+                    style={{ color: styles.text.primary }}
+                  >
+                    Descripción <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={newCategory.description}
+                    onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
+                    placeholder="Breve descripción de la categoría..."
+                    rows={2}
+                    className="w-full px-3 py-2 rounded-lg border text-sm resize-none"
+                    style={{
+                      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                      borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                      color: styles.text.primary
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Búsqueda de categoría */}
+            <div className="mb-6 p-4 rounded-lg" style={{
+              backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+              border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
+            }}>
+              <div className="text-xs font-semibold uppercase mb-3 tracking-wide" style={{ color: styles.text.secondary }}>
+                Buscar Categoría
+              </div>
+              <div className="flex items-end gap-3">
                 <div className="flex-1">
-                  <label 
-                    className="block text-sm font-semibold mb-2" 
-                    style={{ color: styles.text.primary }}
-                  >
-                    Nombre Categoría
+                  <label className="block text-sm font-semibold mb-2" style={{ color: styles.text.primary }}>
+                    Buscar por nombre, descripción o ID
                   </label>
-                  <input
-                    type="text"
-                    value={newCategory.name}
-                    onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
-                    placeholder="Ej. Soporte Redes"
-                    className="w-full px-3 py-2 rounded-lg border text-sm"
-                    style={{
-                      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
-                      borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
-                      color: styles.text.primary
-                    }}
-                  />
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: styles.text.tertiary }} />
+                    <input
+                      type="text"
+                      value={categorySearchTerm}
+                      onChange={(e) => setCategorySearchTerm(e.target.value)}
+                      placeholder="Buscar categoría..."
+                      className="w-full pl-10 pr-3 py-2 rounded-lg border text-sm"
+                      style={{
+                        backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                        borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                        color: styles.text.primary
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="w-32">
-                  <label 
-                    className="block text-sm font-semibold mb-2" 
-                    style={{ color: styles.text.primary }}
+                {categorySearchTerm && (
+                  <button
+                    onClick={() => {
+                      setCategorySearchTerm('');
+                      setFilteredCategories(categories);
+                    }}
+                    className="px-4 py-2 text-sm font-semibold rounded-lg transition-all flex items-center gap-2"
+                    style={{
+                      backgroundColor: 'transparent',
+                      color: styles.text.secondary,
+                      border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.15)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
                   >
-                    SLA (Días)
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={newCategory.slaDays}
-                    onChange={(e) => setNewCategory({ ...newCategory, slaDays: parseInt(e.target.value) || 1 })}
-                    className="w-full px-3 py-2 rounded-lg border text-sm"
-                    style={{
-                      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
-                      borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
-                      color: styles.text.primary
-                    }}
-                  />
-                </div>
-                <button
-                  onClick={handleAddCategory}
-                  className="px-6 py-2 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
-                  style={{
-                    backgroundColor: theme === 'dark' ? '#22c55e' : '#16a34a',
-                    boxShadow: theme === 'dark' 
-                      ? '0 4px 12px rgba(34, 197, 94, 0.3)' 
-                      : '0 4px 12px rgba(22, 163, 74, 0.3)'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = theme === 'dark' ? '#16a34a' : '#15803d';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = theme === 'dark' ? '#22c55e' : '#16a34a';
-                  }}
-                >
-                  <Plus className="w-4 h-4" />
-                  Agregar
-                </button>
+                    <X className="w-4 h-4" />
+                    Limpiar
+                  </button>
+                )}
               </div>
             </div>
 
@@ -969,23 +1341,84 @@ const Settings: React.FC = () => {
                     </th>
                   </tr>
                 </thead>
-                <tbody>
-                  {categories.map((category, index) => (
+                  <tbody>
+                    {(() => {
+                      console.log('Renderizando tabla. filteredCategories.length:', filteredCategories.length);
+                      console.log('filteredCategories:', filteredCategories);
+                      return filteredCategories.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} className="px-4 py-8 text-center text-sm" style={{ color: styles.text.tertiary }}>
+                            {categorySearchTerm ? `No se encontraron categorías que coincidan con "${categorySearchTerm}"` : 'No hay categorías registradas'}
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredCategories.map((category, index) => (
                     <tr
                       key={category.id}
                       style={{
                         backgroundColor: index % 2 === 0
                           ? (theme === 'dark' ? '#1e293b' : '#ffffff')
                           : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
-                        borderBottom: index < categories.length - 1
+                        borderBottom: index < filteredCategories.length - 1
                           ? `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.2)'}`
                           : 'none'
                       }}
                     >
                       <td className="px-4 py-3">
-                        <span className="text-sm font-medium" style={{ color: styles.text.primary }}>
-                          {category.name}
-                        </span>
+                        <div className="flex items-center" style={{ position: 'relative' }}>
+                          <span className="text-sm font-medium flex-1" style={{ color: styles.text.primary }}>
+                            {category.name}
+                          </span>
+                          <div className="relative group flex-shrink-0" style={{ 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            width: '24px',
+                            justifyContent: 'flex-end',
+                            marginLeft: '8px'
+                          }}>
+                            <HelpCircle 
+                              className="cursor-help transition-colors" 
+                              style={{ 
+                                color: theme === 'dark' ? '#cbd5e1' : '#475569',
+                                width: '18px',
+                                height: '18px',
+                                display: 'block',
+                                flexShrink: 0
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.color = theme === 'dark' ? '#f1f5f9' : '#0f172a';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.color = theme === 'dark' ? '#cbd5e1' : '#475569';
+                              }}
+                            />
+                            <div 
+                              className="absolute left-full ml-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-normal opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none"
+                              style={{
+                                backgroundColor: theme === 'dark' ? '#1e293b' : '#0f172a',
+                                color: theme === 'dark' ? '#f1f5f9' : '#ffffff',
+                                border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`,
+                                boxShadow: theme === 'dark' 
+                                  ? '0 4px 12px rgba(0, 0, 0, 0.5)' 
+                                  : '0 4px 12px rgba(0, 0, 0, 0.3)',
+                                width: 'max-content',
+                                maxWidth: '300px',
+                                top: '50%',
+                                transform: 'translateY(-50%)'
+                              }}
+                            >
+                              {category.description || category.name || 'Sin descripción disponible'}
+                              <div 
+                                className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0"
+                                style={{
+                                  borderTop: '4px solid transparent',
+                                  borderBottom: '4px solid transparent',
+                                  borderRight: `4px solid ${theme === 'dark' ? '#1e293b' : '#0f172a'}`
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-sm" style={{ color: styles.text.secondary }}>
@@ -993,9 +1426,26 @@ const Settings: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex justify-center">
+                        <div className="flex justify-center items-center gap-2">
                           <button
-                            onClick={() => handleDeleteCategory(category.id)}
+                            onClick={() => handleEditCategory(category)}
+                            className="p-2 rounded-lg transition-all hover:shadow-md"
+                            style={{
+                              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                              color: '#3b82f6'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.2)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
+                            }}
+                            title="Editar categoría"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCategory(category)}
                             className="p-2 rounded-lg transition-all hover:shadow-md"
                             style={{
                               backgroundColor: 'rgba(239, 68, 68, 0.1)',
@@ -1014,10 +1464,228 @@ const Settings: React.FC = () => {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                        ))
+                      );
+                    })()}
                 </tbody>
               </table>
             </div>
+
+            {/* Modal de Edición de Categoría */}
+            {editingCategory && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{
+                backgroundColor: 'rgba(0, 0, 0, 0.5)'
+              }}>
+                <div className="rounded-xl border p-6 w-full max-w-md" style={{
+                  ...styles.card,
+                  boxShadow: theme === 'dark' 
+                    ? '0 8px 24px rgba(0, 0, 0, 0.5)' 
+                    : '0 8px 24px rgba(0, 0, 0, 0.2)'
+                }}>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold" style={{ color: styles.text.primary }}>
+                      Editar Categoría
+                    </h3>
+                    <button
+                      onClick={handleCancelEdit}
+                      className="p-1 rounded-lg transition-colors"
+                      style={{
+                        color: styles.text.tertiary
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold mb-2" style={{ color: styles.text.secondary }}>
+                        Nombre Categoría <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={editingCategory.name}
+                        onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
+                        placeholder="Ej. Soporte Redes"
+                        className="w-full px-3 py-2 rounded-lg border text-sm"
+                        style={{
+                          backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                          borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                          color: styles.text.primary
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex items-end gap-4">
+                      <div className="w-32">
+                        <label className="block text-sm font-semibold mb-2" style={{ color: styles.text.secondary }}>
+                          SLA (Días) <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={editingCategory.slaDays === '' ? '' : editingCategory.slaDays}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setEditingCategory({ ...editingCategory, slaDays: value === '' ? '' : parseInt(value) || '' });
+                          }}
+                          className="w-full px-3 py-2 rounded-lg border text-sm"
+                          style={{
+                            backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                            borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                            color: styles.text.primary
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold mb-2" style={{ color: styles.text.secondary }}>
+                        Descripción <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        value={editingCategory.description}
+                        onChange={(e) => setEditingCategory({ ...editingCategory, description: e.target.value })}
+                        placeholder="Breve descripción de la categoría..."
+                        rows={2}
+                        className="w-full px-3 py-2 rounded-lg border text-sm resize-none"
+                        style={{
+                          backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                          borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                          color: styles.text.primary
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-2">
+                      <button
+                        onClick={handleCancelEdit}
+                        className="px-4 py-2 text-sm font-semibold rounded-lg transition-all"
+                        style={{
+                          backgroundColor: 'transparent',
+                          color: styles.text.secondary,
+                          border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.15)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={handleUpdateCategory}
+                        className="px-6 py-2 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
+                        style={{
+                          backgroundColor: theme === 'dark' ? '#22c55e' : '#16a34a',
+                          boxShadow: theme === 'dark' 
+                            ? '0 4px 12px rgba(34, 197, 94, 0.3)' 
+                            : '0 4px 12px rgba(22, 163, 74, 0.3)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = theme === 'dark' ? '#16a34a' : '#15803d';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = theme === 'dark' ? '#22c55e' : '#16a34a';
+                        }}
+                      >
+                        <Save className="w-4 h-4" />
+                        Guardar Cambios
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Modal de Confirmación de Eliminación */}
+            {deletingCategory && (
+              <div 
+                className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+                style={{
+                  backgroundColor: 'rgba(0, 0, 0, 0.5)'
+                }}
+                onClick={handleCancelDelete}
+              >
+                <div 
+                  className="rounded-xl border p-6 w-full max-w-md animate-in zoom-in-95 duration-200"
+                  style={{
+                    ...styles.card,
+                    boxShadow: theme === 'dark' 
+                      ? '0 8px 24px rgba(0, 0, 0, 0.5)' 
+                      : '0 8px 24px rgba(0, 0, 0, 0.2)'
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex flex-col items-center mb-4">
+                    <div 
+                      className="w-16 h-16 rounded-full flex items-center justify-center mb-4 animate-in zoom-in duration-300"
+                      style={{
+                        backgroundColor: theme === 'dark' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)'
+                      }}
+                    >
+                      <AlertTriangle 
+                        className="w-8 h-8 animate-in zoom-in duration-300" 
+                        style={{ color: '#ef4444' }}
+                      />
+                    </div>
+                    <h3 className="text-lg font-bold mb-2" style={{ color: styles.text.primary }}>
+                      ¿Eliminar categoría?
+                    </h3>
+                    <p className="text-sm text-center" style={{ color: styles.text.secondary }}>
+                      Está a punto de eliminar la categoría <strong style={{ color: styles.text.primary }}>{deletingCategory.name}</strong>. Esta acción no se puede deshacer.
+                    </p>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4">
+                    <button
+                      onClick={handleCancelDelete}
+                      className="px-4 py-2 text-sm font-semibold rounded-lg transition-all"
+                      style={{
+                        backgroundColor: 'transparent',
+                        color: styles.text.secondary,
+                        border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleConfirmDelete}
+                      className="px-6 py-2 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
+                      style={{
+                        backgroundColor: theme === 'dark' ? '#ef4444' : '#dc2626',
+                        boxShadow: theme === 'dark' 
+                          ? '0 4px 12px rgba(239, 68, 68, 0.3)' 
+                          : '0 4px 12px rgba(220, 38, 38, 0.3)'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = theme === 'dark' ? '#dc2626' : '#b91c1c';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = theme === 'dark' ? '#ef4444' : '#dc2626';
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1034,30 +1702,30 @@ const Settings: React.FC = () => {
                 </p>
               </div>
               {hasChanges && (
-                <button
-                  onClick={handleSaveStates}
-                  className="px-6 py-3 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
-                  style={{
-                    backgroundColor: theme === 'dark' ? '#ef4444' : '#dc2626',
-                    boxShadow: theme === 'dark' 
-                      ? '0 4px 12px rgba(239, 68, 68, 0.3)' 
-                      : '0 4px 12px rgba(220, 38, 38, 0.3)'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = theme === 'dark' ? '#dc2626' : '#b91c1c';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = theme === 'dark' ? '#ef4444' : '#dc2626';
-                  }}
-                >
-                  <Save className="w-4 h-4" />
-                  Guardar Cambios
-                </button>
-              )}
+                  <button
+                    onClick={handleSaveStates}
+                    className="px-6 py-3 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
+                    style={{
+                      backgroundColor: theme === 'dark' ? '#ef4444' : '#dc2626',
+                      boxShadow: theme === 'dark' 
+                        ? '0 4px 12px rgba(239, 68, 68, 0.3)' 
+                        : '0 4px 12px rgba(220, 38, 38, 0.3)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#dc2626' : '#b91c1c';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#ef4444' : '#dc2626';
+                    }}
+                  >
+                    <Save className="w-4 h-4" />
+                    Guardar Cambios
+                  </button>
+                )}
             </div>
 
             {/* Formulario para agregar nuevo estado */}
-            <div className="mb-8 p-4 rounded-lg" style={{
+            <div className="mb-6 p-4 rounded-lg" style={{
               backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
               border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
             }}>
@@ -1074,23 +1742,6 @@ const Settings: React.FC = () => {
                     value={newState.name}
                     onChange={(e) => setNewState({ ...newState, name: e.target.value })}
                     placeholder="Ej. Validación Técnica"
-                    className="w-full px-3 py-2 rounded-lg border text-sm"
-                    style={{
-                      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
-                      borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
-                      color: styles.text.primary
-                    }}
-                  />
-                </div>
-                <div className="w-32">
-                  <label className="block text-sm font-semibold mb-2" style={{ color: styles.text.primary }}>
-                    Orden
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={newState.order}
-                    onChange={(e) => setNewState({ ...newState, order: parseInt(e.target.value) || 1 })}
                     className="w-full px-3 py-2 rounded-lg border text-sm"
                     style={{
                       backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
@@ -1526,13 +2177,31 @@ const Settings: React.FC = () => {
                     backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc'
                   }}>
                     <th 
+                      className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider"
+                      style={{ 
+                        color: styles.text.secondary,
+                        borderBottom: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
+                      }}
+                    >
+                      AVATAR
+                    </th>
+                    <th 
                       className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider"
                       style={{ 
                         color: styles.text.secondary,
                         borderBottom: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
                       }}
                     >
-                      USUARIO
+                      NOMBRE
+                    </th>
+                    <th 
+                      className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider"
+                      style={{ 
+                        color: styles.text.secondary,
+                        borderBottom: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
+                      }}
+                    >
+                      ID
                     </th>
                     <th 
                       className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider"
@@ -1584,19 +2253,24 @@ const Settings: React.FC = () => {
                 <tbody>
                   {loadingUsers ? (
                     <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-sm" style={{ color: styles.text.tertiary }}>
+                      <td colSpan={8} className="px-4 py-8 text-center text-sm" style={{ color: styles.text.tertiary }}>
                         Cargando usuarios...
                       </td>
                     </tr>
                   ) : settingsUsers.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-sm" style={{ color: styles.text.tertiary }}>
+                      <td colSpan={8} className="px-4 py-8 text-center text-sm" style={{ color: styles.text.tertiary }}>
                         No hay usuarios registrados
                       </td>
                     </tr>
                   ) : (
                     settingsUsers.map((user, index) => {
                       const roleStyle = getRoleBadgeStyle(user.role);
+                      // Extraer el ID del fullName (formato: "CODE Nombre AGT-XXX" o "CODE Nombre AGT-INT-XXXX")
+                      // Buscar patrones como AGT-INT-0001, AGT-0001, etc.
+                      const idMatch = user.fullName.match(/AGT-[A-Z0-9-]+/);
+                      const userId = idMatch ? idMatch[0] : user.id;
+                      
                       return (
                         <tr
                           key={user.id}
@@ -1609,21 +2283,32 @@ const Settings: React.FC = () => {
                               : 'none'
                           }}
                         >
-                        {/* USUARIO */}
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
+                        {/* AVATAR - Columna separada */}
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center justify-center">
                             <div 
-                              className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                              className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
                               style={{
                                 backgroundColor: theme === 'dark' ? '#3b82f6' : '#2563eb'
                               }}
                             >
                               {user.code}
                             </div>
-                            <span className="text-sm font-medium" style={{ color: styles.text.primary }}>
-                              {user.fullName}
-                            </span>
                           </div>
+                        </td>
+                        
+                        {/* NOMBRE - Columna separada */}
+                        <td className="px-4 py-3">
+                          <span className="text-sm font-medium" style={{ color: styles.text.primary }}>
+                            {user.name}
+                          </span>
+                        </td>
+                        
+                        {/* ID - Columna separada */}
+                        <td className="px-4 py-3">
+                          <span className="text-sm font-mono" style={{ color: styles.text.secondary }}>
+                            {userId}
+                          </span>
                         </td>
                         
                         {/* ROL */}
@@ -1706,20 +2391,28 @@ const Settings: React.FC = () => {
         {activeTab === 'asuetos' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Panel Izquierdo: Calendario de Asuetos */}
-            <div className="p-6 rounded-lg border" style={{...styles.card}}>
-              <h2 className="text-lg font-bold mb-2" style={{ color: styles.text.primary }}>
+            <div className="p-6 rounded-xl border" style={{
+              ...styles.card,
+              boxShadow: theme === 'dark' 
+                ? '0 2px 8px rgba(0, 0, 0, 0.25)' 
+                : '0 2px 8px rgba(0, 0, 0, 0.08)'
+            }}>
+              <h2 className="text-xl font-bold mb-1.5" style={{ color: styles.text.primary }}>
                 Calendario de Asuetos
               </h2>
-              <p className="text-sm mb-6" style={{ color: styles.text.tertiary }}>
+              <p className="text-xs mb-6" style={{ color: styles.text.tertiary }}>
                 Fechas excluidas del conteo de días hábiles para SLA.
               </p>
 
               {/* Formulario para agregar fecha */}
               <div className="mb-6 p-4 rounded-lg" style={{
                 backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
-                border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
+                border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.2)'}`,
+                boxShadow: theme === 'dark' 
+                  ? '0 1px 3px rgba(0, 0, 0, 0.2)' 
+                  : '0 1px 3px rgba(0, 0, 0, 0.05)'
               }}>
-                <div className="text-xs font-bold uppercase mb-3" style={{ color: styles.text.secondary }}>
+                <div className="text-xs font-semibold uppercase mb-3 tracking-wide" style={{ color: styles.text.secondary }}>
                   Agregar Fecha
                 </div>
                 <div className="flex items-end gap-3">
@@ -1729,28 +2422,34 @@ const Settings: React.FC = () => {
                       value={newHolidayDate}
                       onChange={(e) => setNewHolidayDate(e.target.value)}
                       placeholder="dd/mm/aaaa"
-                      className="w-full px-3 py-2 rounded-lg border text-sm"
+                      className="w-full px-3 py-2.5 rounded-lg border text-sm transition-all"
                       style={{
                         backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
-                        borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                        borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.25)' : 'rgba(148, 163, 184, 0.3)',
                         color: styles.text.primary
                       }}
                     />
                   </div>
                   <button
                     onClick={handleAddHoliday}
-                    className="px-6 py-2 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
+                    className="px-5 py-2.5 text-white text-sm font-semibold rounded-lg transition-all flex items-center gap-2"
                     style={{
                       backgroundColor: theme === 'dark' ? '#22c55e' : '#16a34a',
                       boxShadow: theme === 'dark' 
-                        ? '0 4px 12px rgba(34, 197, 94, 0.3)' 
-                        : '0 4px 12px rgba(22, 163, 74, 0.3)'
+                        ? '0 2px 6px rgba(34, 197, 94, 0.25)' 
+                        : '0 2px 6px rgba(22, 163, 74, 0.2)'
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = theme === 'dark' ? '#16a34a' : '#15803d';
+                      e.currentTarget.style.boxShadow = theme === 'dark' 
+                        ? '0 4px 10px rgba(34, 197, 94, 0.35)' 
+                        : '0 4px 10px rgba(22, 163, 74, 0.3)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = theme === 'dark' ? '#22c55e' : '#16a34a';
+                      e.currentTarget.style.boxShadow = theme === 'dark' 
+                        ? '0 2px 6px rgba(34, 197, 94, 0.25)' 
+                        : '0 2px 6px rgba(22, 163, 74, 0.2)';
                     }}
                   >
                     <Calendar className="w-4 h-4" />
@@ -1762,7 +2461,10 @@ const Settings: React.FC = () => {
 
               {/* Tabla de asuetos */}
               <div className="rounded-lg border overflow-hidden" style={{
-                borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'
+                borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.2)',
+                boxShadow: theme === 'dark' 
+                  ? '0 1px 3px rgba(0, 0, 0, 0.2)' 
+                  : '0 1px 3px rgba(0, 0, 0, 0.05)'
               }}>
                 <table className="w-full" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
                   <thead>
@@ -1773,7 +2475,7 @@ const Settings: React.FC = () => {
                         className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider"
                         style={{ 
                           color: styles.text.secondary,
-                          borderBottom: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
+                          borderBottom: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.2)'}`
                         }}
                       >
                         FECHA
@@ -1782,7 +2484,7 @@ const Settings: React.FC = () => {
                         className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider"
                         style={{ 
                           color: styles.text.secondary,
-                          borderBottom: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
+                          borderBottom: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.2)'}`
                         }}
                       >
                         ACCIÓN
@@ -1792,51 +2494,64 @@ const Settings: React.FC = () => {
                   <tbody>
                     {holidays.length === 0 ? (
                       <tr>
-                        <td colSpan={2} className="px-4 py-8 text-center text-sm" style={{ color: styles.text.tertiary }}>
+                        <td colSpan={2} className="px-4 py-8 text-center text-xs" style={{ color: styles.text.tertiary }}>
                           No hay asuetos registrados
                         </td>
                       </tr>
                     ) : (
-                      holidays.map((holiday, index) => (
-                        <tr
-                          key={holiday.getTime()}
-                          style={{
-                            backgroundColor: index % 2 === 0
-                              ? (theme === 'dark' ? '#1e293b' : '#ffffff')
-                              : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
-                            borderBottom: index < holidays.length - 1
-                              ? `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.2)'}`
-                              : 'none'
-                          }}
-                        >
-                          <td className="px-4 py-3">
-                            <span className="text-sm" style={{ color: styles.text.primary }}>
-                              {formatDateToSpanish(holiday)}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex justify-center">
-                              <button
-                                onClick={() => handleDeleteHoliday(holiday)}
-                                className="p-2 rounded-lg transition-all hover:shadow-md"
-                                style={{
-                                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                                  color: '#ef4444'
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
-                                }}
-                                title="Eliminar fecha"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
+                      holidays.map((holiday, index) => {
+                        const dateStr = formatDateToSpanish(holiday);
+                        const parts = dateStr.split(', ');
+                        const weekday = parts[0];
+                        const date = parts.slice(1).join(', ');
+                        return (
+                          <tr
+                            key={holiday.getTime()}
+                            style={{
+                              backgroundColor: index % 2 === 0
+                                ? (theme === 'dark' ? '#1e293b' : '#ffffff')
+                                : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
+                              borderBottom: index < holidays.length - 1
+                                ? `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.08)' : 'rgba(148, 163, 184, 0.15)'}`
+                                : 'none'
+                            }}
+                          >
+                            <td className="px-4 py-3">
+                              <div className="flex flex-col">
+                                <span className="text-sm font-semibold leading-tight" style={{ color: styles.text.primary }}>
+                                  {date || dateStr}
+                                </span>
+                                <span className="text-xs leading-tight mt-0.5" style={{ color: styles.text.tertiary }}>
+                                  {weekday || ''}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex justify-center">
+                                <button
+                                  onClick={() => handleDeleteHoliday(holiday)}
+                                  className="p-2 rounded-lg transition-all"
+                                  style={{
+                                    backgroundColor: 'transparent',
+                                    color: theme === 'dark' ? 'rgba(148, 163, 184, 0.5)' : 'rgba(107, 114, 128, 0.5)'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.15)';
+                                    e.currentTarget.style.color = '#ef4444';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                    e.currentTarget.style.color = theme === 'dark' ? 'rgba(148, 163, 184, 0.5)' : 'rgba(107, 114, 128, 0.5)';
+                                  }}
+                                  title="Eliminar fecha"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -1844,44 +2559,58 @@ const Settings: React.FC = () => {
             </div>
 
             {/* Panel Derecho: Carga Masiva */}
-            <div className="p-6 rounded-lg border" style={{...styles.card}}>
-              <h2 className="text-lg font-bold mb-2" style={{ color: styles.text.primary }}>
+            <div className="p-6 rounded-xl border" style={{
+              ...styles.card,
+              boxShadow: theme === 'dark' 
+                ? '0 2px 8px rgba(0, 0, 0, 0.25)' 
+                : '0 2px 8px rgba(0, 0, 0, 0.08)'
+            }}>
+              <h2 className="text-xl font-bold mb-1.5" style={{ color: styles.text.primary }}>
                 Carga Masiva
               </h2>
-              <p className="text-sm mb-6" style={{ color: styles.text.tertiary }}>
+              <p className="text-xs mb-6" style={{ color: styles.text.tertiary }}>
                 Pegue fechas en formato YYYY-MM-DD separadas por coma o salto de línea.
               </p>
 
-              <div className="mb-4">
+              <div className="mb-5">
                 <textarea
                   value={bulkDates}
                   onChange={(e) => setBulkDates(e.target.value)}
                   placeholder="2025-12-24&#10;2025-12-31"
                   rows={12}
-                  className="w-full px-3 py-2 rounded-lg border text-sm font-mono"
+                  className="w-full px-3 py-3 rounded-lg border text-sm font-mono transition-all"
                   style={{
                     backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
-                    borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                    borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.25)' : 'rgba(148, 163, 184, 0.3)',
                     color: styles.text.primary,
-                    resize: 'vertical'
+                    resize: 'vertical',
+                    boxShadow: theme === 'dark' 
+                      ? '0 1px 3px rgba(0, 0, 0, 0.2)' 
+                      : '0 1px 3px rgba(0, 0, 0, 0.05)'
                   }}
                 />
               </div>
 
               <button
                 onClick={handleBulkImport}
-                className="w-full px-6 py-3 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                className="w-full px-6 py-3.5 text-white text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2"
                 style={{
                   backgroundColor: theme === 'dark' ? '#ef4444' : '#dc2626',
                   boxShadow: theme === 'dark' 
-                    ? '0 4px 12px rgba(239, 68, 68, 0.3)' 
+                    ? '0 4px 12px rgba(239, 68, 68, 0.35)' 
                     : '0 4px 12px rgba(220, 38, 38, 0.3)'
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = theme === 'dark' ? '#dc2626' : '#b91c1c';
+                  e.currentTarget.style.boxShadow = theme === 'dark' 
+                    ? '0 6px 16px rgba(239, 68, 68, 0.4)' 
+                    : '0 6px 16px rgba(220, 38, 38, 0.35)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = theme === 'dark' ? '#ef4444' : '#dc2626';
+                  e.currentTarget.style.boxShadow = theme === 'dark' 
+                    ? '0 4px 12px rgba(239, 68, 68, 0.35)' 
+                    : '0 4px 12px rgba(220, 38, 38, 0.3)';
                 }}
               >
                 <Calendar className="w-4 h-4" />

@@ -1418,20 +1418,31 @@ export const updateCaseData = async (
       cliente_nombre: updates.client_name !== undefined 
         ? (updates.client_name || '') 
         : (currentClientName || ''),
-      email_cliente: (updates.client_email !== undefined ? updates.client_email : currentClientEmail) || '',
-      telefono_cliente: (updates.client_phone !== undefined ? updates.client_phone : currentClientPhone) || ''
+      email_cliente: (updates.client_email !== undefined ? String(updates.client_email || '') : String(currentClientEmail || '')) || '',
+      telefono_cliente: (updates.client_phone !== undefined ? String(updates.client_phone || '') : String(currentClientPhone || '')) || ''
     }
   };
 
   const response = await callCaseWebhook(payload);
   
-
-  // Obtener el caso actualizado
-  if (response.success !== false && !response.error) {
-    // Recargar el caso actualizado
-    const updatedCase = await getCaseById(caseId);
-    return updatedCase;
+  // Verificar si el webhook retornó un error explícito
+  if (response && typeof response === 'object') {
+    if (response.success === false || response.error === true) {
+      const errorMsg = response.message || 'Error al actualizar el caso';
+      throw new Error(errorMsg);
+    }
   }
 
-  throw new Error('Error al actualizar el caso');
+  // Si el webhook fue exitoso, intentar obtener el caso actualizado
+  // Pero no lanzar error si no se puede obtener inmediatamente
+  // El frontend se encargará de recargar el caso
+  try {
+    const updatedCase = await getCaseById(caseId);
+    return updatedCase;
+  } catch (error) {
+    // Si no se puede obtener el caso actualizado, no es crítico
+    // El webhook ya procesó el cambio, el frontend recargará el caso
+    console.warn('No se pudo obtener el caso actualizado inmediatamente, pero el webhook procesó el cambio:', error);
+    return null; // Retornar null en lugar de lanzar error
+  }
 };

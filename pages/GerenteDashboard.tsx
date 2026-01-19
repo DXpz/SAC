@@ -5,6 +5,7 @@ import { Case, CaseStatus, KPI } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { TrendingUp, Users, Clock, ThumbsUp, ArrowUp, ArrowDown, Info, AlertTriangle, CheckCircle2, Filter } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import AnimatedNumber from '../components/AnimatedNumber';
 
 type PeriodFilter = 'hoy' | 'semana' | 'mes';
 
@@ -302,83 +303,96 @@ const GerenteDashboard: React.FC = () => {
     variation: { value: string; percent: string | null; isPositive: boolean; isNegative: boolean };
     isHighlighted?: boolean;
     tooltip?: string;
-  }> = ({ label, value, color, bg, icon: Icon, variation, isHighlighted = false, tooltip }) => (
-    <div
-      className="p-4 rounded-xl shadow-sm hover:shadow-md transition-all cursor-help relative h-full"
-      style={{
-        ...styles.card,
-        borderWidth: isHighlighted ? '2px' : '1px',
-        borderStyle: 'solid',
-        borderColor: isHighlighted 
-          ? 'rgba(200, 21, 27, 0.4)' 
-          : styles.card.borderColor
-      }}
-      onMouseEnter={() => setHoveredKPI(label)}
-      onMouseLeave={() => setHoveredKPI(null)}
-    >
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-1.5">
-          <p className="text-[9px] font-bold uppercase tracking-widest" style={{color: styles.text.tertiary}}>{label}</p>
-          {tooltip && (
-            <div className="relative">
-              <Info className="w-3 h-3 flex-shrink-0" style={{color: styles.text.tertiary}} />
-              {hoveredKPI === label && (
-                <div 
-                  className="absolute bottom-full left-0 mb-2 px-3 py-2 text-xs rounded-lg shadow-lg whitespace-nowrap z-50"
-                  style={{
-                    backgroundColor: theme === 'dark' ? '#1e293b' : '#0f172a',
-                    color: '#ffffff',
-                    border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
-                  }}
-                >
-                  {tooltip}
-                  <div 
-                    className="absolute top-full left-4 -mt-1 border-4 border-transparent"
-                    style={{borderTopColor: theme === 'dark' ? '#1e293b' : '#0f172a'}}
-                  ></div>
-                </div>
+  }> = ({ label, value, color, bg, icon: Icon, variation, isHighlighted = false, tooltip }) => {
+    // Determinar colores según el tipo de tarjeta
+    let borderColor = 'rgba(148, 163, 184, 0.2)';
+    let backgroundColor = styles.card.backgroundColor;
+    let iconColor = styles.text.tertiary;
+    let valueColor = styles.text.primary;
+    
+    if (bg === 'bg-slate-900') {
+      borderColor = 'rgba(59, 130, 246, 0.25)';
+      backgroundColor = theme === 'dark' ? 'rgba(59, 130, 246, 0.05)' : 'rgba(59, 130, 246, 0.02)';
+      iconColor = '#3b82f6';
+      valueColor = '#3b82f6';
+    } else if (bg === 'bg-red-50' || isHighlighted) {
+      borderColor = 'rgba(220, 38, 38, 0.25)';
+      backgroundColor = theme === 'dark' ? 'rgba(220, 38, 38, 0.05)' : 'rgba(220, 38, 38, 0.02)';
+      iconColor = '#ef4444';
+      valueColor = '#ef4444';
+    } else if (bg === 'bg-green-50') {
+      borderColor = 'rgba(34, 197, 94, 0.25)';
+      backgroundColor = theme === 'dark' ? 'rgba(34, 197, 94, 0.05)' : 'rgba(34, 197, 94, 0.02)';
+      iconColor = '#22c55e';
+      valueColor = '#22c55e';
+    } else {
+      borderColor = 'rgba(148, 163, 184, 0.2)';
+      backgroundColor = styles.card.backgroundColor;
+      iconColor = styles.text.tertiary;
+      valueColor = styles.text.primary;
+    }
+
+    return (
+      <div
+        className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
+        style={{
+          ...styles.card,
+          borderColor,
+          backgroundColor
+        }}
+        onMouseEnter={(e) => {
+          setHoveredKPI(label);
+          e.currentTarget.style.borderColor = borderColor.replace('0.25', '0.4').replace('0.2', '0.3');
+          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+        }}
+        onMouseLeave={(e) => {
+          setHoveredKPI(null);
+          e.currentTarget.style.borderColor = borderColor;
+          e.currentTarget.style.boxShadow = '';
+        }}
+      >
+        <div className="absolute top-3 right-3">
+          <Icon className="w-6 h-6" style={{color: iconColor}} />
+        </div>
+        <div className="flex items-start justify-between mb-2 pr-8">
+          <div className="flex-1">
+            <p className="text-4xl font-black leading-none mb-1.5" style={{color: valueColor}}>
+              {typeof value === 'string' && value.includes('N/A') ? (
+                value
+              ) : typeof value === 'number' ? (
+                <AnimatedNumber value={value} decimals={value < 10 && value % 1 !== 0 ? 1 : 0} />
+              ) : (
+                <AnimatedNumber value={parseFloat(value as string) || 0} decimals={parseFloat(value as string) < 10 && parseFloat(value as string) % 1 !== 0 ? 1 : 0} />
               )}
+            </p>
+            <div className="flex items-center gap-1.5">
+              <Icon className="w-4 h-4 flex-shrink-0" style={{color: iconColor}} />
+              <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>{label}</p>
             </div>
-          )}
+            <p className="text-[10px] mt-1" style={{color: styles.text.tertiary}}>
+              {isHighlighted && vencidos > 0 ? 'Requiere acción' : variation.value}
+            </p>
+          </div>
         </div>
-        <div 
-          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" 
-          style={{
-            backgroundColor: bg === 'bg-slate-900' 
-              ? 'rgb(15, 23, 42)'
-              : bg === 'bg-red-50' 
-              ? (isHighlighted ? 'rgba(200, 21, 27, 0.2)' : (theme === 'dark' ? '#0f172a' : '#f8fafc'))
-              : bg === 'bg-green-50'
-              ? 'rgba(34, 197, 94, 0.2)'
-              : (theme === 'dark' ? '#0f172a' : '#f8fafc')
-          }}
-        >
-          <Icon 
-            className="w-4 h-4" 
+        {tooltip && hoveredKPI === label && (
+          <div 
+            className="absolute bottom-full left-0 mb-2 px-3 py-2 text-xs rounded-lg shadow-lg whitespace-nowrap z-50"
             style={{
-              color: bg === 'bg-slate-900' 
-                ? '#ffffff' 
-                : color.includes('red')
-                ? (isHighlighted ? '#64748b' : styles.text.tertiary)
-                : color.includes('green') 
-                ? '#22c55e' 
-                : styles.text.primary
-            }} 
-          />
-        </div>
+              backgroundColor: theme === 'dark' ? '#1e293b' : '#0f172a',
+              color: '#ffffff',
+              border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
+            }}
+          >
+            {tooltip}
+            <div 
+              className="absolute top-full left-4 -mt-1 border-4 border-transparent"
+              style={{borderTopColor: theme === 'dark' ? '#1e293b' : '#0f172a'}}
+            ></div>
+          </div>
+        )}
       </div>
-      <h3 className="text-lg font-black mb-0.5" style={{
-        color: color.includes('red') ? (isHighlighted ? '#475569' : styles.text.secondary) : 
-               color.includes('green') ? '#22c55e' : 
-               styles.text.primary
-      }}>{value}</h3>
-      <p className="text-[10px] font-medium" style={{
-        color: isHighlighted && vencidos > 0 ? '#475569' : styles.text.tertiary
-      }}>
-        {isHighlighted && vencidos > 0 ? 'Requiere acción' : variation.value}
-      </p>
-    </div>
-  );
+    );
+  };
 
   // Estilos dinámicos basados en el tema
   const styles = {
@@ -444,7 +458,7 @@ const GerenteDashboard: React.FC = () => {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
         <KPICard
           label="Casos Abiertos"
           value={abiertos}
@@ -466,7 +480,7 @@ const GerenteDashboard: React.FC = () => {
         />
         <KPICard
           label="CSAT Promedio"
-          value={kpis.csatScore !== null ? kpis.csatScore.toFixed(1) : 'N/A'}
+          value={kpis.csatScore !== null ? kpis.csatScore : ('N/A' as any)}
           color={kpis.csatScore !== null ? "#22c55e" : "#94a3b8"}
           bg="bg-green-50"
           icon={ThumbsUp}

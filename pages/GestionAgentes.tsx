@@ -49,10 +49,18 @@ const GestionAgentes: React.FC = () => {
       loadAgentes();
     };
     
+    const handleCasoReasignado = () => {
+      // Cuando se reasigna un caso, recargar agentes para actualizar casosActivos
+      localStorage.removeItem('intelfon_agents');
+      loadAgentes();
+    };
+    
     window.addEventListener('agente-creado', handleAgenteCreado);
+    window.addEventListener('caso-reasignado', handleCasoReasignado);
     
     return () => {
       window.removeEventListener('agente-creado', handleAgenteCreado);
+      window.removeEventListener('caso-reasignado', handleCasoReasignado);
     };
   }, []);
 

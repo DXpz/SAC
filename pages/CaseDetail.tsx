@@ -319,11 +319,13 @@ const CaseDetail: React.FC = () => {
           if (clienteEncontrado) {
             data.clientName = clienteEncontrado.nombreEmpresa;
             data.cliente = clienteEncontrado;
-            if (!data.clientEmail || data.clientEmail.trim() === '') {
-              data.clientEmail = clienteEncontrado.email;
+            if (!data.clientEmail || (typeof data.clientEmail === 'string' && data.clientEmail.trim() === '') || data.clientEmail === null || data.clientEmail === undefined) {
+              data.clientEmail = clienteEncontrado.email || '';
             }
-            if (!data.clientPhone || data.clientPhone.trim() === '') {
-              data.clientPhone = clienteEncontrado.telefono;
+            // Asegurar que clientPhone sea string antes de verificar
+            const clientPhoneStr = data.clientPhone ? String(data.clientPhone) : '';
+            if (!data.clientPhone || clientPhoneStr.trim() === '' || data.clientPhone === null || data.clientPhone === undefined) {
+              data.clientPhone = clienteEncontrado.telefono || '';
             }
           }
         } else {
@@ -341,11 +343,13 @@ const CaseDetail: React.FC = () => {
             if (clienteEncontrado) {
               data.clientName = clienteEncontrado.nombreEmpresa;
               data.cliente = clienteEncontrado;
-              if (!data.clientEmail || data.clientEmail.trim() === '') {
-                data.clientEmail = clienteEncontrado.email;
+              if (!data.clientEmail || (typeof data.clientEmail === 'string' && data.clientEmail.trim() === '') || data.clientEmail === null || data.clientEmail === undefined) {
+                data.clientEmail = clienteEncontrado.email || '';
               }
-              if (!data.clientPhone || data.clientPhone.trim() === '') {
-                data.clientPhone = clienteEncontrado.telefono;
+              // Asegurar que clientPhone sea string antes de verificar
+              const clientPhoneStr = data.clientPhone ? String(data.clientPhone) : '';
+              if (!data.clientPhone || clientPhoneStr.trim() === '' || data.clientPhone === null || data.clientPhone === undefined) {
+                data.clientPhone = clienteEncontrado.telefono || '';
               }
             }
           } catch (error) {
@@ -910,15 +914,15 @@ const CaseDetail: React.FC = () => {
         updates.client_phone = editedCase.clientPhone || '';
       }
       
-      const updatedCase = await updateCaseData(id, updates);
+      // Llamar a updateCaseData - puede retornar null si no se puede obtener el caso inmediatamente
+      // pero eso está bien, el webhook ya procesó el cambio
+      await updateCaseData(id, updates);
       
-      if (updatedCase) {
-        // Recargar el caso completo para asegurar que todos los datos estén enriquecidos
-        // Esto es importante porque el webhook puede no retornar todos los datos del cliente
-        await loadCaso(id);
-      } else {
-        throw new Error('No se recibió respuesta del webhook');
-      }
+      // Recargar el caso completo para asegurar que todos los datos estén enriquecidos
+      // Esto es importante porque el webhook puede no retornar todos los datos del cliente
+      // Esperar un momento para que el webhook procese completamente el cambio
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await loadCaso(id);
       
       setIsEditing(false);
       setEditedCase({});
@@ -931,8 +935,35 @@ const CaseDetail: React.FC = () => {
         setShowSuccessAnimation(false);
       }, 2000);
       
-    } catch (error) {
-      alert('Error al guardar los cambios. Por favor, intenta nuevamente.');
+    } catch (error: any) {
+      // Solo mostrar error si realmente hubo un problema con el webhook
+      // Si el error es que no se pudo obtener el caso actualizado, no es crítico
+      const errorMsg = error?.message || 'Error desconocido';
+      
+      // Si el error indica que el webhook procesó el cambio pero no se pudo obtener el caso,
+      // intentar recargar de todos modos
+      if (errorMsg.includes('No se pudo obtener') || errorMsg.includes('No se recibió respuesta')) {
+        // Intentar recargar el caso de todos modos
+        try {
+          await loadCaso(id);
+          // Si se pudo recargar, no mostrar error
+          setIsEditing(false);
+          setEditedCase({});
+          setClienteSearchTerm('');
+          setShowClienteDropdown(false);
+          setShowSuccessAnimation(true);
+          setTimeout(() => {
+            setShowSuccessAnimation(false);
+          }, 2000);
+          return;
+        } catch (reloadError) {
+          // Si falla la recarga, mostrar el error
+          alert('Error al guardar los cambios. Por favor, intenta nuevamente.');
+        }
+      } else {
+        // Para otros errores, mostrar el mensaje
+        alert(`Error al guardar los cambios: ${errorMsg}`);
+      }
     } finally {
       setTransitionLoading(false);
     }
