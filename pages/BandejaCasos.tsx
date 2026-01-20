@@ -248,19 +248,16 @@ const BandejaCasos: React.FC = () => {
     try {
       const data = await api.getCases();
       
-      // Obtener usuario actual para debugging
-      const currentUser = api.getUser();
-      
-        // Log detallado de todos los casos y sus agentes asignados
-        if (data.length > 0) {
-          data.forEach((caso, index) => {
-            const agentObject = (caso as any).agent || caso.agenteAsignado || null;
-            const agenteIdFromAgent = agentObject?.idAgente || agentObject?.id || agentObject?.id_agente || agentObject?.agente_id || agentObject?.user_id || '';
-            const agenteIdFromObject = caso.agenteAsignado?.idAgente || caso.agenteAsignado?.id || (caso.agenteAsignado as any)?.id_agente || (caso.agenteAsignado as any)?.agente_id;
-            const agenteIdFromCase = caso.agentId || (caso as any).agente_id || (caso as any).agente_user_id;
-            const agenteId = agenteIdFromAgent || agenteIdFromObject || agenteIdFromCase;
-          });
-        }
+      console.log('[BandejaCasos] Casos recibidos de getCases():', {
+        total: data.length,
+        casos: data.slice(0, 3).map(c => ({
+          id: c.id,
+          ticketNumber: c.ticketNumber,
+          agente_user_id: (c as any).agente_user_id,
+          agentId: c.agentId,
+          agenteAsignado: c.agenteAsignado?.idAgente
+        }))
+      });
       
       // Guardar casos directamente, el useEffect de enriquecimiento se ejecutará automáticamente
       setCasos(data);
@@ -285,128 +282,27 @@ const BandejaCasos: React.FC = () => {
     const currentUser = api.getUser();
     const isAgente = currentUser?.role === 'AGENTE';
     
-    // Si es agente, filtrar solo sus casos asignados
+    // IMPORTANTE: Si es agente, getCases() usa case.agent que YA retorna solo los casos del agente
+    // El webhook case.agent filtra automáticamente por agente_user_id
+    // Por lo tanto, NO debemos filtrar de nuevo - confiamos completamente en la respuesta del webhook
     let casosParaFiltrar = casos;
-    if (isAgente && currentUser?.id) {
-      
-      casosParaFiltrar = casos.filter(c => {
-        // Intentar obtener el ID del agente de múltiples fuentes
-        // PRIORIDAD: case.agent (campo directo del webhook)
-        const agentObject = (c as any).agent || c.agenteAsignado || null;
-        const agenteIdFromAgent = agentObject?.idAgente || agentObject?.id || agentObject?.id_agente || agentObject?.agente_id || agentObject?.user_id || '';
-        const agenteIdFromObject = c.agenteAsignado?.idAgente || c.agenteAsignado?.id || (c.agenteAsignado as any)?.id_agente || (c.agenteAsignado as any)?.agente_id;
-        const agenteIdFromCase = c.agentId || (c as any).agente_id || (c as any).agente_user_id;
-        const agenteId = agenteIdFromAgent || agenteIdFromObject || agenteIdFromCase;
-        
-        // Normalizar ambos IDs a string para comparación
-        const agenteIdStr = agenteId ? String(agenteId).trim() : '';
-        const userIdStr = String(currentUser.id).trim();
-        
-        // Función helper para extraer el número de un ID (ej: "AG-0006" -> "0006" o "6")
-        const extractIdNumber = (id: string): string => {
-          // Si tiene formato "AG-XXXX" o similar, extraer la parte numérica
-          const match = id.match(/(\d+)$/);
-          if (match) {
-            return match[1];
-          }
-          return id;
-        };
-        
-        // Función helper para normalizar ID (quitar ceros a la izquierda si es numérico)
-        const normalizeId = (id: string): string => {
-          const numStr = extractIdNumber(id);
-          // Si es puramente numérico, quitar ceros a la izquierda
-          if (/^\d+$/.test(numStr)) {
-            return String(Number(numStr));
-          }
-          return numStr;
-        };
-        
-        // Comparar IDs de múltiples formas
-        let casoAsignado = false;
-        if (agenteIdStr && userIdStr) {
-          // 1. Comparación exacta
-          casoAsignado = agenteIdStr === userIdStr;
-          
-          // 2. Comparación case-insensitive
-          if (!casoAsignado) {
-            casoAsignado = agenteIdStr.toLowerCase() === userIdStr.toLowerCase();
-          }
-          
-          // 3. Comparación normalizada (sin prefijos, sin ceros a la izquierda)
-          if (!casoAsignado) {
-            const agenteIdNormalized = normalizeId(agenteIdStr);
-            const userIdNormalized = normalizeId(userIdStr);
-            casoAsignado = agenteIdNormalized === userIdNormalized;
-          }
-          
-          // 4. Comparación numérica directa
-          if (!casoAsignado) {
-            const agenteIdNum = Number(agenteIdStr.replace(/[^\d]/g, ''));
-            const userIdNum = Number(userIdStr.replace(/[^\d]/g, ''));
-            if (!isNaN(agenteIdNum) && !isNaN(userIdNum) && agenteIdNum > 0 && userIdNum > 0) {
-              casoAsignado = agenteIdNum === userIdNum;
-            }
-          }
-          
-          // 5. Comparación por parte numérica extraída
-          if (!casoAsignado) {
-            const agenteIdPart = extractIdNumber(agenteIdStr);
-            const userIdPart = extractIdNumber(userIdStr);
-            casoAsignado = agenteIdPart === userIdPart || normalizeId(agenteIdPart) === normalizeId(userIdPart);
-          }
-        }
-        
-        // Loggear información de debugging para los primeros casos
-        if (casosParaFiltrar.length < 10) {
-          // Debug info available if needed
-        }
-        
-        return casoAsignado;
-      });
-      
-      
-      // Si no hay casos asignados, mostrar un mensaje de advertencia con análisis detallado
-      if (casosParaFiltrar.length === 0 && casos.length > 0) {
-        // Analizar los primeros 5 casos para ver qué IDs tienen
-        casos.slice(0, 5).forEach((caso, idx) => {
-          const agentObject = (caso as any).agent || caso.agenteAsignado || null;
-          const agenteIdFromAgent = agentObject?.idAgente || agentObject?.id || agentObject?.id_agente || agentObject?.agente_id || agentObject?.user_id || '';
-          const agenteIdFromObject = caso.agenteAsignado?.idAgente || caso.agenteAsignado?.id || (caso.agenteAsignado as any)?.id_agente || (caso.agenteAsignado as any)?.agente_id;
-          const agenteIdFromCase = caso.agentId || (caso as any).agente_id || (caso as any).agente_user_id;
-          const agenteId = agenteIdFromAgent || agenteIdFromObject || agenteIdFromCase;
-          
-          // Intentar todas las comparaciones
-          const agenteIdStr = agenteId ? String(agenteId).trim() : '';
-          const userIdStr = String(currentUser.id).trim();
-          
-          const extractIdNumber = (id: string): string => {
-            const match = id.match(/(\d+)$/);
-            return match ? match[1] : id;
-          };
-          
-          const normalizeId = (id: string): string => {
-            const numStr = extractIdNumber(id);
-            if (/^\d+$/.test(numStr)) {
-              return String(Number(numStr));
-            }
-            return numStr;
-          };
-          
-          const comparaciones = {
-            exacta: agenteIdStr === userIdStr,
-            caseInsensitive: agenteIdStr.toLowerCase() === userIdStr.toLowerCase(),
-            normalizada: normalizeId(agenteIdStr) === normalizeId(userIdStr),
-            numerica: (() => {
-              const agenteIdNum = Number(agenteIdStr.replace(/[^\d]/g, ''));
-              const userIdNum = Number(userIdStr.replace(/[^\d]/g, ''));
-              return !isNaN(agenteIdNum) && !isNaN(userIdNum) && agenteIdNum > 0 && userIdNum > 0 && agenteIdNum === userIdNum;
-            })(),
-            parteNumerica: extractIdNumber(agenteIdStr) === extractIdNumber(userIdStr) || normalizeId(extractIdNumber(agenteIdStr)) === normalizeId(extractIdNumber(userIdStr))
-          };
-        });
-      }
-    }
+    
+    console.log('[BandejaCasos] Procesando casos:', {
+      isAgente: isAgente,
+      totalCasos: casos.length,
+      userId: currentUser?.id,
+      userEmail: currentUser?.email,
+      primerosCasos: casos.slice(0, 3).map(c => ({
+        id: c.id,
+        ticketNumber: c.ticketNumber,
+        agente_user_id: (c as any).agente_user_id,
+        agentId: c.agentId
+      }))
+    });
+    
+    // Si es agente, el webhook case.agent ya filtró los casos correctamente
+    // NO aplicamos ningún filtro adicional - mostramos todos los casos que retornó el webhook
+    // Esto evita problemas de comparación de IDs que pueden eliminar casos válidos
     
     const term = searchTerm.toLowerCase();
     let result = casosParaFiltrar.filter(c => {

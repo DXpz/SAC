@@ -319,6 +319,9 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
       slaExpired = caseData.sla_vencido || caseData.slaExpired || false;
     }
     
+    // Preservar agente_user_id del webhook para comparación
+    const agenteUserIdFromWebhook = caseData.agente_user_id || '';
+    
     const mappedCase: Case = {
       id: caseId,
       ticketNumber: caseId,
@@ -330,7 +333,7 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
       description: caseData.descripcion || caseData.description || '',
       status: caseData.estado || caseData.status || CaseStatus.NUEVO,
       priority: caseData.prioridad || caseData.priority || 'Media',
-      agentId: agenteMapped?.idAgente || caseData.agente_user_id?.toString() || caseData.agente_id || caseData.agentId || '',
+      agentId: agenteMapped?.idAgente || String(agenteUserIdFromWebhook || caseData.agente_id || caseData.agentId || ''),
       agentName: agenteMapped?.nombre || caseData.agentename || caseData.agente_name || caseData.agente_nombre || caseData.agentName || caseData.nombre_agente || '',
       createdAt: createdAt,
       history: caseData.historial || caseData.history || [],
@@ -343,6 +346,9 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
       diasAbierto: diasAbierto,
       slaExpired: slaExpired
     };
+    
+    // Preservar agente_user_id del webhook en el objeto Case para comparación
+    (mappedCase as any).agente_user_id = agenteUserIdFromWebhook;
     
     return mappedCase;
   } catch (error) {
@@ -363,8 +369,12 @@ const mapWebhookResponseToCases = (webhookData: any): Case[] => {
     let cases: any[] = [];
     
     if (Array.isArray(webhookData)) {
-      // Si es un array directo
-      cases = webhookData;
+      // Si es un array directo (formato de case.agent)
+      cases = webhookData.filter(item => {
+        // Filtrar solo objetos que parezcan casos (tienen case_id, id, o ticketNumber)
+        return item && typeof item === 'object' && (item.case_id || item.id || item.ticketNumber);
+      });
+      console.log('[caseService] mapWebhookResponseToCases - Array directo, casos válidos:', cases.length);
     } else if (webhookData.cases && Array.isArray(webhookData.cases)) {
       // Si tiene propiedad "cases"
       cases = webhookData.cases;
@@ -631,15 +641,34 @@ export const getCases = async (): Promise<Case[]> => {
       action: 'case.agent',
       actor,
       data: {
-        user_id: actor.user_id
+        case_id: '' // Vacío para obtener todos los casos del agente
       }
     };
     
+    console.log('[caseService] Enviando case.agent para agente:', {
+      actor: actor,
+      payload: payload
+    });
+    
     const response = await callCaseWebhook(payload);
     
+    console.log('[caseService] Respuesta de case.agent:', response);
     
     // Procesar la respuesta de la misma manera que case.read
-    return processWebhookResponse(response);
+    const casos = processWebhookResponse(response);
+    
+    console.log('[caseService] Casos procesados para agente:', {
+      total: casos.length,
+      casos: casos.map(c => ({
+        id: c.id,
+        ticketNumber: c.ticketNumber,
+        agente_user_id: (c as any).agente_user_id,
+        agentId: c.agentId,
+        agenteAsignado: c.agenteAsignado?.idAgente
+      }))
+    });
+    
+    return casos;
   }
   
   // Si es SUPERVISOR o GERENTE, usar case.read para obtener todos los casos
@@ -659,16 +688,28 @@ export const getCases = async (): Promise<Case[]> => {
  * Procesa la respuesta del webhook y retorna un array de casos mapeados
  */
 const processWebhookResponse = (response: CaseWebhookResponse): Case[] => {
+  console.log('[caseService] processWebhookResponse - Formato de respuesta:', {
+    isArray: Array.isArray(response),
+    type: typeof response,
+    hasData: response && typeof response === 'object' && 'data' in response,
+    response: response
+  });
   
   // Intentar diferentes formatos de respuesta
-  // Formato 1: Array directo o array que contiene objetos con data
+  // Formato 1: Array directo (formato que retorna case.agent)
+  // Ejemplo: [{ case_id: "CASO-0002", agente_user_id: "AG-0002", ... }, ...]
   if (Array.isArray(response)) {
+    console.log('[caseService] Respuesta es array directo, longitud:', response.length);
     
     // Si el array contiene objetos con propiedad "data" que es un array, extraerlos
     const allCases: any[] = [];
     for (const item of response) {
       if (item && typeof item === 'object') {
-        if (item.data && Array.isArray(item.data)) {
+        // Si el item tiene case_id o id, es un caso directo
+        if (item.case_id || item.id || item.ticketNumber) {
+          allCases.push(item);
+        } else if (item.data && Array.isArray(item.data)) {
+          // Si tiene data como array, extraer los casos
           allCases.push(...item.data);
         } else if (Array.isArray(item)) {
           // Si el item es un array, agregarlo directamente
@@ -680,10 +721,14 @@ const processWebhookResponse = (response: CaseWebhookResponse): Case[] => {
       }
     }
     
+    console.log('[caseService] Casos extraídos del array:', allCases.length);
     if (allCases.length > 0) {
-      return mapWebhookResponseToCases(allCases);
+      const mapped = mapWebhookResponseToCases(allCases);
+      console.log('[caseService] Casos mapeados:', mapped.length);
+      return mapped;
     } else {
       // Si no se pudo extraer, intentar mapear el array directamente
+      console.log('[caseService] Mapeando array directamente');
       return mapWebhookResponseToCases(response);
     }
   }
