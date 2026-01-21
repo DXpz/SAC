@@ -69,6 +69,19 @@ const SupervisorPanel: React.FC = () => {
     }
   };
 
+  // Función para normalizar estado (debe estar antes de su uso)
+  const normalizeStatus = React.useCallback((status: string | CaseStatus | undefined): CaseStatus => {
+    if (!status) return CaseStatus.NUEVO;
+    const statusStr = String(status).trim();
+    const statusValues = Object.values(CaseStatus);
+    const matchedStatus = statusValues.find(s => {
+      const sNormalized = s.toLowerCase().replace(/\s+/g, '');
+      const statusNormalized = statusStr.toLowerCase().replace(/\s+/g, '');
+      return s === statusStr || s.toLowerCase() === statusStr.toLowerCase() || sNormalized === statusNormalized;
+    });
+    return (matchedStatus as CaseStatus) || CaseStatus.NUEVO;
+  }, []);
+
   // Función helper para filtrar por agente (usando useCallback para optimización)
   const filterByAgent = React.useCallback((casosList: Caso[]) => {
     if (agentFilter === 'todos') {
@@ -83,16 +96,32 @@ const SupervisorPanel: React.FC = () => {
   const casosAbiertos = useMemo(() => {
     const abiertos = casos.filter(c => c.status !== CaseStatus.RESUELTO && c.status !== CaseStatus.CERRADO);
     return filterByAgent(abiertos);
-  }, [casos, agentFilter]);
+  }, [casos, filterByAgent]);
   
   const casosCriticos = useMemo(() => {
     const criticos = casos.filter(c => {
-      // Validar que categoria existe antes de acceder a slaDias
-      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5; // Default 5 días
-      return c.diasAbierto >= slaDias || c.status === CaseStatus.ESCALADO;
+      // Excluir casos resueltos o cerrados (a menos que estén escalados)
+      const normalizedStatus = normalizeStatus(c.status);
+      if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
+        // Solo incluir si está escalado
+        return normalizedStatus === CaseStatus.ESCALADO;
+      }
+      
+      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
+      const diasAbierto = c.diasAbierto || 0;
+      
+      // Caso crítico si:
+      // 1. Los días abiertos son >= al SLA (vencido)
+      // 2. Está escalado
+      // 3. Le queda 1 día o menos para vencer (en riesgo)
+      const isVencido = diasAbierto >= slaDias;
+      const isEscalado = normalizedStatus === CaseStatus.ESCALADO;
+      const isEnRiesgo = (slaDias - diasAbierto <= 1) && diasAbierto > 0 && diasAbierto < slaDias;
+      
+      return isVencido || isEscalado || isEnRiesgo;
     });
     return filterByAgent(criticos);
-  }, [casos, agentFilter]);
+  }, [casos, filterByAgent, normalizeStatus]);
 
   const filteredCasos = useMemo(() => {
     let filtered = [...casos];
@@ -135,7 +164,7 @@ const SupervisorPanel: React.FC = () => {
       return c.status !== CaseStatus.RESUELTO && c.status !== CaseStatus.CERRADO && c.diasAbierto > slaDias;
     });
     return filterByAgent(vencidos);
-  }, [casos, agentFilter]);
+  }, [casos, filterByAgent]);
   
   const casosEnRiesgo = useMemo(() => {
     return casosAbiertos.filter(c => {
@@ -180,19 +209,6 @@ const SupervisorPanel: React.FC = () => {
       [CaseStatus.CERRADO]: { backgroundColor: '#f1f5f9', color: '#334155', borderColor: '#64748b' }
     };
     return statusColors[status as CaseStatus] || { backgroundColor: '#f1f5f9', color: '#475569', borderColor: '#cbd5e1' };
-  };
-
-  // Función para normalizar estado
-  const normalizeStatus = (status: string | CaseStatus | undefined): CaseStatus => {
-    if (!status) return CaseStatus.NUEVO;
-    const statusStr = String(status).trim();
-    const statusValues = Object.values(CaseStatus);
-    const matchedStatus = statusValues.find(s => {
-      const sNormalized = s.toLowerCase().replace(/\s+/g, '');
-      const statusNormalized = statusStr.toLowerCase().replace(/\s+/g, '');
-      return s === statusStr || s.toLowerCase() === statusStr.toLowerCase() || sNormalized === statusNormalized;
-    });
-    return (matchedStatus as CaseStatus) || CaseStatus.NUEVO;
   };
 
   const casosCriticosHoy = useMemo(() => {

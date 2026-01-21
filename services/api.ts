@@ -208,6 +208,32 @@ const callCategoriesWebhook = async <T = any>(
   return callWebhookGeneric<T>(CATEGORIES_WEBHOOK_URL, method, body);
 };
 
+// Helper para llamar al webhook de estados
+const callEstadosWebhook = async <T = any>(
+  method: 'GET' | 'POST',
+  body?: unknown
+): Promise<T> => {
+  // URL del webhook de estados
+  const ESTADOS_WEBHOOK_URL = 'https://n8n.red.com.sv/webhook/5009ec05-e3ce-44ef-bd68-ae7ef4e61f61';
+  console.log('[callEstadosWebhook] Llamando webhook:', {
+    url: ESTADOS_WEBHOOK_URL,
+    method: method,
+    body: body
+  });
+  console.log('[callEstadosWebhook] Body como JSON:', JSON.stringify(body, null, 2));
+  
+  try {
+    const response = await callWebhookGeneric<T>(ESTADOS_WEBHOOK_URL, method, body);
+    console.log('[callEstadosWebhook] Respuesta recibida:', response);
+    console.log('[callEstadosWebhook] Tipo de respuesta:', typeof response);
+    return response;
+  } catch (error: any) {
+    console.error('[callEstadosWebhook] Error en la llamada:', error);
+    console.error('[callEstadosWebhook] Mensaje de error:', error.message);
+    throw error;
+  }
+};
+
 // Helpers para construir el payload estándar esperado por n8n
 const buildActorPayload = (user: User | null) => {
   if (!user) {
@@ -1491,6 +1517,581 @@ export const api = {
     } catch (error: any) {
       console.error('Error al buscar categoría:', error);
       throw new Error(error.message || 'Error al buscar la categoría');
+    }
+  },
+
+  // Crear nuevo estado mediante webhook
+  async createState(stateData: {
+    id: string;
+    nombre: string;
+    descripcion: string;
+    orden: string;
+    orden_final: string;
+  }): Promise<any> {
+    const user = this.getUser();
+    if (!user) {
+      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
+    }
+
+    console.log('[api.createState] Iniciando creación de estado...');
+    console.log('[api.createState] Datos del estado a crear:', stateData);
+
+    // Construir el actor con el formato esperado
+    const actor = buildActorPayload(user);
+    console.log('[api.createState] Actor construido:', actor);
+    
+    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
+    const roleMap: Record<string, string> = {
+      'ADMIN': 'ADMINISTRADOR',
+      'AGENTE': 'AGENTE',
+      'SUPERVISOR': 'SUPERVISOR',
+      'GERENTE': 'GERENTE'
+    };
+    const mappedRole = roleMap[actor.role] || actor.role;
+    console.log('[api.createState] Role mapeado:', { original: actor.role, mapped: mappedRole });
+
+    // Construir el payload según el formato especificado
+    const payload = {
+      action: 'estado.create',
+      actor: {
+        user_id: actor.user_id,
+        email: actor.email,
+        role: mappedRole
+      },
+      data: {
+        id: stateData.id,
+        nombre: stateData.nombre,
+        descripcion: stateData.descripcion,
+        orden: stateData.orden,
+        orden_final: stateData.orden_final
+      }
+    };
+
+    console.log('[api.createState] Payload completo a enviar:', JSON.stringify(payload, null, 2));
+    console.log('[api.createState] URL del webhook: https://n8n.red.com.sv/webhook/5009ec05-e3ce-44ef-bd68-ae7ef4e61f61');
+
+    try {
+      const response = await callEstadosWebhook('POST', payload);
+      console.log('[api.createState] Respuesta del webhook:', response);
+      console.log('[api.createState] Respuesta como JSON:', JSON.stringify(response, null, 2));
+      return response;
+    } catch (error: any) {
+      console.error('[api.createState] ❌ Error al crear estado:', error);
+      console.error('[api.createState] Mensaje de error:', error.message);
+      console.error('[api.createState] Stack trace:', error.stack);
+      throw new Error(error.message || 'Error al crear el estado');
+    }
+  },
+
+  // Actualizar orden de estados mediante webhook
+  async updateEstados(estados: Array<{
+    id: string;
+    nombre: string;
+    descripcion: string;
+    orden: number;
+    es_final: boolean;
+  }>): Promise<any> {
+    const user = this.getUser();
+    if (!user) {
+      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
+    }
+
+    // Construir el actor con el formato esperado
+    const actor = buildActorPayload(user);
+    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
+    const roleMap: Record<string, string> = {
+      'ADMIN': 'ADMINISTRADOR',
+      'AGENTE': 'AGENTE',
+      'SUPERVISOR': 'SUPERVISOR',
+      'GERENTE': 'GERENTE'
+    };
+    const mappedRole = roleMap[actor.role] || actor.role;
+
+    // Construir el payload según el formato especificado
+    const payload = {
+      action: 'estado.update',
+      actor: {
+        user_id: actor.user_id,
+        email: actor.email,
+        role: mappedRole
+      },
+      data: {
+        estados: estados
+      }
+    };
+
+    try {
+      const response = await callEstadosWebhook('POST', payload);
+      return response;
+    } catch (error: any) {
+      console.error('Error al actualizar estados:', error);
+      throw new Error(error.message || 'Error al actualizar el orden de los estados');
+    }
+  },
+
+  // Leer transiciones de estados mediante webhook
+  async readTransiciones(): Promise<Record<string, { transiciones: string[] }>> {
+    const user = this.getUser();
+    if (!user) {
+      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
+    }
+
+    console.log('[api.readTransiciones] Iniciando lectura de transiciones...');
+
+    // Construir el actor con el formato esperado
+    const actor = buildActorPayload(user);
+    console.log('[api.readTransiciones] Actor construido:', actor);
+    
+    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
+    const roleMap: Record<string, string> = {
+      'ADMIN': 'ADMINISTRADOR',
+      'AGENTE': 'AGENTE',
+      'SUPERVISOR': 'SUPERVISOR',
+      'GERENTE': 'GERENTE'
+    };
+    const mappedRole = roleMap[actor.role] || actor.role;
+    console.log('[api.readTransiciones] Role mapeado:', { original: actor.role, mapped: mappedRole });
+
+    // Construir el payload según el formato especificado
+    const payload = {
+      action: 'transicion.read',
+      actor: {
+        user_id: actor.user_id,
+        email: actor.email,
+        role: mappedRole
+      },
+      data: {}
+    };
+
+    console.log('[api.readTransiciones] Payload completo a enviar:', JSON.stringify(payload, null, 2));
+    console.log('[api.readTransiciones] URL del webhook: https://n8n.red.com.sv/webhook/5009ec05-e3ce-44ef-bd68-ae7ef4e61f61');
+
+    try {
+      const response = await callEstadosWebhook('POST', payload);
+      console.log('[api.readTransiciones] Respuesta RAW del webhook:', response);
+      console.log('[api.readTransiciones] Respuesta como JSON:', JSON.stringify(response, null, 2));
+      console.log('[api.readTransiciones] Tipo de respuesta:', typeof response);
+      
+      // Procesar la respuesta del webhook
+      // El formato esperado es: [{ "data": [{ "estado_origen": "nuevo", "estado_destino": "en_proceso", "permitido": true }, ...] }]
+      let transicionesData: Record<string, { transiciones: string[] }> = {};
+      
+      console.log('[api.readTransiciones] Procesando respuesta del webhook...');
+      console.log('[api.readTransiciones] Respuesta es array?', Array.isArray(response));
+      console.log('[api.readTransiciones] Respuesta es objeto?', response && typeof response === 'object' && !Array.isArray(response));
+      
+      if (response && typeof response === 'object') {
+        // Si es un array (formato esperado: [{ "data": [...] }])
+        if (Array.isArray(response)) {
+          console.log('[api.readTransiciones] La respuesta es un array, longitud:', response.length);
+          
+          if (response.length > 0 && response[0] && typeof response[0] === 'object') {
+            console.log('[api.readTransiciones] Primer elemento del array:', response[0]);
+            console.log('[api.readTransiciones] Keys del primer elemento:', Object.keys(response[0]));
+            
+            // Buscar la propiedad "data" en el primer elemento
+            if (response[0].data && Array.isArray(response[0].data)) {
+              console.log('[api.readTransiciones] ✅ Encontrado response[0].data como array, longitud:', response[0].data.length);
+              
+              // El formato es: [{ "estado_origen": "nuevo", "estado_destino": "en_proceso", "permitido": true }, ...]
+              const transicionesArray = response[0].data;
+              
+              // Agrupar por estado_origen y construir el formato esperado
+              transicionesArray.forEach((transicion: any) => {
+                if (transicion && transicion.estado_origen && transicion.estado_destino && transicion.permitido === true) {
+                  const estadoOrigen = transicion.estado_origen;
+                  const estadoDestino = transicion.estado_destino;
+                  
+                  // Inicializar el estado origen si no existe
+                  if (!transicionesData[estadoOrigen]) {
+                    transicionesData[estadoOrigen] = { transiciones: [] };
+                  }
+                  
+                  // Agregar el estado destino a las transiciones permitidas
+                  if (!transicionesData[estadoOrigen].transiciones.includes(estadoDestino)) {
+                    transicionesData[estadoOrigen].transiciones.push(estadoDestino);
+                  }
+                  
+                  console.log(`[api.readTransiciones] Agregada transición: ${estadoOrigen} -> ${estadoDestino}`);
+                }
+              });
+              
+              console.log('[api.readTransiciones] ✅ Transiciones procesadas desde array de objetos');
+            } else if (response[0].data && typeof response[0].data === 'object' && !Array.isArray(response[0].data)) {
+              // Formato alternativo: { "data": { estado_id: { transiciones: [...] } } }
+              console.log('[api.readTransiciones] ✅ Encontrado response[0].data como objeto');
+              transicionesData = response[0].data;
+            } else {
+              console.log('[api.readTransiciones] ⚠️ response[0].data no tiene el formato esperado');
+            }
+          }
+        } 
+        // Si es un objeto directo
+        else {
+          console.log('[api.readTransiciones] La respuesta es un objeto directo');
+          console.log('[api.readTransiciones] Keys del objeto:', Object.keys(response));
+          
+          // Si tiene una propiedad "data"
+          if (response.data) {
+            if (Array.isArray(response.data)) {
+              // Formato: { "data": [{ "estado_origen": "...", "estado_destino": "...", "permitido": true }, ...] }
+              console.log('[api.readTransiciones] ✅ Encontrado response.data como array');
+              const transicionesArray = response.data;
+              
+              transicionesArray.forEach((transicion: any) => {
+                if (transicion && transicion.estado_origen && transicion.estado_destino && transicion.permitido === true) {
+                  const estadoOrigen = transicion.estado_origen;
+                  const estadoDestino = transicion.estado_destino;
+                  
+                  if (!transicionesData[estadoOrigen]) {
+                    transicionesData[estadoOrigen] = { transiciones: [] };
+                  }
+                  
+                  if (!transicionesData[estadoOrigen].transiciones.includes(estadoDestino)) {
+                    transicionesData[estadoOrigen].transiciones.push(estadoDestino);
+                  }
+                }
+              });
+            } else if (typeof response.data === 'object') {
+              console.log('[api.readTransiciones] ✅ Encontrado response.data como objeto');
+              transicionesData = response.data;
+            }
+          } else {
+            // Si la respuesta es directamente el objeto de transiciones
+            console.log('[api.readTransiciones] La respuesta es directamente el objeto de transiciones');
+            transicionesData = response as Record<string, { transiciones: string[] }>;
+          }
+        }
+      }
+      
+      console.log('[api.readTransiciones] Transiciones procesadas:', transicionesData);
+      console.log('[api.readTransiciones] Cantidad de estados con transiciones:', Object.keys(transicionesData).length);
+      console.log('[api.readTransiciones] Detalle de cada estado:', Object.keys(transicionesData).map(estadoId => ({
+        estadoId,
+        transiciones: transicionesData[estadoId]?.transiciones || []
+      })));
+      
+      return transicionesData;
+    } catch (error: any) {
+      console.error('[api.readTransiciones] ❌ Error al leer transiciones:', error);
+      console.error('[api.readTransiciones] Mensaje de error:', error.message);
+      console.error('[api.readTransiciones] Stack trace:', error.stack);
+      throw new Error(error.message || 'Error al leer las transiciones');
+    }
+  },
+
+  // Actualizar transiciones de estados mediante webhook
+  async updateTransiciones(transicionesData: Record<string, { transiciones: string[] }>): Promise<any> {
+    const user = this.getUser();
+    if (!user) {
+      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
+    }
+
+    console.log('[api.updateTransiciones] Iniciando actualización de transiciones...');
+    console.log('[api.updateTransiciones] Datos de transiciones:', transicionesData);
+
+    // Construir el actor con el formato esperado
+    const actor = buildActorPayload(user);
+    console.log('[api.updateTransiciones] Actor construido:', actor);
+    
+    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
+    const roleMap: Record<string, string> = {
+      'ADMIN': 'ADMINISTRADOR',
+      'AGENTE': 'AGENTE',
+      'SUPERVISOR': 'SUPERVISOR',
+      'GERENTE': 'GERENTE'
+    };
+    const mappedRole = roleMap[actor.role] || actor.role;
+    console.log('[api.updateTransiciones] Role mapeado:', { original: actor.role, mapped: mappedRole });
+
+    // Construir el payload según el formato especificado
+    const payload = {
+      action: 'transicion.update',
+      actor: {
+        user_id: actor.user_id,
+        email: actor.email,
+        role: mappedRole
+      },
+      data: transicionesData
+    };
+
+    console.log('[api.updateTransiciones] Payload completo a enviar:', JSON.stringify(payload, null, 2));
+    console.log('[api.updateTransiciones] URL del webhook: https://n8n.red.com.sv/webhook/5009ec05-e3ce-44ef-bd68-ae7ef4e61f61');
+
+    try {
+      const response = await callEstadosWebhook('POST', payload);
+      console.log('[api.updateTransiciones] Respuesta del webhook:', response);
+      console.log('[api.updateTransiciones] Respuesta como JSON:', JSON.stringify(response, null, 2));
+      return response;
+    } catch (error: any) {
+      console.error('[api.updateTransiciones] ❌ Error al actualizar transiciones:', error);
+      console.error('[api.updateTransiciones] Mensaje de error:', error.message);
+      console.error('[api.updateTransiciones] Stack trace:', error.stack);
+      throw new Error(error.message || 'Error al actualizar las transiciones');
+    }
+  },
+
+  // Eliminar estado mediante webhook
+  async deleteState(stateId: string): Promise<any> {
+    const user = this.getUser();
+    if (!user) {
+      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
+    }
+
+    console.log('[api.deleteState] Iniciando eliminación de estado...');
+    console.log('[api.deleteState] ID del estado a eliminar:', stateId);
+
+    // Construir el actor con el formato esperado
+    const actor = buildActorPayload(user);
+    console.log('[api.deleteState] Actor construido:', actor);
+    
+    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
+    const roleMap: Record<string, string> = {
+      'ADMIN': 'ADMINISTRADOR',
+      'AGENTE': 'AGENTE',
+      'SUPERVISOR': 'SUPERVISOR',
+      'GERENTE': 'GERENTE'
+    };
+    const mappedRole = roleMap[actor.role] || actor.role;
+    console.log('[api.deleteState] Role mapeado:', { original: actor.role, mapped: mappedRole });
+
+    // Construir el payload según el formato especificado
+    const payload = {
+      action: 'estado.delete',
+      actor: {
+        user_id: actor.user_id,
+        email: actor.email,
+        role: mappedRole
+      },
+      data: {
+        id: stateId
+      }
+    };
+
+    console.log('[api.deleteState] Payload completo a enviar:', JSON.stringify(payload, null, 2));
+    console.log('[api.deleteState] URL del webhook: https://n8n.red.com.sv/webhook/5009ec05-e3ce-44ef-bd68-ae7ef4e61f61');
+
+    try {
+      const response = await callEstadosWebhook('POST', payload);
+      console.log('[api.deleteState] Respuesta del webhook:', response);
+      console.log('[api.deleteState] Respuesta como JSON:', JSON.stringify(response, null, 2));
+      return response;
+    } catch (error: any) {
+      console.error('[api.deleteState] ❌ Error al eliminar estado:', error);
+      console.error('[api.deleteState] Mensaje de error:', error.message);
+      console.error('[api.deleteState] Stack trace:', error.stack);
+      throw new Error(error.message || 'Error al eliminar el estado');
+    }
+  },
+
+  // Leer todos los estados mediante webhook
+  async readEstados(): Promise<Array<{
+    id: string;
+    name: string;
+    order: number;
+    isFinal: boolean;
+  }>> {
+    const user = this.getUser();
+    if (!user) {
+      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
+    }
+
+    console.log('[api.readEstados] Usuario obtenido:', {
+      id: user.id,
+      email: (user as any).email,
+      role: user.role
+    });
+
+    // Construir el actor con el formato esperado
+    const actor = buildActorPayload(user);
+    console.log('[api.readEstados] Actor construido:', actor);
+    
+    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
+    const roleMap: Record<string, string> = {
+      'ADMIN': 'ADMINISTRADOR',
+      'AGENTE': 'AGENTE',
+      'SUPERVISOR': 'SUPERVISOR',
+      'GERENTE': 'GERENTE'
+    };
+    const mappedRole = roleMap[actor.role] || actor.role;
+    console.log('[api.readEstados] Role mapeado:', { original: actor.role, mapped: mappedRole });
+
+    // Construir el payload según el formato especificado
+    const payload = {
+      action: 'estado.read',
+      actor: {
+        user_id: actor.user_id,
+        email: actor.email,
+        role: mappedRole
+      },
+      data: {
+        id: 'all'
+      }
+    };
+
+    console.log('[api.readEstados] Payload completo a enviar:', JSON.stringify(payload, null, 2));
+    console.log('[api.readEstados] URL del webhook: https://n8n.red.com.sv/webhook/5009ec05-e3ce-44ef-bd68-ae7ef4e61f61');
+
+    try {
+      const response = await callEstadosWebhook('POST', payload);
+      console.log('[api.readEstados] Respuesta RAW del webhook:', response);
+      console.log('[api.readEstados] Respuesta RAW como JSON:', JSON.stringify(response, null, 2));
+      console.log('[api.readEstados] Tipo de respuesta:', typeof response);
+      console.log('[api.readEstados] Es array?', Array.isArray(response));
+      console.log('[api.readEstados] Es objeto?', response && typeof response === 'object' && !Array.isArray(response));
+      console.log('[api.readEstados] Es null o undefined?', response === null || response === undefined);
+      
+      if (response && typeof response === 'object') {
+        console.log('[api.readEstados] Keys del objeto respuesta:', Object.keys(response));
+        console.log('[api.readEstados] Valores de cada key:', Object.keys(response).reduce((acc, key) => {
+          acc[key] = response[key];
+          return acc;
+        }, {} as any));
+      }
+      
+      // Procesar la respuesta del webhook
+      // El formato esperado es: [{ "data": [...] }]
+      let estados: any[] = [];
+      
+      // Si la respuesta es null o undefined
+      if (response === null || response === undefined) {
+        console.warn('[api.readEstados] ⚠️ La respuesta es null o undefined');
+        return [];
+      }
+      
+      console.log('[api.readEstados] Procesando respuesta del webhook...');
+      
+      // Si es un array (formato esperado: [{ "data": [...] }])
+      if (Array.isArray(response)) {
+        console.log('[api.readEstados] La respuesta es un array, longitud:', response.length);
+        
+        // Buscar la propiedad "data" en el primer elemento del array
+        if (response.length > 0 && response[0] && typeof response[0] === 'object') {
+          console.log('[api.readEstados] Primer elemento del array:', response[0]);
+          console.log('[api.readEstados] Keys del primer elemento:', Object.keys(response[0]));
+          
+          // El formato es: [{ "data": [...] }]
+          if (Array.isArray(response[0].data)) {
+            console.log('[api.readEstados] ✅ Encontrado response[0].data con', response[0].data.length, 'estados');
+            estados = response[0].data;
+          } else {
+            // Si no tiene data, puede ser que el array directamente contenga los estados
+            console.log('[api.readEstados] response[0] no tiene propiedad data, verificando si el array contiene estados directamente...');
+            // Verificar si los elementos del array son estados
+            const tieneEstados = response.some(item => 
+              item && typeof item === 'object' && (item.id !== undefined || item.nombre !== undefined || item.name !== undefined)
+            );
+            if (tieneEstados) {
+              console.log('[api.readEstados] ✅ El array contiene estados directamente');
+              estados = response;
+            }
+          }
+        } else {
+          // Si el array contiene directamente los estados
+          const tieneEstados = response.some(item => 
+            item && typeof item === 'object' && (item.id !== undefined || item.nombre !== undefined || item.name !== undefined)
+          );
+          if (tieneEstados) {
+            console.log('[api.readEstados] ✅ El array contiene estados directamente');
+            estados = response;
+          }
+        }
+      } 
+      // Si es un objeto, buscar estados en diferentes propiedades
+      else if (response && typeof response === 'object') {
+        console.log('[api.readEstados] La respuesta es un objeto, buscando estados en diferentes propiedades...');
+        
+        // Intentar diferentes estructuras comunes
+        const posiblesEstados = [
+          response.data,
+          response.estados,
+          response.result,
+          response.results,
+          response.items,
+        ];
+        
+        // Buscar el primer array válido
+        for (const posibleEstado of posiblesEstados) {
+          if (Array.isArray(posibleEstado) && posibleEstado.length > 0) {
+            console.log('[api.readEstados] ✅ Encontrado array de estados en propiedad del objeto');
+            estados = posibleEstado;
+            break;
+          }
+        }
+      }
+
+      console.log('[api.readEstados] Estados extraídos:', estados);
+      console.log('[api.readEstados] Cantidad de estados extraídos:', estados.length);
+      
+      // Si no hay estados, retornar array vacío
+      if (!estados || estados.length === 0) {
+        console.warn('[api.readEstados] ⚠️ No se encontraron estados en la respuesta del webhook');
+        console.warn('[api.readEstados] Respuesta completa:', JSON.stringify(response, null, 2));
+        return [];
+      }
+
+      // Mapear los estados del webhook al formato local
+      // El webhook retorna: { id, nombre, descripcion, orden, estado_final }
+      // IMPORTANTE: El ID siempre debe ser texto normalizado (ej: "en_proceso"), no números
+      const mappedEstados = estados.map((estado: any, index: number) => {
+        // El ID puede venir como número o string, pero SIEMPRE debe convertirse a formato normalizado
+        let estadoId = estado.id || estado.id_estado || estado.estado_id;
+        
+        // Si el ID es un número o no está en formato normalizado, generar el ID desde el nombre
+        if (estado.nombre || estado.name) {
+          const nombreEstado = estado.nombre || estado.name;
+          // Convertir nombre a ID normalizado (ej: "En Proceso" -> "en_proceso")
+          const nombreNormalizado = nombreEstado
+            .trim()
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '') // Remover tildes
+            .replace(/\s+/g, '_') // Reemplazar espacios con guiones bajos
+            .replace(/[^a-z0-9_]/g, ''); // Remover caracteres especiales
+          
+          // Siempre usar el ID normalizado basado en el nombre
+          estadoId = nombreNormalizado;
+          
+          if (estado.id && !isNaN(Number(estado.id))) {
+            console.log(`[api.readEstados] ID numérico detectado (${estado.id}), convirtiendo a formato normalizado: ${estadoId}`);
+          } else if (estado.id && estado.id !== nombreNormalizado) {
+            console.log(`[api.readEstados] ID no normalizado detectado (${estado.id}), usando formato normalizado: ${estadoId}`);
+          } else {
+            console.log(`[api.readEstados] ID generado desde nombre: ${estadoId}`);
+          }
+        } else {
+          // Si no hay nombre, usar el ID original como string
+          estadoId = String(estadoId || `estado_${index + 1}`);
+          console.warn(`[api.readEstados] ⚠️ Estado sin nombre, usando ID: ${estadoId}`);
+        }
+        
+        const mapped = {
+          id: String(estadoId),
+          name: estado.nombre || estado.name || 'Sin nombre',
+          order: Number(estado.orden || estado.order || index + 1),
+          // El webhook usa "estado_final", no "es_final"
+          isFinal: estado.estado_final === true || estado.estado_final === 'true' || 
+                   estado.es_final === true || estado.es_final === 'true' || 
+                   estado.isFinal === true || estado.is_final === true || false
+        };
+        console.log(`[api.readEstados] Estado ${index} mapeado:`, {
+          original: estado,
+          mapped: mapped
+        });
+        return mapped;
+      });
+
+      // Ordenar por orden
+      mappedEstados.sort((a, b) => a.order - b.order);
+
+      console.log('[api.readEstados] Estados mapeados y ordenados:', mappedEstados);
+      console.log('[api.readEstados] Cantidad final de estados:', mappedEstados.length);
+      return mappedEstados;
+    } catch (error: any) {
+      console.error('[api.readEstados] Error al leer estados:', error);
+      console.error('[api.readEstados] Mensaje de error:', error.message);
+      console.error('[api.readEstados] Stack trace:', error.stack);
+      throw new Error(error.message || 'Error al leer los estados');
     }
   },
 

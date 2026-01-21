@@ -36,21 +36,42 @@ const GerenteDashboard: React.FC = () => {
     // Ya no usamos setInterval, solo actualizamos cuando cambia la vista
   }, [location.pathname]);
 
+  const loadClientes = async () => {
+    try {
+      const clientesList = await api.getClientes();
+      return clientesList;
+    } catch (error) {
+      return [];
+    }
+  };
+
+  const enrichCasesWithClients = (cases: Case[], clientesList: any[]): Case[] => {
+    return cases.map(caso => {
+      const cliente = clientesList.find(c => c.idCliente === caso.clientId);
+      return {
+        ...caso,
+        clientName: cliente?.nombreEmpresa || caso.clientName || 'Sin nombre',
+        cliente: cliente || caso.cliente
+      };
+    });
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
-      const [casosData, kpisData] = await Promise.all([
+      const [casosData, kpisData, clientesList] = await Promise.all([
         api.getCases(),
-        api.getKPIs()
+        api.getKPIs(),
+        loadClientes()
       ]);
       
       // Verificar que los casos tengan datos válidos
       const casosValidos = casosData.filter(c => c && c.id);
       
-      if (casosValidos.length !== casosData.length) {
-      }
+      // Enriquecer casos con datos de clientes (igual que en otras pantallas)
+      const enriched = enrichCasesWithClients(casosValidos, clientesList);
       
-      setCasos(casosValidos);
+      setCasos(enriched);
       setKpis(kpisData);
       
       // Guardar en localStorage para que Layout pueda mostrarlo en el header
@@ -69,12 +90,25 @@ const GerenteDashboard: React.FC = () => {
   // Filtrar casos críticos usando la misma lógica que Alertas Críticas
   const casosCriticos = useMemo(() => {
     return casos.filter(c => {
-      // Validar que categoria existe antes de acceder a slaDias
-      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5; // Default 5 días
+      // Excluir casos resueltos o cerrados (a menos que estén escalados)
       const normalizedStatus = normalizeStatus(c.status);
-      return c.diasAbierto >= slaDias || 
-      normalizedStatus === CaseStatus.ESCALADO ||
-        (slaDias - c.diasAbierto <= 1 && c.diasAbierto > 0);
+      if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
+        // Solo incluir si está escalado
+        return normalizedStatus === CaseStatus.ESCALADO;
+      }
+      
+      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
+      const diasAbierto = c.diasAbierto || 0;
+      
+      // Caso crítico si:
+      // 1. Los días abiertos son >= al SLA (vencido)
+      // 2. Está escalado
+      // 3. Le queda 1 día o menos para vencer (en riesgo)
+      const isVencido = diasAbierto >= slaDias;
+      const isEscalado = normalizedStatus === CaseStatus.ESCALADO;
+      const isEnRiesgo = (slaDias - diasAbierto <= 1) && diasAbierto > 0 && diasAbierto < slaDias;
+      
+      return isVencido || isEscalado || isEnRiesgo;
     });
   }, [casos]);
 

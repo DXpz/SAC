@@ -37,6 +37,19 @@ const AdminPanel: React.FC = () => {
     }
   };
 
+  // Función para normalizar el estado del caso (igual que en otras pantallas)
+  const normalizeStatus = (status: string | CaseStatus | undefined): CaseStatus => {
+    if (!status) return CaseStatus.NUEVO;
+    const statusStr = String(status).trim();
+    const statusValues = Object.values(CaseStatus);
+    const matchedStatus = statusValues.find(s => {
+      const sNormalized = s.toLowerCase().replace(/\s+/g, '');
+      const statusNormalized = statusStr.toLowerCase().replace(/\s+/g, '');
+      return s === statusStr || s.toLowerCase() === statusStr.toLowerCase() || sNormalized === statusNormalized;
+    });
+    return (matchedStatus as CaseStatus) || CaseStatus.NUEVO;
+  };
+
   const enrichCasesWithClients = (cases: Caso[], clientesList: Cliente[]): Caso[] => {
     return cases.map(caso => {
       const cliente = clientesList.find(c => c.idCliente === caso.clientId);
@@ -51,7 +64,7 @@ const AdminPanel: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [clientesList, casosList, agentesList, categoriasList, usuariosList, kpisData] = await Promise.all([
+      const [clientesList, casosList, agentesList, categoriasList, usuariosList, kpisData] = await Promise.allSettled([
         loadClientes(),
         api.getCases(),
         api.getAgentes(),
@@ -60,16 +73,25 @@ const AdminPanel: React.FC = () => {
         api.getKPIs()
       ]);
       
-      setClientes(clientesList);
-      setAgentes(agentesList);
-      setCategorias(categoriasList);
-      setUsuarios(usuariosList);
-      setKpis(kpisData);
+      setClientes(clientesList.status === 'fulfilled' ? clientesList.value : []);
+      setAgentes(agentesList.status === 'fulfilled' ? agentesList.value : []);
+      setCategorias(categoriasList.status === 'fulfilled' ? categoriasList.value : []);
+      setUsuarios(usuariosList.status === 'fulfilled' ? usuariosList.value : []);
+      setKpis(kpisData.status === 'fulfilled' ? kpisData.value : null);
       
-      const enriched = enrichCasesWithClients(casosList, clientesList);
+      const casosData = casosList.status === 'fulfilled' ? casosList.value : [];
+      const clientesData = clientesList.status === 'fulfilled' ? clientesList.value : [];
+      const enriched = enrichCasesWithClients(casosData, clientesData);
       setAllCasos(enriched);
     } catch (error) {
       console.error('Error cargando datos:', error);
+      // Asegurar que al menos tenemos arrays vacíos
+      setClientes([]);
+      setAgentes([]);
+      setCategorias([]);
+      setUsuarios([]);
+      setKpis(null);
+      setAllCasos([]);
     } finally {
       setLoading(false);
     }
@@ -79,52 +101,120 @@ const AdminPanel: React.FC = () => {
     loadData();
   }, [location.pathname]);
 
-  // Métricas adicionales desde los endpoints
-  const totalCasos = allCasos.length;
-  const casosAbiertos = allCasos.filter(c => 
-    c.status !== CaseStatus.RESUELTO && c.status !== CaseStatus.CERRADO
-  ).length;
-  const casosCerrados = allCasos.filter(c => 
-    c.status === CaseStatus.RESUELTO || c.status === CaseStatus.CERRADO
-  ).length;
+  // Métricas adicionales desde los endpoints (con validaciones y normalización)
+  const casosSeguros = Array.isArray(allCasos) ? allCasos : [];
+  const totalCasos = casosSeguros.length;
+  
+  // Usar normalización de estados para cálculos consistentes
+  const casosAbiertos = casosSeguros.filter(c => {
+    if (!c) return false;
+    const normalizedStatus = normalizeStatus(c.status);
+    return normalizedStatus !== CaseStatus.RESUELTO && normalizedStatus !== CaseStatus.CERRADO;
+  }).length;
+  
+  const casosCerrados = casosSeguros.filter(c => {
+    if (!c) return false;
+    const normalizedStatus = normalizeStatus(c.status);
+    return normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO;
+  }).length;
+  
+  // Calcular casos críticos usando la misma lógica que AlertasCriticas
+  const casosCriticos = casosSeguros.filter(c => {
+    if (!c) return false;
+    // Excluir casos resueltos o cerrados (a menos que estén escalados)
+    const normalizedStatus = normalizeStatus(c.status);
+    if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
+      // Solo incluir si está escalado
+      return normalizedStatus === CaseStatus.ESCALADO;
+    }
+    
+    const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
+    const diasAbierto = c.diasAbierto || 0;
+    
+    // Caso crítico si:
+    // 1. Los días abiertos son >= al SLA (vencido)
+    // 2. Está escalado
+    // 3. Le queda 1 día o menos para vencer (en riesgo)
+    const isVencido = diasAbierto >= slaDias;
+    const isEscalado = normalizedStatus === CaseStatus.ESCALADO;
+    const isEnRiesgo = (slaDias - diasAbierto <= 1) && diasAbierto > 0 && diasAbierto < slaDias;
+    
+    return isVencido || isEscalado || isEnRiesgo;
+  }).length;
+  
+  const casosVencidos = casosSeguros.filter(c => {
+    if (!c) return false;
+    const normalizedStatus = normalizeStatus(c.status);
+    if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
+      return false;
+    }
+    const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
+    return (c.diasAbierto || 0) > slaDias;
+  }).length;
   
   const casosPorEstado = {
-    nuevo: allCasos.filter(c => c.status === CaseStatus.NUEVO).length,
-    enProceso: allCasos.filter(c => c.status === CaseStatus.EN_PROCESO).length,
-    pendienteCliente: allCasos.filter(c => c.status === CaseStatus.PENDIENTE_CLIENTE).length,
-    escalado: allCasos.filter(c => c.status === CaseStatus.ESCALADO).length,
-    resuelto: allCasos.filter(c => c.status === CaseStatus.RESUELTO).length,
-    cerrado: allCasos.filter(c => c.status === CaseStatus.CERRADO).length
+    nuevo: casosSeguros.filter(c => {
+      if (!c) return false;
+      return normalizeStatus(c.status) === CaseStatus.NUEVO;
+    }).length,
+    enProceso: casosSeguros.filter(c => {
+      if (!c) return false;
+      return normalizeStatus(c.status) === CaseStatus.EN_PROCESO;
+    }).length,
+    pendienteCliente: casosSeguros.filter(c => {
+      if (!c) return false;
+      return normalizeStatus(c.status) === CaseStatus.PENDIENTE_CLIENTE;
+    }).length,
+    escalado: casosSeguros.filter(c => {
+      if (!c) return false;
+      return normalizeStatus(c.status) === CaseStatus.ESCALADO;
+    }).length,
+    resuelto: casosSeguros.filter(c => {
+      if (!c) return false;
+      return normalizeStatus(c.status) === CaseStatus.RESUELTO;
+    }).length,
+    cerrado: casosSeguros.filter(c => {
+      if (!c) return false;
+      return normalizeStatus(c.status) === CaseStatus.CERRADO;
+    }).length
   };
 
-  const totalUsuarios = usuarios.length;
+  const usuariosSeguros = Array.isArray(usuarios) ? usuarios : [];
+  const totalUsuarios = usuariosSeguros.length;
   const usuariosPorRol = {
-    admin: usuarios.filter((u: any) => {
+    admin: usuariosSeguros.filter((u: any) => {
+      if (!u) return false;
       const rol = u.rol || u.role || '';
       return String(rol).toUpperCase().includes('ADMIN');
     }).length,
-    agente: usuarios.filter((u: any) => {
+    agente: usuariosSeguros.filter((u: any) => {
+      if (!u) return false;
       const rol = u.rol || u.role || '';
       return String(rol).toUpperCase().includes('AGENTE');
     }).length,
-    supervisor: usuarios.filter((u: any) => {
+    supervisor: usuariosSeguros.filter((u: any) => {
+      if (!u) return false;
       const rol = u.rol || u.role || '';
       return String(rol).toUpperCase().includes('SUPERVISOR');
     }).length,
-    gerente: usuarios.filter((u: any) => {
+    gerente: usuariosSeguros.filter((u: any) => {
+      if (!u) return false;
       const rol = u.rol || u.role || '';
       return String(rol).toUpperCase().includes('GERENTE');
     }).length
   };
 
-  const totalAgentes = agentes.length;
-  const agentesActivos = agentes.filter(a => a.estado === 'Activo').length;
-  const agentesInactivos = agentes.filter(a => a.estado !== 'Activo').length;
+  const agentesSeguros = Array.isArray(agentes) ? agentes : [];
+  const totalAgentes = agentesSeguros.length;
+  const agentesActivos = agentesSeguros.filter(a => a && a.estado === 'Activo').length;
+  const agentesInactivos = agentesSeguros.filter(a => a && a.estado !== 'Activo').length;
 
-  const totalClientes = clientes.length;
-  const clientesActivos = clientes.filter(c => c.estado === 'Activo').length;
+  const clientesSeguros = Array.isArray(clientes) ? clientes : [];
+  const totalClientes = clientesSeguros.length;
+  const clientesActivos = clientesSeguros.filter(c => c && c.estado === 'Activo').length;
 
-  const totalCategorias = categorias.length;
+  const categoriasSeguras = Array.isArray(categorias) ? categorias : [];
+  const totalCategorias = categoriasSeguras.length;
 
   // Datos para gráficas
   const casosPorEstadoChart = useMemo(() => [
@@ -149,19 +239,25 @@ const AdminPanel: React.FC = () => {
   ], [usuariosPorRol]);
 
   const casosPorCategoriaChart = useMemo(() => {
-    const categoriaCounts: Record<string, number> = {};
-    allCasos.forEach(caso => {
-      const categoriaNombre = caso.categoria?.nombre || caso.category || 'Sin categoría';
-      categoriaCounts[categoriaNombre] = (categoriaCounts[categoriaNombre] || 0) + 1;
-    });
-    
-    const colors = ['#3b82f6', '#8b5cf6', '#22c55e', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#6366f1'];
-    return Object.entries(categoriaCounts).map(([name, value], index) => ({
-      name: name.length > 15 ? name.substring(0, 15) + '...' : name,
-      value,
-      color: colors[index % colors.length]
-    })).sort((a, b) => b.value - a.value).slice(0, 8);
-  }, [allCasos]);
+    try {
+      const categoriaCounts: Record<string, number> = {};
+      casosSeguros.forEach(caso => {
+        if (!caso) return;
+        const categoriaNombre = caso.categoria?.nombre || caso.category || 'Sin categoría';
+        categoriaCounts[categoriaNombre] = (categoriaCounts[categoriaNombre] || 0) + 1;
+      });
+      
+      const colors = ['#3b82f6', '#8b5cf6', '#22c55e', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#6366f1'];
+      return Object.entries(categoriaCounts).map(([name, value], index) => ({
+        name: name.length > 15 ? name.substring(0, 15) + '...' : name,
+        value,
+        color: colors[index % colors.length]
+      })).sort((a, b) => b.value - a.value).slice(0, 8);
+    } catch (error) {
+      console.error('Error calculando casos por categoría:', error);
+      return [];
+    }
+  }, [casosSeguros]);
 
   // Estilos dinámicos basados en el tema
   const styles = {
@@ -239,6 +335,11 @@ const AdminPanel: React.FC = () => {
     );
   }
 
+  // Validar que todos los datos necesarios estén disponibles
+  const casosPorEstadoChartSafe = casosPorEstadoChart || [];
+  const casosAbiertosCerradosChartSafe = casosAbiertosCerradosChart || [];
+  const usuariosPorRolChartSafe = usuariosPorRolChart || [];
+
   return (
     <div className="space-y-6">
       {/* Métricas Generales del Sistema */}
@@ -274,7 +375,7 @@ const AdminPanel: React.FC = () => {
                 <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Total Casos</p>
               </div>
               <p className="text-[10px] mt-1" style={{color: styles.text.tertiary}}>
-                {casosAbiertos} abiertos • {casosCerrados} cerrados
+                {casosAbiertos} abiertos • {casosCerrados} cerrados • {casosCriticos} críticos
               </p>
             </div>
           </div>
@@ -392,6 +493,87 @@ const AdminPanel: React.FC = () => {
         </div>
       </div>
 
+      {/* Métricas de Casos Críticos y Vencidos */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Casos Críticos */}
+        <div 
+          className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden"
+          style={{
+            ...styles.card,
+            borderColor: casosCriticos > 0 ? 'rgba(200, 21, 27, 0.25)' : 'rgba(148, 163, 184, 0.2)',
+            backgroundColor: casosCriticos > 0 
+              ? (theme === 'dark' ? 'rgba(200, 21, 27, 0.05)' : 'rgba(200, 21, 27, 0.02)')
+              : styles.card.backgroundColor
+          }}
+          onClick={() => navigate('/app/admin/casos')}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = casosCriticos > 0 ? 'rgba(200, 21, 27, 0.4)' : 'rgba(148, 163, 184, 0.3)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = casosCriticos > 0 ? 'rgba(200, 21, 27, 0.25)' : 'rgba(148, 163, 184, 0.2)';
+            e.currentTarget.style.boxShadow = '';
+          }}
+        >
+          <div className="absolute top-3 right-3">
+            <BarChart3 className="w-6 h-6" style={{color: casosCriticos > 0 ? '#f87171' : styles.text.tertiary}} />
+          </div>
+          <div className="flex items-start justify-between mb-2 pr-8">
+            <div className="flex-1">
+              <p className="text-4xl font-black leading-none mb-1.5" style={{color: casosCriticos > 0 ? '#f87171' : styles.text.secondary}}>
+                <AnimatedNumber value={casosCriticos} />
+              </p>
+              <div className="flex items-center gap-1.5">
+                <BarChart3 className="w-4 h-4 flex-shrink-0" style={{color: casosCriticos > 0 ? '#f87171' : styles.text.secondary}} />
+                <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Casos Críticos</p>
+              </div>
+              <p className="text-[10px] mt-1" style={{color: casosCriticos > 0 ? '#f87171' : styles.text.tertiary}}>
+                {casosCriticos > 0 ? 'Requiere acción' : 'Bajo control'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Casos Vencidos */}
+        <div 
+          className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden"
+          style={{
+            ...styles.card,
+            borderColor: casosVencidos > 0 ? 'rgba(220, 38, 38, 0.25)' : 'rgba(148, 163, 184, 0.2)',
+            backgroundColor: casosVencidos > 0 
+              ? (theme === 'dark' ? 'rgba(220, 38, 38, 0.05)' : 'rgba(220, 38, 38, 0.02)')
+              : styles.card.backgroundColor
+          }}
+          onClick={() => navigate('/app/admin/casos')}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = casosVencidos > 0 ? 'rgba(220, 38, 38, 0.4)' : 'rgba(148, 163, 184, 0.3)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = casosVencidos > 0 ? 'rgba(220, 38, 38, 0.25)' : 'rgba(148, 163, 184, 0.2)';
+            e.currentTarget.style.boxShadow = '';
+          }}
+        >
+          <div className="absolute top-3 right-3">
+            <Ticket className="w-6 h-6" style={{color: casosVencidos > 0 ? '#ef4444' : styles.text.tertiary}} />
+          </div>
+          <div className="flex items-start justify-between mb-2 pr-8">
+            <div className="flex-1">
+              <p className="text-4xl font-black leading-none mb-1.5" style={{color: casosVencidos > 0 ? '#ef4444' : styles.text.secondary}}>
+                <AnimatedNumber value={casosVencidos} />
+              </p>
+              <div className="flex items-center gap-1.5">
+                <Ticket className="w-4 h-4 flex-shrink-0" style={{color: casosVencidos > 0 ? '#ef4444' : styles.text.secondary}} />
+                <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Casos Vencidos</p>
+              </div>
+              <p className="text-[10px] mt-1" style={{color: casosVencidos > 0 ? '#ef4444' : styles.text.tertiary}}>
+                {casosVencidos > 0 ? 'SLA excedido' : 'En tiempo'}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* KPIs y Métricas de Rendimiento */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* SLA Compliance */}
@@ -399,37 +581,37 @@ const AdminPanel: React.FC = () => {
           className="p-4 rounded-xl border-2 transition-all duration-200 relative overflow-hidden"
           style={{
             ...styles.card,
-            borderColor: kpis?.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 80 
+            borderColor: kpis && kpis.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 80 
               ? 'rgba(34, 197, 94, 0.25)' 
-              : kpis?.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 60
+              : kpis && kpis.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 60
               ? 'rgba(245, 158, 11, 0.25)'
-              : 'rgba(239, 68, 68, 0.25)',
-            backgroundColor: kpis?.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 80
+              : 'rgba(148, 163, 184, 0.2)',
+            backgroundColor: kpis && kpis.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 80
               ? (theme === 'dark' ? 'rgba(34, 197, 94, 0.05)' : 'rgba(34, 197, 94, 0.02)')
-              : kpis?.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 60
+              : kpis && kpis.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 60
               ? (theme === 'dark' ? 'rgba(245, 158, 11, 0.05)' : 'rgba(245, 158, 11, 0.02)')
-              : (theme === 'dark' ? 'rgba(239, 68, 68, 0.05)' : 'rgba(239, 68, 68, 0.02)')
+              : styles.card.backgroundColor
           }}
         >
           <div className="absolute top-3 right-3">
             <BarChart3 className="w-6 h-6" style={{
-              color: kpis?.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 80 
+              color: kpis && kpis.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 80 
                 ? '#22c55e' 
-                : kpis?.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 60
+                : kpis && kpis.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 60
                 ? '#f59e0b'
-                : '#ef4444'
+                : styles.text.tertiary
             }} />
           </div>
           <div className="flex items-start justify-between mb-2 pr-8">
             <div className="flex-1">
               <p className="text-4xl font-black leading-none mb-1.5" style={{
-                color: kpis?.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 80 
+                color: kpis && kpis.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 80 
                   ? '#22c55e' 
-                  : kpis?.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 60
+                  : kpis && kpis.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 60
                   ? '#f59e0b'
-                  : '#ef4444'
+                  : styles.text.tertiary
               }}>
-                {kpis?.slaCompliance !== null && kpis.slaCompliance !== undefined ? (
+                {kpis && kpis.slaCompliance !== null && kpis.slaCompliance !== undefined ? (
                   <>
                     <AnimatedNumber value={kpis.slaCompliance} />%
                   </>
@@ -439,9 +621,9 @@ const AdminPanel: React.FC = () => {
               </p>
               <div className="flex items-center gap-1.5">
                 <BarChart3 className="w-4 h-4 flex-shrink-0" style={{
-                  color: kpis?.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 80 
+                  color: kpis && kpis.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 80 
                     ? '#22c55e' 
-                    : kpis?.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 60
+                    : kpis && kpis.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 60
                     ? '#f59e0b'
                     : styles.text.secondary
                 }} />
@@ -456,23 +638,23 @@ const AdminPanel: React.FC = () => {
           className="p-4 rounded-xl border-2 transition-all duration-200 relative overflow-hidden"
           style={{
             ...styles.card,
-            borderColor: kpis?.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 4
+            borderColor: kpis && kpis.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 4
               ? 'rgba(34, 197, 94, 0.25)'
-              : kpis?.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 3
+              : kpis && kpis.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 3
               ? 'rgba(245, 158, 11, 0.25)'
               : 'rgba(148, 163, 184, 0.2)',
-            backgroundColor: kpis?.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 4
+            backgroundColor: kpis && kpis.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 4
               ? (theme === 'dark' ? 'rgba(34, 197, 94, 0.05)' : 'rgba(34, 197, 94, 0.02)')
-              : kpis?.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 3
+              : kpis && kpis.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 3
               ? (theme === 'dark' ? 'rgba(245, 158, 11, 0.05)' : 'rgba(245, 158, 11, 0.02)')
               : styles.card.backgroundColor
           }}
         >
           <div className="absolute top-3 right-3">
             <TrendingUp className="w-6 h-6" style={{
-              color: kpis?.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 4
+              color: kpis && kpis.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 4
                 ? '#22c55e'
-                : kpis?.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 3
+                : kpis && kpis.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 3
                 ? '#f59e0b'
                 : styles.text.secondary
             }} />
@@ -480,13 +662,13 @@ const AdminPanel: React.FC = () => {
           <div className="flex items-start justify-between mb-2 pr-8">
             <div className="flex-1">
               <p className="text-4xl font-black leading-none mb-1.5" style={{
-                color: kpis?.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 4
+                color: kpis && kpis.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 4
                   ? '#22c55e'
-                  : kpis?.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 3
+                  : kpis && kpis.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 3
                   ? '#f59e0b'
                   : styles.text.primary
               }}>
-                {kpis?.csatScore !== null && kpis.csatScore !== undefined ? (
+                {kpis && kpis.csatScore !== null && kpis.csatScore !== undefined ? (
                   <>
                     <AnimatedNumber value={kpis.csatScore} />
                   </>
@@ -496,9 +678,9 @@ const AdminPanel: React.FC = () => {
               </p>
               <div className="flex items-center gap-1.5">
                 <TrendingUp className="w-4 h-4 flex-shrink-0" style={{
-                  color: kpis?.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 4
+                  color: kpis && kpis.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 4
                     ? '#22c55e'
-                    : kpis?.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 3
+                    : kpis && kpis.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 3
                     ? '#f59e0b'
                     : styles.text.secondary
                 }} />
@@ -569,7 +751,7 @@ const AdminPanel: React.FC = () => {
           </div>
           <div className="p-6">
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={casosPorEstadoChart}>
+              <BarChart data={casosPorEstadoChartSafe}>
                 <CartesianGrid 
                   strokeDasharray="3 3" 
                   stroke={theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.25)'} 
@@ -588,7 +770,7 @@ const AdminPanel: React.FC = () => {
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="value" radius={[8, 8, 0, 0]} style={{ cursor: 'pointer' }}>
-                  {casosPorEstadoChart.map((entry, index) => (
+                  {casosPorEstadoChartSafe.map((entry, index) => (
                     <Cell 
                       key={`cell-${index}`} 
                       fill={entry.color}
@@ -642,7 +824,7 @@ const AdminPanel: React.FC = () => {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={casosAbiertosCerradosChart}
+                  data={casosAbiertosCerradosChartSafe}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -660,7 +842,7 @@ const AdminPanel: React.FC = () => {
               </PieChart>
             </ResponsiveContainer>
             <div className="flex justify-center gap-6 mt-4">
-              {casosAbiertosCerradosChart.map((item, index) => (
+              {casosAbiertosCerradosChartSafe.map((item, index) => (
                 <div key={index} className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full" style={{backgroundColor: item.color}}></div>
                   <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>
@@ -722,7 +904,7 @@ const AdminPanel: React.FC = () => {
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="value" radius={[0, 8, 8, 0]} style={{ cursor: 'pointer' }}>
-                  {usuariosPorRolChart.map((entry, index) => (
+                  {usuariosPorRolChartSafe.map((entry, index) => (
                     <Cell 
                       key={`cell-${index}`} 
                       fill={entry.color}

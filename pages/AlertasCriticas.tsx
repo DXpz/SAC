@@ -22,6 +22,20 @@ interface CaseWithPriority extends Caso {
   horasParaVencimiento?: number;
 }
 
+// Función para normalizar el estado del caso
+const normalizeStatus = (status: string | CaseStatus | undefined): CaseStatus => {
+  if (!status) return CaseStatus.NUEVO;
+  const statusStr = String(status).trim();
+  // Buscar coincidencia exacta o por valor del enum
+  const statusValues = Object.values(CaseStatus);
+  const matchedStatus = statusValues.find(s => {
+    const sNormalized = s.toLowerCase().replace(/\s+/g, '');
+    const statusNormalized = statusStr.toLowerCase().replace(/\s+/g, '');
+    return s === statusStr || s.toLowerCase() === statusStr.toLowerCase() || sNormalized === statusNormalized;
+  });
+  return (matchedStatus as CaseStatus) || CaseStatus.NUEVO;
+};
+
 const AlertasCriticas: React.FC = () => {
   const [criticos, setCriticos] = useState<CaseWithPriority[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,10 +72,38 @@ const AlertasCriticas: React.FC = () => {
       const list = await api.getCases();
       const enriched = enrichCasesWithClients(list, clientesList);
       const filtered = enriched.filter(c => {
+        // Excluir casos resueltos o cerrados (a menos que estén escalados)
+        const normalizedStatus = normalizeStatus(c.status);
+        if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
+          // Solo incluir si está escalado
+          return normalizedStatus === CaseStatus.ESCALADO;
+        }
+        
         const slaDias = c.categoria?.slaDias || 5;
-        return c.diasAbierto >= slaDias || 
-          c.status === CaseStatus.ESCALADO ||
-          (slaDias - c.diasAbierto <= 1 && c.diasAbierto > 0);
+        const diasAbierto = c.diasAbierto || 0;
+        
+        // Caso crítico si:
+        // 1. Los días abiertos son >= al SLA (vencido)
+        // 2. Está escalado
+        // 3. Le queda 1 día o menos para vencer (en riesgo)
+        const isVencido = diasAbierto >= slaDias;
+        const isEscalado = normalizedStatus === CaseStatus.ESCALADO;
+        const isEnRiesgo = (slaDias - diasAbierto <= 1) && diasAbierto > 0 && diasAbierto < slaDias;
+        
+        console.log('[AlertasCriticas] Evaluando caso:', {
+          id: c.id,
+          ticketNumber: c.ticketNumber,
+          diasAbierto: diasAbierto,
+          slaDias: slaDias,
+          status: c.status,
+          normalizedStatus: normalizedStatus,
+          isVencido: isVencido,
+          isEscalado: isEscalado,
+          isEnRiesgo: isEnRiesgo,
+          esCritico: isVencido || isEscalado || isEnRiesgo
+        });
+        
+        return isVencido || isEscalado || isEnRiesgo;
       });
       
       const prioritized = prioritizeCases(filtered);

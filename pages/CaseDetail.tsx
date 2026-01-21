@@ -992,11 +992,20 @@ const CaseDetail: React.FC = () => {
   const totalMs = slaDeadline.getTime() - createdDate.getTime();
   const elapsedMs = now.getTime() - createdDate.getTime();
   
-  const daysOverdue = caso.slaExpired ? Math.floor((now.getTime() - slaDeadline.getTime()) / (1000 * 60 * 60 * 24)) : 0;
-  const hoursOverdue = caso.slaExpired ? Math.floor(((now.getTime() - slaDeadline.getTime()) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)) : 0;
-
-  const daysRemaining = !caso.slaExpired ? Math.floor((slaDeadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
-  const hoursRemaining = !caso.slaExpired ? Math.floor(((slaDeadline.getTime() - now.getTime()) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)) : 0;
+  // Calcular días restantes (puede ser negativo si ya pasó el SLA)
+  const daysRemainingRaw = Math.floor((slaDeadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const hoursRemainingRaw = Math.floor(((slaDeadline.getTime() - now.getTime()) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  
+  // Determinar si el SLA está vencido
+  const isSLAExpired = daysRemainingRaw < 0 || (daysRemainingRaw === 0 && hoursRemainingRaw < 0);
+  
+  // Calcular días y horas de atraso si está vencido
+  const daysOverdue = isSLAExpired ? Math.abs(daysRemainingRaw) : 0;
+  const hoursOverdue = isSLAExpired ? Math.abs(hoursRemainingRaw) : 0;
+  
+  // Calcular días y horas restantes si no está vencido
+  const daysRemaining = !isSLAExpired ? daysRemainingRaw : 0;
+  const hoursRemaining = !isSLAExpired ? hoursRemainingRaw : 0;
 
   // Calcular progreso basado en el estado del caso
   // 0% = Nuevo, 25% = En Proceso, 50% = Pendiente Cliente, 75% = Escalado, 100% = Resuelto/Cerrado
@@ -1118,12 +1127,12 @@ const CaseDetail: React.FC = () => {
                       </div>
                     )}
                     <div className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5" style={{color: caso.slaExpired ? '#dc2626' : '#16a34a'}} />
+                      <Clock className="w-3.5 h-3.5" style={{color: isSLAExpired ? '#dc2626' : '#16a34a'}} />
                       <span 
                         className="text-xs font-semibold"
-                        style={{color: caso.slaExpired ? '#dc2626' : '#16a34a'}}
+                        style={{color: isSLAExpired ? '#dc2626' : '#16a34a'}}
                       >
-                        {caso.slaExpired ? 'Vencido' : 'En tiempo'}
+                        {isSLAExpired ? 'Vencido' : 'En tiempo'}
                       </span>
                     </div>
                   </div>
@@ -1250,17 +1259,22 @@ const CaseDetail: React.FC = () => {
                   </p>
                   <p className="text-xs" style={{color: styles.text.tertiary}}>{slaDays * 24} horas hábiles</p>
                 </div>
-                {caso.slaExpired ? (
+                {isSLAExpired ? (
                   <div className="p-3 rounded-lg" style={{backgroundColor: 'rgba(220, 38, 38, 0.1)', borderColor: 'rgba(220, 38, 38, 0.3)', border: '1px solid'}}>
-                    <p className="text-xs mb-1 text-red-600">Días de Retraso</p>
+                    <p className="text-xs mb-1 text-red-600 font-semibold">SLA Vencido</p>
                     <p className="text-sm font-bold text-red-600">
-                      {daysOverdue} días hábiles
+                      {daysOverdue === 1 ? '1 día de atraso' : `${daysOverdue} días de atraso`}
                     </p>
-                    <p className="text-xs text-red-600">{daysOverdue * 24 + hoursOverdue} horas hábiles de retraso</p>
+                    <p className="text-xs text-red-500">
+                      {hoursOverdue > 0 
+                        ? `${daysOverdue * 24 + hoursOverdue} horas hábiles de retraso`
+                        : `${daysOverdue * 24} horas hábiles de retraso`
+                      }
+                    </p>
                   </div>
                 ) : (
                   <div className="p-3 rounded-lg" style={{backgroundColor: 'rgba(34, 197, 94, 0.1)', borderColor: 'rgba(34, 197, 94, 0.3)', border: '1px solid'}}>
-                    <p className="text-xs mb-1 text-green-600">Tiempo Restante</p>
+                    <p className="text-xs mb-1 text-green-600 font-semibold">Tiempo Restante</p>
                     <p className="text-sm font-bold text-green-600">
                       {daysRemaining} días hábiles
                     </p>

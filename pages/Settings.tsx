@@ -68,13 +68,14 @@ const Settings: React.FC = () => {
     name: string;
   } | null>(null);
 
+  // Estados iniciales solo como placeholder; los IDs REALES vienen del webhook (normalizados)
   const [states, setStates] = useState([
-    { id: '1', name: 'Nuevo', order: 1, isFinal: false },
-    { id: '2', name: 'En Proceso', order: 2, isFinal: false },
-    { id: '3', name: 'Pendiente Cliente', order: 3, isFinal: false },
-    { id: '4', name: 'Escalado', order: 4, isFinal: false },
-    { id: '5', name: 'Resuelto', order: 5, isFinal: true },
-    { id: '6', name: 'Cerrado', order: 6, isFinal: true }
+    { id: 'nuevo', name: 'Nuevo', order: 1, isFinal: false },
+    { id: 'en_proceso', name: 'En Proceso', order: 2, isFinal: false },
+    { id: 'pendiente_cliente', name: 'Pendiente Cliente', order: 3, isFinal: false },
+    { id: 'escalado', name: 'Escalado', order: 4, isFinal: false },
+    { id: 'resuelto', name: 'Resuelto', order: 5, isFinal: true },
+    { id: 'cerrado', name: 'Cerrado', order: 6, isFinal: true }
   ]);
 
   const [newState, setNewState] = useState({
@@ -83,19 +84,18 @@ const Settings: React.FC = () => {
     isFinal: false
   });
 
-  const [transitions, setTransitions] = useState<Record<string, Record<string, boolean>>>({
-    '1': { '2': true, '3': false, '4': false, '5': false, '6': false },
-    '2': { '1': false, '3': true, '4': true, '5': true, '6': false },
-    '3': { '1': false, '2': true, '4': false, '5': false, '6': false },
-    '4': { '1': false, '2': true, '3': true, '5': true, '6': false },
-    '5': { '1': false, '2': true, '3': false, '4': false, '6': true },
-    '6': { '1': false, '2': false, '3': false, '4': false, '5': false }
-  });
+  // Matriz de transiciones: SIEMPRE usa IDs normalizados de texto (no números)
+  // transitions[estado_origen_normalizado][estado_destino_normalizado] = true/false
+  const [transitions, setTransitions] = useState<Record<string, Record<string, boolean>>>({});
 
   const [draggedStateId, setDraggedStateId] = useState<string | null>(null);
   const [dragOverStateId, setDragOverStateId] = useState<string | null>(null);
   const [editingStateId, setEditingStateId] = useState<string | null>(null);
   const [editingStateName, setEditingStateName] = useState<string>('');
+  const [deletingState, setDeletingState] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const [settingsUsers, setSettingsUsers] = useState<Array<{
     id: string;
@@ -245,6 +245,234 @@ const Settings: React.FC = () => {
       loadCategories();
     }
   }, [activeTab]);
+
+  // Cargar estados desde el webhook
+  const loadEstados = async () => {
+    console.log('[Settings.loadEstados] Iniciando carga de estados...');
+    console.log('[Settings.loadEstados] Estados actuales antes de cargar:', states.map(s => ({ id: s.id, name: s.name, order: s.order })));
+    console.log('[Settings.loadEstados] Cantidad de estados actuales:', states.length);
+    
+    try {
+      console.log('[Settings.loadEstados] Llamando a api.readEstados()...');
+      const estadosFromWebhook = await api.readEstados();
+      console.log('[Settings.loadEstados] Estados recibidos de api.readEstados():', estadosFromWebhook);
+      console.log('[Settings.loadEstados] Tipo de datos recibidos:', typeof estadosFromWebhook);
+      console.log('[Settings.loadEstados] Es array?', Array.isArray(estadosFromWebhook));
+      console.log('[Settings.loadEstados] Cantidad de estados recibidos:', estadosFromWebhook?.length || 0);
+      
+      // Solo actualizar si el webhook retorna estados válidos
+      if (estadosFromWebhook && Array.isArray(estadosFromWebhook) && estadosFromWebhook.length > 0) {
+        console.log('[Settings.loadEstados] ✅ Estados válidos recibidos, actualizando...');
+        console.log('[Settings.loadEstados] Detalle de cada estado:', estadosFromWebhook.map(s => ({
+          id: s.id,
+          name: s.name,
+          order: s.order,
+          isFinal: s.isFinal
+        })));
+        
+        // Actualizar estados - usar EXACTAMENTE lo que viene del webhook sin modificar nada
+        console.log('[Settings.loadEstados] Llamando a setStates() con estados del webhook (sin modificar)...');
+        setStates(() => {
+          console.log('[Settings.loadEstados] setStates callback ejecutado');
+          // Usar EXACTAMENTE los IDs y nombres que vienen del webhook
+          const estadosDelWebhook = estadosFromWebhook.map((s) => ({
+            id: String(s.id || ''), // Usar el ID tal como viene del webhook
+            name: String(s.name || s.nombre || ''),
+            order: Number(s.order || s.orden || 0),
+            isFinal: s.isFinal === true || s.is_final === true || s.estado_final === true || false
+          }));
+          console.log('[Settings.loadEstados] Estados del webhook (sin modificar):', estadosDelWebhook);
+          return estadosDelWebhook;
+        });
+        console.log('[Settings.loadEstados] setStates() llamado exitosamente');
+        
+        // Inicializar transiciones para los nuevos estados si no existen
+        console.log('[Settings.loadEstados] Inicializando transiciones usando IDs del webhook...');
+        setTransitions(prevTransitions => {
+          console.log('[Settings.loadEstados] Transiciones previas:', prevTransitions);
+          const newTransitions: Record<string, Record<string, boolean>> = {};
+
+          // Usar EXACTAMENTE los IDs que vienen del webhook (sin normalizar)
+          estadosFromWebhook.forEach(state => {
+            const origenKey = String(state.id || ''); // ID tal como viene del webhook
+            if (!newTransitions[origenKey]) {
+              newTransitions[origenKey] = {};
+            }
+            estadosFromWebhook.forEach(otherState => {
+              const destinoKey = String(otherState.id || ''); // ID tal como viene del webhook
+              if (origenKey !== destinoKey) {
+                // Preservar transición existente si existe, sino false
+                const prevRow = prevTransitions[origenKey] || {};
+                newTransitions[origenKey][destinoKey] = prevRow[destinoKey] || false;
+              }
+            });
+          });
+
+          console.log('[Settings.loadEstados] Nuevas transiciones generadas (IDs del webhook):', newTransitions);
+          return newTransitions;
+        });
+        console.log('[Settings.loadEstados] ✅ Estados y transiciones actualizados exitosamente (IDs normalizados)');
+      } else {
+        console.warn('[Settings.loadEstados] ⚠️ No se recibieron estados válidos del webhook');
+        console.warn('[Settings.loadEstados] estadosFromWebhook:', estadosFromWebhook);
+        console.warn('[Settings.loadEstados] Es array?', Array.isArray(estadosFromWebhook));
+        console.warn('[Settings.loadEstados] Longitud:', estadosFromWebhook?.length);
+        console.log('[Settings.loadEstados] Manteniendo estados actuales');
+      }
+    } catch (error: any) {
+      console.error('[Settings.loadEstados] ❌ Error al cargar estados:', error);
+      console.error('[Settings.loadEstados] Mensaje de error:', error.message);
+      console.error('[Settings.loadEstados] Stack trace:', error.stack);
+      console.log('[Settings.loadEstados] Manteniendo estados actuales debido al error');
+      // Si falla, mantener los estados actuales
+    }
+  };
+
+  // Cargar transiciones desde el webhook
+  // IMPORTANTE: NO usar estados locales, obtener estados directamente del webhook
+  const loadTransiciones = async () => {
+    console.log('[Settings.loadTransiciones] ========================================');
+    console.log('[Settings.loadTransiciones] Iniciando carga de transiciones...');
+    console.log('[Settings.loadTransiciones] Obteniendo estados directamente del webhook (NO usar estados locales)...');
+    
+    try {
+      // PRIMERO: Obtener estados directamente del webhook (NO usar states local)
+      console.log('[Settings.loadTransiciones] Llamando a api.readEstados() para obtener estados actuales...');
+      const estadosFromWebhook = await api.readEstados();
+      console.log('[Settings.loadTransiciones] Estados recibidos del webhook:', estadosFromWebhook);
+      console.log('[Settings.loadTransiciones] Cantidad de estados:', estadosFromWebhook?.length || 0);
+      
+      if (!estadosFromWebhook || !Array.isArray(estadosFromWebhook) || estadosFromWebhook.length === 0) {
+        console.error('[Settings.loadTransiciones] ❌ No se recibieron estados del webhook');
+        return;
+      }
+      
+      // SEGUNDO: Obtener transiciones del webhook
+      console.log('[Settings.loadTransiciones] Llamando a api.readTransiciones()...');
+      const transicionesFromWebhook = await api.readTransiciones();
+      console.log('[Settings.loadTransiciones] Transiciones recibidas de api.readTransiciones():', transicionesFromWebhook);
+      console.log('[Settings.loadTransiciones] Tipo de datos recibidos:', typeof transicionesFromWebhook);
+      console.log('[Settings.loadTransiciones] Es objeto?', transicionesFromWebhook && typeof transicionesFromWebhook === 'object');
+      console.log('[Settings.loadTransiciones] Keys del objeto:', transicionesFromWebhook ? Object.keys(transicionesFromWebhook) : 'N/A');
+      
+      if (transicionesFromWebhook && typeof transicionesFromWebhook === 'object' && Object.keys(transicionesFromWebhook).length > 0) {
+        console.log('[Settings.loadTransiciones] ✅ Transiciones válidas recibidas, actualizando...');
+        
+        // Convertir el formato del webhook al formato local
+        // El webhook retorna: { estado_origen: { transiciones: [estado_destino1, estado_destino2, ...] } }
+        // Necesitamos convertir a: transitions[estado_origen][estado_destino] = true
+        // y que la UI refleje EXCLUSIVAMENTE lo que viene del read
+        setTransitions(() => {
+          const newTransitions: Record<string, Record<string, boolean>> = {};
+
+          // Inicializar toda la matriz en false usando EXACTAMENTE los IDs del webhook (NO estados locales)
+          estadosFromWebhook.forEach(estadoOrigen => {
+            const origenKey = String(estadoOrigen.id || ''); // Usar ID tal como viene del webhook
+            newTransitions[origenKey] = {};
+            estadosFromWebhook.forEach(estadoDestino => {
+              const destinoKey = String(estadoDestino.id || ''); // Usar ID tal como viene del webhook
+              if (origenKey !== destinoKey) {
+                newTransitions[origenKey][destinoKey] = false;
+              }
+            });
+          });
+
+          // Marcar como true las transiciones que vienen del webhook
+          // ORIGEN (fila) -> DESTINO (columna)
+          // Usar EXACTAMENTE los IDs que vienen del webhook (NO estados locales)
+          Object.keys(transicionesFromWebhook).forEach(estadoOrigenIdFromWebhook => {
+            const transicionesEstado = transicionesFromWebhook[estadoOrigenIdFromWebhook];
+            if (transicionesEstado && Array.isArray(transicionesEstado.transiciones)) {
+              // Buscar el estado origen en los estados del webhook (NO estados locales)
+              const estadoOrigenDelWebhook = estadosFromWebhook.find(s => String(s.id || '') === String(estadoOrigenIdFromWebhook));
+              
+              if (!estadoOrigenDelWebhook) {
+                console.warn(`[Settings.loadTransiciones] ⚠️ Estado ORIGEN "${estadoOrigenIdFromWebhook}" no encontrado en estados del webhook`);
+                console.warn(`[Settings.loadTransiciones] Estados disponibles del webhook:`, estadosFromWebhook.map(s => ({ id: s.id, name: s.name })));
+                return;
+              }
+              
+              const origenKey = String(estadoOrigenDelWebhook.id || ''); // Usar ID tal como viene del webhook
+              console.log(`[Settings.loadTransiciones] Estado ORIGEN "${estadoOrigenIdFromWebhook}" -> "${origenKey}" (${estadoOrigenDelWebhook.name}) puede transicionar a:`, transicionesEstado.transiciones);
+
+              transicionesEstado.transiciones.forEach((estadoDestinoIdFromWebhook: string) => {
+                // Buscar el estado destino en los estados del webhook (NO estados locales)
+                const estadoDestinoDelWebhook = estadosFromWebhook.find(s => String(s.id || '') === String(estadoDestinoIdFromWebhook));
+                
+                if (!estadoDestinoDelWebhook) {
+                  console.error(`[Settings.loadTransiciones] ❌ Estado DESTINO "${estadoDestinoIdFromWebhook}" NO encontrado en estados del webhook`);
+                  console.error(`[Settings.loadTransiciones] Estados disponibles del webhook:`, estadosFromWebhook.map(s => ({ 
+                    id: s.id, 
+                    name: s.name
+                  })));
+                  console.error(`[Settings.loadTransiciones] ⚠️ Esta transición NO se marcará porque el estado destino no existe en el sistema`);
+                  // NO hacer return aquí - continuar con las demás transiciones
+                  return;
+                }
+                
+                const destinoKey = String(estadoDestinoDelWebhook.id || ''); // Usar ID tal como viene del webhook
+                
+                // Asegurarnos de que la matriz tenga la fila y columna inicializadas
+                if (!newTransitions[origenKey]) {
+                  newTransitions[origenKey] = {};
+                }
+                if (newTransitions[origenKey][destinoKey] === undefined) {
+                  // Si no estaba inicializada, inicializarla ahora
+                  newTransitions[origenKey][destinoKey] = false;
+                }
+                
+                newTransitions[origenKey][destinoKey] = true;
+                console.log(`[Settings.loadTransiciones] ✅ Marcando transición: ${origenKey} (${estadoOrigenDelWebhook.name}) -> ${destinoKey} (${estadoDestinoDelWebhook.name}) = true`);
+              });
+            }
+          });
+
+          console.log('[Settings.loadTransiciones] Nuevas transiciones generadas (solo desde read, usando estados del webhook):', newTransitions);
+          return newTransitions;
+        });
+        console.log('[Settings.loadTransiciones] ✅ Transiciones actualizadas exitosamente');
+      } else {
+        console.warn('[Settings.loadTransiciones] ⚠️ No se recibieron transiciones válidas del webhook');
+        console.warn('[Settings.loadTransiciones] transicionesFromWebhook:', transicionesFromWebhook);
+        console.log('[Settings.loadTransiciones] Manteniendo transiciones actuales');
+        // Si no hay transiciones válidas, mantener las actuales
+      }
+    } catch (error: any) {
+      console.error('[Settings.loadTransiciones] ❌ Error al cargar transiciones:', error);
+      console.error('[Settings.loadTransiciones] Mensaje de error:', error.message);
+      console.error('[Settings.loadTransiciones] Stack trace:', error.stack);
+      console.log('[Settings.loadTransiciones] Manteniendo transiciones actuales debido al error');
+      // Si falla, mantener las transiciones actuales
+    }
+  };
+
+  // Cargar estados y transiciones cuando se activa el tab de estados y flujos
+  useEffect(() => {
+    if (activeTab === 'estados-flujo') {
+      console.log('[Settings] Tab estados-flujo activado, cargando estados y transiciones...');
+      loadEstados().then(() => {
+        // Esperar un momento para que los estados se actualicen antes de cargar transiciones
+        setTimeout(() => {
+          // Después de cargar estados, cargar transiciones
+          loadTransiciones();
+        }, 500);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  // También cargar transiciones cuando cambian los estados (por si se cargan después)
+  useEffect(() => {
+    if (activeTab === 'estados-flujo' && states.length > 0) {
+      console.log('[Settings] Estados disponibles, cargando transiciones...');
+      // Solo cargar si no hay transiciones ya cargadas o si hay cambios
+      const hasAnyTransition = Object.keys(transitions).length > 0;
+      if (!hasAnyTransition) {
+        loadTransiciones();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [states.length, activeTab]);
 
   // Inicializar filteredCategories con las categorías cuando cambian
   useEffect(() => {
@@ -481,53 +709,132 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleAddState = () => {
+  // Función para convertir nombre de estado a ID (ej: "En Proceso" -> "en_proceso")
+  const nombreToId = (nombre: string): string => {
+    return nombre
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remover tildes
+      .replace(/\s+/g, '_') // Reemplazar espacios con guiones bajos
+      .replace(/[^a-z0-9_]/g, ''); // Remover caracteres especiales
+  };
+
+  const handleAddState = async () => {
     if (!newState.name.trim()) {
       alert('El nombre del estado es obligatorio');
       return;
     }
     
-    const newId = String(Date.now());
+    console.log('[Settings.handleAddState] Iniciando creación de estado...');
+    console.log('[Settings.handleAddState] Datos del nuevo estado:', {
+      name: newState.name.trim(),
+      order: newState.order,
+      isFinal: newState.isFinal
+    });
+    
+    // Generar ID basado en el nombre normalizado (ej: "En Proceso" -> "en_proceso")
+    const newId = nombreToId(newState.name.trim());
     const maxOrder = Math.max(...states.map(s => s.order), 0);
     const newOrder = newState.order || maxOrder + 1;
     
-    const newStateObj = {
-      id: newId,
-      name: newState.name.trim(),
-      order: newOrder,
-      isFinal: newState.isFinal
-    };
+    console.log('[Settings.handleAddState] ID generado desde nombre:', newId);
+    console.log('[Settings.handleAddState] Orden calculado:', newOrder);
+    console.log('[Settings.handleAddState] Estados actuales antes de crear:', states.map(s => ({ id: s.id, name: s.name, order: s.order })));
     
-    setStates([...states, newStateObj]);
+    // Verificar si ya existe un estado con ese ID
+    const estadoExistente = states.find(s => s.id === newId);
+    if (estadoExistente) {
+      alert(`Ya existe un estado con el nombre "${newState.name.trim()}". Por favor, elige un nombre diferente.`);
+      return;
+    }
     
-    // Inicializar transiciones para el nuevo estado
-    const newTransitions: Record<string, Record<string, boolean>> = {};
-    states.forEach(state => {
-      if (!newTransitions[state.id]) {
-        newTransitions[state.id] = {};
-      }
-      newTransitions[state.id][newId] = false;
-    });
-    newTransitions[newId] = {};
-    states.forEach(state => {
-      newTransitions[newId][state.id] = false;
-    });
-    
-    setTransitions({ ...transitions, ...newTransitions });
-    setNewState({ name: '', order: 10, isFinal: false });
-    setHasChanges(true);
+    // Enviar webhook para crear el estado
+    try {
+      console.log('[Settings.handleAddState] Enviando estado.create al webhook...');
+      await api.createState({
+        id: newId,
+        nombre: newState.name.trim(),
+        descripcion: newState.name.trim(), // Usar el nombre como descripción por defecto
+        orden: String(newOrder),
+        orden_final: newState.isFinal ? 'true' : 'false'
+      });
+      console.log('[Settings.handleAddState] ✅ estado.create exitoso');
+      
+      // Limpiar el formulario antes de recargar
+      const nombreEstadoCreado = newState.name.trim();
+      setNewState({ name: '', order: 10, isFinal: false });
+      
+      // Esperar un momento para que el servidor procese el nuevo estado
+      console.log('[Settings.handleAddState] Esperando 500ms antes de recargar estados...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Después de crear el estado, recargar todos los estados desde el webhook
+      console.log('[Settings.handleAddState] Recargando estados con estado.read...');
+      await loadEstados();
+      console.log('[Settings.handleAddState] ✅ Estados recargados');
+      
+      // Esperar un momento más para que React actualice el estado
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Verificar que el nuevo estado esté en la lista usando un callback
+      // Nota: No podemos verificar states directamente aquí porque setState es asíncrono
+      // En su lugar, loadEstados() ya actualiza los estados, así que solo logueamos
+      console.log('[Settings.handleAddState] Buscando estado con nombre:', nombreEstadoCreado);
+      console.log('[Settings.handleAddState] Los estados se actualizarán en el próximo render');
+      
+      setHasChanges(true);
+    } catch (error: any) {
+      console.error('[Settings.handleAddState] ❌ Error al crear estado:', error);
+      console.error('[Settings.handleAddState] Mensaje de error:', error.message);
+      console.error('[Settings.handleAddState] Stack trace:', error.stack);
+      alert(error.message || 'Error al crear el estado. Por favor, intenta nuevamente.');
+    }
   };
 
   const handleDeleteState = (id: string) => {
-    if (window.confirm('¿Está seguro de que desea eliminar este estado?')) {
-      setStates(states.filter(s => s.id !== id));
-      const newTransitions = { ...transitions };
-      delete newTransitions[id];
-      Object.keys(newTransitions).forEach(fromId => {
-        delete newTransitions[fromId][id];
-      });
-      setTransitions(newTransitions);
+    const state = states.find(s => s.id === id);
+    if (state) {
+      setDeletingState({ id: state.id, name: state.name });
+    }
+  };
+
+  const handleCancelDeleteState = () => {
+    setDeletingState(null);
+  };
+
+  const handleConfirmDeleteState = async () => {
+    if (!deletingState) return;
+
+    console.log('[Settings.handleConfirmDeleteState] Iniciando eliminación de estado...');
+    console.log('[Settings.handleConfirmDeleteState] Estado a eliminar:', deletingState);
+
+    try {
+      // Enviar webhook para eliminar el estado
+      console.log('[Settings.handleConfirmDeleteState] Enviando estado.delete al webhook...');
+      await api.deleteState(deletingState.id);
+      console.log('[Settings.handleConfirmDeleteState] ✅ estado.delete exitoso');
+
+      // Esperar un momento para que el servidor procese la eliminación
+      console.log('[Settings.handleConfirmDeleteState] Esperando 500ms antes de recargar estados...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Después de eliminar, recargar todos los estados y transiciones desde el webhook
+      console.log('[Settings.handleConfirmDeleteState] Recargando estados con estado.read...');
+      await loadEstados();
+      console.log('[Settings.handleConfirmDeleteState] ✅ Estados recargados');
+      
+      // Recargar transiciones después de recargar estados
+      console.log('[Settings.handleConfirmDeleteState] Recargando transiciones con transicion.read...');
+      await loadTransiciones();
+      console.log('[Settings.handleConfirmDeleteState] ✅ Transiciones recargadas');
+
+      setDeletingState(null);
       setHasChanges(true);
+    } catch (error: any) {
+      console.error('[Settings.handleConfirmDeleteState] ❌ Error al eliminar estado:', error);
+      alert(error.message || 'Error al eliminar el estado. Por favor, intenta nuevamente.');
+      setDeletingState(null);
     }
   };
 
@@ -578,10 +885,17 @@ const Settings: React.FC = () => {
     setDragOverStateId(null);
   };
 
-  const handleDrop = (e: React.DragEvent, targetStateId: string) => {
+  const handleDrop = async (e: React.DragEvent, targetStateId: string) => {
     e.preventDefault();
     
+    console.log('[Settings.handleDrop] Iniciando drop...', {
+      draggedStateId,
+      targetStateId,
+      currentStates: states.map(s => ({ id: s.id, name: s.name, order: s.order }))
+    });
+    
     if (!draggedStateId || draggedStateId === targetStateId) {
+      console.log('[Settings.handleDrop] No hay drag válido o es el mismo estado');
       setDraggedStateId(null);
       setDragOverStateId(null);
       return;
@@ -590,11 +904,22 @@ const Settings: React.FC = () => {
     const draggedState = states.find(s => s.id === draggedStateId);
     const targetState = states.find(s => s.id === targetStateId);
     
-    if (!draggedState || !targetState) return;
+    if (!draggedState || !targetState) {
+      console.warn('[Settings.handleDrop] No se encontraron los estados');
+      setDraggedStateId(null);
+      setDragOverStateId(null);
+      return;
+    }
+
+    // Limpiar estados de drag inmediatamente para evitar que se quede "pegado"
+    setDraggedStateId(null);
+    setDragOverStateId(null);
 
     const newStates = [...states];
     const draggedIndex = newStates.findIndex(s => s.id === draggedStateId);
     const targetIndex = newStates.findIndex(s => s.id === targetStateId);
+
+    console.log('[Settings.handleDrop] Índices:', { draggedIndex, targetIndex });
 
     // Reordenar
     newStates.splice(draggedIndex, 1);
@@ -606,21 +931,138 @@ const Settings: React.FC = () => {
       order: index + 1
     }));
 
+    console.log('[Settings.handleDrop] Estados reordenados localmente:', reorderedStates.map(s => ({ id: s.id, name: s.name, order: s.order })));
+
+    // Actualizar el estado local inmediatamente para feedback visual
     setStates(reorderedStates);
-    setDraggedStateId(null);
-    setDragOverStateId(null);
+
+    // Enviar webhook con todos los estados y su nuevo orden
+    try {
+      console.log('[Settings.handleDrop] Enviando estado.update con nuevo orden...');
+      const estadosParaWebhook = reorderedStates.map(state => ({
+        id: state.id,
+        nombre: state.name,
+        descripcion: state.name, // Usar el nombre como descripción
+        orden: state.order,
+        es_final: state.isFinal
+      }));
+
+      console.log('[Settings.handleDrop] Estados a enviar en update:', estadosParaWebhook);
+      await api.updateEstados(estadosParaWebhook);
+      console.log('[Settings.handleDrop] ✅ estado.update exitoso');
+      
+      // Después de actualizar, recargar los estados y transiciones desde el webhook para obtener el orden actualizado
+      console.log('[Settings.handleDrop] Recargando estados con estado.read...');
+      await loadEstados();
+      console.log('[Settings.handleDrop] ✅ Estados recargados exitosamente');
+      
+      // Recargar transiciones después de recargar estados
+      console.log('[Settings.handleDrop] Recargando transiciones con transicion.read...');
+      await loadTransiciones();
+      console.log('[Settings.handleDrop] ✅ Transiciones recargadas exitosamente');
+      
+      setHasChanges(true);
+    } catch (error: any) {
+      console.error('[Settings.handleDrop] ❌ Error al actualizar orden de estados:', error);
+      alert(error.message || 'Error al actualizar el orden de los estados. Por favor, intenta nuevamente.');
+      // Si falla, recargar los estados originales desde el servidor
+      console.log('[Settings.handleDrop] Recargando estados originales debido al error...');
+      await loadEstados();
+    }
+  };
+
+  // ORIGEN = FILA (fromState), DESTINO = COLUMNA (toState)
+  const handleTransitionChange = (fromId: string, toId: string, checked: boolean) => {
+    console.log('[Settings.handleTransitionChange] Cambiando transición:', {
+      fromId,
+      toId,
+      checked,
+      fromStateName: states.find(s => s.id === fromId)?.name,
+      toStateName: states.find(s => s.id === toId)?.name,
+      currentTransitions: transitions
+    });
+
+    // IMPORTANTE: El mapeo en la tabla es:
+    // - FILAS = fromState (estado ORIGEN/DESDE)
+    // - COLUMNAS = toState (estado DESTINO/HACIA)
+    // 
+    // El checkbox llama: handleTransitionChange(fromState.id, toState.id, checked)
+    // Usar EXACTAMENTE los IDs que vienen del webhook (sin modificar)
+    const fromState = states.find(s => s.id === fromId);
+    const toState = states.find(s => s.id === toId);
+
+    if (!fromState || !toState) {
+      console.warn('[Settings.handleTransitionChange] ⚠️ fromState o toState no encontrados', { fromId, toId });
+      return;
+    }
+
+    const origenKey = fromState.id; // Usar ID tal como viene del webhook
+    const destinoKey = toState.id; // Usar ID tal como viene del webhook
+
+    // Guardamos transitions[origenKey][destinoKey] = true/false
+    const newTransitions: Record<string, Record<string, boolean>> = {
+      ...transitions,
+      [origenKey]: {
+        ...(transitions[origenKey] || {}),
+        [destinoKey]: checked
+      }
+    };
+    
+    setTransitions(newTransitions);
     setHasChanges(true);
   };
 
-  const handleTransitionChange = (fromId: string, toId: string, checked: boolean) => {
-    setTransitions({
-      ...transitions,
-      [fromId]: {
-        ...transitions[fromId],
-        [toId]: checked
-      }
+  const handleSaveTransitions = async () => {
+    console.log('[Settings.handleSaveTransitions] Guardando transiciones mediante transicion.update...');
+
+    // Construir el payload para el webhook usando el estado actual de `transitions`
+    // El formato debe ser: { estado_origen_id: { transiciones: [estado_destino_id1, estado_destino_id2, ...] } }
+    const transicionesData: Record<string, { transiciones: string[] }> = {};
+
+    // FILAS = estado ORIGEN, COLUMNAS = estado DESTINO
+    // Usar EXACTAMENTE los IDs que vienen del webhook (sin modificar)
+    states.forEach(estadoOrigen => {
+      const transicionesPermitidas: string[] = [];
+      const origenKey = estadoOrigen.id; // Usar ID tal como viene del webhook
+
+      states.forEach(estadoDestino => {
+        const destinoKey = estadoDestino.id; // Usar ID tal como viene del webhook
+        if (
+          origenKey !== destinoKey &&
+          // La matriz guarda transitions[ORIGEN_ID][DESTINO_ID]
+          // y la casilla en fila ORIGEN / columna DESTINO es:
+          // checked = transitions[origenKey]?.[destinoKey]
+          transitions[origenKey]?.[destinoKey] === true
+        ) {
+          transicionesPermitidas.push(destinoKey);
+        }
+      });
+
+      transicionesData[origenKey] = {
+        transiciones: transicionesPermitidas
+      };
     });
-    setHasChanges(true);
+
+    console.log('[Settings.handleSaveTransitions] Payload completo a enviar:', JSON.stringify(transicionesData, null, 2));
+
+    try {
+      await api.updateTransiciones(transicionesData);
+      console.log('[Settings.handleSaveTransitions] ✅ transicion.update exitoso');
+
+      // Después de actualizar, recargar transiciones desde el webhook
+      try {
+        console.log('[Settings.handleSaveTransitions] Recargando transiciones con transicion.read...');
+        await loadTransiciones();
+        console.log('[Settings.handleSaveTransitions] ✅ transicion.read exitoso');
+      } catch (innerError: any) {
+        console.error('[Settings.handleSaveTransitions] ❌ Error al recargar transiciones después del update:', innerError);
+      }
+
+      setHasChanges(false);
+    } catch (error: any) {
+      console.error('[Settings.handleSaveTransitions] ❌ Error al actualizar transiciones:', error);
+      alert(error.message || 'Error al guardar las transiciones. Por favor, intenta nuevamente.');
+    }
   };
 
   const handleSaveStates = () => {
@@ -2020,11 +2462,92 @@ const Settings: React.FC = () => {
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
-                      </div>
                     </div>
-                  ))}
+                  </div>
+                ))}
               </div>
             </div>
+
+            {/* Modal de Confirmación de Eliminación de Estado */}
+            {deletingState && (
+              <div 
+                className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+                style={{
+                  backgroundColor: 'rgba(0, 0, 0, 0.5)'
+                }}
+                onClick={handleCancelDeleteState}
+              >
+                <div 
+                  className="rounded-xl border p-6 w-full max-w-md animate-in zoom-in-95 duration-200"
+                  style={{
+                    ...styles.card,
+                    boxShadow: theme === 'dark' 
+                      ? '0 8px 24px rgba(0, 0, 0, 0.5)' 
+                      : '0 8px 24px rgba(0, 0, 0, 0.2)'
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex flex-col items-center mb-4">
+                    <div 
+                      className="w-16 h-16 rounded-full flex items-center justify-center mb-4 animate-in zoom-in duration-300"
+                      style={{
+                        backgroundColor: theme === 'dark' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)'
+                      }}
+                    >
+                      <AlertTriangle 
+                        className="w-8 h-8 animate-in zoom-in duration-300" 
+                        style={{ color: '#ef4444' }}
+                      />
+                    </div>
+                    <h3 className="text-lg font-bold mb-2" style={{ color: styles.text.primary }}>
+                      ¿Eliminar estado?
+                    </h3>
+                    <p className="text-sm text-center" style={{ color: styles.text.secondary }}>
+                      Está a punto de eliminar el estado <strong style={{ color: styles.text.primary }}>{deletingState.name}</strong>. Esta acción no se puede deshacer.
+                    </p>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4">
+                    <button
+                      onClick={handleCancelDeleteState}
+                      className="px-4 py-2 text-sm font-semibold rounded-lg transition-all"
+                      style={{
+                        backgroundColor: 'transparent',
+                        color: styles.text.secondary,
+                        border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleConfirmDeleteState}
+                      className="px-6 py-2 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
+                      style={{
+                        backgroundColor: theme === 'dark' ? '#ef4444' : '#dc2626',
+                        boxShadow: theme === 'dark' 
+                          ? '0 4px 12px rgba(239, 68, 68, 0.3)' 
+                          : '0 4px 12px rgba(220, 38, 38, 0.3)'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = theme === 'dark' ? '#dc2626' : '#b91c1c';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = theme === 'dark' ? '#ef4444' : '#dc2626';
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Matriz de transiciones */}
             <div>
@@ -2036,13 +2559,28 @@ const Settings: React.FC = () => {
               </p>
               <div className="overflow-x-auto">
                 <div className="inline-block min-w-full">
-                  <div className="mb-2">
-                    <div className="text-xs font-semibold mb-1" style={{ color: styles.text.secondary }}>
-                      ESTADO ACTUAL (DESDE)
+                  <div className="mb-2 flex items-center justify-between gap-4">
+                    <div>
+                      <div className="text-xs font-semibold mb-1" style={{ color: styles.text.secondary }}>
+                        ESTADO ACTUAL (DESDE)
+                      </div>
+                      <div className="text-xs italic" style={{ color: styles.text.tertiary }}>
+                        CHECK = PUEDE CAMBIAR A...
+                      </div>
                     </div>
-                    <div className="text-xs italic" style={{ color: styles.text.tertiary }}>
-                      CHECK = PUEDE CAMBIAR A...
-                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSaveTransitions}
+                      disabled={!hasChanges}
+                      className="px-4 py-2 rounded-lg text-xs font-semibold border transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={{
+                        color: hasChanges ? '#ffffff' : styles.text.tertiary,
+                        backgroundColor: hasChanges ? '#c8151b' : 'transparent',
+                        borderColor: hasChanges ? '#c8151b' : (theme === 'dark' ? 'rgba(148,163,184,0.4)' : 'rgba(148,163,184,0.4)')
+                      }}
+                    >
+                      Guardar transiciones
+                    </button>
                   </div>
                   <table className="w-full border-collapse" style={{
                     border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
