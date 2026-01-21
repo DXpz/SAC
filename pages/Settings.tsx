@@ -246,6 +246,26 @@ const Settings: React.FC = () => {
     }
   }, [activeTab]);
 
+  // Cargar asuetos desde el webhook
+  const loadHolidays = async () => {
+    console.log('[Settings.loadHolidays] Iniciando carga de asuetos...');
+    try {
+      const fechasFromWebhook = await api.readHolidays();
+      console.log('[Settings.loadHolidays] Fechas recibidas del webhook:', fechasFromWebhook);
+      setHolidays(fechasFromWebhook);
+    } catch (error: any) {
+      console.error('[Settings.loadHolidays] Error al cargar asuetos:', error);
+      // Si falla, mantener array vacío o las fechas actuales
+    }
+  };
+
+  // Cargar asuetos cuando se activa el tab de asuetos
+  useEffect(() => {
+    if (activeTab === 'asuetos') {
+      loadHolidays();
+    }
+  }, [activeTab]);
+
   // Cargar estados desde el webhook
   const loadEstados = async () => {
     console.log('[Settings.loadEstados] Iniciando carga de estados...');
@@ -1078,11 +1098,7 @@ const Settings: React.FC = () => {
     }
   };
 
-  const [holidays, setHolidays] = useState<Date[]>([
-    new Date('2025-12-25'),
-    new Date('2025-01-01'),
-    new Date('2025-05-01')
-  ]);
+  const [holidays, setHolidays] = useState<Date[]>([]);
 
   const [bulkDates, setBulkDates] = useState('');
   const [isImporting, setIsImporting] = useState(false);
@@ -1320,14 +1336,13 @@ const Settings: React.FC = () => {
     try {
       await api.deleteHoliday(date);
       console.log('[handleDeleteHoliday] ✅ Asueto eliminado del webhook exitosamente');
+      
+      // Después de eliminar, recargar las fechas desde el webhook
+      await loadHolidays();
     } catch (error: any) {
       console.error('[handleDeleteHoliday] ❌ Error al eliminar asueto del webhook:', error);
       alert(`Error al eliminar la fecha: ${error.message || 'Error desconocido'}`);
-      return; // No eliminar localmente si falla el webhook
     }
-    
-    // Eliminar localmente solo si el webhook fue exitoso
-    setHolidays(holidays.filter(h => h.getTime() !== date.getTime()));
   };
 
   // Confirmar agregar fecha desde el modal
@@ -1356,17 +1371,18 @@ const Settings: React.FC = () => {
         try {
           await api.addHoliday(date, pendingHolidayDate.holidayName);
           console.log('[handleConfirmAddHoliday] ✅ Asueto agregado al webhook exitosamente');
+          
+          // Después de agregar, recargar las fechas desde el webhook
+          await loadHolidays();
         } catch (error: any) {
           console.error('[handleConfirmAddHoliday] ❌ Error al agregar asueto al webhook:', error);
           alert(`Error al guardar la fecha: ${error.message || 'Error desconocido'}`);
         }
       };
       
-      // Agregar la fecha localmente
-      setHolidays([...holidays, date].sort((a, b) => a.getTime() - b.getTime()));
       setPendingHolidayDate(null);
       
-      // Enviar al webhook
+      // Enviar al webhook (loadHolidays se llamará dentro de addHolidayToWebhook)
       addHolidayToWebhook();
     }
   };
@@ -1452,9 +1468,11 @@ const Settings: React.FC = () => {
       await api.addBulkHolidays(newDates, holidayNames);
       console.log('[handleBulkImport] ✅ Asuetos agregados al webhook exitosamente');
       
-      // Agregar localmente solo si el webhook fue exitoso
-      setHolidays([...holidays, ...newDates].sort((a, b) => a.getTime() - b.getTime()));
+      // Limpiar el textarea
       setBulkDates('');
+      
+      // Después de agregar, recargar las fechas desde el webhook
+      await loadHolidays();
       
       // Pequeño delay para mostrar el éxito
       setTimeout(() => {

@@ -2685,5 +2685,98 @@ export const api = {
       console.error('[api.addBulkHolidays] ❌ Error al agregar asuetos en masa:', error);
       throw new Error(error.message || 'Error al agregar las fechas de asuetos');
     }
+  },
+
+  // Leer fechas de asuetos desde el webhook
+  async readHolidays(): Promise<Date[]> {
+    const user = this.getUser();
+    if (!user) {
+      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
+    }
+
+    console.log('[api.readHolidays] Iniciando lectura de asuetos...');
+
+    // Construir el actor con el formato esperado
+    const actor = buildActorPayload(user);
+    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
+    const roleMap: Record<string, string> = {
+      'ADMIN': 'ADMINISTRADOR',
+      'AGENTE': 'AGENTE',
+      'SUPERVISOR': 'SUPERVISOR',
+      'GERENTE': 'GERENTE'
+    };
+    const mappedRole = roleMap[actor.role] || actor.role;
+
+    // Construir el payload según el formato esperado
+    const payload = {
+      action: 'asueto.read',
+      actor: {
+        user_id: actor.user_id || 0,
+        email: actor.email || 'admin@intelfon.com',
+        role: mappedRole || 'ADMINISTRADOR'
+      },
+      data: {}
+    };
+
+    console.log('[api.readHolidays] Payload completo a enviar:', JSON.stringify(payload, null, 2));
+
+    try {
+      const response = await callAsuetosWebhook('POST', payload);
+      console.log('[api.readHolidays] Respuesta del webhook:', response);
+      
+      // Parsear la respuesta y convertir a array de Date
+      // El formato puede variar, así que manejamos diferentes estructuras posibles
+      let fechas: string[] = [];
+      
+      if (Array.isArray(response)) {
+        // Si es un array directamente, asumimos que cada elemento es una fecha
+        fechas = response.map((item: any) => {
+          if (typeof item === 'string') return item;
+          return item.fecha || item.date || '';
+        }).filter(Boolean);
+      } else if (response && typeof response === 'object') {
+        // Si es un objeto, buscar en propiedades comunes
+        if (Array.isArray(response.data)) {
+          fechas = response.data.map((item: any) => {
+            if (typeof item === 'string') return item;
+            return item.fecha || item.date || '';
+          }).filter(Boolean);
+        } else if (Array.isArray(response.fechas)) {
+          fechas = response.fechas;
+        } else if (response.fecha) {
+          fechas = Array.isArray(response.fecha) ? response.fecha : [response.fecha];
+        }
+      }
+      
+      // Convertir strings de fecha a objetos Date
+      // Soporta formatos: DD/MM/YYYY, YYYY-MM-DD
+      const dates: Date[] = fechas.map((fechaStr: string) => {
+        try {
+          // Intentar formato DD/MM/YYYY
+          if (fechaStr.includes('/')) {
+            const [day, month, year] = fechaStr.split('/').map(Number);
+            return new Date(year, month - 1, day);
+          }
+          // Intentar formato YYYY-MM-DD
+          if (fechaStr.includes('-')) {
+            return new Date(fechaStr + 'T00:00:00');
+          }
+          // Intentar parseo directo
+          return new Date(fechaStr);
+        } catch (error) {
+          console.error('[api.readHolidays] Error parseando fecha:', fechaStr, error);
+          return null;
+        }
+      }).filter((date): date is Date => date !== null && !isNaN(date.getTime()));
+      
+      // Ordenar fechas cronológicamente
+      dates.sort((a, b) => a.getTime() - b.getTime());
+      
+      console.log('[api.readHolidays] Fechas parseadas:', dates.map(d => d.toISOString().split('T')[0]));
+      return dates;
+    } catch (error: any) {
+      console.error('[api.readHolidays] ❌ Error al leer asuetos:', error);
+      throw new Error(error.message || 'Error al leer las fechas de asuetos');
+    }
   }
 };
