@@ -234,6 +234,31 @@ const callEstadosWebhook = async <T = any>(
   }
 };
 
+// Helper para llamar al webhook de asuetos
+const callAsuetosWebhook = async <T = any>(
+  method: 'GET' | 'POST',
+  body?: unknown
+): Promise<T> => {
+  // URL del webhook de asuetos
+  const ASUETOS_WEBHOOK_URL = 'https://n8n.red.com.sv/webhook/d80b6b0a-b647-475e-8795-c8747a9b72d8';
+  console.log('[callAsuetosWebhook] Llamando webhook:', {
+    url: ASUETOS_WEBHOOK_URL,
+    method: method,
+    body: body
+  });
+  console.log('[callAsuetosWebhook] Body como JSON:', JSON.stringify(body, null, 2));
+  
+  try {
+    const response = await callWebhookGeneric<T>(ASUETOS_WEBHOOK_URL, method, body);
+    console.log('[callAsuetosWebhook] Respuesta recibida:', response);
+    return response;
+  } catch (error: any) {
+    console.error('[callAsuetosWebhook] Error en la llamada:', error);
+    console.error('[callAsuetosWebhook] Mensaje de error:', error.message);
+    throw error;
+  }
+};
+
 // Helpers para construir el payload estándar esperado por n8n
 const buildActorPayload = (user: User | null) => {
   if (!user) {
@@ -2500,5 +2525,165 @@ export const api = {
     localStorage.setItem('intelfon_cases', JSON.stringify(cases));
     clearCache('cases');
     return true;
+  },
+
+  // Agregar fecha de asueto mediante webhook
+  async addHoliday(date: Date, holidayName?: string | null): Promise<any> {
+    const user = this.getUser();
+    if (!user) {
+      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
+    }
+
+    console.log('[api.addHoliday] Iniciando agregado de asueto...');
+    console.log('[api.addHoliday] Fecha:', date);
+    console.log('[api.addHoliday] Festividad:', holidayName);
+
+    // Construir el actor con el formato esperado
+    const actor = buildActorPayload(user);
+    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
+    const roleMap: Record<string, string> = {
+      'ADMIN': 'ADMINISTRADOR',
+      'AGENTE': 'AGENTE',
+      'SUPERVISOR': 'SUPERVISOR',
+      'GERENTE': 'GERENTE'
+    };
+    const mappedRole = roleMap[actor.role] || actor.role;
+
+    // Formatear fecha como DD/MM/YYYY
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const dateStr = `${day}/${month}/${year}`;
+
+    // Construir el payload según el formato esperado
+    const payload = {
+      action: 'asueto.create',
+      actor: {
+        user_id: actor.user_id || 0,
+        email: actor.email || 'admin@intelfon.com',
+        role: mappedRole || 'ADMINISTRADOR'
+      },
+      data: {
+        type: 'individual',
+        fecha: dateStr,
+        motivo: holidayName || '',
+        pais: 'El Salvador'
+      }
+    };
+
+    console.log('[api.addHoliday] Payload completo a enviar:', JSON.stringify(payload, null, 2));
+
+    try {
+      const response = await callAsuetosWebhook('POST', payload);
+      console.log('[api.addHoliday] Respuesta del webhook:', response);
+      return response;
+    } catch (error: any) {
+      console.error('[api.addHoliday] ❌ Error al agregar asueto:', error);
+      throw new Error(error.message || 'Error al agregar la fecha de asueto');
+    }
+  },
+
+  // Eliminar fecha de asueto mediante webhook
+  async deleteHoliday(date: Date): Promise<any> {
+    const user = this.getUser();
+    if (!user) {
+      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
+    }
+
+    console.log('[api.deleteHoliday] Iniciando eliminación de asueto...');
+    console.log('[api.deleteHoliday] Fecha:', date);
+
+    // Construir el actor con el formato esperado
+    const actor = buildActorPayload(user);
+    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
+    const roleMap: Record<string, string> = {
+      'ADMIN': 'ADMINISTRADOR',
+      'AGENTE': 'AGENTE',
+      'SUPERVISOR': 'SUPERVISOR',
+      'GERENTE': 'GERENTE'
+    };
+    const mappedRole = roleMap[actor.role] || actor.role;
+
+    // Formatear fecha como YYYY-MM-DD
+    const dateStr = date.toISOString().split('T')[0];
+
+    // Construir el payload según el formato esperado
+    const payload = {
+      action: 'asueto.delete',
+      actor: {
+        user_id: actor.user_id,
+        email: actor.email,
+        role: mappedRole
+      },
+      data: {
+        fecha: dateStr
+      }
+    };
+
+    console.log('[api.deleteHoliday] Payload completo a enviar:', JSON.stringify(payload, null, 2));
+
+    try {
+      const response = await callAsuetosWebhook('POST', payload);
+      console.log('[api.deleteHoliday] Respuesta del webhook:', response);
+      return response;
+    } catch (error: any) {
+      console.error('[api.deleteHoliday] ❌ Error al eliminar asueto:', error);
+      throw new Error(error.message || 'Error al eliminar la fecha de asueto');
+    }
+  },
+
+  // Agregar múltiples fechas de asuetos mediante webhook (carga masiva)
+  async addBulkHolidays(dates: Date[], holidayNames?: (string | null)[]): Promise<any> {
+    const user = this.getUser();
+    if (!user) {
+      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
+    }
+
+    console.log('[api.addBulkHolidays] Iniciando carga masiva de asuetos...');
+    console.log('[api.addBulkHolidays] Cantidad de fechas:', dates.length);
+
+    // Construir el actor con el formato esperado
+    const actor = buildActorPayload(user);
+    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
+    const roleMap: Record<string, string> = {
+      'ADMIN': 'ADMINISTRADOR',
+      'AGENTE': 'AGENTE',
+      'SUPERVISOR': 'SUPERVISOR',
+      'GERENTE': 'GERENTE'
+    };
+    const mappedRole = roleMap[actor.role] || actor.role;
+
+    // Formatear fechas como DD/MM/YYYY en un array
+    const fechasArray = dates.map((date) => {
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    });
+
+    // Construir el payload según el formato esperado
+    const payload = {
+      action: 'asueto.create',
+      actor: {
+        user_id: actor.user_id || 0,
+        email: actor.email || 'admin@intelfon.com',
+        role: mappedRole || 'ADMINISTRADOR'
+      },
+      data: {
+        type: 'masivo',
+        fecha: fechasArray
+      }
+    };
+
+    console.log('[api.addBulkHolidays] Payload completo a enviar:', JSON.stringify(payload, null, 2));
+
+    try {
+      const response = await callAsuetosWebhook('POST', payload);
+      console.log('[api.addBulkHolidays] Respuesta del webhook:', response);
+      return response;
+    } catch (error: any) {
+      console.error('[api.addBulkHolidays] ❌ Error al agregar asuetos en masa:', error);
+      throw new Error(error.message || 'Error al agregar las fechas de asuetos');
+    }
   }
 };

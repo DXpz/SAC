@@ -47,6 +47,57 @@
 }
 
 /* Animaciones y transiciones mejoradas */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes zoomOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+@keyframes zoom-out-95 {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -164,8 +215,18 @@
   animation-fill-mode: both;
 }
 
+.animate-out {
+  animation-duration: 500ms;
+  animation-timing-function: ease-in;
+  animation-fill-mode: both;
+}
+
 .fade-in {
   animation-name: fade-in;
+}
+
+.fade-out {
+  animation-name: fadeOut;
 }
 
 .slide-in-from-top {
@@ -186,6 +247,14 @@
 
 .zoom-in-95 {
   animation-name: zoom-in-95;
+}
+
+.zoom-out {
+  animation-name: zoomOut;
+}
+
+.zoom-out-95 {
+  animation-name: zoom-out-95;
 }
 
 .scale-in {

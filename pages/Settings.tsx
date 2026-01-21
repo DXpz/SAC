@@ -1084,8 +1084,16 @@ const Settings: React.FC = () => {
     new Date('2025-05-01')
   ]);
 
-  const [newHolidayDate, setNewHolidayDate] = useState('');
-  const [bulkDates, setBulkDates] = useState('2025-12-24\n2025-12-31');
+  const [bulkDates, setBulkDates] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
+  // Estados para el calendario visual
+  const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
+  const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
+  const [showCalendar, setShowCalendar] = useState(false);
+  // Estado para el modal de confirmación de fecha
+  const [pendingHolidayDate, setPendingHolidayDate] = useState<{ date: Date; holidayName: string | null } | null>(null);
+  // Estado para animación de eliminación
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const formatDateToSpanish = (date: Date): string => {
     const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
@@ -1099,99 +1107,366 @@ const Settings: React.FC = () => {
     return `${dayName}, ${day} de ${month} de ${year}`;
   };
 
-  const handleAddHoliday = () => {
-    if (!newHolidayDate.trim()) {
-      alert('Por favor ingrese una fecha');
-      return;
-    }
+  // Función para calcular la fecha de Pascua (algoritmo de Meeus/Jones/Butcher)
+  const calculateEaster = (year: number): Date => {
+    const a = year % 19;
+    const b = Math.floor(year / 100);
+    const c = year % 100;
+    const d = Math.floor(b / 4);
+    const e = b % 4;
+    const f = Math.floor((b + 8) / 25);
+    const g = Math.floor((b - f + 1) / 3);
+    const h = (19 * a + b - d - g + 15) % 30;
+    const i = Math.floor(c / 4);
+    const k = c % 4;
+    const l = (32 + 2 * e + 2 * i - h - k) % 7;
+    const m = Math.floor((a + 11 * h + 22 * l) / 451);
+    const month = Math.floor((h + l - 7 * m + 114) / 31);
+    const day = ((h + l - 7 * m + 114) % 31) + 1;
+    return new Date(year, month - 1, day);
+  };
 
-    // Intentar parsear fecha en formato dd/mm/yyyy
-    const dateParts = newHolidayDate.split('/');
-    if (dateParts.length !== 3) {
-      alert('Formato de fecha inválido. Use dd/mm/yyyy');
-      return;
-    }
+  // Función para calcular Carnaval (47 días antes de Pascua)
+  const calculateCarnival = (year: number): Date => {
+    const easter = calculateEaster(year);
+    const carnival = new Date(easter);
+    carnival.setDate(easter.getDate() - 47);
+    return carnival;
+  };
 
-    const day = parseInt(dateParts[0]);
-    const month = parseInt(dateParts[1]) - 1; // Los meses en JS son 0-indexed
-    const year = parseInt(dateParts[2]);
+  // Función para obtener el nombre de la festividad (El Salvador y Guatemala)
+  const getHolidayName = (date: Date): string | null => {
+    const month = date.getMonth() + 1; // 1-12
+    const day = date.getDate();
+    const year = date.getFullYear();
+    const dateStr = date.toISOString().split('T')[0];
+    
+    // Calcular fechas variables del año
+    const easter = calculateEaster(year);
+    const easterStr = easter.toISOString().split('T')[0];
+    
+    // Jueves Santo (3 días antes de Pascua)
+    const thursdayBeforeEaster = new Date(easter);
+    thursdayBeforeEaster.setDate(easter.getDate() - 3);
+    const thursdayStr = thursdayBeforeEaster.toISOString().split('T')[0];
+    
+    // Viernes Santo (2 días antes de Pascua)
+    const fridayBeforeEaster = new Date(easter);
+    fridayBeforeEaster.setDate(easter.getDate() - 2);
+    const fridayStr = fridayBeforeEaster.toISOString().split('T')[0];
+    
+    // Sábado Santo (1 día antes de Pascua)
+    const saturdayBeforeEaster = new Date(easter);
+    saturdayBeforeEaster.setDate(easter.getDate() - 1);
+    const saturdayStr = saturdayBeforeEaster.toISOString().split('T')[0];
+    
+    // Lunes de Pascua (1 día después de Pascua)
+    const mondayAfterEaster = new Date(easter);
+    mondayAfterEaster.setDate(easter.getDate() + 1);
+    const mondayStr = mondayAfterEaster.toISOString().split('T')[0];
+    
+    // Carnaval (47 días antes de Pascua)
+    const carnival = calculateCarnival(year);
+    const carnivalStr = carnival.toISOString().split('T')[0];
+    
+    // Corpus Christi (60 días después de Pascua)
+    const corpusChristi = new Date(easter);
+    corpusChristi.setDate(easter.getDate() + 60);
+    const corpusStr = corpusChristi.toISOString().split('T')[0];
+    
+    // Verificar fechas variables primero
+    if (dateStr === thursdayStr) return 'Jueves Santo';
+    if (dateStr === fridayStr) return 'Viernes Santo';
+    if (dateStr === saturdayStr) return 'Sábado Santo';
+    if (dateStr === easterStr) return 'Domingo de Pascua / Domingo de Resurrección';
+    if (dateStr === mondayStr) return 'Lunes de Pascua';
+    if (dateStr === carnivalStr) return 'Carnaval';
+    if (dateStr === corpusStr) return 'Corpus Christi';
+    
+    // Festividades de El Salvador y Guatemala (fechas fijas)
+    const holidays: Record<string, string> = {
+      // Enero
+      '1-1': 'Año Nuevo',
+      '1-6': 'Día de los Reyes Magos',
+      // Febrero
+      '2-14': 'Día de la Amistad / San Valentín',
+      // Marzo
+      '3-19': 'Día de San José',
+      // Abril
+      '4-14': 'Día de las Américas',
+      // Mayo
+      '5-1': 'Día del Trabajador',
+      '5-3': 'Día de la Cruz',
+      '5-10': 'Día de la Madre',
+      // Junio
+      '6-1': 'Día del Niño',
+      '6-17': 'Día del Padre',
+      // Julio
+      '7-1': 'Día del Ejército (Guatemala)',
+      '7-25': 'Día de Santiago Apóstol',
+      // Agosto
+      '8-1': 'Fiestas Agostinas (El Salvador)',
+      '8-5': 'Día de la Virgen de las Nieves',
+      '8-6': 'Día de la Independencia (Bolivia)',
+      '8-15': 'Día de la Asunción de María',
+      // Septiembre
+      '9-15': 'Día de la Independencia (El Salvador, Guatemala, Costa Rica, Honduras, Nicaragua)',
+      // Octubre
+      '10-1': 'Día del Niño (El Salvador)',
+      '10-12': 'Día de la Raza / Día de Colón',
+      '10-20': 'Día de la Revolución (Guatemala)',
+      '10-31': 'Halloween',
+      // Noviembre
+      '11-1': 'Día de Todos los Santos',
+      '11-2': 'Día de los Fieles Difuntos / Día de los Muertos',
+      '11-5': 'Día del Primer Grito de Independencia (El Salvador)',
+      // Diciembre
+      '12-8': 'Día de la Inmaculada Concepción',
+      '12-12': 'Día de la Virgen de Guadalupe',
+      '12-24': 'Nochebuena',
+      '12-25': 'Navidad',
+      '12-31': 'Año Viejo / Fin de Año'
+    };
+    
+    const key = `${month}-${day}`;
+    return holidays[key] || null;
+  };
 
+  // Función para agregar fecha desde el calendario visual
+  const handleDateClick = (day: number, month: number, year: number) => {
     const date = new Date(year, month, day);
     
     if (isNaN(date.getTime())) {
-      alert('Fecha inválida');
+      console.error('[handleDateClick] Fecha inválida:', { day, month, year });
       return;
     }
+
+    console.log('[handleDateClick] Fecha seleccionada:', date);
 
     // Verificar si la fecha ya existe
     const dateStr = date.toISOString().split('T')[0];
     const exists = holidays.some(h => h.toISOString().split('T')[0] === dateStr);
     
+    // Obtener el nombre de la festividad
+    const holidayName = getHolidayName(date);
+    console.log('[handleDateClick] Festividad:', holidayName);
+    
+    // Mostrar modal de confirmación animado
+    setPendingHolidayDate({ date, holidayName });
+    console.log('[handleDateClick] Modal abierto con fecha:', date, 'festividad:', holidayName);
+    setShowCalendar(false); // Cerrar el calendario
+  };
+
+  // Función para generar los días del mes para el calendario
+  const getDaysInMonth = (month: number, year: number) => {
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+    
+    const days: Array<{ day: number; date: Date | null }> = [];
+    
+    // Días vacíos al inicio
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push({ day: 0, date: null });
+    }
+    
+    // Días del mes
+    for (let day = 1; day <= daysInMonth; day++) {
+      days.push({ day, date: new Date(year, month, day) });
+    }
+    
+    return days;
+  };
+
+  // Navegación del calendario
+  const handlePrevMonth = () => {
+    if (calendarMonth === 0) {
+      setCalendarMonth(11);
+      setCalendarYear(calendarYear - 1);
+    } else {
+      setCalendarMonth(calendarMonth - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (calendarMonth === 11) {
+      setCalendarMonth(0);
+      setCalendarYear(calendarYear + 1);
+    } else {
+      setCalendarMonth(calendarMonth + 1);
+    }
+  };
+
+  // Verificar si una fecha está en holidays
+  const isHoliday = (date: Date | null): boolean => {
+    if (!date) return false;
+    const dateStr = date.toISOString().split('T')[0];
+    return holidays.some(h => h.toISOString().split('T')[0] === dateStr);
+  };
+
+  // Verificar si una fecha es hoy
+  const isToday = (date: Date | null): boolean => {
+    if (!date) return false;
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+  };
+
+  const handleDeleteHoliday = async (date: Date, skipConfirm: boolean = false) => {
+    // Esta función ahora solo se usa internamente después de la animación
+    // No debe mostrar window.confirm nunca
+    
+    // Eliminar del webhook
+    try {
+      await api.deleteHoliday(date);
+      console.log('[handleDeleteHoliday] ✅ Asueto eliminado del webhook exitosamente');
+    } catch (error: any) {
+      console.error('[handleDeleteHoliday] ❌ Error al eliminar asueto del webhook:', error);
+      alert(`Error al eliminar la fecha: ${error.message || 'Error desconocido'}`);
+      return; // No eliminar localmente si falla el webhook
+    }
+    
+    // Eliminar localmente solo si el webhook fue exitoso
+    setHolidays(holidays.filter(h => h.getTime() !== date.getTime()));
+  };
+
+  // Confirmar agregar fecha desde el modal
+  const handleConfirmAddHoliday = () => {
+    if (!pendingHolidayDate) return;
+    
+    const { date } = pendingHolidayDate;
+    
+    // Verificar si la fecha ya existe
+    const dateStr = date.toISOString().split('T')[0];
+    const exists = holidays.some(h => h.toISOString().split('T')[0] === dateStr);
+    
     if (exists) {
-      alert('Esta fecha ya está registrada');
-      return;
+      // Si ya existe, mostrar animación antes de eliminar
+      setIsDeleting(true);
+      
+      // Esperar a que termine la animación antes de eliminar
+      setTimeout(async () => {
+        await handleDeleteHoliday(date, true); // skipConfirm = true porque ya confirmamos en el modal
+        setIsDeleting(false);
+        setPendingHolidayDate(null);
+      }, 500); // Duración de la animación (500ms para que se vea mejor)
+    } else {
+      // Agregar la fecha y enviar al webhook
+      const addHolidayToWebhook = async () => {
+        try {
+          await api.addHoliday(date, pendingHolidayDate.holidayName);
+          console.log('[handleConfirmAddHoliday] ✅ Asueto agregado al webhook exitosamente');
+        } catch (error: any) {
+          console.error('[handleConfirmAddHoliday] ❌ Error al agregar asueto al webhook:', error);
+          alert(`Error al guardar la fecha: ${error.message || 'Error desconocido'}`);
+        }
+      };
+      
+      // Agregar la fecha localmente
+      setHolidays([...holidays, date].sort((a, b) => a.getTime() - b.getTime()));
+      setPendingHolidayDate(null);
+      
+      // Enviar al webhook
+      addHolidayToWebhook();
     }
-
-    setHolidays([...holidays, date].sort((a, b) => a.getTime() - b.getTime()));
-    setNewHolidayDate('');
   };
 
-  const handleDeleteHoliday = (date: Date) => {
-    if (window.confirm('¿Está seguro de que desea eliminar esta fecha?')) {
-      setHolidays(holidays.filter(h => h.getTime() !== date.getTime()));
-    }
+  // Cancelar agregar fecha
+  const handleCancelAddHoliday = () => {
+    setIsDeleting(false);
+    setPendingHolidayDate(null);
   };
 
-  const handleBulkImport = () => {
+  // Función para validar y analizar fechas en tiempo real
+  const analyzeBulkDates = () => {
     if (!bulkDates.trim()) {
-      alert('Por favor ingrese al menos una fecha');
-      return;
+      return {
+        valid: [],
+        duplicates: [],
+        errors: [],
+        preview: []
+      };
     }
 
-    // Separar por comas o saltos de línea
     const dateStrings = bulkDates
       .split(/[,\n]/)
       .map(s => s.trim())
       .filter(s => s.length > 0);
 
-    const newDates: Date[] = [];
-    const errors: string[] = [];
+    const valid: { date: Date; dateStr: string; holidayName: string | null }[] = [];
+    const duplicates: string[] = [];
+    const errors: { dateStr: string; reason: string }[] = [];
+    const preview: { date: Date; dateStr: string; holidayName: string | null; isNew: boolean }[] = [];
 
     dateStrings.forEach(dateStr => {
       // Validar formato YYYY-MM-DD
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!dateRegex.test(dateStr)) {
-        errors.push(`Formato inválido: ${dateStr}`);
+        errors.push({ dateStr, reason: 'Formato inválido (debe ser YYYY-MM-DD)' });
         return;
       }
 
       const date = new Date(dateStr + 'T00:00:00');
       if (isNaN(date.getTime())) {
-        errors.push(`Fecha inválida: ${dateStr}`);
+        errors.push({ dateStr, reason: 'Fecha inválida' });
         return;
       }
 
-      // Verificar si ya existe
       const dateStrFormatted = date.toISOString().split('T')[0];
       const exists = holidays.some(h => h.toISOString().split('T')[0] === dateStrFormatted);
+      const holidayName = getHolidayName(date);
       
-      if (!exists) {
-        newDates.push(date);
+      preview.push({ date, dateStr: dateStrFormatted, holidayName, isNew: !exists });
+
+      if (exists) {
+        duplicates.push(dateStrFormatted);
+      } else {
+        valid.push({ date, dateStr: dateStrFormatted, holidayName });
       }
     });
 
-    if (errors.length > 0) {
-      alert(`Errores encontrados:\n${errors.join('\n')}`);
+    return { valid, duplicates, errors, preview };
+  };
+
+  const handleBulkImport = async () => {
+    if (!bulkDates.trim()) {
+      return;
     }
 
-    if (newDates.length > 0) {
+    const analysis = analyzeBulkDates();
+
+    if (analysis.valid.length === 0) {
+      if (analysis.errors.length > 0 || analysis.duplicates.length > 0) {
+        return; // Ya se muestran los errores en la UI
+      }
+      return;
+    }
+
+    setIsImporting(true);
+
+    try {
+      const newDates = analysis.valid.map(v => v.date);
+      const holidayNames = analysis.valid.map(v => v.holidayName);
+      
+      // Enviar todas las fechas al webhook
+      await api.addBulkHolidays(newDates, holidayNames);
+      console.log('[handleBulkImport] ✅ Asuetos agregados al webhook exitosamente');
+      
+      // Agregar localmente solo si el webhook fue exitoso
       setHolidays([...holidays, ...newDates].sort((a, b) => a.getTime() - b.getTime()));
       setBulkDates('');
-      alert(`${newDates.length} fecha(s) agregada(s) correctamente`);
-    } else if (errors.length === 0) {
-      alert('Todas las fechas ya están registradas');
+      
+      // Pequeño delay para mostrar el éxito
+      setTimeout(() => {
+        setIsImporting(false);
+      }, 500);
+    } catch (error: any) {
+      console.error('[handleBulkImport] ❌ Error al agregar asuetos al webhook:', error);
+      setIsImporting(false);
+      alert(`Error al guardar las fechas: ${error.message || 'Error desconocido'}`);
     }
   };
+
 
   const [passwordData, setPasswordData] = useState({
     newPassword: '',
@@ -1651,16 +1926,16 @@ const Settings: React.FC = () => {
                     onClick={handleAddCategory}
                     className="px-6 py-2 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
                     style={{
-                      backgroundColor: theme === 'dark' ? '#22c55e' : '#16a34a',
+                      backgroundColor: theme === 'dark' ? '#166534' : '#14532d',
                       boxShadow: theme === 'dark' 
-                        ? '0 4px 12px rgba(34, 197, 94, 0.3)' 
-                        : '0 4px 12px rgba(22, 163, 74, 0.3)'
+                        ? '0 4px 12px rgba(22, 101, 52, 0.3)' 
+                        : '0 4px 12px rgba(20, 83, 45, 0.3)'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#16a34a' : '#15803d';
+                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#14532d' : '#0f4c1f';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#22c55e' : '#16a34a';
+                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#166534' : '#14532d';
                     }}
                   >
                     <Plus className="w-4 h-4" />
@@ -2027,16 +2302,16 @@ const Settings: React.FC = () => {
                         onClick={handleUpdateCategory}
                         className="px-6 py-2 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
                         style={{
-                          backgroundColor: theme === 'dark' ? '#22c55e' : '#16a34a',
+                          backgroundColor: theme === 'dark' ? '#166534' : '#14532d',
                           boxShadow: theme === 'dark' 
-                            ? '0 4px 12px rgba(34, 197, 94, 0.3)' 
-                            : '0 4px 12px rgba(22, 163, 74, 0.3)'
+                            ? '0 4px 12px rgba(22, 101, 52, 0.3)' 
+                            : '0 4px 12px rgba(20, 83, 45, 0.3)'
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = theme === 'dark' ? '#16a34a' : '#15803d';
+                          e.currentTarget.style.backgroundColor = theme === 'dark' ? '#14532d' : '#0f4c1f';
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = theme === 'dark' ? '#22c55e' : '#16a34a';
+                          e.currentTarget.style.backgroundColor = theme === 'dark' ? '#166534' : '#14532d';
                         }}
                       >
                         <Save className="w-4 h-4" />
@@ -2244,10 +2519,10 @@ const Settings: React.FC = () => {
                     className="w-5 h-5 rounded cursor-pointer transition-all"
                     style={{
                       backgroundColor: newState.isFinal 
-                        ? (theme === 'dark' ? '#22c55e' : '#16a34a')
+                        ? (theme === 'dark' ? '#166534' : '#14532d')
                         : (theme === 'dark' ? '#1e293b' : '#ffffff'),
                       borderColor: newState.isFinal
-                        ? (theme === 'dark' ? '#22c55e' : '#16a34a')
+                        ? (theme === 'dark' ? '#166534' : '#14532d')
                         : (theme === 'dark' ? 'rgba(148, 163, 184, 0.4)' : 'rgba(148, 163, 184, 0.5)'),
                       borderWidth: '2px',
                       borderStyle: 'solid'
@@ -2258,16 +2533,16 @@ const Settings: React.FC = () => {
                   onClick={handleAddState}
                   className="px-6 py-2 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
                   style={{
-                    backgroundColor: theme === 'dark' ? '#22c55e' : '#16a34a',
+                    backgroundColor: theme === 'dark' ? '#166534' : '#14532d',
                     boxShadow: theme === 'dark' 
                       ? '0 4px 12px rgba(34, 197, 94, 0.3)' 
-                      : '0 4px 12px rgba(22, 163, 74, 0.3)'
+                      : '0 4px 12px rgba(20, 83, 45, 0.3)'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = theme === 'dark' ? '#16a34a' : '#15803d';
+                    e.currentTarget.style.backgroundColor = theme === 'dark' ? '#14532d' : '#0f4c1f';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = theme === 'dark' ? '#22c55e' : '#16a34a';
+                    e.currentTarget.style.backgroundColor = theme === 'dark' ? '#166534' : '#14532d';
                   }}
                 >
                   <Plus className="w-4 h-4" />
@@ -2397,10 +2672,10 @@ const Settings: React.FC = () => {
                             className="w-5 h-5 rounded cursor-pointer transition-all"
                             style={{
                               backgroundColor: state.isFinal 
-                                ? (theme === 'dark' ? '#22c55e' : '#16a34a')
-                                : (theme === 'dark' ? '#1e293b' : '#ffffff'),
-                              borderColor: state.isFinal
-                                ? (theme === 'dark' ? '#22c55e' : '#16a34a')
+                                        ? (theme === 'dark' ? '#166534' : '#14532d')
+                                        : (theme === 'dark' ? '#1e293b' : '#ffffff'),
+                                      borderColor: state.isFinal
+                                        ? (theme === 'dark' ? '#166534' : '#14532d')
                                 : (theme === 'dark' ? 'rgba(148, 163, 184, 0.4)' : 'rgba(148, 163, 184, 0.5)'),
                               borderWidth: '2px',
                               borderStyle: 'solid'
@@ -2650,10 +2925,10 @@ const Settings: React.FC = () => {
                                     className="w-5 h-5 rounded transition-all"
                                     style={{
                                       backgroundColor: (transitions[fromState.id]?.[toState.id] || false)
-                                        ? (theme === 'dark' ? '#22c55e' : '#16a34a')
+                                        ? (theme === 'dark' ? '#166534' : '#14532d')
                                         : (theme === 'dark' ? '#1e293b' : '#ffffff'),
                                       borderColor: (transitions[fromState.id]?.[toState.id] || false)
-                                        ? (theme === 'dark' ? '#22c55e' : '#16a34a')
+                                        ? (theme === 'dark' ? '#166534' : '#14532d')
                                         : (theme === 'dark' ? 'rgba(148, 163, 184, 0.4)' : 'rgba(148, 163, 184, 0.5)'),
                                       borderWidth: '2px',
                                       borderStyle: 'solid',
@@ -2884,9 +3159,9 @@ const Settings: React.FC = () => {
                           <span 
                             className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full border"
                             style={{
-                              backgroundColor: theme === 'dark' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.1)',
-                              color: '#22c55e',
-                              borderColor: 'rgba(34, 197, 94, 0.3)'
+                              backgroundColor: theme === 'dark' ? 'rgba(22, 101, 52, 0.15)' : 'rgba(20, 83, 45, 0.1)',
+                              color: '#166534',
+                              borderColor: 'rgba(22, 101, 52, 0.3)'
                             }}
                           >
                             <CheckCircle2 className="w-3 h-3" />
@@ -2935,94 +3210,329 @@ const Settings: React.FC = () => {
                 ? '0 2px 8px rgba(0, 0, 0, 0.25)' 
                 : '0 2px 8px rgba(0, 0, 0, 0.08)'
             }}>
-              <h2 className="text-xl font-bold mb-1.5" style={{ color: styles.text.primary }}>
-                Calendario de Asuetos
-              </h2>
-              <p className="text-xs mb-6" style={{ color: styles.text.tertiary }}>
-                Fechas excluidas del conteo de días hábiles para SLA.
-              </p>
-
-              {/* Formulario para agregar fecha */}
-              <div className="mb-6 p-4 rounded-lg" style={{
-                backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
-                border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.2)'}`,
-                boxShadow: theme === 'dark' 
-                  ? '0 1px 3px rgba(0, 0, 0, 0.2)' 
-                  : '0 1px 3px rgba(0, 0, 0, 0.05)'
-              }}>
-                <div className="text-xs font-semibold uppercase mb-3 tracking-wide" style={{ color: styles.text.secondary }}>
-                  Agregar Fecha
-                </div>
-                <div className="flex items-end gap-3">
-                  <div className="flex-1">
-                    <input
-                      type="text"
-                      value={newHolidayDate}
-                      onChange={(e) => setNewHolidayDate(e.target.value)}
-                      placeholder="dd/mm/aaaa"
-                      className="w-full px-3 py-2.5 rounded-lg border text-sm transition-all"
-                      style={{
-                        backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
-                        borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.25)' : 'rgba(148, 163, 184, 0.3)',
-                        color: styles.text.primary
-                      }}
-                    />
+              <div className="flex items-start justify-between mb-6">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 rounded-lg" style={{
+                      backgroundColor: theme === 'dark' ? 'rgba(22, 163, 74, 0.15)' : 'rgba(21, 128, 61, 0.1)'
+                    }}>
+                      <Calendar className="w-5 h-5" style={{ color: theme === 'dark' ? '#16a34a' : '#15803d' }} />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold" style={{ color: styles.text.primary }}>
+                        Calendario de Asuetos
+                      </h2>
+                      <p className="text-xs mt-0.5" style={{ color: styles.text.tertiary }}>
+                        Fechas excluidas del conteo de días hábiles para SLA
+                      </p>
+                    </div>
                   </div>
-                  <button
-                    onClick={handleAddHoliday}
-                    className="px-5 py-2.5 text-white text-sm font-semibold rounded-lg transition-all flex items-center gap-2"
-                    style={{
-                      backgroundColor: theme === 'dark' ? '#22c55e' : '#16a34a',
-                      boxShadow: theme === 'dark' 
-                        ? '0 2px 6px rgba(34, 197, 94, 0.25)' 
-                        : '0 2px 6px rgba(22, 163, 74, 0.2)'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#16a34a' : '#15803d';
-                      e.currentTarget.style.boxShadow = theme === 'dark' 
-                        ? '0 4px 10px rgba(34, 197, 94, 0.35)' 
-                        : '0 4px 10px rgba(22, 163, 74, 0.3)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#22c55e' : '#16a34a';
-                      e.currentTarget.style.boxShadow = theme === 'dark' 
-                        ? '0 2px 6px rgba(34, 197, 94, 0.25)' 
-                        : '0 2px 6px rgba(22, 163, 74, 0.2)';
-                    }}
-                  >
-                    <Calendar className="w-4 h-4" />
-                    <Plus className="w-4 h-4" />
-                    Agregar
-                  </button>
+                  {holidays.length > 0 && (
+                    <div className="flex items-center gap-3 mt-3">
+                      <div className="px-3 py-1.5 rounded-lg" style={{
+                        backgroundColor: theme === 'dark' ? 'rgba(22, 163, 74, 0.1)' : 'rgba(21, 128, 61, 0.08)',
+                        border: `1px solid ${theme === 'dark' ? 'rgba(22, 163, 74, 0.2)' : 'rgba(21, 128, 61, 0.2)'}`
+                      }}>
+                        <span className="text-xs font-semibold" style={{ color: theme === 'dark' ? '#16a34a' : '#15803d' }}>
+                          📅 {holidays.length} {holidays.length === 1 ? 'asueto registrado' : 'asuetos registrados'}
+                        </span>
+                      </div>
+                      {(() => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const upcomingHolidays = holidays
+                          .filter(h => {
+                            const hDate = new Date(h);
+                            hDate.setHours(0, 0, 0, 0);
+                            return hDate >= today;
+                          })
+                          .sort((a, b) => a.getTime() - b.getTime())
+                          .slice(0, 1);
+                        
+                        if (upcomingHolidays.length > 0) {
+                          const nextHoliday = upcomingHolidays[0];
+                          const daysUntil = Math.ceil((nextHoliday.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                          return (
+                            <div className="px-3 py-1.5 rounded-lg" style={{
+                              backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.08)',
+                              border: `1px solid ${theme === 'dark' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.2)'}`
+                            }}>
+                              <span className="text-xs font-semibold" style={{ color: theme === 'dark' ? '#60a5fa' : '#2563eb' }}>
+                                ⏰ Próximo: {formatDateToSpanish(nextHoliday).split(', ')[1]} {daysUntil === 0 ? '(hoy)' : daysUntil === 1 ? '(mañana)' : `(en ${daysUntil} días)`}
+                              </span>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Tabla de asuetos */}
-              <div className="rounded-lg border overflow-hidden" style={{
-                borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.2)',
+              {/* Botón para agregar fecha con calendario desplegable */}
+              <div className="mb-6 relative">
+                <button
+                  onClick={() => {
+                    setShowCalendar(!showCalendar);
+                    // Resetear al mes actual cuando se abre
+                    if (!showCalendar) {
+                      const today = new Date();
+                      setCalendarMonth(today.getMonth());
+                      setCalendarYear(today.getFullYear());
+                    }
+                  }}
+                  className="w-full px-4 py-3 text-white text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-2"
+                  style={{
+                    backgroundColor: theme === 'dark' ? '#16a34a' : '#15803d',
+                    boxShadow: theme === 'dark' 
+                      ? '0 2px 6px rgba(22, 163, 74, 0.25)' 
+                      : '0 2px 6px rgba(21, 128, 61, 0.2)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = theme === 'dark' ? '#15803d' : '#166534';
+                    e.currentTarget.style.boxShadow = theme === 'dark' 
+                      ? '0 4px 10px rgba(22, 163, 74, 0.35)' 
+                      : '0 4px 10px rgba(21, 128, 61, 0.3)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = theme === 'dark' ? '#16a34a' : '#15803d';
+                    e.currentTarget.style.boxShadow = theme === 'dark' 
+                      ? '0 2px 6px rgba(22, 163, 74, 0.25)' 
+                      : '0 2px 6px rgba(21, 128, 61, 0.2)';
+                  }}
+                >
+                  <Calendar className="w-4 h-4" />
+                  <Plus className="w-4 h-4" />
+                  Agregar Fecha
+                </button>
+
+                {/* Calendario desplegable */}
+                {showCalendar && (
+                  <>
+                    {/* Overlay para cerrar al hacer click fuera */}
+                    <div 
+                      className="fixed inset-0 z-10" 
+                      onClick={() => setShowCalendar(false)}
+                      style={{ backgroundColor: 'rgba(0, 0, 0, 0.1)' }}
+                    />
+                    
+                    {/* Calendario popup */}
+                    <div 
+                      className="absolute top-full left-0 mt-2 p-5 rounded-xl border z-20 w-80 animate-in zoom-in-95 duration-200"
+                      style={{
+                        backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                        borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.35)',
+                        boxShadow: theme === 'dark' 
+                          ? '0 8px 24px rgba(0, 0, 0, 0.4)' 
+                          : '0 8px 24px rgba(0, 0, 0, 0.2)'
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {/* Navegación del calendario */}
+                      <div className="flex items-center justify-between mb-4">
+                        <button
+                          onClick={handlePrevMonth}
+                          className="p-2 rounded-lg transition-all hover:scale-110"
+                          style={{
+                            backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                            border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.25)' : 'rgba(148, 163, 184, 0.3)'}`,
+                            color: styles.text.primary
+                          }}
+                          title="Mes anterior"
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = theme === 'dark' ? '#334155' : '#e2e8f0';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f8fafc';
+                          }}
+                        >
+                          <ChevronUp className="w-4 h-4 rotate-[-90deg]" />
+                        </button>
+                        
+                        <div className="flex items-center gap-2">
+                          <div className="text-sm font-bold capitalize px-3 py-1 rounded-lg" style={{ 
+                            color: styles.text.primary,
+                            backgroundColor: theme === 'dark' ? 'rgba(21, 128, 61, 0.1)' : 'rgba(21, 128, 61, 0.08)'
+                          }}>
+                            {new Date(calendarYear, calendarMonth).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+                          </div>
+                          {(calendarMonth !== new Date().getMonth() || calendarYear !== new Date().getFullYear()) && (
+                            <button
+                              onClick={() => {
+                                const today = new Date();
+                                setCalendarMonth(today.getMonth());
+                                setCalendarYear(today.getFullYear());
+                              }}
+                              className="px-2.5 py-1 text-[10px] font-semibold rounded-md transition-all"
+                              style={{
+                                backgroundColor: theme === 'dark' ? '#0f172a' : '#e2e8f0',
+                                color: styles.text.secondary,
+                                border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.25)'}`
+                              }}
+                              title="Ir a hoy"
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = theme === 'dark' ? '#334155' : '#cbd5e1';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#e2e8f0';
+                              }}
+                            >
+                              Hoy
+                            </button>
+                          )}
+                        </div>
+                        
+                        <button
+                          onClick={handleNextMonth}
+                          className="p-2 rounded-lg transition-all hover:scale-110"
+                          style={{
+                            backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                            border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.25)' : 'rgba(148, 163, 184, 0.3)'}`,
+                            color: styles.text.primary
+                          }}
+                          title="Mes siguiente"
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = theme === 'dark' ? '#334155' : '#e2e8f0';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f8fafc';
+                          }}
+                        >
+                          <ChevronUp className="w-4 h-4 rotate-90" />
+                        </button>
+                      </div>
+
+                      {/* Calendario */}
+                      <div className="w-full">
+                        {/* Días de la semana */}
+                        <div className="grid grid-cols-7 gap-0.5 mb-1">
+                          {['D', 'L', 'M', 'X', 'J', 'V', 'S'].map((day, idx) => (
+                            <div
+                              key={idx}
+                              className="text-center text-[10px] font-semibold py-1"
+                              style={{ color: styles.text.secondary }}
+                            >
+                              {day}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Días del mes */}
+                        <div className="grid grid-cols-7 gap-0.5">
+                          {getDaysInMonth(calendarMonth, calendarYear).map((item, idx) => {
+                            if (item.day === 0) {
+                              return <div key={idx} className="aspect-square" />;
+                            }
+                            
+                            const isHolidayDate = isHoliday(item.date);
+                            const isTodayDate = isToday(item.date);
+                            
+                            return (
+                              <button
+                                key={idx}
+                                onClick={() => {
+                                  if (item.date) {
+                                    handleDateClick(item.day, calendarMonth, calendarYear);
+                                    // Cerrar el calendario después de seleccionar
+                                    setShowCalendar(false);
+                                  }
+                                }}
+                                className="aspect-square rounded text-xs font-medium transition-all hover:scale-110"
+                                style={{
+                                  backgroundColor: isHolidayDate
+                                    ? (theme === 'dark' ? '#16a34a' : '#15803d')
+                                    : isTodayDate
+                                    ? (theme === 'dark' ? 'rgba(200, 21, 27, 0.2)' : 'rgba(200, 21, 27, 0.1)')
+                                    : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
+                                  color: isHolidayDate
+                                    ? '#ffffff'
+                                    : isTodayDate
+                                    ? (theme === 'dark' ? '#f87171' : '#c8151b')
+                                    : styles.text.primary,
+                                  border: isTodayDate
+                                    ? `1.5px solid ${theme === 'dark' ? '#c8151b' : '#c8151b'}`
+                                    : `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.15)'}`,
+                                  cursor: 'pointer'
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (!isHolidayDate) {
+                                    e.currentTarget.style.backgroundColor = theme === 'dark' ? '#334155' : '#e2e8f0';
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (!isHolidayDate) {
+                                    e.currentTarget.style.backgroundColor = isTodayDate
+                                      ? (theme === 'dark' ? 'rgba(200, 21, 27, 0.2)' : 'rgba(200, 21, 27, 0.1)')
+                                      : (theme === 'dark' ? '#0f172a' : '#f8fafc');
+                                  }
+                                }}
+                                title={isHolidayDate ? 'Fecha registrada - Click para eliminar' : 'Click para agregar'}
+                              >
+                                {item.day}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Leyenda mejorada */}
+                      <div className="flex items-center justify-center gap-4 mt-4 pt-3 border-t" style={{
+                        borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.2)'
+                      }}>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded shadow-sm" style={{ 
+                            backgroundColor: theme === 'dark' ? '#16a34a' : '#15803d',
+                            boxShadow: `0 2px 4px ${theme === 'dark' ? 'rgba(22, 163, 74, 0.3)' : 'rgba(21, 128, 61, 0.3)'}`
+                          }} />
+                          <span className="text-[11px] font-medium" style={{ color: styles.text.secondary }}>Registrada</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded border-2 shadow-sm" style={{ 
+                            borderColor: '#c8151b',
+                            backgroundColor: theme === 'dark' ? 'rgba(200, 21, 27, 0.2)' : 'rgba(200, 21, 27, 0.1)',
+                            boxShadow: '0 2px 4px rgba(200, 21, 27, 0.2)'
+                          }} />
+                          <span className="text-[11px] font-medium" style={{ color: styles.text.secondary }}>Hoy</span>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Tabla de asuetos - Diseño mejorado */}
+              <div className="rounded-xl border overflow-hidden" style={{
+                borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.25)',
                 boxShadow: theme === 'dark' 
-                  ? '0 1px 3px rgba(0, 0, 0, 0.2)' 
-                  : '0 1px 3px rgba(0, 0, 0, 0.05)'
+                  ? '0 4px 12px rgba(0, 0, 0, 0.2)' 
+                  : '0 4px 12px rgba(0, 0, 0, 0.08)',
+                backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff'
               }}>
                 <table className="w-full" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
                   <thead>
                     <tr style={{
-                      backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc'
+                      background: theme === 'dark' 
+                        ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)'
+                        : 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)'
                     }}>
                       <th 
-                        className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider"
+                        className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider"
                         style={{ 
                           color: styles.text.secondary,
-                          borderBottom: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.2)'}`
+                          borderBottom: `2px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.25)'}`
                         }}
                       >
-                        FECHA
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-3.5 h-3.5" />
+                          FECHA
+                        </div>
                       </th>
                       <th 
-                        className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider"
+                        className="px-5 py-4 text-center text-xs font-bold uppercase tracking-wider"
                         style={{ 
                           color: styles.text.secondary,
-                          borderBottom: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.2)'}`
+                          borderBottom: `2px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.25)'}`
                         }}
                       >
                         ACCIÓN
@@ -3032,64 +3542,193 @@ const Settings: React.FC = () => {
                   <tbody>
                     {holidays.length === 0 ? (
                       <tr>
-                        <td colSpan={2} className="px-4 py-8 text-center text-xs" style={{ color: styles.text.tertiary }}>
-                          No hay asuetos registrados
+                        <td colSpan={2} className="px-5 py-12 text-center">
+                          <div className="flex flex-col items-center gap-3">
+                            <Calendar className="w-10 h-10 opacity-30" style={{ color: styles.text.tertiary }} />
+                            <div>
+                              <p className="text-sm font-medium mb-1" style={{ color: styles.text.secondary }}>
+                                No hay asuetos registrados
+                              </p>
+                              <p className="text-xs" style={{ color: styles.text.tertiary }}>
+                                Haz clic en "Agregar Fecha" para comenzar
+                              </p>
+                            </div>
+                          </div>
                         </td>
                       </tr>
                     ) : (
-                      holidays.map((holiday, index) => {
-                        const dateStr = formatDateToSpanish(holiday);
-                        const parts = dateStr.split(', ');
-                        const weekday = parts[0];
-                        const date = parts.slice(1).join(', ');
-                        return (
-                          <tr
-                            key={holiday.getTime()}
-                            style={{
-                              backgroundColor: index % 2 === 0
-                                ? (theme === 'dark' ? '#1e293b' : '#ffffff')
-                                : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
-                              borderBottom: index < holidays.length - 1
-                                ? `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.08)' : 'rgba(148, 163, 184, 0.15)'}`
-                                : 'none'
-                            }}
-                          >
-                            <td className="px-4 py-3">
-                              <div className="flex flex-col">
-                                <span className="text-sm font-semibold leading-tight" style={{ color: styles.text.primary }}>
-                                  {date || dateStr}
-                                </span>
-                                <span className="text-xs leading-tight mt-0.5" style={{ color: styles.text.tertiary }}>
-                                  {weekday || ''}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex justify-center">
-                                <button
-                                  onClick={() => handleDeleteHoliday(holiday)}
-                                  className="p-2 rounded-lg transition-all"
-                                  style={{
-                                    backgroundColor: 'transparent',
-                                    color: theme === 'dark' ? 'rgba(148, 163, 184, 0.5)' : 'rgba(107, 114, 128, 0.5)'
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.15)';
-                                    e.currentTarget.style.color = '#ef4444';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = 'transparent';
-                                    e.currentTarget.style.color = theme === 'dark' ? 'rgba(148, 163, 184, 0.5)' : 'rgba(107, 114, 128, 0.5)';
-                                  }}
-                                  title="Eliminar fecha"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
+                      (() => {
+                        // Ordenar fechas cronológicamente
+                        const sortedHolidays = [...holidays].sort((a, b) => a.getTime() - b.getTime());
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        
+                        let currentMonthYear = '';
+                        return sortedHolidays.map((holiday, index) => {
+                          const dateStr = formatDateToSpanish(holiday);
+                          const parts = dateStr.split(', ');
+                          const weekday = parts[0];
+                          const date = parts.slice(1).join(', ');
+                          const holidayName = getHolidayName(holiday);
+                          
+                          // Detectar cambio de mes/año para agregar separador
+                          const monthYear = holiday.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+                          const showSeparator = monthYear !== currentMonthYear;
+                          if (showSeparator) currentMonthYear = monthYear;
+                          
+                          // Verificar si es fecha próxima (dentro de 30 días)
+                          const holidayDate = new Date(holiday);
+                          holidayDate.setHours(0, 0, 0, 0);
+                          const daysUntil = Math.ceil((holidayDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                          const isUpcoming = daysUntil >= 0 && daysUntil <= 30;
+                          const isToday = daysUntil === 0;
+                          const isPast = daysUntil < 0;
+                          
+                          return (
+                            <>
+                              {showSeparator && index > 0 && (
+                                <tr key={`separator-${monthYear}`}>
+                                  <td colSpan={2} className="px-5 py-2">
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex-1 h-px" style={{
+                                        backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.2)'
+                                      }} />
+                                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded" style={{
+                                        color: styles.text.tertiary,
+                                        backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.08)'
+                                      }}>
+                                        {monthYear}
+                                      </span>
+                                      <div className="flex-1 h-px" style={{
+                                        backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.2)'
+                                      }} />
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                              {index === 0 && (
+                                <tr key={`separator-${monthYear}-first`}>
+                                  <td colSpan={2} className="px-5 py-2">
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex-1 h-px" style={{
+                                        backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.2)'
+                                      }} />
+                                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded" style={{
+                                        color: styles.text.tertiary,
+                                        backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.08)'
+                                      }}>
+                                        {monthYear}
+                                      </span>
+                                      <div className="flex-1 h-px" style={{
+                                        backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.2)'
+                                      }} />
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                              <tr
+                                key={holiday.getTime()}
+                                className="group transition-all"
+                                style={{
+                                  backgroundColor: index % 2 === 0
+                                    ? (theme === 'dark' ? '#1e293b' : '#ffffff')
+                                    : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
+                                  borderBottom: index < sortedHolidays.length - 1
+                                    ? `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.15)'}`
+                                    : 'none',
+                                  borderLeft: isUpcoming && !isPast ? `3px solid ${theme === 'dark' ? '#60a5fa' : '#2563eb'}` : 'none'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#334155' : '#f1f5f9';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.backgroundColor = index % 2 === 0
+                                    ? (theme === 'dark' ? '#1e293b' : '#ffffff')
+                                    : (theme === 'dark' ? '#0f172a' : '#f8fafc');
+                                }}
+                              >
+                                <td className="px-5 py-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-lg flex-shrink-0 relative" style={{
+                                      backgroundColor: theme === 'dark' ? 'rgba(22, 163, 74, 0.15)' : 'rgba(21, 128, 61, 0.1)'
+                                    }}>
+                                      <Calendar className="w-4 h-4" style={{ color: theme === 'dark' ? '#16a34a' : '#15803d' }} />
+                                      {isToday && (
+                                        <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full animate-pulse" style={{
+                                          backgroundColor: '#c8151b',
+                                          boxShadow: `0 0 6px ${theme === 'dark' ? 'rgba(200, 21, 27, 0.6)' : 'rgba(200, 21, 27, 0.5)'}`
+                                        }} />
+                                      )}
+                                    </div>
+                                    <div className="flex flex-col gap-1 flex-1">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-sm font-bold leading-tight" style={{ color: styles.text.primary }}>
+                                          {date || dateStr}
+                                        </span>
+                                        {isToday && (
+                                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase" style={{
+                                            backgroundColor: theme === 'dark' ? 'rgba(200, 21, 27, 0.2)' : 'rgba(200, 21, 27, 0.15)',
+                                            color: '#c8151b'
+                                          }}>
+                                            Hoy
+                                          </span>
+                                        )}
+                                        {isUpcoming && !isToday && !isPast && (
+                                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold" style={{
+                                            backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)',
+                                            color: theme === 'dark' ? '#60a5fa' : '#2563eb'
+                                          }}>
+                                            En {daysUntil} {daysUntil === 1 ? 'día' : 'días'}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="flex flex-col gap-0.5">
+                                        <span className="text-xs font-medium leading-tight" style={{ color: styles.text.secondary }}>
+                                          {weekday || ''}
+                                        </span>
+                                        {holidayName && (
+                                          <span className="text-xs font-semibold leading-tight" style={{ 
+                                            color: theme === 'dark' ? '#60a5fa' : '#2563eb'
+                                          }}>
+                                            🎉 {holidayName}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-5 py-4">
+                                  <div className="flex justify-center">
+                                    <button
+                                      onClick={() => {
+                                        setPendingHolidayDate({ date: holiday, holidayName: getHolidayName(holiday) });
+                                      }}
+                                      className="p-2.5 rounded-lg transition-all opacity-70 group-hover:opacity-100"
+                                      style={{
+                                        backgroundColor: 'transparent',
+                                        color: theme === 'dark' ? 'rgba(148, 163, 184, 0.5)' : 'rgba(107, 114, 128, 0.5)'
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.backgroundColor = 'rgba(153, 27, 27, 0.15)';
+                                        e.currentTarget.style.color = '#991b1b';
+                                        e.currentTarget.style.transform = 'scale(1.1)';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                        e.currentTarget.style.color = theme === 'dark' ? 'rgba(148, 163, 184, 0.5)' : 'rgba(107, 114, 128, 0.5)';
+                                        e.currentTarget.style.transform = 'scale(1)';
+                                      }}
+                                      title="Eliminar fecha"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            </>
+                          );
+                        });
+                      })()
                     )}
                   </tbody>
                 </table>
@@ -3100,59 +3739,217 @@ const Settings: React.FC = () => {
             <div className="p-6 rounded-xl border" style={{
               ...styles.card,
               boxShadow: theme === 'dark' 
-                ? '0 2px 8px rgba(0, 0, 0, 0.25)' 
-                : '0 2px 8px rgba(0, 0, 0, 0.08)'
+                ? '0 4px 12px rgba(0, 0, 0, 0.25)' 
+                : '0 4px 12px rgba(0, 0, 0, 0.08)',
+              background: theme === 'dark' 
+                ? 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)'
+                : 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
             }}>
-              <h2 className="text-xl font-bold mb-1.5" style={{ color: styles.text.primary }}>
-                Carga Masiva
-              </h2>
-              <p className="text-xs mb-6" style={{ color: styles.text.tertiary }}>
-                Pegue fechas en formato YYYY-MM-DD separadas por coma o salto de línea.
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2.5 rounded-lg" style={{
+                  backgroundColor: theme === 'dark' ? 'rgba(153, 27, 27, 0.15)' : 'rgba(153, 27, 27, 0.1)'
+                }}>
+                  <Plus className="w-5 h-5" style={{ color: '#991b1b' }} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold mb-0.5" style={{ color: styles.text.primary }}>
+                    Carga Masiva
+                  </h2>
+                  <p className="text-xs" style={{ color: styles.text.tertiary }}>
+                    Importe múltiples fechas a la vez
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs mb-3 px-1" style={{ color: styles.text.secondary }}>
+                Pegue fechas en formato <span className="font-mono font-semibold" style={{ color: styles.text.primary }}>YYYY-MM-DD</span> separadas por coma o salto de línea.
               </p>
 
-              <div className="mb-5">
+              {/* Botón de limpiar */}
+              {bulkDates.trim() && (
+                <div className="mb-3">
+                  <button
+                    onClick={() => setBulkDates('')}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5"
+                    style={{
+                      backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.08)',
+                      color: styles.text.secondary,
+                      border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.25)'}`
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.12)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.08)';
+                    }}
+                  >
+                    🗑️ Limpiar
+                  </button>
+                </div>
+              )}
+
+              {/* Textarea */}
+              <div className="mb-4">
                 <textarea
                   value={bulkDates}
                   onChange={(e) => setBulkDates(e.target.value)}
-                  placeholder="2025-12-24&#10;2025-12-31"
-                  rows={12}
-                  className="w-full px-3 py-3 rounded-lg border text-sm font-mono transition-all"
+                  placeholder="2025-12-24&#10;2025-12-31&#10;2026-01-01"
+                  rows={8}
+                  className="w-full px-4 py-3 rounded-xl border text-sm font-mono transition-all focus:outline-none focus:ring-2"
                   style={{
                     backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
                     borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.25)' : 'rgba(148, 163, 184, 0.3)',
                     color: styles.text.primary,
                     resize: 'vertical',
                     boxShadow: theme === 'dark' 
-                      ? '0 1px 3px rgba(0, 0, 0, 0.2)' 
-                      : '0 1px 3px rgba(0, 0, 0, 0.05)'
+                      ? '0 2px 6px rgba(0, 0, 0, 0.2)' 
+                      : '0 2px 6px rgba(0, 0, 0, 0.05)'
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = theme === 'dark' ? 'rgba(153, 27, 27, 0.5)' : '#991b1b';
+                    e.currentTarget.style.boxShadow = theme === 'dark' 
+                      ? '0 0 0 3px rgba(153, 27, 27, 0.1)' 
+                      : '0 0 0 3px rgba(153, 27, 27, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.25)' : 'rgba(148, 163, 184, 0.3)';
+                    e.currentTarget.style.boxShadow = theme === 'dark' 
+                      ? '0 2px 6px rgba(0, 0, 0, 0.2)' 
+                      : '0 2px 6px rgba(0, 0, 0, 0.05)';
                   }}
                 />
               </div>
 
+              {/* Estadísticas y validación en tiempo real */}
+              {(() => {
+                const analysis = analyzeBulkDates();
+                const hasContent = bulkDates.trim().length > 0;
+                
+                if (!hasContent) return null;
+
+                return (
+                  <div className="mb-4 space-y-2">
+                    {/* Estadísticas */}
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {analysis.valid.length > 0 && (
+                        <div className="px-3 py-1.5 rounded-lg flex items-center gap-1.5" style={{
+                          backgroundColor: theme === 'dark' ? 'rgba(22, 163, 74, 0.15)' : 'rgba(21, 128, 61, 0.1)',
+                          border: `1px solid ${theme === 'dark' ? 'rgba(22, 163, 74, 0.3)' : 'rgba(21, 128, 61, 0.3)'}`
+                        }}>
+                          <span className="text-xs font-bold" style={{ color: theme === 'dark' ? '#16a34a' : '#15803d' }}>
+                            ✓ {analysis.valid.length} válida{analysis.valid.length !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      )}
+                      {analysis.duplicates.length > 0 && (
+                        <div className="px-3 py-1.5 rounded-lg flex items-center gap-1.5" style={{
+                          backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.1)',
+                          border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.3)'}`
+                        }}>
+                          <span className="text-xs font-bold" style={{ color: styles.text.secondary }}>
+                            ⚠️ {analysis.duplicates.length} duplicada{analysis.duplicates.length !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      )}
+                      {analysis.errors.length > 0 && (
+                        <div className="px-3 py-1.5 rounded-lg flex items-center gap-1.5" style={{
+                          backgroundColor: theme === 'dark' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)',
+                          border: `1px solid ${theme === 'dark' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
+                        }}>
+                          <span className="text-xs font-bold" style={{ color: '#ef4444' }}>
+                            ✗ {analysis.errors.length} error{analysis.errors.length !== 1 ? 'es' : ''}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Errores detallados */}
+                    {analysis.errors.length > 0 && (
+                      <div className="p-3 rounded-lg" style={{
+                        backgroundColor: theme === 'dark' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.08)',
+                        border: `1px solid ${theme === 'dark' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`
+                      }}>
+                        <div className="space-y-1">
+                          {analysis.errors.slice(0, 3).map((error, idx) => (
+                            <div key={idx} className="text-xs font-mono" style={{ color: '#ef4444' }}>
+                              <span className="font-semibold">{error.dateStr}:</span> {error.reason}
+                            </div>
+                          ))}
+                          {analysis.errors.length > 3 && (
+                            <div className="text-xs" style={{ color: styles.text.secondary }}>
+                              ... y {analysis.errors.length - 3} error{analysis.errors.length - 3 !== 1 ? 'es' : ''} más
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Vista previa de fechas válidas */}
+                    {analysis.valid.length > 0 && analysis.valid.length <= 10 && (
+                      <div className="p-3 rounded-lg max-h-32 overflow-y-auto" style={{
+                        backgroundColor: theme === 'dark' ? 'rgba(22, 163, 74, 0.08)' : 'rgba(21, 128, 61, 0.06)',
+                        border: `1px solid ${theme === 'dark' ? 'rgba(22, 163, 74, 0.2)' : 'rgba(21, 128, 61, 0.2)'}`
+                      }}>
+                        <div className="text-xs font-semibold mb-2" style={{ color: theme === 'dark' ? '#16a34a' : '#15803d' }}>
+                          Vista previa ({analysis.valid.length} fecha{analysis.valid.length !== 1 ? 's' : ''}):
+                        </div>
+                        <div className="space-y-1">
+                          {analysis.valid.map((item, idx) => (
+                            <div key={idx} className="text-xs font-mono flex items-center gap-2">
+                              <span style={{ color: styles.text.primary }}>{item.dateStr}</span>
+                              {item.holidayName && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded" style={{
+                                  backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)',
+                                  color: theme === 'dark' ? '#60a5fa' : '#2563eb'
+                                }}>
+                                  🎉 {item.holidayName}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Botón de importar */}
               <button
                 onClick={handleBulkImport}
-                className="w-full px-6 py-3.5 text-white text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2"
+                disabled={isImporting || analyzeBulkDates().valid.length === 0}
+                className="w-full px-6 py-3.5 text-white text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
-                  backgroundColor: theme === 'dark' ? '#ef4444' : '#dc2626',
+                  backgroundColor: theme === 'dark' ? '#991b1b' : '#7f1d1d',
                   boxShadow: theme === 'dark' 
-                    ? '0 4px 12px rgba(239, 68, 68, 0.35)' 
-                    : '0 4px 12px rgba(220, 38, 38, 0.3)'
+                    ? '0 4px 12px rgba(153, 27, 27, 0.35)' 
+                    : '0 4px 12px rgba(127, 29, 29, 0.3)'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#dc2626' : '#b91c1c';
-                  e.currentTarget.style.boxShadow = theme === 'dark' 
-                    ? '0 6px 16px rgba(239, 68, 68, 0.4)' 
-                    : '0 6px 16px rgba(220, 38, 38, 0.35)';
+                  if (!isImporting && analyzeBulkDates().valid.length > 0) {
+                    e.currentTarget.style.backgroundColor = theme === 'dark' ? '#7f1d1d' : '#6b1a1a';
+                    e.currentTarget.style.boxShadow = theme === 'dark' 
+                      ? '0 6px 16px rgba(153, 27, 27, 0.4)' 
+                      : '0 6px 16px rgba(127, 29, 29, 0.35)';
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#ef4444' : '#dc2626';
+                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#991b1b' : '#7f1d1d';
                   e.currentTarget.style.boxShadow = theme === 'dark' 
-                    ? '0 4px 12px rgba(239, 68, 68, 0.35)' 
-                    : '0 4px 12px rgba(220, 38, 38, 0.3)';
+                    ? '0 4px 12px rgba(153, 27, 27, 0.35)' 
+                    : '0 4px 12px rgba(127, 29, 29, 0.3)';
                 }}
               >
-                <Calendar className="w-4 h-4" />
-                Importar Fechas
+                {isImporting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Importando...
+                  </>
+                ) : (
+                  <>
+                    <Calendar className="w-4 h-4" />
+                    Importar {analyzeBulkDates().valid.length > 0 ? `${analyzeBulkDates().valid.length} fecha${analyzeBulkDates().valid.length !== 1 ? 's' : ''}` : 'Fechas'}
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -3248,6 +4045,196 @@ const Settings: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Modal de Confirmación de Agregar Asueto - Fuera de los tabs para que siempre se muestre */}
+      {pendingHolidayDate && (
+        <div 
+          className={`fixed inset-0 z-[100] flex items-center justify-center p-4 ${isDeleting ? 'animate-out fade-out duration-500' : 'animate-in fade-in duration-200'}`}
+          style={{
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0
+          }}
+          onClick={!isDeleting ? handleCancelAddHoliday : undefined}
+        >
+          <div 
+            className={`rounded-xl border p-6 w-full max-w-md ${isDeleting ? 'animate-out zoom-out-95 duration-500' : 'animate-in zoom-in-95 duration-200'}`}
+            style={{
+              ...styles.card,
+              boxShadow: theme === 'dark' 
+                ? '0 8px 24px rgba(0, 0, 0, 0.5)' 
+                : '0 8px 24px rgba(0, 0, 0, 0.2)',
+              position: 'relative',
+              zIndex: 101
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col items-center mb-4">
+              <div 
+                className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${isDeleting ? 'animate-out zoom-out duration-500' : 'animate-in zoom-in duration-300'}`}
+                style={{
+                  backgroundColor: isDeleting 
+                    ? (theme === 'dark' ? 'rgba(153, 27, 27, 0.15)' : 'rgba(153, 27, 27, 0.1)')
+                    : (theme === 'dark' ? 'rgba(22, 163, 74, 0.15)' : 'rgba(21, 128, 61, 0.1)'),
+                  transition: 'background-color 0.3s ease-out, transform 0.5s ease-out'
+                }}
+              >
+                {isDeleting ? (
+                  <Trash2 
+                    className="w-8 h-8" 
+                    style={{ 
+                      color: '#991b1b',
+                      animation: 'zoomIn 0.3s ease-out',
+                      transform: 'scale(1.1)'
+                    }}
+                  />
+                ) : (
+                  <Calendar 
+                    className="w-8 h-8" 
+                    style={{ 
+                      color: theme === 'dark' ? '#16a34a' : '#15803d',
+                      transition: 'all 0.3s ease-out'
+                    }}
+                  />
+                )}
+              </div>
+              <h3 className="text-lg font-bold mb-2 text-center" style={{ 
+                color: styles.text.primary,
+                transition: 'all 0.3s ease-out',
+                transform: isDeleting ? 'scale(0.95)' : 'scale(1)',
+                opacity: isDeleting ? 0.8 : 1
+              }}>
+                {(() => {
+                  if (!pendingHolidayDate || !pendingHolidayDate.date) return 'Agregar fecha como asueto';
+                  if (isDeleting) return 'Eliminando fecha...';
+                  const dateStr = pendingHolidayDate.date.toISOString().split('T')[0];
+                  const exists = holidays.some(h => h.toISOString().split('T')[0] === dateStr);
+                  return exists ? 'Eliminar fecha de asueto' : 'Agregar fecha como asueto';
+                })()}
+              </h3>
+              <div className="text-center mb-4" style={{
+                transition: 'all 0.3s ease-out',
+                transform: isDeleting ? 'scale(0.95)' : 'scale(1)',
+                opacity: isDeleting ? 0.7 : 1
+              }}>
+                <p className="text-sm mb-2" style={{ color: styles.text.secondary }}>
+                  {(() => {
+                    if (!pendingHolidayDate || !pendingHolidayDate.date) return '¿Desea agregar la siguiente fecha al calendario de asuetos?';
+                    if (isDeleting) return 'La fecha se está eliminando del calendario...';
+                    const dateStr = pendingHolidayDate.date.toISOString().split('T')[0];
+                    const exists = holidays.some(h => h.toISOString().split('T')[0] === dateStr);
+                    return exists 
+                      ? 'Esta fecha ya está registrada como asueto. ¿Desea eliminarla del calendario?'
+                      : '¿Desea agregar la siguiente fecha al calendario de asuetos?';
+                  })()}
+                </p>
+                {pendingHolidayDate && pendingHolidayDate.date && (
+                  <p className="text-base font-semibold mb-3" style={{ color: styles.text.primary }}>
+                    {formatDateToSpanish(pendingHolidayDate.date)}
+                  </p>
+                )}
+                {pendingHolidayDate && pendingHolidayDate.holidayName && (
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{
+                    backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)',
+                    border: `1px solid ${theme === 'dark' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.4)'}`
+                  }}>
+                    <span className="text-xs font-semibold" style={{ color: theme === 'dark' ? '#60a5fa' : '#2563eb' }}>
+                      🎉 {pendingHolidayDate.holidayName}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-center gap-3 pt-4">
+              {!isDeleting && (
+                <button
+                  onClick={handleCancelAddHoliday}
+                  className="px-4 py-2 text-sm font-semibold rounded-lg transition-all"
+                  style={{
+                    backgroundColor: 'transparent',
+                    color: styles.text.secondary,
+                    border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.15)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  Cancelar
+                </button>
+              )}
+              <button
+                onClick={handleConfirmAddHoliday}
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-semibold rounded-lg transition-all text-white flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: (() => {
+                    if (isDeleting) return '#991b1b';
+                    const dateStr = pendingHolidayDate.date.toISOString().split('T')[0];
+                    const exists = holidays.some(h => h.toISOString().split('T')[0] === dateStr);
+                    return exists ? '#991b1b' : (theme === 'dark' ? '#166534' : '#14532d');
+                  })(),
+                  boxShadow: (() => {
+                    if (isDeleting) return '0 4px 12px rgba(153, 27, 27, 0.5)';
+                    const dateStr = pendingHolidayDate.date.toISOString().split('T')[0];
+                    const exists = holidays.some(h => h.toISOString().split('T')[0] === dateStr);
+                    return exists 
+                      ? '0 2px 6px rgba(153, 27, 27, 0.3)'
+                      : (theme === 'dark' 
+                        ? '0 2px 6px rgba(22, 101, 52, 0.3)' 
+                        : '0 2px 6px rgba(20, 83, 45, 0.3)');
+                  })(),
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  if (isDeleting) return;
+                  const dateStr = pendingHolidayDate.date.toISOString().split('T')[0];
+                  const exists = holidays.some(h => h.toISOString().split('T')[0] === dateStr);
+                  e.currentTarget.style.backgroundColor = exists ? '#7f1d1d' : (theme === 'dark' ? '#15803d' : '#166534');
+                  e.currentTarget.style.boxShadow = exists
+                    ? '0 4px 10px rgba(153, 27, 27, 0.4)'
+                    : (theme === 'dark' 
+                      ? '0 4px 10px rgba(22, 163, 74, 0.4)' 
+                      : '0 4px 10px rgba(21, 128, 61, 0.4)');
+                }}
+                onMouseLeave={(e) => {
+                  if (isDeleting) return;
+                  const dateStr = pendingHolidayDate.date.toISOString().split('T')[0];
+                  const exists = holidays.some(h => h.toISOString().split('T')[0] === dateStr);
+                  e.currentTarget.style.backgroundColor = exists ? '#991b1b' : (theme === 'dark' ? '#16a34a' : '#15803d');
+                  e.currentTarget.style.boxShadow = exists
+                    ? '0 2px 6px rgba(153, 27, 27, 0.3)'
+                    : (theme === 'dark' 
+                      ? '0 2px 6px rgba(22, 163, 74, 0.3)' 
+                      : '0 2px 6px rgba(21, 128, 61, 0.3)');
+                }}
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Eliminando...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    {(() => {
+                      const dateStr = pendingHolidayDate.date.toISOString().split('T')[0];
+                      const exists = holidays.some(h => h.toISOString().split('T')[0] === dateStr);
+                      return exists ? 'Eliminar' : 'Confirmar';
+                    })()}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
