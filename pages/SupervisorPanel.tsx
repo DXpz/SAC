@@ -1,11 +1,10 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { Caso, CaseStatus, Agente, Cliente } from '../types';
 import { STATE_COLORS } from '../constants';
 import { AlertCircle, Clock, Users, ArrowUpRight, ChevronRight, Activity, Info, Filter, UserPlus, Bell, ArrowRightLeft, TrendingUp, TrendingDown, X, User, CheckCircle2, Eye } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
-import AnimatedNumber from '../components/AnimatedNumber';
 
 type FilterPeriod = 'hoy' | 'semana' | 'mes';
 type FilterType = 'todos' | 'criticos' | 'vencidos' | string;
@@ -183,12 +182,20 @@ const SupervisorPanel: React.FC = () => {
   }, [casosAbiertos]);
 
   // Si no hay casos abiertos, el SLA no puede ser 100%, debe ser null
-  const slaPromedio = casosAbiertos.length > 0 
-    ? Math.round((casosDentroSLA.length / casosAbiertos.length) * 100)
-    : null;
+  const slaPromedio = useMemo(() => {
+    return casosAbiertos.length > 0 
+      ? Math.round((casosDentroSLA.length / casosAbiertos.length) * 100)
+      : null;
+  }, [casosAbiertos.length, casosDentroSLA.length]);
 
-  const agentesActivos = agentes.filter(a => a.estado === 'Activo').length;
-  const totalAgentes = agentes.length;
+  // Memorizar valores de longitud para evitar recálculos durante hover
+  const casosAbiertosCount = useMemo(() => casosAbiertos.length, [casosAbiertos.length]);
+  const casosVencidosCount = useMemo(() => casosVencidos.length, [casosVencidos.length]);
+  const casosCriticosCount = useMemo(() => casosCriticos.length, [casosCriticos.length]);
+  const casosTotalesCount = useMemo(() => casos.length, [casos.length]);
+
+  const agentesActivos = useMemo(() => agentes.filter(a => a.estado === 'Activo').length, [agentes]);
+  const totalAgentes = useMemo(() => agentes.length, [agentes.length]);
 
   const casosCriticosOrdenados = useMemo(() => {
     return [...casosCriticos].sort((a, b) => {
@@ -343,7 +350,16 @@ const SupervisorPanel: React.FC = () => {
     };
   };
 
-  const Tooltip: React.FC<{ id: string; content: string; children: React.ReactNode }> = ({ id, content, children }) => (
+  // Memoizar el handler del tooltip para evitar re-renders innecesarios
+  const handleTooltipEnter = useCallback((id: string) => {
+    setShowTooltip(id);
+  }, []);
+
+  const handleTooltipLeave = useCallback(() => {
+    setShowTooltip(null);
+  }, []);
+
+  const Tooltip: React.FC<{ id: string; content: string; children: React.ReactNode }> = React.memo(({ id, content, children }) => (
     <div className="relative group">
       {children}
       {showTooltip === id && (
@@ -353,7 +369,7 @@ const SupervisorPanel: React.FC = () => {
         </div>
       )}
     </div>
-  );
+  ));
 
   // Estilos dinámicos basados en el tema
   const styles = {
@@ -657,12 +673,12 @@ const SupervisorPanel: React.FC = () => {
               backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.05)' : 'rgba(59, 130, 246, 0.02)'
             }}
             onMouseEnter={(e) => {
-              setShowTooltip('casos-abiertos');
+              handleTooltipEnter('casos-abiertos');
               e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
               e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
             }}
             onMouseLeave={(e) => {
-              setShowTooltip(null);
+              handleTooltipLeave();
               e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.25)';
               e.currentTarget.style.boxShadow = '';
             }}
@@ -673,7 +689,7 @@ const SupervisorPanel: React.FC = () => {
             <div className="flex items-start justify-between mb-2 pr-8">
               <div className="flex-1">
                 <p className="text-4xl font-black leading-none mb-1.5" style={{color: '#3b82f6'}}>
-                  <AnimatedNumber value={casosAbiertos.length} />
+                  {casosAbiertosCount}
                 </p>
                 <div className="flex items-center gap-1.5">
                   <Activity className="w-4 h-4 flex-shrink-0" style={{color: '#3b82f6'}} />
@@ -692,29 +708,29 @@ const SupervisorPanel: React.FC = () => {
             className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
             style={{
               ...styles.card,
-              borderColor: casosVencidos.length > 0 ? 'rgba(220, 38, 38, 0.25)' : 'rgba(148, 163, 184, 0.2)',
-              backgroundColor: casosVencidos.length > 0 
+              borderColor: casosVencidosCount > 0 ? 'rgba(220, 38, 38, 0.25)' : 'rgba(148, 163, 184, 0.2)',
+              backgroundColor: casosVencidosCount > 0 
                 ? (theme === 'dark' ? 'rgba(220, 38, 38, 0.05)' : 'rgba(220, 38, 38, 0.02)')
                 : styles.card.backgroundColor
             }}
             onMouseEnter={(e) => {
-              setShowTooltip('casos-vencidos');
-              e.currentTarget.style.borderColor = casosVencidos.length > 0 ? 'rgba(220, 38, 38, 0.4)' : 'rgba(148, 163, 184, 0.3)';
+              handleTooltipEnter('casos-vencidos');
+              e.currentTarget.style.borderColor = casosVencidosCount > 0 ? 'rgba(220, 38, 38, 0.4)' : 'rgba(148, 163, 184, 0.3)';
               e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
             }}
             onMouseLeave={(e) => {
-              setShowTooltip(null);
-              e.currentTarget.style.borderColor = casosVencidos.length > 0 ? 'rgba(220, 38, 38, 0.25)' : 'rgba(148, 163, 184, 0.2)';
+              handleTooltipLeave();
+              e.currentTarget.style.borderColor = casosVencidosCount > 0 ? 'rgba(220, 38, 38, 0.25)' : 'rgba(148, 163, 184, 0.2)';
               e.currentTarget.style.boxShadow = '';
             }}
           >
             <div className="absolute top-3 right-3">
-              <AlertCircle className="w-6 h-6" style={{color: casosVencidos.length > 0 ? '#ef4444' : styles.text.tertiary}} />
+              <AlertCircle className="w-6 h-6" style={{color: casosVencidosCount > 0 ? '#ef4444' : styles.text.tertiary}} />
             </div>
             <div className="flex items-start justify-between mb-2 pr-8">
               <div className="flex-1">
-                <p className="text-4xl font-black leading-none mb-1.5" style={{color: casosVencidos.length > 0 ? '#ef4444' : styles.text.secondary}}>
-                  <AnimatedNumber value={casosVencidos.length} />
+                <p className="text-4xl font-black leading-none mb-1.5" style={{color: casosVencidosCount > 0 ? '#ef4444' : styles.text.secondary}}>
+                  {casosVencidosCount}
                 </p>
                 <div className="flex items-center gap-1.5">
                   <AlertCircle className="w-4 h-4 flex-shrink-0" style={{color: casosVencidos.length > 0 ? '#ef4444' : styles.text.secondary}} />
@@ -737,12 +753,12 @@ const SupervisorPanel: React.FC = () => {
               backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.05)' : 'rgba(59, 130, 246, 0.02)'
             }}
             onMouseEnter={(e) => {
-              setShowTooltip('casos-totales');
+              handleTooltipEnter('casos-totales');
               e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
               e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
             }}
             onMouseLeave={(e) => {
-              setShowTooltip(null);
+              handleTooltipLeave();
               e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.25)';
               e.currentTarget.style.boxShadow = '';
             }}
@@ -753,7 +769,7 @@ const SupervisorPanel: React.FC = () => {
             <div className="flex items-start justify-between mb-2 pr-8">
               <div className="flex-1">
                 <p className="text-4xl font-black leading-none mb-1.5" style={{color: '#3b82f6'}}>
-                  <AnimatedNumber value={casos.length} />
+                  {casosTotalesCount}
                 </p>
                 <div className="flex items-center gap-1.5">
                   <Activity className="w-4 h-4 flex-shrink-0" style={{color: '#3b82f6'}} />
@@ -779,12 +795,12 @@ const SupervisorPanel: React.FC = () => {
             }}
             onMouseEnter={(e) => {
               setShowTooltip('casos-criticos');
-              e.currentTarget.style.borderColor = casosCriticos.length > 0 ? 'rgba(200, 21, 27, 0.4)' : 'rgba(148, 163, 184, 0.3)';
+              e.currentTarget.style.borderColor = casosCriticosCount > 0 ? 'rgba(200, 21, 27, 0.4)' : 'rgba(148, 163, 184, 0.3)';
               e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
             }}
             onMouseLeave={(e) => {
               setShowTooltip(null);
-              e.currentTarget.style.borderColor = casosCriticos.length > 0 ? 'rgba(200, 21, 27, 0.25)' : 'rgba(148, 163, 184, 0.2)';
+              e.currentTarget.style.borderColor = casosCriticosCount > 0 ? 'rgba(200, 21, 27, 0.25)' : 'rgba(148, 163, 184, 0.2)';
               e.currentTarget.style.boxShadow = '';
             }}
           >
@@ -793,15 +809,15 @@ const SupervisorPanel: React.FC = () => {
             </div>
             <div className="flex items-start justify-between mb-2 pr-8">
               <div className="flex-1">
-                <p className="text-4xl font-black leading-none mb-1.5" style={{color: casosCriticos.length > 0 ? '#f87171' : styles.text.secondary}}>
-                  <AnimatedNumber value={casosCriticos.length} />
+                <p className="text-4xl font-black leading-none mb-1.5" style={{color: casosCriticosCount > 0 ? '#f87171' : styles.text.secondary}}>
+                  {casosCriticosCount}
                 </p>
                 <div className="flex items-center gap-1.5">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" style={{color: casosCriticos.length > 0 ? '#f87171' : styles.text.secondary}} />
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" style={{color: casosCriticosCount > 0 ? '#f87171' : styles.text.secondary}} />
                   <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Casos Críticos</p>
                 </div>
-                <p className="text-[10px] mt-1" style={{color: casosCriticos.length > 0 ? '#f87171' : styles.text.tertiary}}>
-                  {casosCriticos.length > 0 ? 'Requiere acción' : 'Bajo control'}
+                <p className="text-[10px] mt-1" style={{color: casosCriticosCount > 0 ? '#f87171' : styles.text.tertiary}}>
+                  {casosCriticosCount > 0 ? 'Requiere acción' : 'Bajo control'}
                 </p>
               </div>
             </div>
@@ -829,13 +845,13 @@ const SupervisorPanel: React.FC = () => {
                     : (theme === 'dark' ? 'rgba(200, 21, 27, 0.05)' : 'rgba(200, 21, 27, 0.02)')
             }}
             onMouseEnter={(e) => {
-              setShowTooltip('sla-promedio');
+              handleTooltipEnter('sla-promedio');
               const currentBorder = e.currentTarget.style.borderColor;
               e.currentTarget.style.borderColor = currentBorder.replace('0.25', '0.4').replace('0.2', '0.3');
               e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
             }}
             onMouseLeave={(e) => {
-              setShowTooltip(null);
+              handleTooltipLeave();
               const currentBorder = e.currentTarget.style.borderColor;
               e.currentTarget.style.borderColor = currentBorder.replace('0.4', '0.25').replace('0.3', '0.2');
               e.currentTarget.style.boxShadow = '';
@@ -857,7 +873,7 @@ const SupervisorPanel: React.FC = () => {
                          slaPromedio >= 70 ? '#fbbf24' : 
                          '#f87171'
                 }}>
-                  {slaPromedio === null ? 'N/A' : <><AnimatedNumber value={slaPromedio} />%</>}
+                  {slaPromedio === null ? 'N/A' : `${slaPromedio}%`}
                 </p>
                 <div className="flex items-center gap-1.5">
                   <Clock className="w-4 h-4 flex-shrink-0" style={{
@@ -888,12 +904,12 @@ const SupervisorPanel: React.FC = () => {
               backgroundColor: theme === 'dark' ? 'rgba(34, 197, 94, 0.05)' : 'rgba(34, 197, 94, 0.02)'
             }}
             onMouseEnter={(e) => {
-              setShowTooltip('agentes-online');
+              handleTooltipEnter('agentes-online');
               e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.4)';
               e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
             }}
             onMouseLeave={(e) => {
-              setShowTooltip(null);
+              handleTooltipLeave();
               e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.25)';
               e.currentTarget.style.boxShadow = '';
             }}
@@ -904,7 +920,7 @@ const SupervisorPanel: React.FC = () => {
             <div className="flex items-start justify-between mb-2 pr-8">
               <div className="flex-1">
                 <p className="text-4xl font-black leading-none mb-1.5" style={{color: '#22c55e'}}>
-                  <AnimatedNumber value={agentesActivos} />/<AnimatedNumber value={totalAgentes} />
+                  {agentesActivos}/{totalAgentes}
                 </p>
                 <div className="flex items-center gap-1.5">
                   <Users className="w-4 h-4 flex-shrink-0" style={{color: '#22c55e'}} />

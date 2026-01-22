@@ -7,7 +7,6 @@ import {
   Bell, 
   Users, 
   Calendar, 
-  ShieldAlert,
   Plus,
   Trash2,
   Edit,
@@ -16,7 +15,6 @@ import {
   Eye,
   Briefcase,
   CheckCircle2,
-  Key,
   ChevronUp,
   ChevronDown,
   HelpCircle,
@@ -1627,32 +1625,6 @@ const Settings: React.FC = () => {
   };
 
 
-  const [passwordData, setPasswordData] = useState({
-    newPassword: '',
-    confirmPassword: ''
-  });
-
-  const handlePasswordChange = () => {
-    if (!passwordData.newPassword.trim()) {
-      alert('Por favor ingrese una nueva contraseña');
-      return;
-    }
-
-    if (passwordData.newPassword.length < 8) {
-      alert('La contraseña debe tener al menos 8 caracteres');
-      return;
-    }
-
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert('Las contraseñas no coinciden');
-      return;
-    }
-
-    // TODO: Implementar cambio de contraseña en backend
-    console.log('Cambiando contraseña...');
-    alert('Contraseña actualizada correctamente');
-    setPasswordData({ newPassword: '', confirmPassword: '' });
-  };
 
   const getRoleBadgeStyle = (role: string) => {
     const roleStyles: Record<string, { bg: string; text: string; border: string }> = {
@@ -1886,11 +1858,6 @@ const Settings: React.FC = () => {
       id: 'asuetos',
       name: 'Asuetos',
       icon: Calendar
-    },
-    {
-      id: 'seguridad',
-      name: 'Seguridad',
-      icon: ShieldAlert
     }
   ];
 
@@ -4270,89 +4237,9 @@ const Settings: React.FC = () => {
           </div>
         )}
 
-        {activeTab === 'seguridad' && (
-          <div className="flex justify-center">
-            <div className="w-full max-w-md p-6 rounded-lg border" style={{...styles.card}}>
-              {/* Título con icono */}
-              <div className="flex items-center gap-3 mb-6">
-                <Key 
-                  className="w-6 h-6" 
-                  style={{ color: theme === 'dark' ? '#3b82f6' : '#2563eb' }}
-                />
-                <h2 className="text-lg font-bold" style={{ color: styles.text.primary }}>
-                  Cambio de Contraseña
-                </h2>
-              </div>
-
-              {/* Campo Nueva Contraseña */}
-              <div className="mb-4">
-                <label 
-                  className="block text-sm font-semibold mb-2" 
-                  style={{ color: styles.text.primary }}
-                >
-                  Nueva Contraseña
-                </label>
-                <input
-                  type="password"
-                  value={passwordData.newPassword}
-                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border text-sm"
-                  style={{
-                    backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
-                    borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
-                    color: styles.text.primary
-                  }}
-                  placeholder="Ingrese su nueva contraseña"
-                />
-              </div>
-
-              {/* Campo Confirmar Contraseña */}
-              <div className="mb-6">
-                <label 
-                  className="block text-sm font-semibold mb-2" 
-                  style={{ color: styles.text.primary }}
-                >
-                  Confirmar Contraseña
-                </label>
-                <input
-                  type="password"
-                  value={passwordData.confirmPassword}
-                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border text-sm"
-                  style={{
-                    backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
-                    borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
-                    color: styles.text.primary
-                  }}
-                  placeholder="Confirme su nueva contraseña"
-                />
-              </div>
-
-              {/* Botón Actualizar Contraseña */}
-              <button
-                onClick={handlePasswordChange}
-                className="w-full px-6 py-3 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all"
-                style={{
-                  backgroundColor: theme === 'dark' ? '#ef4444' : '#dc2626',
-                  boxShadow: theme === 'dark' 
-                    ? '0 4px 12px rgba(239, 68, 68, 0.3)' 
-                    : '0 4px 12px rgba(220, 38, 38, 0.3)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#dc2626' : '#b91c1c';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#ef4444' : '#dc2626';
-                }}
-              >
-                Actualizar Contraseña
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Placeholder para otras secciones - se completarán con las siguientes imágenes */}
-        {activeTab !== 'configuracion' && activeTab !== 'categorias' && activeTab !== 'estados-flujo' && activeTab !== 'usuarios' && activeTab !== 'asuetos' && activeTab !== 'seguridad' && (
+        {activeTab !== 'configuracion' && activeTab !== 'categorias' && activeTab !== 'estados-flujo' && activeTab !== 'usuarios' && activeTab !== 'asuetos' && (
           <div className="p-6 rounded-lg border" style={{...styles.card}}>
             <p className="text-sm" style={{ color: styles.text.tertiary }}>
               Sección "{tabs.find(t => t.id === activeTab)?.name}" - Pendiente de implementar

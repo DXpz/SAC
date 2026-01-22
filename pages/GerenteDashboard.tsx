@@ -5,7 +5,6 @@ import { Case, CaseStatus, KPI } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { TrendingUp, Users, Clock, ThumbsUp, ArrowUp, ArrowDown, Info, AlertTriangle, CheckCircle2, Filter } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
-import AnimatedNumber from '../components/AnimatedNumber';
 
 type PeriodFilter = 'hoy' | 'semana' | 'mes';
 
@@ -394,9 +393,12 @@ const GerenteDashboard: React.FC = () => {
               {typeof value === 'string' && value.includes('N/A') ? (
                 value
               ) : typeof value === 'number' ? (
-                <AnimatedNumber value={value} decimals={value < 10 && value % 1 !== 0 ? 1 : 0} />
+                value < 10 && value % 1 !== 0 ? value.toFixed(1) : value
               ) : (
-                <AnimatedNumber value={parseFloat(value as string) || 0} decimals={parseFloat(value as string) < 10 && parseFloat(value as string) % 1 !== 0 ? 1 : 0} />
+                (() => {
+                  const numValue = parseFloat(value as string) || 0;
+                  return numValue < 10 && numValue % 1 !== 0 ? numValue.toFixed(1) : numValue;
+                })()
               )}
             </p>
             <div className="flex items-center gap-1.5">
