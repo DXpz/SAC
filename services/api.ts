@@ -2550,10 +2550,22 @@ export const api = {
     const mappedRole = roleMap[actor.role] || actor.role;
 
     // Formatear fecha como DD/MM/YYYY
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
+    // Usar getFullYear, getMonth, getDate para obtener valores en zona horaria local
+    // Asegurarse de que la fecha esté a mediodía para evitar problemas de zona horaria
+    const dateAtNoon = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0);
+    const day = String(dateAtNoon.getDate()).padStart(2, '0');
+    const month = String(dateAtNoon.getMonth() + 1).padStart(2, '0');
+    const year = dateAtNoon.getFullYear();
     const dateStr = `${day}/${month}/${year}`;
+    
+    console.log('[api.addHoliday] Fecha formateada:', {
+      originalDate: date.toISOString(),
+      dateAtNoon: dateAtNoon.toISOString(),
+      day,
+      month,
+      year,
+      dateStr
+    });
 
     // Construir el payload según el formato esperado
     const payload = {
@@ -2604,19 +2616,22 @@ export const api = {
     };
     const mappedRole = roleMap[actor.role] || actor.role;
 
-    // Formatear fecha como YYYY-MM-DD
-    const dateStr = date.toISOString().split('T')[0];
+    // Formatear fecha como DD/MM/YYYY (mismo formato que usa el webhook)
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const fechaStr = `${day}/${month}/${year}`;
 
-    // Construir el payload según el formato esperado
+    // Construir el payload con la misma estructura que asueto.read
     const payload = {
       action: 'asueto.delete',
       actor: {
-        user_id: actor.user_id,
-        email: actor.email,
-        role: mappedRole
+        user_id: actor.user_id || 0,
+        email: actor.email || 'admin@intelfon.com',
+        role: mappedRole || 'ADMINISTRADOR'
       },
       data: {
-        fecha: dateStr
+        fecha: fechaStr
       }
     };
 
@@ -2688,7 +2703,7 @@ export const api = {
   },
 
   // Leer fechas de asuetos desde el webhook
-  async readHolidays(): Promise<Date[]> {
+  async readHolidays(): Promise<Array<{ fecha: string; motivo: string; pais: string; row_number: number; fechaDate?: Date }>> {
     const user = this.getUser();
     if (!user) {
       throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
@@ -2724,56 +2739,85 @@ export const api = {
       const response = await callAsuetosWebhook('POST', payload);
       console.log('[api.readHolidays] Respuesta del webhook:', response);
       
-      // Parsear la respuesta y convertir a array de Date
-      // El formato puede variar, así que manejamos diferentes estructuras posibles
-      let fechas: string[] = [];
+      // Parsear la nueva estructura: [{ data: [...] }]
+      let asuetos: Array<{ fecha: string; motivo: string; pais: string; row_number: number; fechaDate?: Date }> = [];
       
       if (Array.isArray(response)) {
-        // Si es un array directamente, asumimos que cada elemento es una fecha
-        fechas = response.map((item: any) => {
-          if (typeof item === 'string') return item;
-          return item.fecha || item.date || '';
-        }).filter(Boolean);
+        // La respuesta es un array: [{ data: [...] }]
+        for (const item of response) {
+          if (item && typeof item === 'object' && Array.isArray(item.data)) {
+            // Procesar cada elemento del array data
+            // IMPORTANTE: NO modificar la fecha que viene del webhook - guardarla exactamente como viene
+            asuetos = item.data.map((asueto: any) => {
+              const fechaStr = asueto.fecha || '';
+              let fechaDate: Date | undefined;
+              
+              // Convertir fecha string a Date SOLO para cálculos internos (ordenamiento, etc.)
+              // NO usar esta fecha para mostrar - siempre usar fechaStr directamente
+              if (fechaStr && fechaStr.includes('/')) {
+                try {
+                  const [day, month, year] = fechaStr.split('/').map(Number);
+                  // Crear fecha en zona horaria local a mediodía para evitar problemas de zona horaria
+                  fechaDate = new Date(year, month - 1, day, 12, 0, 0);
+                } catch (error) {
+                  console.error('[api.readHolidays] Error parseando fecha:', fechaStr, error);
+                }
+              }
+              
+              // Guardar la fecha EXACTAMENTE como viene del webhook en el campo fecha
+              return {
+                fecha: fechaStr, // ESTE es el valor que se debe mostrar - viene directamente del webhook
+                motivo: asueto.motivo || 'Indefinido',
+                pais: asueto.pais || 'Indefinido',
+                row_number: asueto.row_number || 0,
+                fechaDate: fechaDate // Solo para cálculos internos, NO para mostrar
+              };
+            });
+            break; // Solo procesar el primer objeto con data
+          }
+        }
       } else if (response && typeof response === 'object') {
-        // Si es un objeto, buscar en propiedades comunes
+        // Si es un objeto directo con data
         if (Array.isArray(response.data)) {
-          fechas = response.data.map((item: any) => {
-            if (typeof item === 'string') return item;
-            return item.fecha || item.date || '';
-          }).filter(Boolean);
-        } else if (Array.isArray(response.fechas)) {
-          fechas = response.fechas;
-        } else if (response.fecha) {
-          fechas = Array.isArray(response.fecha) ? response.fecha : [response.fecha];
+          // IMPORTANTE: NO modificar la fecha que viene del webhook - guardarla exactamente como viene
+          asuetos = response.data.map((asueto: any) => {
+            const fechaStr = asueto.fecha || '';
+            let fechaDate: Date | undefined;
+            
+            // Convertir fecha string a Date SOLO para cálculos internos (ordenamiento, etc.)
+            // NO usar esta fecha para mostrar - siempre usar fechaStr directamente
+            if (fechaStr && fechaStr.includes('/')) {
+              try {
+                const [day, month, year] = fechaStr.split('/').map(Number);
+                // Crear fecha en zona horaria local a mediodía para evitar problemas de zona horaria
+                fechaDate = new Date(year, month - 1, day, 12, 0, 0);
+              } catch (error) {
+                console.error('[api.readHolidays] Error parseando fecha:', fechaStr, error);
+              }
+            }
+            
+            // Guardar la fecha EXACTAMENTE como viene del webhook en el campo fecha
+            return {
+              fecha: fechaStr, // ESTE es el valor que se debe mostrar - viene directamente del webhook
+              motivo: asueto.motivo || 'Indefinido',
+              pais: asueto.pais || 'Indefinido',
+              row_number: asueto.row_number || 0,
+              fechaDate: fechaDate // Solo para cálculos internos, NO para mostrar
+            };
+          });
         }
       }
       
-      // Convertir strings de fecha a objetos Date
-      // Soporta formatos: DD/MM/YYYY, YYYY-MM-DD
-      const dates: Date[] = fechas.map((fechaStr: string) => {
-        try {
-          // Intentar formato DD/MM/YYYY
-          if (fechaStr.includes('/')) {
-            const [day, month, year] = fechaStr.split('/').map(Number);
-            return new Date(year, month - 1, day);
-          }
-          // Intentar formato YYYY-MM-DD
-          if (fechaStr.includes('-')) {
-            return new Date(fechaStr + 'T00:00:00');
-          }
-          // Intentar parseo directo
-          return new Date(fechaStr);
-        } catch (error) {
-          console.error('[api.readHolidays] Error parseando fecha:', fechaStr, error);
-          return null;
+      // Ordenar por fecha cronológicamente
+      asuetos.sort((a, b) => {
+        if (a.fechaDate && b.fechaDate) {
+          return a.fechaDate.getTime() - b.fechaDate.getTime();
         }
-      }).filter((date): date is Date => date !== null && !isNaN(date.getTime()));
+        return a.fecha.localeCompare(b.fecha);
+      });
       
-      // Ordenar fechas cronológicamente
-      dates.sort((a, b) => a.getTime() - b.getTime());
-      
-      console.log('[api.readHolidays] Fechas parseadas:', dates.map(d => d.toISOString().split('T')[0]));
-      return dates;
+      console.log('[api.readHolidays] Asuetos parseados:', asuetos.length);
+      return asuetos;
     } catch (error: any) {
       console.error('[api.readHolidays] ❌ Error al leer asuetos:', error);
       throw new Error(error.message || 'Error al leer las fechas de asuetos');

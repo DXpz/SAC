@@ -259,7 +259,11 @@ const Settings: React.FC = () => {
     }
   };
 
-  // Cargar asuetos cuando se activa el tab de asuetos
+  // Cargar asuetos al montar el componente y cuando se activa el tab de asuetos
+  useEffect(() => {
+    loadHolidays();
+  }, []); // Cargar al montar el componente
+
   useEffect(() => {
     if (activeTab === 'asuetos') {
       loadHolidays();
@@ -1098,7 +1102,7 @@ const Settings: React.FC = () => {
     }
   };
 
-  const [holidays, setHolidays] = useState<Date[]>([]);
+  const [holidays, setHolidays] = useState<Array<{ fecha: string; motivo: string; pais: string; row_number: number; fechaDate?: Date }>>([]);
 
   const [bulkDates, setBulkDates] = useState('');
   const [isImporting, setIsImporting] = useState(false);
@@ -1121,6 +1125,97 @@ const Settings: React.FC = () => {
     const year = date.getFullYear();
     
     return `${dayName}, ${day} de ${month} de ${year}`;
+  };
+
+  // Formatear fecha desde string DD/MM/YYYY directamente
+  // Parsear la fecha del webhook para mostrar "10 de mayo del 2026"
+  // Maneja tanto DD/MM/YYYY como YYYY-MM-DD
+  const formatDateFromDDMMYYYY = (fechaStr: string): string => {
+    if (!fechaStr) {
+      return '';
+    }
+
+    const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    
+    let day: number;
+    let month: number;
+    let year: number;
+    
+    // Detectar formato: DD/MM/YYYY o YYYY-MM-DD
+    if (fechaStr.includes('/')) {
+      // Formato DD/MM/YYYY
+      const parts = fechaStr.split('/');
+      if (parts.length !== 3) {
+        return fechaStr;
+      }
+      day = parseInt(parts[0].trim(), 10);
+      month = parseInt(parts[1].trim(), 10);
+      year = parseInt(parts[2].trim(), 10);
+    } else if (fechaStr.includes('-')) {
+      // Formato YYYY-MM-DD - convertir a DD/MM/YYYY para parsear
+      const parts = fechaStr.split('-');
+      if (parts.length !== 3) {
+        return fechaStr;
+      }
+      year = parseInt(parts[0].trim(), 10);
+      month = parseInt(parts[1].trim(), 10);
+      day = parseInt(parts[2].trim(), 10);
+    } else {
+      return fechaStr;
+    }
+    
+    // Validar que sean números válidos
+    if (isNaN(day) || isNaN(month) || isNaN(year) || month < 1 || month > 12 || day < 1 || day > 31) {
+      return fechaStr;
+    }
+    
+    // Crear fecha SOLO para obtener el día de la semana (usar mediodía para evitar problemas de zona horaria)
+    const dateForDayOfWeek = new Date(year, month - 1, day, 12, 0, 0);
+    const dayName = days[dateForDayOfWeek.getDay()];
+    const monthName = months[month - 1];
+    
+    // MOSTRAR EL DÍA EXACTO parseado del string del webhook
+    // Formato: "sábado, 10 de mayo del 2026"
+    return `${dayName}, ${day} de ${monthName} del ${year}`;
+  };
+
+  // Helper para convertir fecha DD/MM/YYYY a YYYY-MM-DD para comparación
+  const convertDateStrToISO = (fechaStr: string): string => {
+    if (fechaStr.includes('/')) {
+      const [day, month, year] = fechaStr.split('/');
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+    return fechaStr;
+  };
+
+  // Helper para parsear fecha DD/MM/YYYY a Date sin problemas de zona horaria
+  const parseDateFromDDMMYYYY = (fechaStr: string): Date => {
+    if (fechaStr.includes('/')) {
+      const [day, month, year] = fechaStr.split('/').map(Number);
+      // Crear fecha a mediodía en zona horaria local para evitar problemas de zona horaria
+      return new Date(year, month - 1, day, 12, 0, 0);
+    }
+    return new Date(fechaStr);
+  };
+
+  // Helper para obtener solo la fecha (sin hora) de un Date para comparación
+  const getDateOnly = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Helper para verificar si una fecha Date coincide con alguna fecha en holidays
+  const isDateInHolidays = (date: Date): boolean => {
+    const dateStr = getDateOnly(date);
+    return holidays.some(h => {
+      if (h.fechaDate) {
+        return getDateOnly(h.fechaDate) === dateStr;
+      }
+      return convertDateStrToISO(h.fecha) === dateStr;
+    });
   };
 
   // Función para calcular la fecha de Pascua (algoritmo de Meeus/Jones/Butcher)
@@ -1250,7 +1345,8 @@ const Settings: React.FC = () => {
 
   // Función para agregar fecha desde el calendario visual
   const handleDateClick = (day: number, month: number, year: number) => {
-    const date = new Date(year, month, day);
+    // Crear fecha a mediodía para evitar problemas de zona horaria
+    const date = new Date(year, month, day, 12, 0, 0);
     
     if (isNaN(date.getTime())) {
       console.error('[handleDateClick] Fecha inválida:', { day, month, year });
@@ -1260,8 +1356,7 @@ const Settings: React.FC = () => {
     console.log('[handleDateClick] Fecha seleccionada:', date);
 
     // Verificar si la fecha ya existe
-    const dateStr = date.toISOString().split('T')[0];
-    const exists = holidays.some(h => h.toISOString().split('T')[0] === dateStr);
+    const exists = isDateInHolidays(date);
     
     // Obtener el nombre de la festividad
     const holidayName = getHolidayName(date);
@@ -1317,8 +1412,7 @@ const Settings: React.FC = () => {
   // Verificar si una fecha está en holidays
   const isHoliday = (date: Date | null): boolean => {
     if (!date) return false;
-    const dateStr = date.toISOString().split('T')[0];
-    return holidays.some(h => h.toISOString().split('T')[0] === dateStr);
+    return isDateInHolidays(date);
   };
 
   // Verificar si una fecha es hoy
@@ -1345,6 +1439,42 @@ const Settings: React.FC = () => {
     }
   };
 
+  // Eliminar fecha duplicada desde la carga masiva
+  const handleRemoveDuplicate = async (dateStr: string) => {
+    try {
+      // Convertir YYYY-MM-DD a Date
+      const date = new Date(dateStr + 'T00:00:00');
+      if (isNaN(date.getTime())) {
+        alert('Error: Fecha inválida');
+        return;
+      }
+
+      // Buscar el asueto en holidays para obtener su row_number si es necesario
+      const holiday = holidays.find(h => {
+        const hDate = h.fechaDate || parseDateFromDDMMYYYY(h.fecha);
+        return getDateOnly(hDate) === dateStr;
+      });
+
+      if (!holiday) {
+        alert('No se encontró la fecha en los asuetos registrados');
+        return;
+      }
+
+      // Eliminar del webhook
+      await api.deleteHoliday(date);
+      console.log('[handleRemoveDuplicate] ✅ Fecha duplicada eliminada del webhook exitosamente');
+      
+      // Recargar las fechas desde el webhook
+      await loadHolidays();
+      
+      // Mostrar mensaje de éxito
+      console.log(`Fecha duplicada ${dateStr} eliminada exitosamente`);
+    } catch (error: any) {
+      console.error('[handleRemoveDuplicate] ❌ Error al eliminar fecha duplicada:', error);
+      alert(`Error al eliminar la fecha duplicada: ${error.message || 'Error desconocido'}`);
+    }
+  };
+
   // Confirmar agregar fecha desde el modal
   const handleConfirmAddHoliday = () => {
     if (!pendingHolidayDate) return;
@@ -1352,11 +1482,21 @@ const Settings: React.FC = () => {
     const { date } = pendingHolidayDate;
     
     // Verificar si la fecha ya existe
-    const dateStr = date.toISOString().split('T')[0];
-    const exists = holidays.some(h => h.toISOString().split('T')[0] === dateStr);
+    const exists = isDateInHolidays(date);
+    console.log('[handleConfirmAddHoliday] Verificando fecha:', {
+      date: date.toISOString(),
+      dateOnly: getDateOnly(date),
+      exists: exists,
+      holidaysCount: holidays.length,
+      holidaysDates: holidays.map(h => ({
+        fecha: h.fecha,
+        fechaDate: h.fechaDate ? getDateOnly(h.fechaDate) : convertDateStrToISO(h.fecha)
+      }))
+    });
     
     if (exists) {
       // Si ya existe, mostrar animación antes de eliminar
+      console.log('[handleConfirmAddHoliday] ✅ Fecha existe, eliminando...');
       setIsDeleting(true);
       
       // Esperar a que termine la animación antes de eliminar
@@ -1367,6 +1507,7 @@ const Settings: React.FC = () => {
       }, 500); // Duración de la animación (500ms para que se vea mejor)
     } else {
       // Agregar la fecha y enviar al webhook
+      console.log('[handleConfirmAddHoliday] ❌ Fecha NO existe, agregando...');
       const addHolidayToWebhook = async () => {
         try {
           await api.addHoliday(date, pendingHolidayDate.holidayName);
@@ -1429,7 +1570,7 @@ const Settings: React.FC = () => {
       }
 
       const dateStrFormatted = date.toISOString().split('T')[0];
-      const exists = holidays.some(h => h.toISOString().split('T')[0] === dateStrFormatted);
+      const exists = isDateInHolidays(date);
       const holidayName = getHolidayName(date);
       
       preview.push({ date, dateStr: dateStrFormatted, holidayName, isNew: !exists });
@@ -3260,23 +3401,41 @@ const Settings: React.FC = () => {
                         today.setHours(0, 0, 0, 0);
                         const upcomingHolidays = holidays
                           .filter(h => {
-                            const hDate = new Date(h);
+                            const hDate = h.fechaDate || parseDateFromDDMMYYYY(h.fecha);
                             hDate.setHours(0, 0, 0, 0);
                             return hDate >= today;
                           })
-                          .sort((a, b) => a.getTime() - b.getTime())
+                          .sort((a, b) => {
+                            const aDate = a.fechaDate || parseDateFromDDMMYYYY(a.fecha);
+                            const bDate = b.fechaDate || parseDateFromDDMMYYYY(b.fecha);
+                            return aDate.getTime() - bDate.getTime();
+                          })
                           .slice(0, 1);
                         
                         if (upcomingHolidays.length > 0) {
                           const nextHoliday = upcomingHolidays[0];
-                          const daysUntil = Math.ceil((nextHoliday.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                          const nextHolidayDate = nextHoliday.fechaDate || parseDateFromDDMMYYYY(nextHoliday.fecha);
+                          const daysUntil = Math.ceil((nextHolidayDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                          
+                          // Formatear fecha usando el string del webhook directamente para mostrar exactamente lo que viene
+                          let nextHolidayDateText = '';
+                          if (nextHoliday.fecha) {
+                            const nextHolidayFormatted = formatDateFromDDMMYYYY(nextHoliday.fecha);
+                            // Obtener solo la parte de la fecha sin el día de la semana
+                            const parts = nextHolidayFormatted.split(', ');
+                            nextHolidayDateText = parts.length > 1 ? parts[1] : nextHolidayFormatted;
+                          } else {
+                            // Fallback: usar la fecha parseada si no hay string
+                            nextHolidayDateText = formatDateToSpanish(nextHolidayDate).split(', ')[1] || '';
+                          }
+                          
                           return (
                             <div className="px-3 py-1.5 rounded-lg" style={{
                               backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.08)',
                               border: `1px solid ${theme === 'dark' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.2)'}`
                             }}>
                               <span className="text-xs font-semibold" style={{ color: theme === 'dark' ? '#60a5fa' : '#2563eb' }}>
-                                ⏰ Próximo: {formatDateToSpanish(nextHoliday).split(', ')[1]} {daysUntil === 0 ? '(hoy)' : daysUntil === 1 ? '(mañana)' : `(en ${daysUntil} días)`}
+                                ⏰ Próximo: {nextHolidayDateText} {daysUntil === 0 ? '(hoy)' : daysUntil === 1 ? '(mañana)' : `(en ${daysUntil} días)`}
                               </span>
                             </div>
                           );
@@ -3547,6 +3706,24 @@ const Settings: React.FC = () => {
                         </div>
                       </th>
                       <th 
+                        className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider"
+                        style={{ 
+                          color: styles.text.secondary,
+                          borderBottom: `2px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.25)'}`
+                        }}
+                      >
+                        MOTIVO
+                      </th>
+                      <th 
+                        className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider"
+                        style={{ 
+                          color: styles.text.secondary,
+                          borderBottom: `2px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.25)'}`
+                        }}
+                      >
+                        PAÍS
+                      </th>
+                      <th 
                         className="px-5 py-4 text-center text-xs font-bold uppercase tracking-wider"
                         style={{ 
                           color: styles.text.secondary,
@@ -3560,7 +3737,7 @@ const Settings: React.FC = () => {
                   <tbody>
                     {holidays.length === 0 ? (
                       <tr>
-                        <td colSpan={2} className="px-5 py-12 text-center">
+                        <td colSpan={4} className="px-5 py-12 text-center">
                           <div className="flex flex-col items-center gap-3">
                             <Calendar className="w-10 h-10 opacity-30" style={{ color: styles.text.tertiary }} />
                             <div>
@@ -3577,36 +3754,80 @@ const Settings: React.FC = () => {
                     ) : (
                       (() => {
                         // Ordenar fechas cronológicamente
-                        const sortedHolidays = [...holidays].sort((a, b) => a.getTime() - b.getTime());
+                        const sortedHolidays = [...holidays].sort((a, b) => {
+                          if (a.fechaDate && b.fechaDate) {
+                            return a.fechaDate.getTime() - b.fechaDate.getTime();
+                          }
+                          return a.fecha.localeCompare(b.fecha);
+                        });
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
                         
                         let currentMonthYear = '';
                         return sortedHolidays.map((holiday, index) => {
-                          const dateStr = formatDateToSpanish(holiday);
-                          const parts = dateStr.split(', ');
-                          const weekday = parts[0];
-                          const date = parts.slice(1).join(', ');
-                          const holidayName = getHolidayName(holiday);
+                          // Convertir fecha string DD/MM/YYYY a Date si no existe fechaDate (solo para cálculos)
+                          let holidayDate: Date;
+                          if (holiday.fechaDate) {
+                            holidayDate = holiday.fechaDate;
+                          } else {
+                            holidayDate = parseDateFromDDMMYYYY(holiday.fecha);
+                          }
                           
-                          // Detectar cambio de mes/año para agregar separador
-                          const monthYear = holiday.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+                          // Formatear fecha usando el mismo formato que "Próximo"
+                          // Parsear la fecha del webhook para mostrar "10 de mayo del 2026"
+                          let dateText = '';
+                          let weekday = '';
+                          
+                          if (holiday.fecha) {
+                            // Usar el mismo método que en "Próximo"
+                            const dateStrFormatted = formatDateFromDDMMYYYY(holiday.fecha);
+                            // Obtener solo la parte de la fecha sin el día de la semana (igual que en Próximo)
+                            const parts = dateStrFormatted.split(', ');
+                            weekday = parts[0] || '';
+                            dateText = parts.length > 1 ? parts[1] : dateStrFormatted; // "10 de mayo del 2026"
+                          } else if (holiday.fechaDate) {
+                            // Fallback: si solo tenemos fechaDate, formatearla
+                            const formatted = formatDateToSpanish(holiday.fechaDate);
+                            const parts = formatted.split(', ');
+                            weekday = parts[0] || '';
+                            dateText = parts.length > 1 ? parts[1] : formatted;
+                          } else {
+                            // Último fallback: mostrar el string tal cual
+                            dateText = holiday.fecha || '';
+                          }
+                          
+                          // Detectar cambio de mes/año para agregar separador (usar el string original)
+                          const [dayStr, monthStr, yearStr] = holiday.fecha.split('/');
+                          const monthNum = parseInt(monthStr, 10);
+                          const yearNum = parseInt(yearStr, 10);
+                          
+                          // Calcular monthYear con validación
+                          let monthYear = '';
+                          if (!isNaN(monthNum) && !isNaN(yearNum) && monthNum >= 1 && monthNum <= 12) {
+                            const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+                            monthYear = `${months[monthNum - 1]} ${yearNum}`;
+                          } else {
+                            // Fallback: usar holidayDate para obtener mes y año
+                            monthYear = holidayDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+                          }
+                          
                           const showSeparator = monthYear !== currentMonthYear;
                           if (showSeparator) currentMonthYear = monthYear;
                           
                           // Verificar si es fecha próxima (dentro de 30 días)
-                          const holidayDate = new Date(holiday);
                           holidayDate.setHours(0, 0, 0, 0);
                           const daysUntil = Math.ceil((holidayDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                          const isUpcoming = daysUntil >= 0 && daysUntil <= 30;
-                          const isToday = daysUntil === 0;
-                          const isPast = daysUntil < 0;
+                          // Validar que daysUntil sea un número válido, si no es válido, asumir que es pasado
+                          const isValidDaysUntil = !isNaN(daysUntil) && isFinite(daysUntil);
+                          const isUpcoming = isValidDaysUntil && daysUntil >= 0 && daysUntil <= 30;
+                          const isToday = isValidDaysUntil && daysUntil === 0;
+                          const isPast = !isValidDaysUntil || daysUntil < 0;
                           
                           return (
                             <>
                               {showSeparator && index > 0 && (
                                 <tr key={`separator-${monthYear}`}>
-                                  <td colSpan={2} className="px-5 py-2">
+                                  <td colSpan={4} className="px-5 py-2">
                                     <div className="flex items-center gap-2">
                                       <div className="flex-1 h-px" style={{
                                         backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.2)'
@@ -3626,7 +3847,7 @@ const Settings: React.FC = () => {
                               )}
                               {index === 0 && (
                                 <tr key={`separator-${monthYear}-first`}>
-                                  <td colSpan={2} className="px-5 py-2">
+                                  <td colSpan={4} className="px-5 py-2">
                                     <div className="flex items-center gap-2">
                                       <div className="flex-1 h-px" style={{
                                         backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.2)'
@@ -3645,7 +3866,7 @@ const Settings: React.FC = () => {
                                 </tr>
                               )}
                               <tr
-                                key={holiday.getTime()}
+                                key={`${holiday.row_number}-${holiday.fecha}`}
                                 className="group transition-all"
                                 style={{
                                   backgroundColor: index % 2 === 0
@@ -3681,7 +3902,7 @@ const Settings: React.FC = () => {
                                     <div className="flex flex-col gap-1 flex-1">
                                       <div className="flex items-center gap-2 flex-wrap">
                                         <span className="text-sm font-bold leading-tight" style={{ color: styles.text.primary }}>
-                                          {date || dateStr}
+                                          {dateText}
                                         </span>
                                         {isToday && (
                                           <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase" style={{
@@ -3704,22 +3925,28 @@ const Settings: React.FC = () => {
                                         <span className="text-xs font-medium leading-tight" style={{ color: styles.text.secondary }}>
                                           {weekday || ''}
                                         </span>
-                                        {holidayName && (
-                                          <span className="text-xs font-semibold leading-tight" style={{ 
-                                            color: theme === 'dark' ? '#60a5fa' : '#2563eb'
-                                          }}>
-                                            🎉 {holidayName}
-                                          </span>
-                                        )}
                                       </div>
                                     </div>
                                   </div>
                                 </td>
                                 <td className="px-5 py-4">
+                                  <span className="text-sm font-medium" style={{ color: styles.text.primary }}>
+                                    {holiday.motivo || 'Indefinido'}
+                                  </span>
+                                </td>
+                                <td className="px-5 py-4">
+                                  <span className="text-sm font-medium" style={{ color: styles.text.secondary }}>
+                                    {holiday.pais || 'Indefinido'}
+                                  </span>
+                                </td>
+                                <td className="px-5 py-4">
                                   <div className="flex justify-center">
                                     <button
-                                      onClick={() => {
-                                        setPendingHolidayDate({ date: holiday, holidayName: getHolidayName(holiday) });
+                                      onClick={async () => {
+                                        // Confirmar antes de eliminar
+                                        if (window.confirm(`¿Está seguro de que desea eliminar la fecha ${formatDateFromDDMMYYYY(holiday.fecha)}?`)) {
+                                          await handleDeleteHoliday(holidayDate, true);
+                                        }
                                       }}
                                       className="p-2.5 rounded-lg transition-all opacity-70 group-hover:opacity-100"
                                       style={{
@@ -3879,6 +4106,76 @@ const Settings: React.FC = () => {
                         </div>
                       )}
                     </div>
+
+                    {/* Fechas duplicadas con botón para eliminar */}
+                    {analysis.duplicates.length > 0 && (
+                      <div className="p-3 rounded-lg" style={{
+                        backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.08)',
+                        border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.2)'}`
+                      }}>
+                        <div className="text-xs font-semibold mb-2 flex items-center gap-2" style={{ color: styles.text.secondary }}>
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          Fechas duplicadas ({analysis.duplicates.length}):
+                        </div>
+                        <div className="space-y-2">
+                          {analysis.duplicates.map((duplicateDateStr, idx) => {
+                            // Buscar el asueto en holidays para mostrar motivo y país
+                            const holiday = holidays.find(h => {
+                              const hDate = h.fechaDate || parseDateFromDDMMYYYY(h.fecha);
+                              return getDateOnly(hDate) === duplicateDateStr;
+                            });
+
+                            return (
+                              <div 
+                                key={idx} 
+                                className="flex items-center justify-between gap-2 p-2 rounded-lg" 
+                                style={{
+                                  backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.05)' : 'rgba(148, 163, 184, 0.03)',
+                                  border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.15)'}`
+                                }}
+                              >
+                                <div className="flex-1">
+                                  <div className="text-xs font-mono font-semibold" style={{ color: styles.text.primary }}>
+                                    {duplicateDateStr}
+                                  </div>
+                                  {holiday && (
+                                    <div className="text-[10px] mt-0.5 flex items-center gap-2" style={{ color: styles.text.secondary }}>
+                                      {holiday.motivo && holiday.motivo !== 'Indefinido' && (
+                                        <span>🎉 {holiday.motivo}</span>
+                                      )}
+                                      {holiday.pais && holiday.pais !== 'Indefinido' && (
+                                        <span>📍 {holiday.pais}</span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                                <button
+                                  onClick={() => handleRemoveDuplicate(duplicateDateStr)}
+                                  className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5"
+                                  style={{
+                                    backgroundColor: theme === 'dark' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)',
+                                    color: '#ef4444',
+                                    border: `1px solid ${theme === 'dark' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(239, 68, 68, 0.25)' : 'rgba(239, 68, 68, 0.2)';
+                                    e.currentTarget.style.transform = 'scale(1.05)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)';
+                                    e.currentTarget.style.transform = 'scale(1)';
+                                  }}
+                                  title="Eliminar esta fecha duplicada"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  Eliminar
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Errores detallados */}
                     {analysis.errors.length > 0 && (
@@ -4128,8 +4425,7 @@ const Settings: React.FC = () => {
                 {(() => {
                   if (!pendingHolidayDate || !pendingHolidayDate.date) return 'Agregar fecha como asueto';
                   if (isDeleting) return 'Eliminando fecha...';
-                  const dateStr = pendingHolidayDate.date.toISOString().split('T')[0];
-                  const exists = holidays.some(h => h.toISOString().split('T')[0] === dateStr);
+                  const exists = isDateInHolidays(pendingHolidayDate.date);
                   return exists ? 'Eliminar fecha de asueto' : 'Agregar fecha como asueto';
                 })()}
               </h3>
@@ -4142,8 +4438,7 @@ const Settings: React.FC = () => {
                   {(() => {
                     if (!pendingHolidayDate || !pendingHolidayDate.date) return '¿Desea agregar la siguiente fecha al calendario de asuetos?';
                     if (isDeleting) return 'La fecha se está eliminando del calendario...';
-                    const dateStr = pendingHolidayDate.date.toISOString().split('T')[0];
-                    const exists = holidays.some(h => h.toISOString().split('T')[0] === dateStr);
+                    const exists = isDateInHolidays(pendingHolidayDate.date);
                     return exists 
                       ? 'Esta fecha ya está registrada como asueto. ¿Desea eliminarla del calendario?'
                       : '¿Desea agregar la siguiente fecha al calendario de asuetos?';
@@ -4194,14 +4489,12 @@ const Settings: React.FC = () => {
                 style={{
                   backgroundColor: (() => {
                     if (isDeleting) return '#991b1b';
-                    const dateStr = pendingHolidayDate.date.toISOString().split('T')[0];
-                    const exists = holidays.some(h => h.toISOString().split('T')[0] === dateStr);
+                    const exists = isDateInHolidays(pendingHolidayDate.date);
                     return exists ? '#991b1b' : (theme === 'dark' ? '#166534' : '#14532d');
                   })(),
                   boxShadow: (() => {
                     if (isDeleting) return '0 4px 12px rgba(153, 27, 27, 0.5)';
-                    const dateStr = pendingHolidayDate.date.toISOString().split('T')[0];
-                    const exists = holidays.some(h => h.toISOString().split('T')[0] === dateStr);
+                    const exists = isDateInHolidays(pendingHolidayDate.date);
                     return exists 
                       ? '0 2px 6px rgba(153, 27, 27, 0.3)'
                       : (theme === 'dark' 
@@ -4212,8 +4505,7 @@ const Settings: React.FC = () => {
                 }}
                 onMouseEnter={(e) => {
                   if (isDeleting) return;
-                  const dateStr = pendingHolidayDate.date.toISOString().split('T')[0];
-                  const exists = holidays.some(h => h.toISOString().split('T')[0] === dateStr);
+                  const exists = isDateInHolidays(pendingHolidayDate.date);
                   e.currentTarget.style.backgroundColor = exists ? '#7f1d1d' : (theme === 'dark' ? '#15803d' : '#166534');
                   e.currentTarget.style.boxShadow = exists
                     ? '0 4px 10px rgba(153, 27, 27, 0.4)'
@@ -4223,8 +4515,7 @@ const Settings: React.FC = () => {
                 }}
                 onMouseLeave={(e) => {
                   if (isDeleting) return;
-                  const dateStr = pendingHolidayDate.date.toISOString().split('T')[0];
-                  const exists = holidays.some(h => h.toISOString().split('T')[0] === dateStr);
+                  const exists = isDateInHolidays(pendingHolidayDate.date);
                   e.currentTarget.style.backgroundColor = exists ? '#991b1b' : (theme === 'dark' ? '#16a34a' : '#15803d');
                   e.currentTarget.style.boxShadow = exists
                     ? '0 2px 6px rgba(153, 27, 27, 0.3)'
@@ -4243,7 +4534,7 @@ const Settings: React.FC = () => {
                     <CheckCircle2 className="w-4 h-4" />
                     {(() => {
                       const dateStr = pendingHolidayDate.date.toISOString().split('T')[0];
-                      const exists = holidays.some(h => h.toISOString().split('T')[0] === dateStr);
+                      const exists = isDateInHolidays(pendingHolidayDate.date);
                       return exists ? 'Eliminar' : 'Confirmar';
                     })()}
                   </>
