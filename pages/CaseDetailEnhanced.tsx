@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { Case, CaseStatus, Cliente } from '../types';
-import { STATE_TRANSITIONS, STATE_COLORS } from '../constants';
+import { STATE_COLORS } from '../constants';
 import { ArrowLeft, MessageSquare, User, Building2, Phone, Mail, CheckCircle2, Clock, X, AlertTriangle, Lock, History, Send, Users, TrendingUp } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -141,7 +141,47 @@ const CaseDetail: React.FC = () => {
   };
 
   const normalizedStatus = normalizeStatus(caso.status);
-  const validTransitions = STATE_TRANSITIONS[normalizedStatus] || [];
+  
+  // Función para normalizar nombres de estados (maneja diferentes formatos de n8n)
+  const normalizeEstadoName = (estado: string): string => {
+    if (!estado) return '';
+    return estado.toLowerCase()
+      .replace(/\s+/g, '_')
+      .replace(/-/g, '_')
+      .trim();
+  };
+  
+  // Función para formatear nombres de estados para mostrar (de "pendiente_cliente" a "Pendiente Cliente")
+  // Basado únicamente en lo que viene del webhook
+  const formatEstadoName = (estado: string): string => {
+    if (!estado) return '';
+    
+    // Formatear desde snake_case o lowercase (sin usar estados hardcodeados)
+    return estado
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ')
+      .trim();
+  };
+  
+  // Obtener transiciones permitidas ÚNICAMENTE desde n8n (sin fallback a estados demo)
+  let validTransitions: CaseStatus[] = [];
+  
+  if (caso.transiciones && caso.transiciones.length > 0) {
+    // Filtrar transiciones que parten del estado actual
+    const estadoActual = caso.estado || caso.status || '';
+    const estadoActualNormalizado = normalizeEstadoName(estadoActual);
+    
+    const transicionesDelEstadoActual = caso.transiciones.filter((t) => {
+      const origenNormalizado = normalizeEstadoName(t.estado_origen || '');
+      return origenNormalizado === estadoActualNormalizado;
+    });
+    
+    // Extraer los estados destino y convertirlos a CaseStatus
+    const estadosDestino = transicionesDelEstadoActual.map(t => t.estado_destino).filter(Boolean);
+    validTransitions = estadosDestino.map(estado => normalizeStatus(estado)) as CaseStatus[];
+  }
+  // Si no hay transiciones del webhook, no mostrar botones (no usar fallback)
 
   // Calcular información SLA
   const createdDate = new Date(caso.createdAt);
@@ -389,27 +429,35 @@ const CaseDetail: React.FC = () => {
                  </div>
                ) : validTransitions.length > 0 ? (
                 <div className="flex flex-wrap gap-2.5">
-                   {validTransitions.map(st => (
+                   {validTransitions.map(st => {
+                     const estadoFormateado = formatEstadoName(st);
+                     return (
                         <button
                           key={st}
                        disabled={transitionLoading || !canPerformAction}
                        onClick={() => handleActionClick(st)}
                       className="px-4 py-2.5 rounded-lg text-xs font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:hover:translate-y-0"
-                      style={{backgroundColor: '#c8151b'}}
+                      style={{
+                        backgroundColor: '#c8151b',
+                        boxShadow: '0 2px 8px rgba(200, 21, 27, 0.3)'
+                      }}
                           onMouseEnter={(e) => {
                             if (!e.currentTarget.disabled) {
                           e.currentTarget.style.backgroundColor = '#dc2626';
                           e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(200, 21, 27, 0.4)';
                             }
                           }}
                           onMouseLeave={(e) => {
                         e.currentTarget.style.backgroundColor = '#c8151b';
                         e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(200, 21, 27, 0.3)';
                           }}
                         >
-                          {st}
+                          {estadoFormateado}
                         </button>
-                   ))}
+                     );
+                   })}
                  </div>
                  ) : (
                 <div className="p-4 rounded-lg border text-center" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>

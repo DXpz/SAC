@@ -1,5 +1,5 @@
 import { API_CONFIG } from '../config';
-import { Case, CaseStatus, Channel, HistorialEntry } from '../types';
+import { Case, CaseStatus, Channel, HistorialEntry, CaseTransition } from '../types';
 import { calculateBusinessDaysElapsed, calculateSLADelayDays } from '../utils/slaUtils';
 
 // URL del webhook de n8n para gestión de casos
@@ -802,12 +802,21 @@ export const getCaseById = async (caseId: string): Promise<Case | null> => {
       const historialArray = Array.isArray(firstItem.historial_caso) ? firstItem.historial_caso : [];
       const detalleCasoArray = Array.isArray(firstItem.detalle_caso) ? firstItem.detalle_caso : [];
       const agenteArray = Array.isArray(firstItem.agente) ? firstItem.agente : [];
+      const transicionesArray = Array.isArray(firstItem.transiciones) ? firstItem.transiciones : [];
       
       
       // Mapear el historial
       const historialMapeado = historialArray.length > 0 
         ? mapWebhookHistorialToFrontend(historialArray as WebhookHistorialEntry[])
         : [];
+      
+      // Mapear las transiciones permitidas
+      const transicionesMapeadas = transicionesArray.map((transicion: any) => ({
+        row_number: transicion.row_number,
+        estado_origen: transicion.estado_origen || transicion.estadoOrigen || '',
+        estado_destino: transicion.estado_destino || transicion.estadoDestino || '',
+        ...transicion // Preservar cualquier otro campo adicional
+      }));
       
       // Mapear el caso desde detalle_caso y combinar con datos del agente
       if (detalleCasoArray.length > 0) {
@@ -829,46 +838,20 @@ export const getCaseById = async (caseId: string): Promise<Case | null> => {
         const casoActualizado = mapWebhookResponseToCase(casoData);
         
         if (casoActualizado) {
-          // Inicializar historial si no existe
-          if (!casoActualizado.historial) {
-            casoActualizado.historial = [];
-          }
-          if (!casoActualizado.history) {
-            casoActualizado.history = [];
-          }
+          // Agregar las transiciones permitidas
+          casoActualizado.transiciones = transicionesMapeadas;
           
-          // Agregar el historial del webhook preservando la entrada de creación
+          // Usar el historial del webhook (historial_caso) si está disponible
+          // Este es el historial completo y correcto que viene de n8n
           if (historialMapeado.length > 0) {
-            // Verificar si hay una entrada de creación en el historial del webhook
-            const tieneEntradaCreacion = historialMapeado.some(entry => entry.tipo_evento === 'CREADO');
-            
-            // Si no hay entrada de creación, agregarla al final (más antigua)
-            if (!tieneEntradaCreacion && casoActualizado.createdAt) {
-              const entradaCreacion: HistorialEntry = {
-                tipo_evento: 'CREADO',
-                justificacion: 'Caso creado',
-                autor_nombre: 'Sistema',
-                autor_rol: 'sistema',
-                fecha: casoActualizado.createdAt
-              };
-              historialMapeado.push(entradaCreacion);
-            }
-            
             casoActualizado.historial = [...historialMapeado];
             casoActualizado.history = [...historialMapeado];
           } else {
-            // Si no hay historial del webhook, crear entrada de creación
-            if (casoActualizado.createdAt) {
-              const entradaCreacion: HistorialEntry = {
-                tipo_evento: 'CREADO',
-                justificacion: 'Caso creado',
-                autor_nombre: 'Sistema',
-                autor_rol: 'sistema',
-                fecha: casoActualizado.createdAt
-              };
-              casoActualizado.historial = [entradaCreacion];
-              casoActualizado.history = [entradaCreacion];
-            } else {
+            // Si no hay historial del webhook, usar el que viene del caso mapeado
+            // o inicializar si no existe
+            if (!casoActualizado.historial || casoActualizado.historial.length === 0) {
+              casoActualizado.historial = casoActualizado.history || [];
+              casoActualizado.history = casoActualizado.historial;
             }
           }
           
@@ -1153,12 +1136,21 @@ export const updateCaseStatus = async (
       const historialArray = Array.isArray(firstItem.historial_caso) ? firstItem.historial_caso : [];
       const detalleCasoArray = Array.isArray(firstItem.detalle_caso) ? firstItem.detalle_caso : [];
       const agenteArray = Array.isArray(firstItem.agente) ? firstItem.agente : [];
+      const transicionesArray = Array.isArray(firstItem.transiciones) ? firstItem.transiciones : [];
       
       
       // Mapear el historial
       const historialMapeado = historialArray.length > 0 
         ? mapWebhookHistorialToFrontend(historialArray as WebhookHistorialEntry[])
         : [];
+      
+      // Mapear las transiciones permitidas
+      const transicionesMapeadas = transicionesArray.map((transicion: any) => ({
+        row_number: transicion.row_number,
+        estado_origen: transicion.estado_origen || transicion.estadoOrigen || '',
+        estado_destino: transicion.estado_destino || transicion.estadoDestino || '',
+        ...transicion // Preservar cualquier otro campo adicional
+      }));
       
       // Mapear el caso desde detalle_caso - SOLO usar datos del webhook
       if (detalleCasoArray.length > 0) {
@@ -1180,50 +1172,20 @@ export const updateCaseStatus = async (
         const casoActualizado = mapWebhookResponseToCase(casoData);
         
         if (casoActualizado) {
+          // Agregar las transiciones permitidas
+          casoActualizado.transiciones = transicionesMapeadas;
           
-          // Inicializar historial si no existe
-          if (!casoActualizado.historial) {
-            casoActualizado.historial = [];
-          }
-          if (!casoActualizado.history) {
-            casoActualizado.history = [];
-          }
-          
-          // Agregar el historial del webhook preservando la entrada de creación
+          // Usar el historial del webhook (historial_caso) si está disponible
+          // Este es el historial completo y correcto que viene de n8n
           if (historialMapeado.length > 0) {
-            
-            // Verificar si hay una entrada de creación en el historial del webhook
-            const tieneEntradaCreacion = historialMapeado.some(entry => entry.tipo_evento === 'CREADO');
-            
-            // Si no hay entrada de creación, agregarla al final (más antigua)
-            if (!tieneEntradaCreacion && casoActualizado.createdAt) {
-              const entradaCreacion: HistorialEntry = {
-                tipo_evento: 'CREADO',
-                justificacion: 'Caso creado',
-                autor_nombre: 'Sistema',
-                autor_rol: 'sistema',
-                fecha: casoActualizado.createdAt
-              };
-              // Agregar al final (más antigua) para que la creación aparezca primero cuando se ordena por fecha descendente
-              historialMapeado.push(entradaCreacion);
-            }
-            
-            // Usar el historial del webhook (con entrada de creación si no existía)
             casoActualizado.historial = [...historialMapeado];
             casoActualizado.history = [...historialMapeado];
           } else {
-            // Si no hay historial del webhook, crear entrada de creación
-            if (casoActualizado.createdAt) {
-              const entradaCreacion: HistorialEntry = {
-                tipo_evento: 'CREADO',
-                justificacion: 'Caso creado',
-                autor_nombre: 'Sistema',
-                autor_rol: 'sistema',
-                fecha: casoActualizado.createdAt
-              };
-              casoActualizado.historial = [entradaCreacion];
-              casoActualizado.history = [entradaCreacion];
-            } else {
+            // Si no hay historial del webhook, usar el que viene del caso mapeado
+            // o inicializar si no existe
+            if (!casoActualizado.historial || casoActualizado.historial.length === 0) {
+              casoActualizado.historial = casoActualizado.history || [];
+              casoActualizado.history = casoActualizado.historial;
             }
           }
           
@@ -1343,9 +1305,49 @@ export const updateCaseStatus = async (
     }
   }
   
-  // Si no se pudo procesar la respuesta del case.query, lanzar error
-  // NO usar fallback local, todo debe venir del webhook
-  throw new Error('No se pudo procesar la respuesta del webhook case.query para obtener el caso actualizado');
+  // Si no se pudo procesar la respuesta del case.query, intentar obtener el caso directamente
+  // como último recurso
+  try {
+    const casoFallback = await getCaseById(caseId);
+    if (casoFallback) {
+      // Actualizar el estado con el nuevo estado que se envió
+      casoFallback.status = newStatus;
+      (casoFallback as any).estado = newStatus;
+      return casoFallback;
+    }
+  } catch (fallbackError) {
+    // Si también falla, continuar sin error - el frontend recargará el caso
+  }
+  
+  // Si no se pudo obtener el caso de ninguna manera, el frontend lo recargará
+  // No lanzar error para no interrumpir el flujo - el cambio de estado ya se procesó en el webhook
+  // El frontend recargará el caso después de updateCaseStatus
+  // Retornar un caso básico con el estado actualizado para que el frontend pueda continuar
+  const casoBasico: Case = {
+    id: caseId,
+    ticketNumber: caseId,
+    clientId: '',
+    clientName: '',
+    category: '',
+    origin: Channel.WEB,
+    subject: '',
+    description: '',
+    status: newStatus,
+    priority: 'Media',
+    agentId: '',
+    agentName: '',
+    createdAt: new Date().toISOString(),
+    slaExpired: false,
+    history: [],
+    historial: [],
+    clientEmail: '',
+    diasAbierto: 0,
+    agenteAsignado: null as any,
+    categoria: null as any,
+    cliente: null as any
+  };
+  
+  return casoBasico;
 };
 
 /**

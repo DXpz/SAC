@@ -15,8 +15,7 @@ interface ProtectedRouteProps {
  * - Si no hay usuario autenticado, redirige al login (público)
  * - Si hay roles específicos requeridos y el usuario no tiene uno de esos roles, redirige a /unauthorized
  * - Los assets estáticos en /public son accesibles públicamente sin pasar por este componente
- * - Valida que el usuario tenga token válido (debe estar registrado en n8n o ser cuenta demo permitida)
- * - Las cuentas demo (agente@intelfon.com, supervisor@intelfon.com, gerente@intelfon.com) también son válidas
+ * - Valida que el usuario tenga token válido (debe estar registrado en n8n)
  */
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
   const user = api.getUser();

@@ -214,16 +214,6 @@ const Login: React.FC = () => {
     };
   }, []);
 
-  const handleDemoClick = (demoEmail: string) => {
-    setEmail(demoEmail);
-    setEmailTouched(false);
-    setEmailError('');
-    // Enfocar el campo de contraseña después de un breve delay
-    setTimeout(() => {
-      const passwordInput = document.querySelector('input[type="password"]') as HTMLInputElement;
-      if (passwordInput) passwordInput.focus();
-    }, 100);
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden bg-black">
@@ -411,108 +401,6 @@ const Login: React.FC = () => {
               )}
             </button>
           </form>
-
-          <div className="mt-8 pt-6 text-center" style={{ borderTop: '1px solid rgba(100, 116, 139, 0.2)' }}>
-            <p className="text-xs text-slate-300 font-medium tracking-normal mb-4">Acceso Rápido Demo</p>
-            <div className="flex flex-wrap justify-center gap-2.5">
-              <button 
-                onClick={() => handleDemoClick('agente@intelfon.com')}
-                className="px-5 py-2.5 text-xs font-medium text-slate-300 rounded-full border transition-all relative group"
-                style={{
-                  background: 'rgba(30, 30, 30, 0.6)',
-                  borderColor: 'rgba(100, 116, 139, 0.3)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(40, 40, 40, 0.8)';
-                  e.currentTarget.style.borderColor = 'rgba(200, 21, 27, 0.4)';
-                  e.currentTarget.style.color = '#ffffff';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(30, 30, 30, 0.6)';
-                  e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.3)';
-                  e.currentTarget.style.color = '#cbd5e1';
-                }}
-                title="Acceso rápido como Agente - Gestiona casos asignados"
-              >
-                Agente
-                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 text-xs text-slate-300 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap border border-slate-700">
-                  Gestiona casos asignados
-                </span>
-              </button>
-              <button 
-                onClick={() => handleDemoClick('supervisor@intelfon.com')}
-                className="px-5 py-2.5 text-xs font-medium text-slate-300 rounded-full border transition-all relative group"
-                style={{
-                  background: 'rgba(30, 30, 30, 0.6)',
-                  borderColor: 'rgba(100, 116, 139, 0.3)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(40, 40, 40, 0.8)';
-                  e.currentTarget.style.borderColor = 'rgba(200, 21, 27, 0.4)';
-                  e.currentTarget.style.color = '#ffffff';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(30, 30, 30, 0.6)';
-                  e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.3)';
-                  e.currentTarget.style.color = '#cbd5e1';
-                }}
-                title="Acceso rápido como Supervisor - Supervisa equipo y casos"
-              >
-                Supervisor
-                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 text-xs text-slate-300 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap border border-slate-700">
-                  Supervisa equipo y casos
-                </span>
-              </button>
-              <button 
-                onClick={() => handleDemoClick('gerente@intelfon.com')}
-                className="px-5 py-2.5 text-xs font-medium text-slate-300 rounded-full border transition-all relative group"
-                style={{
-                  background: 'rgba(30, 30, 30, 0.6)',
-                  borderColor: 'rgba(100, 116, 139, 0.3)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(40, 40, 40, 0.8)';
-                  e.currentTarget.style.borderColor = 'rgba(200, 21, 27, 0.4)';
-                  e.currentTarget.style.color = '#ffffff';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(30, 30, 30, 0.6)';
-                  e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.3)';
-                  e.currentTarget.style.color = '#cbd5e1';
-                }}
-                title="Acceso rápido como Gerente - Dashboard ejecutivo"
-              >
-                Gerente
-                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 text-xs text-slate-300 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap border border-slate-700">
-                  Dashboard ejecutivo
-                </span>
-              </button>
-              <button 
-                onClick={() => handleDemoClick('admin@intelfon.com')}
-                className="px-5 py-2.5 text-xs font-medium text-slate-300 rounded-full border transition-all relative group"
-                style={{
-                  background: 'rgba(30, 30, 30, 0.6)',
-                  borderColor: 'rgba(100, 116, 139, 0.3)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(40, 40, 40, 0.8)';
-                  e.currentTarget.style.borderColor = 'rgba(200, 21, 27, 0.4)';
-                  e.currentTarget.style.color = '#ffffff';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(30, 30, 30, 0.6)';
-                  e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.3)';
-                  e.currentTarget.style.color = '#cbd5e1';
-                }}
-                title="Acceso rápido como Admin - Administración de usuarios"
-              >
-                Admin
-                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 text-xs text-slate-300 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap border border-slate-700">
-                  Administración de usuarios
-                </span>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 

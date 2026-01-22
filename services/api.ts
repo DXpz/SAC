@@ -262,18 +262,19 @@ const callAsuetosWebhook = async <T = any>(
 // Helpers para construir el payload estándar esperado por n8n
 const buildActorPayload = (user: User | null) => {
   if (!user) {
-    return {
-      user_id: 0,
-      email: 'demo@intelfon.com',
-      role: 'AGENTE',
-    };
+    throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
   }
 
   const numericId = Number((user as any).user_id ?? user.id);
+  const userEmail = sessionStorage.getItem('intelfon_user_email') || (user as any).email;
+
+  if (!userEmail) {
+    throw new Error('Usuario sin email. Por favor, inicia sesión nuevamente.');
+  }
 
   return {
     user_id: Number.isNaN(numericId) ? 0 : numericId,
-    email: (user as any).email || 'demo@intelfon.com',
+    email: userEmail,
     role: user.role,
   };
 };
@@ -459,44 +460,6 @@ const authenticateWithWebhook = async (email: string, password: string): Promise
   return user;
 };
 
-// Cuentas demo permitidas (solo para desarrollo/pruebas)
-// Estas cuentas pueden acceder sin pasar por el webhook
-const DEMO_ACCOUNTS: Record<string, { role: Role; name: string }> = {
-  'agente@intelfon.com': { role: 'AGENTE', name: 'Agente Demo' },
-  'supervisor@intelfon.com': { role: 'SUPERVISOR', name: 'Supervisor Demo' },
-  'gerente@intelfon.com': { role: 'GERENTE', name: 'Gerente Demo' },
-  'admin@intelfon.com': { role: 'ADMIN', name: 'Admin Demo' },
-};
-
-// Función auxiliar para autenticación en modo demo (solo para cuentas demo permitidas)
-const authenticateDemo = (email: string): User => {
-  initStorage();
-  
-  const emailLower = (email || '').toLowerCase().trim();
-  const demoAccount = DEMO_ACCOUNTS[emailLower];
-  
-  if (!demoAccount) {
-    throw new Error('Cuenta demo no permitida');
-  }
-  
-  const user: User = {
-    id: `demo-${demoAccount.role.toLowerCase()}`,
-    name: demoAccount.name,
-    role: demoAccount.role as Role,
-    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(demoAccount.name)}&background=0f172a&color=fff`
-  };
-
-  // Generar un token demo simple
-  const demoToken = `demo-token-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
-  // Guardar el email usado para login en sessionStorage (se limpia al cerrar sesión)
-  sessionStorage.setItem('intelfon_user_email', emailLower);
-  
-  localStorage.setItem('intelfon_token', demoToken);
-  localStorage.setItem('intelfon_user', JSON.stringify(user));
-  
-  return user;
-};
 
 export const api = {
   getUser(): User | null {
@@ -525,13 +488,7 @@ export const api = {
     
     const emailLower = email.trim().toLowerCase();
     
-    // Verificar si es una cuenta demo permitida
-    if (DEMO_ACCOUNTS[emailLower]) {
-      // Para cuentas demo, cualquier contraseña es válida
-      return authenticateDemo(emailLower);
-    }
-    
-    // Para todas las demás cuentas, DEBEN estar registradas y almacenadas en el sistema
+    // Todas las cuentas DEBEN estar registradas y almacenadas en el sistema
     // El webhook de Make.com verifica si el usuario existe en su base de datos
     // Si el usuario no está almacenado, el webhook retornará un error
     try {
@@ -2572,7 +2529,7 @@ export const api = {
       action: 'asueto.create',
       actor: {
         user_id: actor.user_id || 0,
-        email: actor.email || 'admin@intelfon.com',
+        email: actor.email,
         role: mappedRole || 'ADMINISTRADOR'
       },
       data: {
@@ -2627,7 +2584,7 @@ export const api = {
       action: 'asueto.delete',
       actor: {
         user_id: actor.user_id || 0,
-        email: actor.email || 'admin@intelfon.com',
+        email: actor.email,
         role: mappedRole || 'ADMINISTRADOR'
       },
       data: {
@@ -2681,7 +2638,7 @@ export const api = {
       action: 'asueto.create',
       actor: {
         user_id: actor.user_id || 0,
-        email: actor.email || 'admin@intelfon.com',
+        email: actor.email,
         role: mappedRole || 'ADMINISTRADOR'
       },
       data: {
@@ -2727,7 +2684,7 @@ export const api = {
       action: 'asueto.read',
       actor: {
         user_id: actor.user_id || 0,
-        email: actor.email || 'admin@intelfon.com',
+        email: actor.email,
         role: mappedRole || 'ADMINISTRADOR'
       },
       data: {}

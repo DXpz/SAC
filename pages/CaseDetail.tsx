@@ -2,8 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { Case, CaseStatus, Cliente, AutorRol, HistorialEntry } from '../types';
-import { CASE_TRANSITIONS, CASE_STATES, getStateColor, getStateBadgeColor } from '../constants';
-import { getAllowedTransitions } from '../services/caseStatusService';
+import { getStateBadgeColor } from '../constants';
 import { updateCaseStatus, updateCaseData } from '../services/caseService';
 import { ArrowLeft, MessageSquare, User, Building2, Phone, Mail, CheckCircle2, Clock, X, AlertTriangle, Lock, History, Users, TrendingUp, AlertCircle, Edit, Save, Search, Folder } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
@@ -664,14 +663,49 @@ const CaseDetail: React.FC = () => {
     
     // VALIDACIÓN: No permitir cambiar al mismo estado
     if (estadoActual === newState) {
-      alert(`El caso ya está en el estado "${estadoActual}". No puedes cambiarlo al mismo estado.`);
+      const estadoFormateado = formatEstadoName(estadoActual);
+      alert(`El caso ya está en el estado "${estadoFormateado}". No puedes cambiarlo al mismo estado.`);
       return;
     }
     
-    const transicionesPermitidas = getAllowedTransitions(estadoActual);
+    // Función para normalizar nombres de estados (maneja diferentes formatos de n8n)
+    const normalizeEstadoName = (estado: string): string => {
+      if (!estado) return '';
+      return estado.toLowerCase()
+        .replace(/\s+/g, '_')
+        .replace(/-/g, '_')
+        .trim();
+    };
+    
+    // Obtener transiciones permitidas ÚNICAMENTE desde n8n (sin fallback a estados demo)
+    let transicionesPermitidas: string[] = [];
+    
+    if (caso?.transiciones && caso.transiciones.length > 0) {
+      // Normalizar el estado actual para comparación
+      const estadoActualNormalizado = normalizeEstadoName(estadoActual);
+      
+      // Filtrar transiciones que parten del estado actual
+      const transicionesDelEstadoActual = caso.transiciones.filter((t) => {
+        const origenNormalizado = normalizeEstadoName(t.estado_origen || '');
+        return origenNormalizado === estadoActualNormalizado;
+      });
+      
+      // Extraer los estados destino
+      transicionesPermitidas = transicionesDelEstadoActual.map(t => t.estado_destino).filter(Boolean);
+    }
+    // Si no hay transiciones del webhook, no permitir cambios (no usar fallback)
 
-    if (!transicionesPermitidas.includes(newState)) {
-      alert(`No se puede cambiar de "${estadoActual}" a "${newState}"`);
+    // Normalizar nombres de estados para comparación
+    const estadoActualNormalizado = normalizeEstadoName(estadoActual);
+    const newStateNormalizado = normalizeEstadoName(newState);
+    
+    const transicionesPermitidasNormalizadas = transicionesPermitidas.map(normalizeEstadoName);
+    
+    if (!transicionesPermitidasNormalizadas.includes(newStateNormalizado)) {
+      const estadoActualFormateado = formatEstadoName(estadoActual);
+      const newStateFormateado = formatEstadoName(newState);
+      const transicionesFormateadas = transicionesPermitidas.map(formatEstadoName).join(', ');
+      alert(`No se puede cambiar de "${estadoActualFormateado}" a "${newStateFormateado}". Transiciones permitidas: ${transicionesFormateadas}`);
       return;
     }
 
@@ -978,9 +1012,56 @@ const CaseDetail: React.FC = () => {
     </div>
   );
 
-  // Obtener transiciones permitidas usando el nuevo sistema
+  // Obtener transiciones permitidas desde n8n (si están disponibles) o usar fallback
   const estadoActual = caso.estado || caso.status || 'Nuevo';
-  const validTransitions = getAllowedTransitions(estadoActual);
+  
+  // Función para normalizar nombres de estados (maneja diferentes formatos de n8n)
+  const normalizeEstadoName = (estado: string): string => {
+    if (!estado) return '';
+    // Convertir a minúsculas y normalizar espacios/guiones bajos
+    return estado.toLowerCase()
+      .replace(/\s+/g, '_')
+      .replace(/-/g, '_')
+      .trim();
+  };
+  
+  // Función para formatear nombres de estados para mostrar (de "pendiente_cliente" a "Pendiente Cliente")
+  // Basado únicamente en lo que viene del webhook
+  const formatEstadoName = (estado: string): string => {
+    if (!estado) return '';
+    
+    // Formatear desde snake_case o lowercase (sin usar CASE_STATES)
+    return estado
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ')
+      .trim();
+  };
+  
+  // Obtener transiciones permitidas ÚNICAMENTE desde n8n (sin fallback a estados demo)
+  let validTransitions: string[] = [];
+  
+  if (caso.transiciones && caso.transiciones.length > 0) {
+    // Normalizar el estado actual para comparación
+    const estadoActualNormalizado = normalizeEstadoName(estadoActual);
+    
+    // Filtrar transiciones que parten del estado actual
+    const transicionesDelEstadoActual = caso.transiciones.filter((t) => {
+      const origenNormalizado = normalizeEstadoName(t.estado_origen || '');
+      return origenNormalizado === estadoActualNormalizado;
+    });
+    
+    // Extraer los estados destino únicos y mantener su formato original
+    validTransitions = [...new Set(transicionesDelEstadoActual.map(t => t.estado_destino))].filter(Boolean);
+    
+    console.log('[CaseDetail] Transiciones de n8n:', {
+      estadoActual,
+      estadoActualNormalizado,
+      transicionesEncontradas: transicionesDelEstadoActual.length,
+      validTransitions
+    });
+  }
+  // Si no hay transiciones del webhook, no mostrar botones (no usar fallback)
 
   // Calcular información SLA
   const createdDate = new Date(caso.createdAt);
@@ -1377,25 +1458,32 @@ const CaseDetail: React.FC = () => {
                ) : validTransitions.length > 0 ? (
                 <div className="flex flex-wrap gap-2.5">
                    {validTransitions.map((estadoDestino: string) => {
-                     const buttonColor = getStateColor(estadoDestino);
-                     const stateConfig = CASE_STATES[estadoDestino as keyof typeof CASE_STATES];
+                     const estadoFormateado = formatEstadoName(estadoDestino);
                      
                      return (
                         <button
                           key={estadoDestino}
                           disabled={transitionLoading || !canPerformAction}
                           onClick={() => handleActionClick(estadoDestino)}
-                          className={`px-4 py-2.5 rounded-lg text-xs font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:hover:translate-y-0 ${buttonColor}`}
+                          className="px-4 py-2.5 rounded-lg text-xs font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:hover:translate-y-0"
+                          style={{
+                            backgroundColor: '#c8151b',
+                            boxShadow: '0 2px 8px rgba(200, 21, 27, 0.3)'
+                          }}
                           onMouseEnter={(e) => {
                             if (!e.currentTarget.disabled) {
                               e.currentTarget.style.transform = 'translateY(-2px)';
+                              e.currentTarget.style.backgroundColor = '#dc2626';
+                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(200, 21, 27, 0.4)';
                             }
                           }}
                           onMouseLeave={(e) => {
                             e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.backgroundColor = '#c8151b';
+                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(200, 21, 27, 0.3)';
                           }}
                         >
-                          {stateConfig?.label || estadoDestino}
+                          {estadoFormateado}
                         </button>
                      );
                    })}

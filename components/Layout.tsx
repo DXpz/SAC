@@ -62,7 +62,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]); // Remover 'user' de las dependencias para evitar loops
 
-  // Validar que el usuario tenga token válido (debe estar registrado en n8n o ser cuenta demo)
+  // Validar que el usuario tenga token válido (debe estar registrado en n8n)
   useEffect(() => {
     const token = api.getToken();
     
@@ -80,7 +80,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       return;
     }
     
-    // Validar rol (permite cuentas demo y cuentas de n8n)
+    // Validar rol (solo cuentas registradas en n8n)
     if (!['AGENTE', 'SUPERVISOR', 'GERENTE', 'ADMIN'].includes(user.role)) {
       api.logout();
       navigate('/login');

@@ -83,6 +83,13 @@ export interface HistorialEntry {
   fecha: string;
 }
 
+export interface CaseTransition {
+  row_number?: number;
+  estado_origen: string;
+  estado_destino: string;
+  [key: string]: any; // Para campos adicionales que pueda retornar el webhook
+}
+
 export interface Case {
   id: string;
   ticketNumber: string;
@@ -107,6 +114,8 @@ export interface Case {
   agenteAsignado: Agente;
   categoria: Categoria;
   cliente: Cliente;
+  // Transiciones permitidas para este caso (viene de case.query)
+  transiciones?: CaseTransition[];
 }
 
 // Mantener Caso para compatibilidad con componentes existentes

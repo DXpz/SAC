@@ -55,12 +55,12 @@ const App: React.FC = () => {
   }, []);
 
   // Validar al cargar la aplicación que el usuario tenga token válido
-  // Si hay usuario sin token, limpiar datos (no está registrado en n8n o no es cuenta demo)
+  // Si hay usuario sin token, limpiar datos (no está registrado en n8n)
   useEffect(() => {
     const user = api.getUser();
     const token = api.getToken();
     
-    // Si hay usuario pero NO hay token, limpiar (no está registrado en n8n ni es cuenta demo)
+    // Si hay usuario pero NO hay token, limpiar (no está registrado en n8n)
     if (user && !token) {
       api.logout();
     }
@@ -70,7 +70,7 @@ const App: React.FC = () => {
       api.logout();
     }
     
-    // Si hay ambos, validar estructura (permite cuentas demo y cuentas de n8n)
+    // Si hay ambos, validar estructura (solo cuentas registradas en n8n)
     if (user && token) {
       if (!user.id || !user.name || !user.role) {
         api.logout();
@@ -138,7 +138,7 @@ const App: React.FC = () => {
                   <AdminBandejaCasos />
                 } />
                 
-                {/* Administración de Usuarios - Solo para ADMIN (Demo) */}
+                {/* Administración de Usuarios - Solo para ADMIN */}
                 <Route path="admin/usuarios" element={
                   <AdminUsers />
                 } />
