@@ -74,7 +74,7 @@ const App: React.FC = () => {
     if (user && token) {
       if (!user.id || !user.name || !user.role) {
         api.logout();
-      } else if (!['AGENTE', 'SUPERVISOR', 'GERENTE', 'ADMIN'].includes(user.role)) {
+      } else if (!['AGENTE', 'SUPERVISOR', 'GERENTE', 'ADMIN', 'ADMINISTRADOR'].includes(user.role)) {
         api.logout();
       }
     }

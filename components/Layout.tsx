@@ -81,7 +81,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
     
     // Validar rol (solo cuentas registradas en n8n)
-    if (!['AGENTE', 'SUPERVISOR', 'GERENTE', 'ADMIN'].includes(user.role)) {
+    if (!['AGENTE', 'SUPERVISOR', 'GERENTE', 'ADMIN', 'ADMINISTRADOR'].includes(user.role)) {
       api.logout();
       navigate('/login');
       return;
@@ -96,11 +96,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   // Función para obtener el nombre del rol en formato legible
   const getRoleName = (role: Role | undefined): string => {
     if (!role) return 'Usuario';
-    const roleNames: Record<Role, string> = {
+    const roleNames: Record<string, string> = {
       'AGENTE': 'Agente',
       'SUPERVISOR': 'Supervisor',
       'GERENTE': 'Gerente',
-      'ADMIN': 'Administrador'
+      'ADMIN': 'Administrador',
+      'ADMINISTRADOR': 'Administrador'
     };
     return roleNames[role] || role;
   };
@@ -146,25 +147,25 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         name: 'Panel Admin', 
         path: '/app/admin', 
         icon: LayoutDashboard,
-        roles: ['ADMIN'] as Role[]
+        roles: ['ADMIN', 'ADMINISTRADOR'] as Role[]
     },
     { 
         name: 'Bandeja de Casos', 
         path: '/app/admin/casos', 
         icon: Ticket,
-        roles: ['ADMIN'] as Role[]
+        roles: ['ADMIN', 'ADMINISTRADOR'] as Role[]
     },
     { 
         name: 'Administración de Usuarios', 
         path: '/app/admin/usuarios', 
         icon: Users,
-        roles: ['ADMIN'] as Role[]
+        roles: ['ADMIN', 'ADMINISTRADOR'] as Role[]
     },
     { 
         name: 'Configuración', 
         path: '/app/admin/settings', 
         icon: Settings,
-        roles: ['ADMIN'] as Role[]
+        roles: ['ADMIN', 'ADMINISTRADOR'] as Role[]
     },
   ];
 

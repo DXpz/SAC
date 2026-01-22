@@ -23,6 +23,7 @@ const AdminPanel: React.FC = () => {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [kpis, setKpis] = useState<KPI | null>(null);
+  const [estados, setEstados] = useState<Array<{ id: string; name: string; order: number; isFinal: boolean }>>([]);
   const navigate = useNavigate();
   const { theme } = useTheme();
   const location = useLocation();
@@ -64,13 +65,14 @@ const AdminPanel: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [clientesList, casosList, agentesList, categoriasList, usuariosList, kpisData] = await Promise.allSettled([
+      const [clientesList, casosList, agentesList, categoriasList, usuariosList, kpisData, estadosList] = await Promise.allSettled([
         loadClientes(),
         api.getCases(),
         api.getAgentes(),
         api.getCategorias(),
         api.getUsuarios(),
-        api.getKPIs()
+        api.getKPIs(),
+        api.readEstados()
       ]);
       
       setClientes(clientesList.status === 'fulfilled' ? clientesList.value : []);
@@ -78,6 +80,17 @@ const AdminPanel: React.FC = () => {
       setCategorias(categoriasList.status === 'fulfilled' ? categoriasList.value : []);
       setUsuarios(usuariosList.status === 'fulfilled' ? usuariosList.value : []);
       setKpis(kpisData.status === 'fulfilled' ? kpisData.value : null);
+      
+      // Cargar estados del webhook
+      if (estadosList.status === 'fulfilled' && estadosList.value && Array.isArray(estadosList.value) && estadosList.value.length > 0) {
+        const estadosFromWebhook = estadosList.value.map((s: any) => ({
+          id: String(s.id || ''),
+          name: String(s.name || s.nombre || ''),
+          order: Number(s.order || s.orden || 0),
+          isFinal: s.isFinal === true || s.is_final === true || s.estado_final === true || false
+        }));
+        setEstados(estadosFromWebhook);
+      }
       
       const casosData = casosList.status === 'fulfilled' ? casosList.value : [];
       const clientesData = clientesList.status === 'fulfilled' ? clientesList.value : [];
@@ -91,6 +104,7 @@ const AdminPanel: React.FC = () => {
       setCategorias([]);
       setUsuarios([]);
       setKpis(null);
+      setEstados([]);
       setAllCasos([]);
     } finally {
       setLoading(false);
@@ -105,17 +119,67 @@ const AdminPanel: React.FC = () => {
   const casosSeguros = Array.isArray(allCasos) ? allCasos : [];
   const totalCasos = casosSeguros.length;
   
-  // Usar normalización de estados para cálculos consistentes
-  const casosAbiertos = casosSeguros.filter(c => {
-    if (!c) return false;
-    const normalizedStatus = normalizeStatus(c.status);
-    return normalizedStatus !== CaseStatus.RESUELTO && normalizedStatus !== CaseStatus.CERRADO;
-  }).length;
+  // Función helper para obtener el estado del caso desde la lista de estados del webhook
+  const getEstadoFromWebhook = (casoStatus: string) => {
+    if (!estados || estados.length === 0) {
+      return null;
+    }
+    
+    const casoStatusStr = String(casoStatus || '').trim();
+    const casoStatusLower = casoStatusStr.toLowerCase();
+    
+    for (const estado of estados) {
+      const estadoId = String(estado.id || '').trim();
+      const estadoName = String(estado.name || '').trim();
+      const estadoNameLower = estadoName.toLowerCase();
+      const estadoNameNormalized = estadoNameLower.replace(/\s+/g, '').replace(/[_-]/g, '');
+      const casoStatusNormalized = casoStatusLower.replace(/\s+/g, '').replace(/[_-]/g, '');
+      
+      // Comparar por ID o nombre
+      const matches = estadoId === casoStatusStr ||
+                     estadoNameLower === casoStatusLower ||
+                     estadoNameNormalized === casoStatusNormalized;
+      
+      if (matches) {
+        return estado;
+      }
+    }
+    
+    return null;
+  };
+
+  // Función helper para determinar si un caso está en un estado final (isFinal: true)
+  const isEstadoFinal = (casoStatus: string): boolean => {
+    if (!estados || estados.length === 0) {
+      // Fallback: usar estados hardcodeados si no hay estados del webhook
+      const normalizedStatus = normalizeStatus(casoStatus);
+      return normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO;
+    }
+    
+    // Buscar el estado del caso en la lista de estados del webhook
+    const estadoDelCaso = getEstadoFromWebhook(casoStatus);
+    
+    if (!estadoDelCaso) {
+      // Si no se encuentra el estado, usar fallback
+      const normalizedStatus = normalizeStatus(casoStatus);
+      return normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO;
+    }
+    
+    // Considerar cerrado si el estado tiene isFinal: true
+    return estadoDelCaso.isFinal === true;
+  };
   
+  // Usar estados finales del webhook para determinar casos cerrados
   const casosCerrados = casosSeguros.filter(c => {
     if (!c) return false;
-    const normalizedStatus = normalizeStatus(c.status);
-    return normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO;
+    const casoStatus = String(c.status || (c as any).estado || '').trim();
+    return isEstadoFinal(casoStatus);
+  }).length;
+  
+  const casosAbiertos = casosSeguros.filter(c => {
+    if (!c) return false;
+    const casoStatus = String(c.status || (c as any).estado || '').trim();
+    return !isEstadoFinal(casoStatus);
   }).length;
   
   // Calcular casos críticos usando la misma lógica que AlertasCriticas
@@ -152,32 +216,84 @@ const AdminPanel: React.FC = () => {
     return (c.diasAbierto || 0) > slaDias;
   }).length;
   
-  const casosPorEstado = {
-    nuevo: casosSeguros.filter(c => {
-      if (!c) return false;
-      return normalizeStatus(c.status) === CaseStatus.NUEVO;
-    }).length,
-    enProceso: casosSeguros.filter(c => {
-      if (!c) return false;
-      return normalizeStatus(c.status) === CaseStatus.EN_PROCESO;
-    }).length,
-    pendienteCliente: casosSeguros.filter(c => {
-      if (!c) return false;
-      return normalizeStatus(c.status) === CaseStatus.PENDIENTE_CLIENTE;
-    }).length,
-    escalado: casosSeguros.filter(c => {
-      if (!c) return false;
-      return normalizeStatus(c.status) === CaseStatus.ESCALADO;
-    }).length,
-    resuelto: casosSeguros.filter(c => {
-      if (!c) return false;
-      return normalizeStatus(c.status) === CaseStatus.RESUELTO;
-    }).length,
-    cerrado: casosSeguros.filter(c => {
-      if (!c) return false;
-      return normalizeStatus(c.status) === CaseStatus.CERRADO;
-    }).length
-  };
+  // Calcular casos por estado usando los estados dinámicos del webhook
+  const casosPorEstado = useMemo(() => {
+    if (!estados || estados.length === 0) {
+      // Fallback a estados hardcodeados si no hay estados del webhook
+      return {
+        nuevo: casosSeguros.filter(c => {
+          if (!c) return false;
+          return normalizeStatus(c.status) === CaseStatus.NUEVO;
+        }).length,
+        enProceso: casosSeguros.filter(c => {
+          if (!c) return false;
+          return normalizeStatus(c.status) === CaseStatus.EN_PROCESO;
+        }).length,
+        pendienteCliente: casosSeguros.filter(c => {
+          if (!c) return false;
+          return normalizeStatus(c.status) === CaseStatus.PENDIENTE_CLIENTE;
+        }).length,
+        escalado: casosSeguros.filter(c => {
+          if (!c) return false;
+          return normalizeStatus(c.status) === CaseStatus.ESCALADO;
+        }).length,
+        resuelto: casosSeguros.filter(c => {
+          if (!c) return false;
+          return normalizeStatus(c.status) === CaseStatus.RESUELTO;
+        }).length,
+        cerrado: casosSeguros.filter(c => {
+          if (!c) return false;
+          return normalizeStatus(c.status) === CaseStatus.CERRADO;
+        }).length
+      };
+    }
+
+    // Usar estados dinámicos del webhook
+    const estadoCounts: Record<string, number> = {};
+    estados.forEach(estado => {
+      const estadoId = String(estado.id || '').trim();
+      const estadoName = String(estado.name || '').trim();
+      const estadoNameLower = estadoName.toLowerCase();
+      const estadoNameNormalized = estadoNameLower.replace(/\s+/g, '').replace(/[_-]/g, '');
+      
+      estadoCounts[estadoId] = casosSeguros.filter(c => {
+        if (!c) return false;
+        
+        // Obtener el status del caso (puede venir como status o estado)
+        const casoStatus = String(c.status || (c as any).estado || '').trim();
+        if (!casoStatus) return false;
+        
+        const casoStatusLower = casoStatus.toLowerCase();
+        const casoStatusNormalized = casoStatusLower.replace(/\s+/g, '').replace(/[_-]/g, '');
+        
+        // Comparar por ID exacto
+        if (estadoId === casoStatus) {
+          return true;
+        }
+        
+        // Comparar por nombre exacto (case insensitive)
+        if (estadoNameLower === casoStatusLower) {
+          return true;
+        }
+        
+        // Comparar por nombre normalizado (sin espacios ni guiones)
+        if (estadoNameNormalized === casoStatusNormalized) {
+          return true;
+        }
+        
+        // Comparar por ID normalizado (si el estado tiene un ID numérico)
+        const estadoIdNum = estadoId.replace(/[^0-9]/g, '');
+        const casoStatusNum = casoStatus.replace(/[^0-9]/g, '');
+        if (estadoIdNum && casoStatusNum && estadoIdNum === casoStatusNum) {
+          return true;
+        }
+        
+        return false;
+      }).length;
+    });
+    
+    return estadoCounts;
+  }, [casosSeguros, estados]);
 
   const usuariosSeguros = Array.isArray(usuarios) ? usuarios : [];
   const totalUsuarios = usuariosSeguros.length;
@@ -216,15 +332,32 @@ const AdminPanel: React.FC = () => {
   const categoriasSeguras = Array.isArray(categorias) ? categorias : [];
   const totalCategorias = categoriasSeguras.length;
 
-  // Datos para gráficas
-  const casosPorEstadoChart = useMemo(() => [
-    { name: 'Nuevo', value: casosPorEstado.nuevo, color: '#3b82f6' },
-    { name: 'En Proceso', value: casosPorEstado.enProceso, color: '#d97706' },
-    { name: 'Pendiente Cliente', value: casosPorEstado.pendienteCliente, color: '#9333ea' },
-    { name: 'Escalado', value: casosPorEstado.escalado, color: '#dc2626' },
-    { name: 'Resuelto', value: casosPorEstado.resuelto, color: '#16a34a' },
-    { name: 'Cerrado', value: casosPorEstado.cerrado, color: '#64748b' }
-  ], [casosPorEstado]);
+  // Datos para gráficas - usar estados dinámicos del webhook
+  const casosPorEstadoChart = useMemo(() => {
+    if (!estados || estados.length === 0) {
+      // Fallback a estados hardcodeados si no hay estados del webhook
+      return [
+        { name: 'Nuevo', value: casosPorEstado.nuevo || 0, color: '#3b82f6' },
+        { name: 'En Proceso', value: casosPorEstado.enProceso || 0, color: '#d97706' },
+        { name: 'Pendiente Cliente', value: casosPorEstado.pendienteCliente || 0, color: '#9333ea' },
+        { name: 'Escalado', value: casosPorEstado.escalado || 0, color: '#dc2626' },
+        { name: 'Resuelto', value: casosPorEstado.resuelto || 0, color: '#16a34a' },
+        { name: 'Cerrado', value: casosPorEstado.cerrado || 0, color: '#64748b' }
+      ];
+    }
+
+    // Colores para los estados (asignar por orden)
+    const colors = ['#3b82f6', '#d97706', '#9333ea', '#dc2626', '#16a34a', '#64748b', '#f59e0b', '#ec4899', '#14b8a6', '#6366f1'];
+    
+    // Ordenar estados por order y crear la gráfica
+    const estadosOrdenados = [...estados].sort((a, b) => a.order - b.order);
+    
+    return estadosOrdenados.map((estado, index) => ({
+      name: estado.name,
+      value: casosPorEstado[estado.id] || 0,
+      color: colors[index % colors.length]
+    })).filter(item => item.value > 0 || estados.length <= 10); // Solo mostrar estados con casos o si hay pocos estados
+  }, [casosPorEstado, estados]);
 
   const casosAbiertosCerradosChart = useMemo(() => [
     { name: 'Abiertos', value: casosAbiertos, color: '#3b82f6' },
