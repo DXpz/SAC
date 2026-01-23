@@ -565,7 +565,13 @@ const AdminUsers: React.FC = () => {
   return (
     <div className="flex flex-col h-full" style={{ overflow: 'hidden', gap: '1rem', ...styles.container }}>
       {/* Header con resumen y botón crear */}
-      <div className="p-4 rounded-xl border flex-shrink-0 flex justify-between items-center" style={{...styles.card}}>
+      <div 
+        className="p-4 rounded-xl border flex-shrink-0 flex justify-between items-center" 
+        style={{
+          ...styles.card,
+          animation: 'fadeInSlide 0.3s ease-out'
+        }}
+      >
         <div className="flex items-center gap-4">
           <div>
             <h1 className="text-lg font-black mb-1" style={{color: styles.text.primary}}>
@@ -651,7 +657,8 @@ const AdminUsers: React.FC = () => {
                   style={{
                     backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
                     borderColor: 'rgba(148, 163, 184, 0.3)',
-                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)'
+                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)',
+                    animation: 'fadeInSlide 0.2s ease-out'
                   }}
                 >
                   {suggestions.map((suggestion, index) => (
@@ -663,7 +670,8 @@ const AdminUsers: React.FC = () => {
                         backgroundColor: focusedSuggestionIndex === index 
                           ? (theme === 'dark' ? 'rgba(200, 21, 27, 0.2)' : 'rgba(200, 21, 27, 0.1)')
                           : 'transparent',
-                        color: styles.text.primary
+                        color: styles.text.primary,
+                        animation: `fadeInSlide 0.2s ease-out ${index * 0.03}s both`
                       }}
                       onMouseEnter={() => setFocusedSuggestionIndex(index)}
                       onMouseLeave={() => setFocusedSuggestionIndex(-1)}
@@ -678,8 +686,22 @@ const AdminUsers: React.FC = () => {
             
             <button 
               onClick={() => setShowCreateModal(true)}
-              className="px-4 py-2 text-white text-xs font-bold rounded-lg hover:shadow-lg transition-all flex items-center gap-2 hover:-translate-y-0.5"
-              style={{background: 'linear-gradient(to right, var(--color-brand-red), var(--color-accent-red))', boxShadow: '0 4px 12px rgba(200, 21, 27, 0.2)'}}
+              className="px-4 py-2 text-white text-xs font-bold rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
+              style={{
+                background: 'linear-gradient(to right, var(--color-brand-red), var(--color-accent-red))', 
+                boxShadow: '0 4px 12px rgba(200, 21, 27, 0.2)',
+                transform: 'scale(1)',
+                transition: 'all 0.2s ease-in-out',
+                animation: 'fadeInSlide 0.3s ease-out'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.05) translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 6px 16px rgba(200, 21, 27, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1) translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(200, 21, 27, 0.2)';
+              }}
             >
               <UserPlus className="w-4 h-4" />
               Nuevo Usuario
@@ -689,11 +711,17 @@ const AdminUsers: React.FC = () => {
       </div>
 
       {/* Filtros por rol */}
-      <div className="p-4 rounded-xl border flex-shrink-0 flex items-center gap-3" style={{...styles.card}}>
+      <div 
+        className="p-4 rounded-xl border flex-shrink-0 flex items-center gap-3" 
+        style={{
+          ...styles.card,
+          animation: 'fadeInSlide 0.3s ease-out 0.1s both'
+        }}
+      >
         <Filter className="w-4 h-4" style={{color: styles.text.tertiary}} />
         <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>Filtrar por rol:</span>
         <div className="flex gap-2">
-          {(['todos', 'ADMIN', 'GERENTE', 'SUPERVISOR', 'AGENTE'] as RoleFilter[]).map(rol => (
+          {(['todos', 'ADMIN', 'GERENTE', 'SUPERVISOR', 'AGENTE'] as RoleFilter[]).map((rol, idx) => (
             <button
               key={rol}
               onClick={() => setRoleFilter(rol)}
@@ -702,13 +730,26 @@ const AdminUsers: React.FC = () => {
                   ? '' 
                   : 'border-slate-600 hover:border-slate-500'
               }`}
-              style={roleFilter === rol ? {
-                backgroundColor: 'rgba(200, 21, 27, 0.15)',
-                borderColor: 'rgba(200, 21, 27, 0.4)',
-                color: '#f87171'
-              } : {
-                backgroundColor: 'transparent',
-                color: styles.text.secondary
+              style={{
+                ...(roleFilter === rol ? {
+                  backgroundColor: 'rgba(200, 21, 27, 0.15)',
+                  borderColor: 'rgba(200, 21, 27, 0.4)',
+                  color: '#f87171'
+                } : {
+                  backgroundColor: 'transparent',
+                  color: styles.text.secondary
+                }),
+                animation: `fadeInSlide 0.3s ease-out ${idx * 0.05}s both`,
+                transform: 'scale(1)',
+                transition: 'all 0.2s ease-in-out'
+              }}
+              onMouseEnter={(e) => {
+                if (roleFilter !== rol) {
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
               }}
             >
               {rol === 'todos' ? 'Todos' : rol}
@@ -808,7 +849,16 @@ const AdminUsers: React.FC = () => {
                           backgroundColor: index % 2 === 0 
                             ? (theme === 'dark' ? '#1e293b' : '#ffffff')
                             : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
-                          borderBottom: index < filteredUsers.length - 1 ? '1px solid rgba(148, 163, 184, 0.1)' : 'none'
+                          borderBottom: index < filteredUsers.length - 1 ? '1px solid rgba(148, 163, 184, 0.1)' : 'none',
+                          animation: `fadeInSlide 0.3s ease-out ${index * 0.03}s both`,
+                          transform: 'translateY(0)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateX(2px)';
+                          e.currentTarget.style.transition = 'transform 0.2s ease-in-out';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
                         }}
                       >
                         {/* Usuario */}
@@ -833,24 +883,46 @@ const AdminUsers: React.FC = () => {
                         
                         {/* Rol */}
                         <td className="px-4 py-3">
-                          <span className="inline-flex px-2 py-1 text-[10px] font-semibold rounded-lg border" style={{
+                          <span 
+                          className="inline-flex px-2 py-1 text-[10px] font-semibold rounded-lg border transition-all"
+                          style={{
                             backgroundColor: roleBadge.bg,
                             color: roleBadge.text,
-                            borderColor: roleBadge.border
-                          }}>
-                            {user.rol}
-                          </span>
+                            borderColor: roleBadge.border,
+                            transform: 'scale(1)',
+                            transition: 'all 0.2s ease-in-out'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'scale(1.05)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'scale(1)';
+                          }}
+                        >
+                          {user.rol}
+                        </span>
                         </td>
                         
                         {/* Estado */}
                         <td className="px-4 py-3">
-                          <span className="inline-flex px-2 py-1 text-[10px] font-semibold rounded-lg border" style={{
+                          <span 
+                          className="inline-flex px-2 py-1 text-[10px] font-semibold rounded-lg border transition-all"
+                          style={{
                             backgroundColor: statusColor.bg,
                             color: statusColor.text,
-                            borderColor: statusColor.border
-                          }}>
-                            {statusText}
-                          </span>
+                            borderColor: statusColor.border,
+                            transform: 'scale(1)',
+                            transition: 'all 0.2s ease-in-out'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'scale(1.05)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'scale(1)';
+                          }}
+                        >
+                          {statusText}
+                        </span>
                         </td>
                         
                         {/* Acciones */}
@@ -862,13 +934,17 @@ const AdminUsers: React.FC = () => {
                               style={{
                                 backgroundColor: 'transparent',
                                 borderColor: 'rgba(148, 163, 184, 0.3)',
-                                color: styles.text.secondary
+                                color: styles.text.secondary,
+                                transform: 'scale(1)',
+                                transition: 'all 0.2s ease-in-out'
                               }}
                               onMouseEnter={(e) => {
                                 e.currentTarget.style.backgroundColor = theme === 'dark' ? '#334155' : '#f1f5f9';
+                                e.currentTarget.style.transform = 'scale(1.1)';
                               }}
                               onMouseLeave={(e) => {
                                 e.currentTarget.style.backgroundColor = 'transparent';
+                                e.currentTarget.style.transform = 'scale(1)';
                               }}
                               title="Editar"
                             >
@@ -884,7 +960,15 @@ const AdminUsers: React.FC = () => {
                               style={{
                                 backgroundColor: user.activo ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)',
                                 borderColor: user.activo ? 'rgba(239, 68, 68, 0.3)' : 'rgba(34, 197, 94, 0.3)',
-                                color: user.activo ? '#ef4444' : '#22c55e'
+                                color: user.activo ? '#ef4444' : '#22c55e',
+                                transform: 'scale(1)',
+                                transition: 'all 0.2s ease-in-out'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'scale(1.1)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'scale(1)';
                               }}
                               title={user.activo ? 'Desactivar' : 'Activar'}
                             >
@@ -900,7 +984,15 @@ const AdminUsers: React.FC = () => {
                               style={{
                                 backgroundColor: user.enVacaciones ? 'rgba(245, 158, 11, 0.1)' : 'transparent',
                                 borderColor: user.enVacaciones ? 'rgba(245, 158, 11, 0.3)' : 'rgba(148, 163, 184, 0.3)',
-                                color: user.enVacaciones ? '#f59e0b' : styles.text.secondary
+                                color: user.enVacaciones ? '#f59e0b' : styles.text.secondary,
+                                transform: 'scale(1)',
+                                transition: 'all 0.2s ease-in-out'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'scale(1.1) rotate(15deg)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
                               }}
                               title={user.enVacaciones ? 'Quitar vacaciones' : 'Marcar en vacaciones'}
                             >
@@ -915,7 +1007,17 @@ const AdminUsers: React.FC = () => {
                               style={{
                                 backgroundColor: 'rgba(239, 68, 68, 0.1)',
                                 borderColor: 'rgba(239, 68, 68, 0.3)',
-                                color: '#ef4444'
+                                color: '#ef4444',
+                                transform: 'scale(1)',
+                                transition: 'all 0.2s ease-in-out'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'scale(1.1)';
+                                e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'scale(1)';
+                                e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
                               }}
                               title="Eliminar"
                             >
@@ -935,8 +1037,19 @@ const AdminUsers: React.FC = () => {
 
       {/* Modal Crear Usuario */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowCreateModal(false)}>
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 w-full max-w-md" style={{...styles.card}} onClick={(e) => e.stopPropagation()}>
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" 
+          onClick={() => setShowCreateModal(false)}
+          style={{ animation: 'fadeIn 0.2s ease-out' }}
+        >
+          <div 
+            className="bg-white dark:bg-slate-800 rounded-xl p-6 w-full max-w-md" 
+            style={{
+              ...styles.card,
+              animation: 'fadeInSlide 0.3s ease-out'
+            }} 
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold" style={{color: styles.text.primary}}>Crear Usuario</h2>
               <button onClick={() => setShowCreateModal(false)} style={{color: styles.text.tertiary}}>
@@ -1035,8 +1148,19 @@ const AdminUsers: React.FC = () => {
 
       {/* Modal Editar Usuario */}
       {showEditModal && selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowEditModal(false)}>
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 w-full max-w-md" style={{...styles.card}} onClick={(e) => e.stopPropagation()}>
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" 
+          onClick={() => setShowEditModal(false)}
+          style={{ animation: 'fadeIn 0.2s ease-out' }}
+        >
+          <div 
+            className="bg-white dark:bg-slate-800 rounded-xl p-6 w-full max-w-md" 
+            style={{
+              ...styles.card,
+              animation: 'fadeInSlide 0.3s ease-out'
+            }} 
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold" style={{color: styles.text.primary}}>Editar Usuario</h2>
               <button onClick={() => setShowEditModal(false)} style={{color: styles.text.tertiary}}>
@@ -1137,8 +1261,19 @@ const AdminUsers: React.FC = () => {
 
       {/* Modal Eliminar Usuario */}
       {showDeleteModal && selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowDeleteModal(false)}>
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 w-full max-w-md" style={{...styles.card}} onClick={(e) => e.stopPropagation()}>
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" 
+          onClick={() => setShowDeleteModal(false)}
+          style={{ animation: 'fadeIn 0.2s ease-out' }}
+        >
+          <div 
+            className="bg-white dark:bg-slate-800 rounded-xl p-6 w-full max-w-md" 
+            style={{
+              ...styles.card,
+              animation: 'fadeInSlide 0.3s ease-out'
+            }} 
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold" style={{color: styles.text.primary}}>Eliminar Usuario</h2>
               <button onClick={() => setShowDeleteModal(false)} style={{color: styles.text.tertiary}}>

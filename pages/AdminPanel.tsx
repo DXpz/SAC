@@ -69,7 +69,7 @@ const AdminPanel: React.FC = () => {
         loadClientes(),
         api.getCases(),
         api.getAgentes(),
-        api.getCategorias(),
+        api.readCategories(), // Usar readCategories para obtener las categorías creadas en Settings
         api.getUsuarios(),
         api.getKPIs(),
         api.readEstados()
@@ -77,7 +77,19 @@ const AdminPanel: React.FC = () => {
       
       setClientes(clientesList.status === 'fulfilled' ? clientesList.value : []);
       setAgentes(agentesList.status === 'fulfilled' ? agentesList.value : []);
-      setCategorias(categoriasList.status === 'fulfilled' ? categoriasList.value : []);
+      
+      // Cargar categorías del webhook
+      if (categoriasList.status === 'fulfilled' && categoriasList.value) {
+        console.log('[AdminPanel.loadData] Categorías recibidas del webhook:', categoriasList.value);
+        console.log('[AdminPanel.loadData] Tipo:', typeof categoriasList.value);
+        console.log('[AdminPanel.loadData] Es array?', Array.isArray(categoriasList.value));
+        console.log('[AdminPanel.loadData] Cantidad:', categoriasList.value?.length || 0);
+        setCategorias(categoriasList.value);
+      } else {
+        console.log('[AdminPanel.loadData] No se pudieron cargar categorías:', categoriasList.status, categoriasList.reason);
+        setCategorias([]);
+      }
+      
       setUsuarios(usuariosList.status === 'fulfilled' ? usuariosList.value : []);
       setKpis(kpisData.status === 'fulfilled' ? kpisData.value : null);
       
@@ -373,24 +385,172 @@ const AdminPanel: React.FC = () => {
 
   const casosPorCategoriaChart = useMemo(() => {
     try {
+      console.log('[AdminPanel] casosPorCategoriaChart - categorias:', categorias);
+      console.log('[AdminPanel] casosPorCategoriaChart - casosSeguros count:', casosSeguros.length);
+      
+      // Si no hay categorías del webhook, usar las categorías de los casos como fallback
+      if (!categorias || categorias.length === 0) {
+        console.log('[AdminPanel] No hay categorías del webhook, usando categorías de casos');
+        const categoriaCounts: Record<string, number> = {};
+        casosSeguros.forEach(caso => {
+          if (!caso) return;
+          const categoriaNombre = caso.categoria?.nombre || caso.category || 'Sin categoría';
+          categoriaCounts[categoriaNombre] = (categoriaCounts[categoriaNombre] || 0) + 1;
+        });
+        
+        const colors = ['#3b82f6', '#8b5cf6', '#22c55e', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#6366f1'];
+        return Object.entries(categoriaCounts).map(([name, value], index) => ({
+          name: name.length > 15 ? name.substring(0, 15) + '...' : name,
+          value,
+          color: colors[index % colors.length]
+        })).sort((a, b) => b.value - a.value).slice(0, 8);
+      }
+
+      // Usar las categorías del webhook (las creadas en Settings)
       const categoriaCounts: Record<string, number> = {};
-      casosSeguros.forEach(caso => {
-        if (!caso) return;
-        const categoriaNombre = caso.categoria?.nombre || caso.category || 'Sin categoría';
-        categoriaCounts[categoriaNombre] = (categoriaCounts[categoriaNombre] || 0) + 1;
+      
+      // Inicializar contadores con las categorías del webhook
+      categorias.forEach((cat: any) => {
+        const categoriaNombre = cat.name || cat.nombre || cat.category_name || cat.caegoria || 'Sin nombre';
+        categoriaCounts[categoriaNombre] = 0; // Inicializar en 0
+        console.log('[AdminPanel] Inicializando categoría del webhook:', categoriaNombre);
       });
       
+      // Contar casos por cada categoría del webhook
+      const casosCategorias: string[] = [];
+      const categoriasNoEncontradas: Record<string, number> = {}; // Guardar también el conteo
+      
+      // Función para normalizar nombres para comparación
+      const normalizeString = (str: string) => {
+        return str.toLowerCase()
+          .replace(/\s+/g, ' ') // Múltiples espacios a uno solo
+          .replace(/[^\w\sáéíóúñü]/g, '') // Remover caracteres especiales (mantener acentos)
+          .trim();
+      };
+      
+      casosSeguros.forEach((caso, index) => {
+        if (!caso) return;
+        // Los casos tienen category como string (nombre de la categoría)
+        const casoCategoriaNombre = String(caso.category || caso.categoria?.nombre || (caso as any).categoriaNombre || '').trim();
+        
+        // Log específico para casos con "consulta" o "comercial" en la categoría
+        if (casoCategoriaNombre && (casoCategoriaNombre.toLowerCase().includes('consulta') || casoCategoriaNombre.toLowerCase().includes('comercial'))) {
+          console.log(`[AdminPanel] 🔍 CASO CON CONSULTA/COMERCIAL encontrado:`, {
+            casoId: caso.id || caso.ticketNumber,
+            categoria: casoCategoriaNombre,
+            category: caso.category,
+            categoriaObj: caso.categoria,
+            casoCompleto: caso
+          });
+        }
+        
+        if (casoCategoriaNombre && !casosCategorias.includes(casoCategoriaNombre)) {
+          casosCategorias.push(casoCategoriaNombre);
+        }
+        
+        if (!casoCategoriaNombre || casoCategoriaNombre === 'Sin categoría') {
+          // Log si el caso no tiene categoría
+          if (index < 5) { // Solo log los primeros 5 para no saturar
+            console.log(`[AdminPanel] ⚠️ Caso sin categoría:`, {
+              casoId: caso.id || caso.ticketNumber,
+              category: caso.category,
+              categoria: caso.categoria
+            });
+          }
+          return;
+        }
+        
+        // Buscar la categoría del caso en las categorías del webhook
+        let encontrada = false;
+        for (const cat of categorias) {
+          const catNombre = String(cat.name || cat.nombre || cat.category_name || cat.caegoria || '').trim();
+          const catId = String(cat.id || cat.idCategoria || cat.category_id || '').trim();
+          
+          const catNombreNormalized = normalizeString(catNombre);
+          const casoCategoriaNormalized = normalizeString(casoCategoriaNombre);
+          
+          // Comparar por nombre exacto, normalizado, o si contiene el nombre
+          if (catNombre === casoCategoriaNombre || 
+              catNombreNormalized === casoCategoriaNormalized ||
+              catNombre.toLowerCase() === casoCategoriaNombre.toLowerCase() ||
+              catNombreNormalized.includes(casoCategoriaNormalized) ||
+              casoCategoriaNormalized.includes(catNombreNormalized)) {
+            categoriaCounts[catNombre] = (categoriaCounts[catNombre] || 0) + 1;
+            console.log(`[AdminPanel] ✅ Caso asignado a categoría "${catNombre}":`, casoCategoriaNombre, '->', catNombre);
+            encontrada = true;
+            break;
+          }
+        }
+        
+        // Si no se encontró en el webhook, agregarla igual para que aparezca en el gráfico
+        if (!encontrada) {
+          categoriasNoEncontradas[casoCategoriaNombre] = (categoriasNoEncontradas[casoCategoriaNombre] || 0) + 1;
+          console.log(`[AdminPanel] ⚠️ Categoría del caso no encontrada en webhook: "${casoCategoriaNombre}"`);
+          console.log(`[AdminPanel] Categorías disponibles en webhook:`, categorias.map((c: any) => c.name || c.nombre || c.category_name || c.caegoria || 'Sin nombre'));
+        }
+      });
+      
+      // Agregar categorías de casos que no están en el webhook al gráfico
+      Object.entries(categoriasNoEncontradas).forEach(([nombre, count]) => {
+        categoriaCounts[nombre] = count;
+        console.log(`[AdminPanel] ➕ Agregando categoría de caso al gráfico: "${nombre}" con ${count} casos`);
+      });
+      
+      console.log('[AdminPanel] Categorías únicas en casos:', casosCategorias);
+      console.log('[AdminPanel] Categorías de casos no encontradas en webhook:', Object.keys(categoriasNoEncontradas));
+      console.log('[AdminPanel] categoriaCounts ANTES de crear result:', categoriaCounts);
+      
+      // Verificar específicamente "consulta comercial"
+      if (categoriaCounts['Consulta Comercial'] || categoriaCounts['consulta comercial'] || categoriaCounts['Consulta comercial']) {
+        console.log('[AdminPanel] ✅ CONSULTA COMERCIAL encontrada en categoriaCounts!');
+      } else {
+        console.log('[AdminPanel] ❌ CONSULTA COMERCIAL NO encontrada en categoriaCounts');
+        console.log('[AdminPanel] Buscando variaciones...');
+        Object.keys(categoriaCounts).forEach(key => {
+          if (key.toLowerCase().includes('consulta') || key.toLowerCase().includes('comercial')) {
+            console.log(`[AdminPanel] 🔍 Categoría relacionada encontrada: "${key}" con ${categoriaCounts[key]} casos`);
+          }
+        });
+      }
+      
       const colors = ['#3b82f6', '#8b5cf6', '#22c55e', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#6366f1'];
-      return Object.entries(categoriaCounts).map(([name, value], index) => ({
-        name: name.length > 15 ? name.substring(0, 15) + '...' : name,
-        value,
-        color: colors[index % colors.length]
-      })).sort((a, b) => b.value - a.value).slice(0, 8);
+      const result = Object.entries(categoriaCounts)
+        .map(([name, value], index) => ({
+          name: name.length > 15 ? name.substring(0, 15) + '...' : name,
+          value,
+          color: colors[index % colors.length]
+        }))
+        .sort((a, b) => {
+          // Primero ordenar por cantidad (mayor a menor)
+          if (b.value !== a.value) {
+            return b.value - a.value;
+          }
+          // Si tienen la misma cantidad, ordenar alfabéticamente
+          return a.name.localeCompare(b.name);
+        }); // Ordenar por cantidad, pero mostrar todas
+      
+      console.log('[AdminPanel] casosPorCategoriaChart result:', result);
+      console.log('[AdminPanel] Total categorías en gráfico:', result.length);
+      console.log('[AdminPanel] Categorías con casos:', result.filter(r => r.value > 0).length);
+      console.log('[AdminPanel] Categorías sin casos:', result.filter(r => r.value === 0).length);
+      
+      // Verificar si "consulta comercial" está en el result final
+      const consultaComercialEnResult = result.find(r => 
+        r.name.toLowerCase().includes('consulta') && r.name.toLowerCase().includes('comercial')
+      );
+      if (consultaComercialEnResult) {
+        console.log('[AdminPanel] ✅ CONSULTA COMERCIAL EN RESULT FINAL:', consultaComercialEnResult);
+      } else {
+        console.log('[AdminPanel] ❌ CONSULTA COMERCIAL NO EN RESULT FINAL');
+        console.log('[AdminPanel] Nombres en result:', result.map(r => r.name));
+      }
+      
+      return result;
     } catch (error) {
       console.error('Error calculando casos por categoría:', error);
       return [];
     }
-  }, [casosSeguros]);
+  }, [casosSeguros, categorias]);
 
   // Estilos dinámicos basados en el tema
   const styles = {
@@ -483,16 +643,21 @@ const AdminPanel: React.FC = () => {
           style={{
             ...styles.card,
             borderColor: 'rgba(59, 130, 246, 0.25)',
-            backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.05)' : 'rgba(59, 130, 246, 0.02)'
+            backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.05)' : 'rgba(59, 130, 246, 0.02)',
+            animation: 'fadeInSlide 0.3s ease-out 0.05s both',
+            transform: 'scale(1)',
+            transition: 'all 0.2s ease-in-out'
           }}
           onClick={() => navigate('/app/admin/casos')}
           onMouseEnter={(e) => {
             e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+            e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.25)';
             e.currentTarget.style.boxShadow = '';
+            e.currentTarget.style.transform = 'scale(1) translateY(0)';
           }}
         >
           <div className="absolute top-3 right-3">
@@ -520,16 +685,21 @@ const AdminPanel: React.FC = () => {
           style={{
             ...styles.card,
             borderColor: 'rgba(139, 92, 246, 0.25)',
-            backgroundColor: theme === 'dark' ? 'rgba(139, 92, 246, 0.05)' : 'rgba(139, 92, 246, 0.02)'
+            backgroundColor: theme === 'dark' ? 'rgba(139, 92, 246, 0.05)' : 'rgba(139, 92, 246, 0.02)',
+            animation: 'fadeInSlide 0.3s ease-out 0.1s both',
+            transform: 'scale(1)',
+            transition: 'all 0.2s ease-in-out'
           }}
           onClick={() => navigate('/app/admin/usuarios')}
           onMouseEnter={(e) => {
             e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.4)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+            e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.25)';
             e.currentTarget.style.boxShadow = '';
+            e.currentTarget.style.transform = 'scale(1) translateY(0)';
           }}
         >
           <div className="absolute top-3 right-3">
@@ -557,16 +727,21 @@ const AdminPanel: React.FC = () => {
           style={{
             ...styles.card,
             borderColor: 'rgba(34, 197, 94, 0.25)',
-            backgroundColor: theme === 'dark' ? 'rgba(34, 197, 94, 0.05)' : 'rgba(34, 197, 94, 0.02)'
+            backgroundColor: theme === 'dark' ? 'rgba(34, 197, 94, 0.05)' : 'rgba(34, 197, 94, 0.02)',
+            animation: 'fadeInSlide 0.3s ease-out 0.15s both',
+            transform: 'scale(1)',
+            transition: 'all 0.2s ease-in-out'
           }}
           onClick={() => navigate('/app/agentes')}
           onMouseEnter={(e) => {
             e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.4)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+            e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.25)';
             e.currentTarget.style.boxShadow = '';
+            e.currentTarget.style.transform = 'scale(1) translateY(0)';
           }}
         >
           <div className="absolute top-3 right-3">
@@ -594,16 +769,21 @@ const AdminPanel: React.FC = () => {
           style={{
             ...styles.card,
             borderColor: 'rgba(168, 85, 247, 0.25)',
-            backgroundColor: theme === 'dark' ? 'rgba(168, 85, 247, 0.05)' : 'rgba(168, 85, 247, 0.02)'
+            backgroundColor: theme === 'dark' ? 'rgba(168, 85, 247, 0.05)' : 'rgba(168, 85, 247, 0.02)',
+            animation: 'fadeInSlide 0.3s ease-out 0.2s both',
+            transform: 'scale(1)',
+            transition: 'all 0.2s ease-in-out'
           }}
           onClick={() => navigate('/app/admin/casos')}
           onMouseEnter={(e) => {
             e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.4)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+            e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.25)';
             e.currentTarget.style.boxShadow = '';
+            e.currentTarget.style.transform = 'scale(1) translateY(0)';
           }}
         >
           <div className="absolute top-3 right-3">
@@ -636,16 +816,21 @@ const AdminPanel: React.FC = () => {
             borderColor: casosCriticos > 0 ? 'rgba(200, 21, 27, 0.25)' : 'rgba(148, 163, 184, 0.2)',
             backgroundColor: casosCriticos > 0 
               ? (theme === 'dark' ? 'rgba(200, 21, 27, 0.05)' : 'rgba(200, 21, 27, 0.02)')
-              : styles.card.backgroundColor
+              : styles.card.backgroundColor,
+            animation: 'fadeInSlide 0.3s ease-out 0.25s both',
+            transform: 'scale(1)',
+            transition: 'all 0.2s ease-in-out'
           }}
           onClick={() => navigate('/app/admin/casos')}
           onMouseEnter={(e) => {
             e.currentTarget.style.borderColor = casosCriticos > 0 ? 'rgba(200, 21, 27, 0.4)' : 'rgba(148, 163, 184, 0.3)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+            e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.borderColor = casosCriticos > 0 ? 'rgba(200, 21, 27, 0.25)' : 'rgba(148, 163, 184, 0.2)';
             e.currentTarget.style.boxShadow = '';
+            e.currentTarget.style.transform = 'scale(1) translateY(0)';
           }}
         >
           <div className="absolute top-3 right-3">
@@ -675,16 +860,21 @@ const AdminPanel: React.FC = () => {
             borderColor: casosVencidos > 0 ? 'rgba(220, 38, 38, 0.25)' : 'rgba(148, 163, 184, 0.2)',
             backgroundColor: casosVencidos > 0 
               ? (theme === 'dark' ? 'rgba(220, 38, 38, 0.05)' : 'rgba(220, 38, 38, 0.02)')
-              : styles.card.backgroundColor
+              : styles.card.backgroundColor,
+            animation: 'fadeInSlide 0.3s ease-out 0.3s both',
+            transform: 'scale(1)',
+            transition: 'all 0.2s ease-in-out'
           }}
           onClick={() => navigate('/app/admin/casos')}
           onMouseEnter={(e) => {
             e.currentTarget.style.borderColor = casosVencidos > 0 ? 'rgba(220, 38, 38, 0.4)' : 'rgba(148, 163, 184, 0.3)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+            e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.borderColor = casosVencidos > 0 ? 'rgba(220, 38, 38, 0.25)' : 'rgba(148, 163, 184, 0.2)';
             e.currentTarget.style.boxShadow = '';
+            e.currentTarget.style.transform = 'scale(1) translateY(0)';
           }}
         >
           <div className="absolute top-3 right-3">
@@ -723,7 +913,18 @@ const AdminPanel: React.FC = () => {
               ? (theme === 'dark' ? 'rgba(34, 197, 94, 0.05)' : 'rgba(34, 197, 94, 0.02)')
               : kpis && kpis.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 60
               ? (theme === 'dark' ? 'rgba(245, 158, 11, 0.05)' : 'rgba(245, 158, 11, 0.02)')
-              : styles.card.backgroundColor
+              : styles.card.backgroundColor,
+            animation: 'fadeInSlide 0.3s ease-out 0.35s both',
+            transform: 'scale(1)',
+            transition: 'all 0.2s ease-in-out'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1) translateY(0)';
+            e.currentTarget.style.boxShadow = '';
           }}
         >
           <div className="absolute top-3 right-3">
@@ -780,7 +981,18 @@ const AdminPanel: React.FC = () => {
               ? (theme === 'dark' ? 'rgba(34, 197, 94, 0.05)' : 'rgba(34, 197, 94, 0.02)')
               : kpis && kpis.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 3
               ? (theme === 'dark' ? 'rgba(245, 158, 11, 0.05)' : 'rgba(245, 158, 11, 0.02)')
-              : styles.card.backgroundColor
+              : styles.card.backgroundColor,
+            animation: 'fadeInSlide 0.3s ease-out 0.4s both',
+            transform: 'scale(1)',
+            transition: 'all 0.2s ease-in-out'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1) translateY(0)';
+            e.currentTarget.style.boxShadow = '';
           }}
         >
           <div className="absolute top-3 right-3">
@@ -831,7 +1043,18 @@ const AdminPanel: React.FC = () => {
           className="p-4 rounded-xl border-2 transition-all duration-200 relative overflow-hidden"
           style={{
             ...styles.card,
-            borderColor: 'rgba(148, 163, 184, 0.2)'
+            borderColor: 'rgba(148, 163, 184, 0.2)',
+            animation: 'fadeInSlide 0.3s ease-out 0.45s both',
+            transform: 'scale(1)',
+            transition: 'all 0.2s ease-in-out'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1) translateY(0)';
+            e.currentTarget.style.boxShadow = '';
           }}
         >
           <div className="absolute top-3 right-3">
@@ -858,15 +1081,20 @@ const AdminPanel: React.FC = () => {
           className="rounded-3xl shadow-xl border overflow-hidden group relative transition-all duration-300"
           style={{
             ...styles.card,
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+            animation: 'fadeInSlide 0.3s ease-out 0.5s both',
+            transform: 'scale(1)',
+            transition: 'all 0.2s ease-in-out'
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.boxShadow = theme === 'dark' 
               ? '0 8px 24px rgba(0, 0, 0, 0.4)' 
               : '0 8px 24px rgba(0, 0, 0, 0.15)';
+            e.currentTarget.style.transform = 'scale(1.01)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+            e.currentTarget.style.transform = 'scale(1)';
           }}
         >
           <div className="p-4 border-b" style={{
@@ -934,15 +1162,20 @@ const AdminPanel: React.FC = () => {
           className="rounded-3xl shadow-xl border overflow-hidden group relative transition-all duration-300"
           style={{
             ...styles.card,
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+            animation: 'fadeInSlide 0.3s ease-out 0.55s both',
+            transform: 'scale(1)',
+            transition: 'all 0.2s ease-in-out'
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.boxShadow = theme === 'dark' 
               ? '0 8px 24px rgba(0, 0, 0, 0.4)' 
               : '0 8px 24px rgba(0, 0, 0, 0.15)';
+            e.currentTarget.style.transform = 'scale(1.01)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+            e.currentTarget.style.transform = 'scale(1)';
           }}
         >
           <div className="p-4 border-b" style={{
@@ -992,15 +1225,20 @@ const AdminPanel: React.FC = () => {
           className="rounded-3xl shadow-xl border overflow-hidden group relative transition-all duration-300"
           style={{
             ...styles.card,
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+            animation: 'fadeInSlide 0.3s ease-out 0.6s both',
+            transform: 'scale(1)',
+            transition: 'all 0.2s ease-in-out'
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.boxShadow = theme === 'dark' 
               ? '0 8px 24px rgba(0, 0, 0, 0.4)' 
               : '0 8px 24px rgba(0, 0, 0, 0.15)';
+            e.currentTarget.style.transform = 'scale(1.01)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+            e.currentTarget.style.transform = 'scale(1)';
           }}
         >
           <div className="p-4 border-b" style={{
@@ -1068,15 +1306,20 @@ const AdminPanel: React.FC = () => {
           className="rounded-3xl shadow-xl border overflow-hidden group relative transition-all duration-300"
           style={{
             ...styles.card,
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+            animation: 'fadeInSlide 0.3s ease-out 0.65s both',
+            transform: 'scale(1)',
+            transition: 'all 0.2s ease-in-out'
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.boxShadow = theme === 'dark' 
               ? '0 8px 24px rgba(0, 0, 0, 0.4)' 
               : '0 8px 24px rgba(0, 0, 0, 0.15)';
+            e.currentTarget.style.transform = 'scale(1.01)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+            e.currentTarget.style.transform = 'scale(1)';
           }}
         >
           <div className="p-4 border-b" style={{

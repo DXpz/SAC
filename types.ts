@@ -105,6 +105,7 @@ export interface Case {
   agentName: string;
   createdAt: string;
   slaExpired: boolean;
+  slaDeadline?: string; // Fecha final del SLA que viene del webhook
   history?: HistorialEntry[] | any[]; // Compatibilidad con formato anterior
   historial?: HistorialEntry[]; // Formato nuevo oficial
   clientEmail?: string;

@@ -360,7 +360,8 @@ const BandejaCasos: React.FC = () => {
         className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center p-4 rounded-3xl shadow-xl border backdrop-blur-sm"
         style={{
           ...styles.card,
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+          animation: 'fadeInSlide 0.3s ease-out'
         }}
       >
         <div className="flex items-center gap-4 flex-1">
@@ -392,7 +393,7 @@ const BandejaCasos: React.FC = () => {
         </div>
         
         <div className="flex gap-3 w-full md:w-auto flex-wrap">
-          <div className="relative group">
+          <div className="relative group" style={{ animation: 'fadeInSlide 0.3s ease-out 0.1s both' }}>
             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-colors z-10" style={{color: statusFilter === 'all' ? '#64748b' : '#107ab4'}} />
             <select
               value={statusFilter}
@@ -409,9 +410,12 @@ const BandejaCasos: React.FC = () => {
                   ? styles.text.secondary
                   : '#0c4a6e',
                 minWidth: '190px',
-                boxShadow: statusFilter === 'all' ? '0 1px 2px rgba(0, 0, 0, 0.05)' : '0 2px 4px rgba(16, 122, 180, 0.15)'
+                boxShadow: statusFilter === 'all' ? '0 1px 2px rgba(0, 0, 0, 0.05)' : '0 2px 4px rgba(16, 122, 180, 0.15)',
+                transform: 'scale(1)',
+                transition: 'all 0.2s ease-in-out'
               }}
               onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.02)';
                 if (statusFilter === 'all') {
                   e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f8fafc';
                   e.currentTarget.style.borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.4)' : '#94a3b8';
@@ -423,6 +427,7 @@ const BandejaCasos: React.FC = () => {
                 }
               }}
               onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
                 if (statusFilter === 'all') {
                   e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
                   e.currentTarget.style.borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : '#cbd5e1';
@@ -459,7 +464,7 @@ const BandejaCasos: React.FC = () => {
             }} />
           </div>
           
-          <div className="relative group">
+          <div className="relative group" style={{ animation: 'fadeInSlide 0.3s ease-out 0.15s both' }}>
             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-colors z-10" style={{color: categoriaFilter === 'all' ? '#64748b' : '#107ab4'}} />
             <select
               value={categoriaFilter}
@@ -476,9 +481,12 @@ const BandejaCasos: React.FC = () => {
                   ? styles.text.secondary
                   : '#0c4a6e',
                 minWidth: '190px',
-                boxShadow: categoriaFilter === 'all' ? '0 1px 2px rgba(0, 0, 0, 0.05)' : '0 2px 4px rgba(16, 122, 180, 0.15)'
+                boxShadow: categoriaFilter === 'all' ? '0 1px 2px rgba(0, 0, 0, 0.05)' : '0 2px 4px rgba(16, 122, 180, 0.15)',
+                transform: 'scale(1)',
+                transition: 'all 0.2s ease-in-out'
               }}
               onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.02)';
                 if (categoriaFilter === 'all') {
                   e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f8fafc';
                   e.currentTarget.style.borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.4)' : '#94a3b8';
@@ -490,6 +498,7 @@ const BandejaCasos: React.FC = () => {
                 }
               }}
               onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
                 if (categoriaFilter === 'all') {
                   e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
                   e.currentTarget.style.borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : '#cbd5e1';
@@ -529,8 +538,21 @@ const BandejaCasos: React.FC = () => {
           
           <button 
             onClick={() => navigate('/app/casos/nuevo')}
-            className="text-white px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1"
-            style={{background: 'linear-gradient(135deg, var(--color-brand-red), var(--color-accent-red))'}}
+            className="text-white px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all shadow-lg"
+            style={{
+              background: 'linear-gradient(135deg, var(--color-brand-red), var(--color-accent-red))',
+              transform: 'scale(1)',
+              transition: 'all 0.2s ease-in-out',
+              animation: 'fadeInSlide 0.3s ease-out 0.2s both'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.05) translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 8px 16px rgba(200, 21, 27, 0.3)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1) translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(200, 21, 27, 0.2)';
+            }}
           >
             <Plus className="w-5 h-5" /> Nuevo Caso
           </button>
@@ -584,7 +606,14 @@ const BandejaCasos: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="rounded-3xl shadow-xl border overflow-hidden" style={{...styles.card, boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'}}>
+        <div 
+          className="rounded-3xl shadow-xl border overflow-hidden" 
+          style={{
+            ...styles.card, 
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+            animation: 'fadeInSlide 0.3s ease-out 0.1s both'
+          }}
+        >
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead className="border-b" style={{
@@ -606,12 +635,16 @@ const BandejaCasos: React.FC = () => {
                     className="transition-all duration-200 cursor-pointer group relative"
                     style={{
                       backgroundColor: 'transparent',
+                      animation: `fadeInSlide 0.3s ease-out ${idx * 0.03}s both`,
+                      transform: 'translateY(0)'
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
+                      e.currentTarget.style.transform = 'translateX(4px)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.transform = 'translateY(0)';
                     }} 
                     onClick={() => navigate(`/app/casos/${caso.id}`)}
                   >
@@ -620,11 +653,22 @@ const BandejaCasos: React.FC = () => {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-semibold px-2.5 py-1.5 rounded-xl border shadow-sm" style={{
-                          backgroundColor: theme === 'dark' ? '#0f172a' : '#f1f5f9',
-                          color: styles.text.secondary,
-                          borderColor: 'rgba(148, 163, 184, 0.2)'
-                        }}>
+                        <span 
+                          className="text-[10px] font-semibold px-2.5 py-1.5 rounded-xl border shadow-sm transition-all"
+                          style={{
+                            backgroundColor: theme === 'dark' ? '#0f172a' : '#f1f5f9',
+                            color: styles.text.secondary,
+                            borderColor: 'rgba(148, 163, 184, 0.2)',
+                            transform: 'scale(1)',
+                            transition: 'all 0.2s ease-in-out'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'scale(1.05)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'scale(1)';
+                          }}
+                        >
                           {caso.clientId || caso.cliente?.idCliente || 'N/A'}
                         </span>
                         <span className="text-xs font-semibold" style={{color: styles.text.primary}}>
@@ -633,11 +677,22 @@ const BandejaCasos: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="inline-flex items-center text-[10px] font-semibold px-2.5 py-1.5 rounded-xl border shadow-sm" style={{
-                        backgroundColor: theme === 'dark' ? '#0f172a' : '#f1f5f9',
-                        color: styles.text.secondary,
-                        borderColor: 'rgba(148, 163, 184, 0.2)'
-                      }}>
+                      <span 
+                        className="inline-flex items-center text-[10px] font-semibold px-2.5 py-1.5 rounded-xl border shadow-sm transition-all"
+                        style={{
+                          backgroundColor: theme === 'dark' ? '#0f172a' : '#f1f5f9',
+                          color: styles.text.secondary,
+                          borderColor: 'rgba(148, 163, 184, 0.2)',
+                          transform: 'scale(1)',
+                          transition: 'all 0.2s ease-in-out'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.05)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                        }}
+                      >
                         {caso.category || caso.categoria?.nombre}
                       </span>
                     </td>
@@ -647,7 +702,7 @@ const BandejaCasos: React.FC = () => {
                         const normalizedStatus = normalizeStatus(rawStatus);
                         return (
                           <span 
-                            className="text-[10px] font-semibold uppercase tracking-wide"
+                            className="text-[10px] font-semibold uppercase tracking-wide transition-all"
                             style={{
                               color: (() => {
                                 if (normalizedStatus === CaseStatus.NUEVO) return '#2563eb';
@@ -657,7 +712,15 @@ const BandejaCasos: React.FC = () => {
                                 if (normalizedStatus === CaseStatus.RESUELTO) return '#16a34a';
                                 if (normalizedStatus === CaseStatus.CERRADO) return '#64748b';
                                 return '#475569';
-                              })()
+                              })(),
+                              transform: 'scale(1)',
+                              transition: 'all 0.2s ease-in-out'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'scale(1.05)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'scale(1)';
                             }}
                           >
                             {rawStatus}
@@ -667,10 +730,36 @@ const BandejaCasos: React.FC = () => {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end">
-                        <div className="p-2 rounded-lg transition-all" style={{
-                          backgroundColor: 'transparent'
-                        }}>
-                          <ChevronRight className="w-5 h-5 transition-all" style={{color: styles.text.tertiary}} onMouseEnter={(e) => { e.currentTarget.style.color = styles.text.secondary; e.currentTarget.style.transform = 'translateX(4px)'; }} onMouseLeave={(e) => { e.currentTarget.style.color = styles.text.tertiary; e.currentTarget.style.transform = ''; }} />
+                        <div 
+                          className="p-2 rounded-lg transition-all"
+                          style={{
+                            backgroundColor: 'transparent',
+                            transform: 'scale(1)',
+                            transition: 'all 0.2s ease-in-out'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'scale(1.1)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'scale(1)';
+                          }}
+                        >
+                          <ChevronRight 
+                            className="w-5 h-5 transition-all" 
+                            style={{
+                              color: styles.text.tertiary,
+                              transform: 'translateX(0)',
+                              transition: 'all 0.2s ease-in-out'
+                            }} 
+                            onMouseEnter={(e) => { 
+                              e.currentTarget.style.color = styles.text.secondary; 
+                              e.currentTarget.style.transform = 'translateX(4px)'; 
+                            }} 
+                            onMouseLeave={(e) => { 
+                              e.currentTarget.style.color = styles.text.tertiary; 
+                              e.currentTarget.style.transform = 'translateX(0)'; 
+                            }} 
+                          />
                         </div>
                       </div>
                     </td>

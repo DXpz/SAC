@@ -13,6 +13,7 @@ const CaseDetail: React.FC = () => {
   const [caso, setCaso] = useState<Case | null>(null);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [agentes, setAgentes] = useState<any[]>([]);
+  const [categorias, setCategorias] = useState<any[]>([]);
   const [transitionLoading, setTransitionLoading] = useState(false);
   const { theme } = useTheme();
   
@@ -45,7 +46,7 @@ const CaseDetail: React.FC = () => {
   useEffect(() => {
     const initializeData = async () => {
       try {
-        await Promise.all([loadClientes(), loadAgentes()]);
+        await Promise.all([loadClientes(), loadAgentes(), loadCategorias()]);
         if (id) await loadCaso(id);
       } catch (error) {
       }
@@ -57,6 +58,67 @@ const CaseDetail: React.FC = () => {
       }
     });
   }, [id]);
+  
+  // Cargar categorías del webhook (las creadas en Settings)
+  const loadCategorias = async () => {
+    try {
+      const categoriasFromWebhook = await api.readCategories();
+      if (categoriasFromWebhook && Array.isArray(categoriasFromWebhook)) {
+        setCategorias(categoriasFromWebhook);
+      }
+    } catch (error) {
+      console.error('Error al cargar categorías:', error);
+    }
+  };
+  
+  // Obtener la categoría del webhook basándose en el caso
+  const getCategoriaFromWebhook = useMemo(() => {
+    if (!caso || !categorias || categorias.length === 0) {
+      return null;
+    }
+    
+    // Buscar la categoría en el webhook por ID o nombre
+    const casoCategoriaNombre = caso.category || caso.categoria?.nombre || '';
+    const casoCategoriaId = caso.categoria?.id || caso.categoria?.idCategoria || (caso as any).categoriaId || '';
+    
+    // Buscar por ID primero
+    if (casoCategoriaId) {
+      const categoriaPorId = categorias.find((cat: any) => {
+        const catId = String(cat.id || cat.idCategoria || cat.category_id || '').trim();
+        return catId === String(casoCategoriaId).trim();
+      });
+      
+      if (categoriaPorId) {
+        return categoriaPorId;
+      }
+    }
+    
+    // Si no se encontró por ID, buscar por nombre
+    if (casoCategoriaNombre) {
+      const categoriaPorNombre = categorias.find((cat: any) => {
+        const catNombre = String(cat.name || cat.nombre || cat.category_name || cat.caegoria || '').trim();
+        const casoNombreNormalized = casoCategoriaNombre.toLowerCase().trim();
+        const catNombreNormalized = catNombre.toLowerCase().trim();
+        return catNombreNormalized === casoNombreNormalized || catNombre === casoCategoriaNombre;
+      });
+      
+      if (categoriaPorNombre) {
+        return categoriaPorNombre;
+      }
+    }
+    
+    return null;
+  }, [caso, categorias]);
+  
+  // Obtener el nombre de la categoría del webhook
+  const getCategoriaNombre = useMemo(() => {
+    const categoriaWebhook = getCategoriaFromWebhook;
+    if (categoriaWebhook) {
+      return categoriaWebhook.name || categoriaWebhook.nombre || categoriaWebhook.category_name || categoriaWebhook.caegoria || caso?.category || caso?.categoria?.nombre || '';
+    }
+    // Si no hay categorías del webhook, usar la categoría del caso
+    return caso?.category || caso?.categoria?.nombre || '';
+  }, [caso, getCategoriaFromWebhook]);
 
   // Cerrar dropdown al hacer clic fuera
   useEffect(() => {
@@ -1065,9 +1127,32 @@ const CaseDetail: React.FC = () => {
 
   // Calcular información SLA
   const createdDate = new Date(caso.createdAt);
-  const slaDays = caso.categoria?.slaDias || 2;
-  const slaDeadline = new Date(createdDate);
-  slaDeadline.setDate(slaDeadline.getDate() + slaDays);
+  // Usar los días SLA de la categoría del webhook si está disponible
+  const categoriaWebhook = getCategoriaFromWebhook;
+  const slaDays = categoriaWebhook 
+    ? (categoriaWebhook.slaDays || categoriaWebhook.slaDias || categoriaWebhook.sla || categoriaWebhook['valor SLA'] || 2)
+    : (caso.categoria?.slaDias || 2);
+  
+  // Usar la fecha final del SLA del webhook si está disponible, sino calcularla
+  let slaDeadline: Date;
+  if (caso.slaDeadline) {
+    // Parsear la fecha del webhook
+    try {
+      slaDeadline = new Date(caso.slaDeadline);
+      // Si la fecha es inválida, calcularla
+      if (isNaN(slaDeadline.getTime())) {
+        slaDeadline = new Date(createdDate);
+        slaDeadline.setDate(slaDeadline.getDate() + slaDays);
+      }
+    } catch (error) {
+      slaDeadline = new Date(createdDate);
+      slaDeadline.setDate(slaDeadline.getDate() + slaDays);
+    }
+  } else {
+    // Calcular la fecha si no viene del webhook
+    slaDeadline = new Date(createdDate);
+    slaDeadline.setDate(slaDeadline.getDate() + slaDays);
+  }
   
   const now = new Date();
   const totalMs = slaDeadline.getTime() - createdDate.getTime();
@@ -1196,17 +1281,15 @@ const CaseDetail: React.FC = () => {
                     {estadoActual}
                   </span>
                     </div>
-                    {(caso.category || caso.categoria?.nombre) && (
-                      <div className="flex items-center gap-1.5">
-                        <Folder className="w-3.5 h-3.5" style={{color: '#64748b'}} />
-                        <span 
-                          className="text-xs font-semibold"
-                          style={{color: styles.text.secondary}}
-                        >
-                          {caso.category || caso.categoria?.nombre}
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      <Folder className="w-3.5 h-3.5" style={{color: '#64748b'}} />
+                      <span 
+                        className="text-xs font-semibold"
+                        style={{color: styles.text.secondary}}
+                      >
+                        {getCategoriaNombre || caso?.category || caso?.categoria?.nombre || 'Sin categoría'}
+                      </span>
+                    </div>
                     <div className="flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5" style={{color: isSLAExpired ? '#dc2626' : '#16a34a'}} />
                       <span 

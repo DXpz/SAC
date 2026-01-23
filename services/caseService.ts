@@ -319,6 +319,16 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
       slaExpired = caseData.sla_vencido || caseData.slaExpired || false;
     }
     
+    // Capturar fecha final del SLA del webhook si está disponible
+    const slaDeadlineFromWebhook = caseData.fecha_final_sla || 
+                                   caseData.fechaFinalSLA || 
+                                   caseData.sla_fecha_final || 
+                                   caseData.slaDeadline || 
+                                   caseData.fecha_limite_sla ||
+                                   caseData.fechaLimiteSLA ||
+                                   caseData.sla_fecha_limite ||
+                                   null;
+    
     // Preservar agente_user_id del webhook para comparación
     const agenteUserIdFromWebhook = caseData.agente_user_id || '';
     
@@ -336,6 +346,7 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
       agentId: agenteMapped?.idAgente || String(agenteUserIdFromWebhook || caseData.agente_id || caseData.agentId || ''),
       agentName: agenteMapped?.nombre || caseData.agentename || caseData.agente_name || caseData.agente_nombre || caseData.agentName || caseData.nombre_agente || '',
       createdAt: createdAt,
+      slaDeadline: slaDeadlineFromWebhook || undefined, // Fecha final del SLA del webhook
       history: caseData.historial || caseData.history || [],
       historial: caseData.historial || caseData.history || [],
       clientEmail: clienteMapped?.email || caseData.email_cliente || caseData.clientEmail || '',

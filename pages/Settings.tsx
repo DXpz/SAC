@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Settings as SettingsIcon, 
   Save, 
@@ -20,7 +20,9 @@ import {
   HelpCircle,
   X,
   AlertTriangle,
-  Search
+  Search,
+  FileText,
+  Clock
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { api } from '../services/api';
@@ -29,6 +31,8 @@ const Settings: React.FC = () => {
   const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState('configuracion');
   const [hasChanges, setHasChanges] = useState(false);
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
+  const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
   
   const [slaSettings, setSlaSettings] = useState({
     defaultSlaDays: 5,
@@ -62,6 +66,62 @@ const Settings: React.FC = () => {
   } | null>(null);
 
   const [deletingCategory, setDeletingCategory] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+
+  // Estados para parámetros de estados finales
+  type TipoParametro = 'correo' | 'adjuntar_archivo' | 'telefono' | 'texto' | 'numero' | 'fecha' | 'checkbox';
+
+  interface Parametro {
+    id: string;
+    name: string;
+    description: string;
+    tipo: TipoParametro;
+    requerido?: boolean;
+    placeholder?: string;
+    etiqueta?: string;
+    opciones?: string[]; // Para campos personalizados
+  }
+
+  const initialParametros: Parametro[] = [
+    { 
+      id: '1', 
+      name: 'Correo Adjuntos', 
+      description: 'Parámetro para adjuntar archivos al correo',
+      tipo: 'adjuntar_archivo',
+      requerido: false,
+      etiqueta: 'Adjuntar archivos'
+    },
+    { 
+      id: '2', 
+      name: 'Notificación Cliente', 
+      description: 'Parámetro para notificar al cliente',
+      tipo: 'correo',
+      requerido: true,
+      etiqueta: 'Correo del cliente'
+    }
+  ];
+
+  const [parametros, setParametros] = useState<Parametro[]>(initialParametros);
+
+  const [showParametroModal, setShowParametroModal] = useState(false);
+  const [isEditingParametro, setIsEditingParametro] = useState(false);
+
+  const [newParametro, setNewParametro] = useState<Omit<Parametro, 'id'>>({
+    name: '',
+    description: '',
+    tipo: 'texto',
+    requerido: false,
+    placeholder: '',
+    etiqueta: '',
+    opciones: []
+  });
+
+  const [parametroSearchTerm, setParametroSearchTerm] = useState('');
+  const [filteredParametros, setFilteredParametros] = useState<Parametro[]>(initialParametros);
+
+  const [deletingParametro, setDeletingParametro] = useState<{
     id: string;
     name: string;
   } | null>(null);
@@ -201,6 +261,22 @@ const Settings: React.FC = () => {
       setLoadingUsers(false);
     }
   };
+
+  // Actualizar posición del indicador cuando cambia el tab activo
+  useEffect(() => {
+    const tabElement = tabRefs.current[activeTab];
+    if (tabElement) {
+      const parent = tabElement.parentElement;
+      if (parent) {
+        const parentRect = parent.getBoundingClientRect();
+        const tabRect = tabElement.getBoundingClientRect();
+        setIndicatorStyle({
+          left: tabRect.left - parentRect.left,
+          width: tabRect.width
+        });
+      }
+    }
+  }, [activeTab]);
 
   // Cargar usuarios al montar el componente
   useEffect(() => {
@@ -731,6 +807,223 @@ const Settings: React.FC = () => {
     }
   };
 
+  // Estados para editar parámetro
+  const [editingParametroId, setEditingParametroId] = useState<string | null>(null);
+
+  // Funciones para manejar parámetros de estados finales
+  const handleOpenParametroModal = (parametro?: Parametro) => {
+    if (parametro) {
+      setIsEditingParametro(true);
+      setEditingParametroId(parametro.id);
+      setNewParametro({
+        name: parametro.name,
+        description: parametro.description,
+        tipo: parametro.tipo,
+        requerido: parametro.requerido || false,
+        placeholder: parametro.placeholder || '',
+        etiqueta: parametro.etiqueta || '',
+        opciones: parametro.opciones ? [...parametro.opciones] : []
+      });
+    } else {
+      setIsEditingParametro(false);
+      setEditingParametroId(null);
+      setNewParametro({
+        name: '',
+        description: '',
+        tipo: 'texto',
+        requerido: false,
+        placeholder: '',
+        etiqueta: '',
+        opciones: []
+      });
+    }
+    setShowParametroModal(true);
+  };
+
+  const handleCloseParametroModal = () => {
+    setShowParametroModal(false);
+    setIsEditingParametro(false);
+    setEditingParametroId(null);
+    setNewParametro({
+      name: '',
+      description: '',
+      tipo: 'texto',
+      requerido: false,
+      placeholder: '',
+      etiqueta: '',
+      opciones: []
+    });
+  };
+
+  const handleSaveParametro = async () => {
+    if (!newParametro.name.trim()) {
+      alert('El nombre del parámetro es obligatorio');
+      return;
+    }
+    
+    if (!newParametro.description.trim()) {
+      alert('La descripción del parámetro es obligatoria');
+      return;
+    }
+
+    if (!newParametro.etiqueta?.trim()) {
+      alert('La etiqueta del parámetro es obligatoria');
+      return;
+    }
+
+    try {
+      // TODO: Crear función en api.ts para crear/actualizar parámetros
+      // if (isEditingParametro) {
+      //   await api.updateParametroFinal({...});
+      // } else {
+      //   await api.createParametroFinal({...});
+      // }
+
+      if (isEditingParametro && editingParametroId) {
+        // Actualizar parámetro existente
+        setParametros(parametros.map(param => 
+          param.id === editingParametroId 
+            ? {
+                ...param,
+                name: newParametro.name.trim(),
+                description: newParametro.description.trim(),
+                tipo: newParametro.tipo,
+                requerido: newParametro.requerido,
+                placeholder: newParametro.placeholder?.trim() || '',
+                etiqueta: newParametro.etiqueta?.trim() || '',
+                opciones: newParametro.opciones || []
+              }
+            : param
+        ));
+      } else {
+        // Agregar nuevo parámetro
+        const newId = String(Date.now());
+        setParametros([...parametros, {
+          id: newId,
+          name: newParametro.name.trim(),
+          description: newParametro.description.trim(),
+          tipo: newParametro.tipo,
+          requerido: newParametro.requerido || false,
+          placeholder: newParametro.placeholder?.trim() || '',
+          etiqueta: newParametro.etiqueta?.trim() || '',
+          opciones: newParametro.opciones || []
+        }]);
+      }
+      
+      handleCloseParametroModal();
+      setHasChanges(true);
+    } catch (error: any) {
+      console.error('Error al guardar parámetro:', error);
+      alert(error.message || 'Error al guardar el parámetro. Por favor, intente nuevamente.');
+    }
+  };
+
+  const handleAddOpcion = () => {
+    setNewParametro({
+      ...newParametro,
+      opciones: [...(newParametro.opciones || []), '']
+    });
+  };
+
+  const handleUpdateOpcion = (index: number, value: string) => {
+    const nuevasOpciones = [...(newParametro.opciones || [])];
+    nuevasOpciones[index] = value;
+    setNewParametro({
+      ...newParametro,
+      opciones: nuevasOpciones
+    });
+  };
+
+  const handleRemoveOpcion = (index: number) => {
+    const nuevasOpciones = [...(newParametro.opciones || [])];
+    nuevasOpciones.splice(index, 1);
+    setNewParametro({
+      ...newParametro,
+      opciones: nuevasOpciones
+    });
+  };
+
+  const handleDeleteParametro = (parametro: { id: string; name: string }) => {
+    setDeletingParametro(parametro);
+  };
+
+  const handleConfirmDeleteParametro = async () => {
+    if (!deletingParametro) return;
+
+    try {
+      // TODO: Crear función en api.ts para eliminar parámetros
+      // await api.deleteParametroFinal(deletingParametro.id);
+
+      // Eliminar de la lista local
+      setParametros(parametros.filter(param => param.id !== deletingParametro.id));
+      setHasChanges(true);
+      setDeletingParametro(null);
+    } catch (error: any) {
+      console.error('Error al eliminar parámetro:', error);
+      alert(error.message || 'Error al eliminar el parámetro. Por favor, intente nuevamente.');
+      setDeletingParametro(null);
+    }
+  };
+
+  const handleCancelDeleteParametro = () => {
+    setDeletingParametro(null);
+  };
+
+  // Inicializar parámetros filtrados
+  useEffect(() => {
+    setFilteredParametros(parametros);
+  }, []);
+
+  // Filtrar parámetros por término de búsqueda
+  useEffect(() => {
+    if (!parametroSearchTerm.trim()) {
+      setFilteredParametros(parametros);
+      return;
+    }
+
+    const searchTerm = normalizeText(parametroSearchTerm.trim());
+    const filtered = parametros.filter(param => {
+      const normalizedName = normalizeText(param.name);
+      const normalizedDescription = param.description ? normalizeText(param.description) : '';
+      const normalizedId = normalizeText(param.id);
+      const normalizedTipo = normalizeText(param.tipo);
+      
+      const nameMatch = normalizedName.includes(searchTerm);
+      const descriptionMatch = normalizedDescription.includes(searchTerm);
+      const idMatch = normalizedId.includes(searchTerm);
+      const tipoMatch = normalizedTipo.includes(searchTerm);
+      
+      const searchWords = searchTerm.split(/\s+/).filter(word => word.length > 0);
+      let allWordsMatch = false;
+      
+      if (searchWords.length > 1) {
+        allWordsMatch = searchWords.every(word => 
+          normalizedName.includes(word) || 
+          normalizedDescription.includes(word) ||
+          normalizedId.includes(word) ||
+          normalizedTipo.includes(word)
+        );
+      }
+      
+      return nameMatch || descriptionMatch || idMatch || tipoMatch || allWordsMatch;
+    });
+
+    setFilteredParametros(filtered);
+  }, [parametroSearchTerm, parametros]);
+
+  const getTipoLabel = (tipo: TipoParametro): string => {
+    const labels: Record<TipoParametro, string> = {
+      'correo': 'Correo Electrónico',
+      'adjuntar_archivo': 'Adjuntar Archivo',
+      'telefono': 'Teléfono',
+      'texto': 'Texto',
+      'numero': 'Número',
+      'fecha': 'Fecha',
+      'checkbox': 'Casilla de Verificación'
+    };
+    return labels[tipo] || tipo;
+  };
+
   // Función para convertir nombre de estado a ID (ej: "En Proceso" -> "en_proceso")
   const nombreToId = (nombre: string): string => {
     return nombre
@@ -860,9 +1153,34 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleToggleFinalState = (id: string) => {
-    setStates(states.map(s => s.id === id ? { ...s, isFinal: !s.isFinal } : s));
+  const handleToggleFinalState = async (id: string) => {
+    // Actualizar el estado local inmediatamente
+    const updatedStates = states.map(s => s.id === id ? { ...s, isFinal: !s.isFinal } : s);
+    setStates(updatedStates);
     setHasChanges(true);
+    
+    // Guardar inmediatamente en el webhook para que persista
+    try {
+      console.log('[Settings.handleToggleFinalState] Guardando cambio de isFinal para estado:', id);
+      const estadosParaWebhook = updatedStates.map(state => ({
+        id: state.id,
+        nombre: state.name,
+        descripcion: state.name,
+        orden: state.order,
+        es_final: state.isFinal
+      }));
+      
+      await api.updateEstados(estadosParaWebhook);
+      console.log('[Settings.handleToggleFinalState] ✅ Estado final actualizado en webhook');
+      
+      // Recargar estados para asegurar sincronización
+      await loadEstados();
+    } catch (error: any) {
+      console.error('[Settings.handleToggleFinalState] ❌ Error al guardar estado final:', error);
+      // Revertir el cambio local si falla
+      setStates(states);
+      alert('Error al guardar el cambio. Por favor, intenta nuevamente.');
+    }
   };
 
   const handleEditState = (id: string) => {
@@ -1087,10 +1405,31 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleSaveStates = () => {
-    // TODO: Implementar guardado
-    console.log('Guardando estados y transiciones:', { states, transitions });
-    setHasChanges(false);
+  const handleSaveStates = async () => {
+    try {
+      console.log('[Settings.handleSaveStates] Guardando todos los estados...');
+      
+      // Enviar todos los estados con su isFinal al webhook
+      const estadosParaWebhook = states.map(state => ({
+        id: state.id,
+        nombre: state.name,
+        descripcion: state.name,
+        orden: state.order,
+        es_final: state.isFinal
+      }));
+      
+      console.log('[Settings.handleSaveStates] Estados a guardar:', estadosParaWebhook);
+      await api.updateEstados(estadosParaWebhook);
+      console.log('[Settings.handleSaveStates] ✅ Estados guardados exitosamente');
+      
+      // Recargar estados desde el webhook para asegurar sincronización
+      await loadEstados();
+      
+      setHasChanges(false);
+    } catch (error: any) {
+      console.error('[Settings.handleSaveStates] ❌ Error al guardar estados:', error);
+      alert(error.message || 'Error al guardar los estados. Por favor, intenta nuevamente.');
+    }
   };
 
   const handleDeleteUser = (id: string) => {
@@ -1108,6 +1447,11 @@ const Settings: React.FC = () => {
   const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
   const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
   const [showCalendar, setShowCalendar] = useState(false);
+  const [searchYear, setSearchYear] = useState(new Date().getFullYear());
+  const [searchMonth, setSearchMonth] = useState(new Date().getMonth());
+  const [searchDay, setSearchDay] = useState<number | ''>('');
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [showYearPicker, setShowYearPicker] = useState(false);
   // Estado para el modal de confirmación de fecha
   const [pendingHolidayDate, setPendingHolidayDate] = useState<{ date: Date; holidayName: string | null } | null>(null);
   // Estado para animación de eliminación
@@ -1858,6 +2202,11 @@ const Settings: React.FC = () => {
       id: 'asuetos',
       name: 'Asuetos',
       icon: Calendar
+    },
+    {
+      id: 'parametros-finales',
+      name: 'Parámetros Estados Finales',
+      icon: FileText
     }
   ];
 
@@ -1876,7 +2225,7 @@ const Settings: React.FC = () => {
         </div>
 
         {/* Menú de tabs horizontal */}
-        <div className="flex items-center gap-1 border-b" style={{ 
+        <div className="relative flex items-center gap-1 border-b" style={{ 
           borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'
         }}>
           {tabs.map((tab) => {
@@ -1886,15 +2235,28 @@ const Settings: React.FC = () => {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                ref={(el) => { tabRefs.current[tab.id] = el; }}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  // Actualizar posición del indicador
+                  const tabElement = tabRefs.current[tab.id];
+                  if (tabElement) {
+                    const parent = tabElement.parentElement;
+                    if (parent) {
+                      const parentRect = parent.getBoundingClientRect();
+                      const tabRect = tabElement.getBoundingClientRect();
+                      setIndicatorStyle({
+                        left: tabRect.left - parentRect.left,
+                        width: tabRect.width
+                      });
+                    }
+                  }
+                }}
                 className="flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all relative"
                 style={{
                   color: isActive 
                     ? (theme === 'dark' ? '#3b82f6' : '#2563eb')
-                    : styles.text.secondary,
-                  borderBottom: isActive 
-                    ? `2px solid ${theme === 'dark' ? '#3b82f6' : '#2563eb'}`
-                    : '2px solid transparent'
+                    : styles.text.secondary
                 }}
               >
                 <Icon className="w-4 h-4" />
@@ -1902,19 +2264,33 @@ const Settings: React.FC = () => {
               </button>
             );
           })}
+          {/* Barrita indicadora animada */}
+          <div
+            className="absolute bottom-0 h-0.5 transition-all duration-300 ease-in-out"
+            style={{
+              left: `${indicatorStyle.left}px`,
+              width: `${indicatorStyle.width}px`,
+              backgroundColor: theme === 'dark' ? '#3b82f6' : '#2563eb',
+              transform: 'translateY(2px)' // Alinear con el borde inferior
+            }}
+          />
         </div>
       </div>
 
       {/* Contenido según tab activo */}
       <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
         {activeTab === 'configuracion' && (
-          <div className="p-6 rounded-xl border" style={{
-            ...styles.card,
-            boxShadow: theme === 'dark' 
-              ? '0 2px 8px rgba(0, 0, 0, 0.25)' 
-              : '0 2px 8px rgba(0, 0, 0, 0.08)',
-            borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.2)'
-          }}>
+          <div 
+            className="p-6 rounded-xl border animate-fade-in"
+            style={{
+              ...styles.card,
+              boxShadow: theme === 'dark' 
+                ? '0 2px 8px rgba(0, 0, 0, 0.25)' 
+                : '0 2px 8px rgba(0, 0, 0, 0.08)',
+              borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.2)',
+              animation: 'fadeInSlide 0.3s ease-out'
+            }}
+          >
             {/* Sección: Parámetros Globales SLA */}
             <div className="mb-8">
               <h2 className="text-xl font-bold mb-1.5" style={{ color: styles.text.primary }}>
@@ -1992,7 +2368,13 @@ const Settings: React.FC = () => {
         )}
 
         {activeTab === 'categorias' && (
-          <div className="p-6 rounded-lg border" style={{...styles.card}}>
+          <div 
+            className="p-6 rounded-lg border"
+            style={{
+              ...styles.card,
+              animation: 'fadeInSlide 0.3s ease-out'
+            }}
+          >
             {/* Título y descripción */}
             <h2 className="text-lg font-bold mb-2" style={{ color: styles.text.primary }}>
               Mantenimiento de Categorías
@@ -2533,7 +2915,13 @@ const Settings: React.FC = () => {
         )}
 
         {activeTab === 'estados-flujo' && (
-          <div className="p-6 rounded-lg border" style={{...styles.card}}>
+          <div 
+            className="p-6 rounded-lg border"
+            style={{
+              ...styles.card,
+              animation: 'fadeInSlide 0.3s ease-out'
+            }}
+          >
             {/* Header con botón guardar */}
             <div className="flex justify-between items-start mb-6">
               <div>
@@ -2568,10 +2956,14 @@ const Settings: React.FC = () => {
             </div>
 
             {/* Formulario para agregar nuevo estado */}
-            <div className="mb-6 p-4 rounded-lg" style={{
-              backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
-              border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
-            }}>
+            <div 
+              className="mb-6 p-4 rounded-lg" 
+              style={{
+                backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`,
+                animation: 'fadeInSlide 0.3s ease-out'
+              }}
+            >
               <h3 className="text-sm font-bold mb-4 uppercase" style={{ color: styles.text.primary }}>
                 Agregar Nuevo Estado
               </h3>
@@ -2685,7 +3077,7 @@ const Settings: React.FC = () => {
               <div className="space-y-2">
                 {states
                   .sort((a, b) => a.order - b.order)
-                  .map((state) => (
+                  .map((state, index) => (
                     <div
                       key={state.id}
                       draggable
@@ -2701,12 +3093,28 @@ const Settings: React.FC = () => {
                           ? (theme === 'dark' ? '#1e40af' : '#bfdbfe')
                           : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
                         borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)',
-                        opacity: draggedStateId === state.id ? 0.5 : 1
+                        opacity: draggedStateId === state.id ? 0.5 : 1,
+                        animation: `fadeInSlide 0.3s ease-out ${index * 0.05}s both`,
+                        transform: draggedStateId === state.id ? 'scale(0.98)' : 'scale(1)',
+                        transition: 'all 0.2s ease-in-out'
                       }}
                     >
                       <GripVertical 
-                        className="w-5 h-5 flex-shrink-0" 
-                        style={{ color: styles.text.tertiary, cursor: 'grab' }}
+                        className="w-5 h-5 flex-shrink-0 transition-all" 
+                        style={{ 
+                          color: styles.text.tertiary, 
+                          cursor: 'grab',
+                          transform: 'scale(1)',
+                          transition: 'all 0.2s ease-in-out'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.1)';
+                          e.currentTarget.style.color = theme === 'dark' ? '#94a3b8' : '#64748b';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                          e.currentTarget.style.color = styles.text.tertiary;
+                        }}
                       />
                       <div className="w-16 text-sm font-semibold" style={{ color: styles.text.secondary }}>
                         Orden {state.order}
@@ -2822,9 +3230,12 @@ const Settings: React.FC = () => {
                               : styles.text.secondary,
                             border: editingStateId === state.id 
                               ? 'none'
-                              : `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`
+                              : `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`,
+                            transform: 'scale(1)',
+                            transition: 'all 0.2s ease-in-out'
                           }}
                           onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'scale(1.05)';
                             if (editingStateId === state.id) {
                               e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
                             } else {
@@ -2837,11 +3248,12 @@ const Settings: React.FC = () => {
                             } else {
                               e.currentTarget.style.backgroundColor = 'transparent';
                             }
+                            e.currentTarget.style.transform = 'scale(1)';
                           }}
                           title={editingStateId === state.id ? "Cancelar edición" : "Editar estado"}
                         >
                           {editingStateId === state.id ? (
-                            <X className="w-4 h-4" />
+                            <X className="w-4 h-4" style={{ animation: 'fadeIn 0.2s ease-out' }} />
                           ) : (
                             <Edit className="w-4 h-4" />
                           )}
@@ -2851,7 +3263,17 @@ const Settings: React.FC = () => {
                           className="p-2 rounded-lg transition-all hover:shadow-md"
                           style={{
                             backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                            color: '#ef4444'
+                            color: '#ef4444',
+                            transform: 'scale(1)',
+                            transition: 'all 0.2s ease-in-out'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'scale(1.05)';
+                            e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'scale(1)';
+                            e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
                           }}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
@@ -3075,7 +3497,13 @@ const Settings: React.FC = () => {
         )}
 
         {activeTab === 'usuarios' && (
-          <div className="p-6 rounded-lg border" style={{...styles.card}}>
+          <div 
+            className="p-6 rounded-lg border"
+            style={{
+              ...styles.card,
+              animation: 'fadeInSlide 0.3s ease-out'
+            }}
+          >
             {/* Header con título, descripción y botón */}
             <div className="flex justify-between items-start mb-6">
               <div>
@@ -3328,7 +3756,12 @@ const Settings: React.FC = () => {
         )}
 
         {activeTab === 'asuetos' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div 
+            className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+            style={{
+              animation: 'fadeInSlide 0.3s ease-out'
+            }}
+          >
             {/* Panel Izquierdo: Calendario de Asuetos */}
             <div className="p-6 rounded-xl border" style={{
               ...styles.card,
@@ -3359,8 +3792,9 @@ const Settings: React.FC = () => {
                         backgroundColor: theme === 'dark' ? 'rgba(22, 163, 74, 0.1)' : 'rgba(21, 128, 61, 0.08)',
                         border: `1px solid ${theme === 'dark' ? 'rgba(22, 163, 74, 0.2)' : 'rgba(21, 128, 61, 0.2)'}`
                       }}>
-                        <span className="text-xs font-semibold" style={{ color: theme === 'dark' ? '#16a34a' : '#15803d' }}>
-                          📅 {holidays.length} {holidays.length === 1 ? 'asueto registrado' : 'asuetos registrados'}
+                        <span className="text-xs font-semibold flex items-center gap-1.5" style={{ color: theme === 'dark' ? '#16a34a' : '#15803d' }}>
+                          <Calendar className="w-3.5 h-3.5" />
+                          {holidays.length} {holidays.length === 1 ? 'asueto registrado' : 'asuetos registrados'}
                         </span>
                       </div>
                       {(() => {
@@ -3401,8 +3835,9 @@ const Settings: React.FC = () => {
                               backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.08)',
                               border: `1px solid ${theme === 'dark' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.2)'}`
                             }}>
-                              <span className="text-xs font-semibold" style={{ color: theme === 'dark' ? '#60a5fa' : '#2563eb' }}>
-                                ⏰ Próximo: {nextHolidayDateText} {daysUntil === 0 ? '(hoy)' : daysUntil === 1 ? '(mañana)' : `(en ${daysUntil} días)`}
+                              <span className="text-xs font-semibold flex items-center gap-1.5" style={{ color: theme === 'dark' ? '#60a5fa' : '#2563eb' }}>
+                                <Clock className="w-3.5 h-3.5" />
+                                Próximo: {nextHolidayDateText} {daysUntil === 0 ? '(hoy)' : daysUntil === 1 ? '(mañana)' : `(en ${daysUntil} días)`}
                               </span>
                             </div>
                           );
@@ -3415,7 +3850,7 @@ const Settings: React.FC = () => {
               </div>
 
               {/* Botón para agregar fecha con calendario desplegable */}
-              <div className="mb-6 relative">
+              <div className="mb-6 relative" style={{ overflow: 'visible' }}>
                 <button
                   onClick={() => {
                     setShowCalendar(!showCalendar);
@@ -3424,6 +3859,9 @@ const Settings: React.FC = () => {
                       const today = new Date();
                       setCalendarMonth(today.getMonth());
                       setCalendarYear(today.getFullYear());
+                      setSearchMonth(today.getMonth());
+                      setSearchYear(today.getFullYear());
+                      setSearchDay(today.getDate());
                     }
                   }}
                   className="w-full px-4 py-3 text-white text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-2"
@@ -3431,19 +3869,23 @@ const Settings: React.FC = () => {
                     backgroundColor: theme === 'dark' ? '#16a34a' : '#15803d',
                     boxShadow: theme === 'dark' 
                       ? '0 2px 6px rgba(22, 163, 74, 0.25)' 
-                      : '0 2px 6px rgba(21, 128, 61, 0.2)'
+                      : '0 2px 6px rgba(21, 128, 61, 0.2)',
+                    transform: 'scale(1)',
+                    transition: 'all 0.2s ease-in-out'
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = theme === 'dark' ? '#15803d' : '#166534';
                     e.currentTarget.style.boxShadow = theme === 'dark' 
                       ? '0 4px 10px rgba(22, 163, 74, 0.35)' 
                       : '0 4px 10px rgba(21, 128, 61, 0.3)';
+                    e.currentTarget.style.transform = 'scale(1.02)';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = theme === 'dark' ? '#16a34a' : '#15803d';
                     e.currentTarget.style.boxShadow = theme === 'dark' 
                       ? '0 2px 6px rgba(22, 163, 74, 0.25)' 
                       : '0 2px 6px rgba(21, 128, 61, 0.2)';
+                    e.currentTarget.style.transform = 'scale(1)';
                   }}
                 >
                   <Calendar className="w-4 h-4" />
@@ -3463,63 +3905,306 @@ const Settings: React.FC = () => {
                     
                     {/* Calendario popup */}
                     <div 
-                      className="absolute top-full left-0 mt-2 p-5 rounded-xl border z-20 w-80 animate-in zoom-in-95 duration-200"
+                      className="absolute top-full left-0 mt-2 p-5 rounded-xl border z-20"
                       style={{
                         backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
                         borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.35)',
                         boxShadow: theme === 'dark' 
                           ? '0 8px 24px rgba(0, 0, 0, 0.4)' 
-                          : '0 8px 24px rgba(0, 0, 0, 0.2)'
+                          : '0 8px 24px rgba(0, 0, 0, 0.2)',
+                        animation: 'fadeInSlide 0.2s ease-out',
+                        width: '380px',
+                        maxWidth: 'calc(100vw - 2rem)',
+                        overflow: 'visible',
+                        boxSizing: 'border-box'
                       }}
                       onClick={(e) => e.stopPropagation()}
                     >
                       {/* Navegación del calendario */}
-                      <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center justify-between mb-4 gap-2" style={{ width: '100%', overflow: 'visible', boxSizing: 'border-box' }}>
                         <button
                           onClick={handlePrevMonth}
-                          className="p-2 rounded-lg transition-all hover:scale-110"
+                          className="p-2 rounded-lg transition-all flex-shrink-0"
                           style={{
                             backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
                             border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.25)' : 'rgba(148, 163, 184, 0.3)'}`,
-                            color: styles.text.primary
+                            color: styles.text.primary,
+                            transform: 'scale(1)',
+                            transition: 'all 0.2s ease-in-out',
+                            animation: 'fadeInSlide 0.3s ease-out',
+                            flexShrink: 0,
+                            overflow: 'visible',
+                            transformOrigin: 'center'
                           }}
                           title="Mes anterior"
                           onMouseEnter={(e) => {
                             e.currentTarget.style.backgroundColor = theme === 'dark' ? '#334155' : '#e2e8f0';
+                            e.currentTarget.style.transform = 'scale(1.1) rotate(-5deg)';
                           }}
                           onMouseLeave={(e) => {
                             e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f8fafc';
+                            e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
                           }}
                         >
-                          <ChevronUp className="w-4 h-4 rotate-[-90deg]" />
+                          <ChevronUp className="w-4 h-4 rotate-[-90deg]" style={{ display: 'block' }} />
                         </button>
                         
-                        <div className="flex items-center gap-2">
-                          <div className="text-sm font-bold capitalize px-3 py-1 rounded-lg" style={{ 
-                            color: styles.text.primary,
-                            backgroundColor: theme === 'dark' ? 'rgba(21, 128, 61, 0.1)' : 'rgba(21, 128, 61, 0.08)'
-                          }}>
-                            {new Date(calendarYear, calendarMonth).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+                        <div className="flex items-center gap-2 flex-1 min-w-0" style={{ justifyContent: 'center', flexShrink: 1, overflow: 'visible' }}>
+                          {/* Selector de Mes - Estilo Google */}
+                          <div className="relative flex-shrink-0" style={{ zIndex: 30 }}>
+                            <button
+                              onClick={() => {
+                                setShowMonthPicker(!showMonthPicker);
+                                setShowYearPicker(false);
+                              }}
+                              className="text-sm font-bold capitalize px-3 py-1 rounded-lg transition-all flex items-center gap-1"
+                              key={`${calendarMonth}-${calendarYear}`}
+                              style={{ 
+                                color: styles.text.primary,
+                                backgroundColor: theme === 'dark' ? 'rgba(21, 128, 61, 0.1)' : 'rgba(21, 128, 61, 0.08)',
+                                animation: 'fadeIn 0.3s ease-out',
+                                border: 'none',
+                                cursor: 'pointer'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(21, 128, 61, 0.15)' : 'rgba(21, 128, 61, 0.12)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(21, 128, 61, 0.1)' : 'rgba(21, 128, 61, 0.08)';
+                              }}
+                            >
+                              {new Date(calendarYear, calendarMonth).toLocaleDateString('es-ES', { month: 'long' })}
+                              <ChevronDown className="w-3 h-3" />
+                            </button>
+                            
+                            {/* Dropdown de Meses */}
+                            {showMonthPicker && (
+                              <>
+                                <div 
+                                  className="fixed inset-0 z-10" 
+                                  onClick={() => setShowMonthPicker(false)}
+                                  style={{ backgroundColor: 'rgba(0, 0, 0, 0.1)' }}
+                                />
+                                <div 
+                                  className="absolute top-full left-0 mt-1 p-2 rounded-lg border"
+                                  style={{
+                                    backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                                    borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                                    boxShadow: theme === 'dark' 
+                                      ? '0 8px 24px rgba(0, 0, 0, 0.4)' 
+                                      : '0 8px 24px rgba(0, 0, 0, 0.2)',
+                                    animation: 'fadeInSlide 0.2s ease-out',
+                                    width: '180px',
+                                    maxWidth: 'calc(100vw - 2rem)',
+                                    boxSizing: 'border-box',
+                                    zIndex: 50
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <div className="grid grid-cols-3 gap-1">
+                                    {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((month, idx) => {
+                                      const isCurrentMonth = idx === calendarMonth;
+                                      return (
+                                        <button
+                                          key={idx}
+                                          onClick={() => {
+                                            setCalendarMonth(idx);
+                                            setSearchMonth(idx);
+                                            setShowMonthPicker(false);
+                                          }}
+                                          className="px-2 py-1.5 text-xs rounded transition-all capitalize"
+                                          style={{
+                                            backgroundColor: isCurrentMonth 
+                                              ? (theme === 'dark' ? 'rgba(16, 122, 180, 0.2)' : 'rgba(16, 122, 180, 0.1)')
+                                              : 'transparent',
+                                            color: isCurrentMonth 
+                                              ? '#107ab4' 
+                                              : styles.text.primary,
+                                            fontWeight: isCurrentMonth ? 'bold' : 'normal'
+                                          }}
+                                          onMouseEnter={(e) => {
+                                            if (!isCurrentMonth) {
+                                              e.currentTarget.style.backgroundColor = theme === 'dark' ? '#334155' : '#f1f5f9';
+                                            }
+                                          }}
+                                          onMouseLeave={(e) => {
+                                            if (!isCurrentMonth) {
+                                              e.currentTarget.style.backgroundColor = 'transparent';
+                                            }
+                                          }}
+                                        >
+                                          {month.substring(0, 3)}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              </>
+                            )}
                           </div>
+                          
+                          {/* Selector de Año - Estilo Google */}
+                          <div className="relative flex-shrink-0" style={{ zIndex: 30 }}>
+                            <button
+                              onClick={() => {
+                                setShowYearPicker(!showYearPicker);
+                                setShowMonthPicker(false);
+                              }}
+                              className="text-sm font-bold px-3 py-1 rounded-lg transition-all flex items-center gap-1"
+                              style={{ 
+                                color: styles.text.primary,
+                                backgroundColor: theme === 'dark' ? 'rgba(21, 128, 61, 0.1)' : 'rgba(21, 128, 61, 0.08)',
+                                animation: 'fadeIn 0.3s ease-out',
+                                border: 'none',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(21, 128, 61, 0.15)' : 'rgba(21, 128, 61, 0.12)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(21, 128, 61, 0.1)' : 'rgba(21, 128, 61, 0.08)';
+                              }}
+                            >
+                              {calendarYear}
+                              <ChevronDown className="w-3 h-3" />
+                            </button>
+                            
+                            {/* Dropdown de Años */}
+                            {showYearPicker && (
+                              <>
+                                <div 
+                                  className="fixed inset-0 z-10" 
+                                  onClick={() => setShowYearPicker(false)}
+                                  style={{ backgroundColor: 'rgba(0, 0, 0, 0.1)' }}
+                                />
+                                <div 
+                                  className="absolute top-full mt-1 p-4 rounded-xl border max-h-80 overflow-y-auto"
+                                  style={{
+                                    backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                                    borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                                    boxShadow: theme === 'dark' 
+                                      ? '0 8px 24px rgba(0, 0, 0, 0.4)' 
+                                      : '0 8px 24px rgba(0, 0, 0, 0.2)',
+                                    animation: 'fadeInSlide 0.2s ease-out',
+                                    width: '240px',
+                                    minHeight: '280px',
+                                    maxWidth: 'calc(100vw - 2rem)',
+                                    right: '0',
+                                    boxSizing: 'border-box',
+                                    zIndex: 50
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {/* Header con rango de años */}
+                                  <div className="mb-3 pb-3 border-b" style={{ 
+                                    borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.25)'
+                                  }}>
+                                    <div className="text-xs font-bold uppercase tracking-wider mb-1" style={{ 
+                                      color: theme === 'dark' ? '#cbd5e1' : '#64748b',
+                                      letterSpacing: '0.5px'
+                                    }}>
+                                      SELECCIONAR AÑO
+                                    </div>
+                                    <div className="text-xs font-medium" style={{ 
+                                      color: theme === 'dark' ? '#94a3b8' : '#64748b'
+                                    }}>
+                                      {new Date().getFullYear() - 5} - {new Date().getFullYear() + 14}
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Grid de años mejorado */}
+                                  <div className="grid grid-cols-4 gap-2">
+                                    {Array.from({ length: 20 }, (_, i) => {
+                                      const year = new Date().getFullYear() - 5 + i;
+                                      const isCurrentYear = year === calendarYear;
+                                      const isThisYear = year === new Date().getFullYear();
+                                      return (
+                                        <button
+                                          key={year}
+                                          onClick={() => {
+                                            setCalendarYear(year);
+                                            setSearchYear(year);
+                                            setShowYearPicker(false);
+                                          }}
+                                          className="px-3 py-2.5 text-xs font-medium rounded-lg transition-all flex items-center justify-center"
+                                          style={{
+                                            backgroundColor: isCurrentYear 
+                                              ? (theme === 'dark' ? '#16a34a' : '#15803d')
+                                              : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
+                                            color: isCurrentYear 
+                                              ? '#ffffff' 
+                                              : styles.text.primary,
+                                            fontWeight: isCurrentYear ? 'bold' : 'normal',
+                                            border: isCurrentYear
+                                              ? 'none'
+                                              : `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.25)'}`,
+                                            transform: 'scale(1)',
+                                            transition: 'all 0.15s ease-in-out',
+                                            boxShadow: isCurrentYear 
+                                              ? (theme === 'dark' ? '0 2px 4px rgba(22, 163, 74, 0.3)' : '0 2px 4px rgba(21, 128, 61, 0.2)')
+                                              : 'none',
+                                            textAlign: 'center',
+                                            width: '100%',
+                                            aspectRatio: '1'
+                                          }}
+                                          onMouseEnter={(e) => {
+                                            if (!isCurrentYear) {
+                                              e.currentTarget.style.backgroundColor = theme === 'dark' ? '#334155' : '#f1f5f9';
+                                              e.currentTarget.style.borderColor = theme === 'dark' ? '#3b82f6' : '#2563eb';
+                                              e.currentTarget.style.borderWidth = '2px';
+                                              e.currentTarget.style.color = theme === 'dark' ? '#ffffff' : '#0f172a';
+                                              e.currentTarget.style.transform = 'scale(1.05)';
+                                            }
+                                          }}
+                                          onMouseLeave={(e) => {
+                                            if (!isCurrentYear) {
+                                              e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f8fafc';
+                                              e.currentTarget.style.borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.25)';
+                                              e.currentTarget.style.borderWidth = '1px';
+                                              e.currentTarget.style.color = styles.text.primary;
+                                              e.currentTarget.style.transform = 'scale(1)';
+                                            }
+                                          }}
+                                        >
+                                          {year}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                          
                           {(calendarMonth !== new Date().getMonth() || calendarYear !== new Date().getFullYear()) && (
                             <button
                               onClick={() => {
                                 const today = new Date();
                                 setCalendarMonth(today.getMonth());
                                 setCalendarYear(today.getFullYear());
+                                setSearchMonth(today.getMonth());
+                                setSearchYear(today.getFullYear());
+                                setSearchDay(today.getDate());
                               }}
-                              className="px-2.5 py-1 text-[10px] font-semibold rounded-md transition-all"
+                              className="px-2.5 py-1 text-[10px] font-semibold rounded-md transition-all flex-shrink-0"
                               style={{
                                 backgroundColor: theme === 'dark' ? '#0f172a' : '#e2e8f0',
                                 color: styles.text.secondary,
-                                border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.25)'}`
+                                border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.25)'}`,
+                                transform: 'scale(1)',
+                                transition: 'all 0.2s ease-in-out',
+                                animation: 'fadeInSlide 0.3s ease-out 0.1s both',
+                                whiteSpace: 'nowrap'
                               }}
                               title="Ir a hoy"
                               onMouseEnter={(e) => {
                                 e.currentTarget.style.backgroundColor = theme === 'dark' ? '#334155' : '#cbd5e1';
+                                e.currentTarget.style.transform = 'scale(1.05)';
                               }}
                               onMouseLeave={(e) => {
                                 e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#e2e8f0';
+                                e.currentTarget.style.transform = 'scale(1)';
                               }}
                             >
                               Hoy
@@ -3529,21 +4214,29 @@ const Settings: React.FC = () => {
                         
                         <button
                           onClick={handleNextMonth}
-                          className="p-2 rounded-lg transition-all hover:scale-110"
+                          className="p-2 rounded-lg transition-all flex-shrink-0"
                           style={{
                             backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
                             border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.25)' : 'rgba(148, 163, 184, 0.3)'}`,
-                            color: styles.text.primary
+                            color: styles.text.primary,
+                            transform: 'scale(1)',
+                            transition: 'all 0.2s ease-in-out',
+                            animation: 'fadeInSlide 0.3s ease-out',
+                            flexShrink: 0,
+                            overflow: 'visible',
+                            transformOrigin: 'center'
                           }}
                           title="Mes siguiente"
                           onMouseEnter={(e) => {
                             e.currentTarget.style.backgroundColor = theme === 'dark' ? '#334155' : '#e2e8f0';
+                            e.currentTarget.style.transform = 'scale(1.1) rotate(5deg)';
                           }}
                           onMouseLeave={(e) => {
                             e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f8fafc';
+                            e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
                           }}
                         >
-                          <ChevronUp className="w-4 h-4 rotate-90" />
+                          <ChevronUp className="w-4 h-4 rotate-90" style={{ display: 'block' }} />
                         </button>
                       </div>
 
@@ -3555,7 +4248,10 @@ const Settings: React.FC = () => {
                             <div
                               key={idx}
                               className="text-center text-[10px] font-semibold py-1"
-                              style={{ color: styles.text.secondary }}
+                              style={{ 
+                                color: styles.text.secondary,
+                                animation: `fadeInSlide 0.3s ease-out ${idx * 0.03}s both`
+                              }}
                             >
                               {day}
                             </div>
@@ -3572,9 +4268,15 @@ const Settings: React.FC = () => {
                             const isHolidayDate = isHoliday(item.date);
                             const isTodayDate = isToday(item.date);
                             
+                            // Calcular delay basado en la posición en la grilla (fila y columna)
+                            const row = Math.floor(idx / 7);
+                            const col = idx % 7;
+                            const delay = (row * 0.02) + (col * 0.01);
+                            
                             return (
                               <button
                                 key={idx}
+                                data-day={item.day}
                                 onClick={() => {
                                   if (item.date) {
                                     handleDateClick(item.day, calendarMonth, calendarYear);
@@ -3582,7 +4284,7 @@ const Settings: React.FC = () => {
                                     setShowCalendar(false);
                                   }
                                 }}
-                                className="aspect-square rounded text-xs font-medium transition-all hover:scale-110"
+                                className="aspect-square rounded text-xs font-medium transition-all"
                                 style={{
                                   backgroundColor: isHolidayDate
                                     ? (theme === 'dark' ? '#16a34a' : '#15803d')
@@ -3597,11 +4299,23 @@ const Settings: React.FC = () => {
                                   border: isTodayDate
                                     ? `1.5px solid ${theme === 'dark' ? '#c8151b' : '#c8151b'}`
                                     : `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.15)'}`,
-                                  cursor: 'pointer'
+                                  cursor: 'pointer',
+                                  transform: 'scale(1)',
+                                  transition: 'all 0.15s ease-in-out',
+                                  animation: `fadeInSlide 0.3s ease-out ${delay}s both`
                                 }}
                                 onMouseEnter={(e) => {
                                   if (!isHolidayDate) {
                                     e.currentTarget.style.backgroundColor = theme === 'dark' ? '#334155' : '#e2e8f0';
+                                    e.currentTarget.style.transform = 'scale(1.1)';
+                                    e.currentTarget.style.boxShadow = theme === 'dark' 
+                                      ? '0 2px 8px rgba(0, 0, 0, 0.3)' 
+                                      : '0 2px 8px rgba(0, 0, 0, 0.15)';
+                                  } else {
+                                    e.currentTarget.style.transform = 'scale(1.05)';
+                                    e.currentTarget.style.boxShadow = theme === 'dark' 
+                                      ? '0 2px 8px rgba(22, 163, 74, 0.4)' 
+                                      : '0 2px 8px rgba(21, 128, 61, 0.3)';
                                   }
                                 }}
                                 onMouseLeave={(e) => {
@@ -3609,6 +4323,11 @@ const Settings: React.FC = () => {
                                     e.currentTarget.style.backgroundColor = isTodayDate
                                       ? (theme === 'dark' ? 'rgba(200, 21, 27, 0.2)' : 'rgba(200, 21, 27, 0.1)')
                                       : (theme === 'dark' ? '#0f172a' : '#f8fafc');
+                                    e.currentTarget.style.transform = 'scale(1)';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                  } else {
+                                    e.currentTarget.style.transform = 'scale(1)';
+                                    e.currentTarget.style.boxShadow = 'none';
                                   }
                                 }}
                                 title={isHolidayDate ? 'Fecha registrada - Click para eliminar' : 'Click para agregar'}
@@ -3621,22 +4340,58 @@ const Settings: React.FC = () => {
                       </div>
 
                       {/* Leyenda mejorada */}
-                      <div className="flex items-center justify-center gap-4 mt-4 pt-3 border-t" style={{
-                        borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.2)'
-                      }}>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded shadow-sm" style={{ 
-                            backgroundColor: theme === 'dark' ? '#16a34a' : '#15803d',
-                            boxShadow: `0 2px 4px ${theme === 'dark' ? 'rgba(22, 163, 74, 0.3)' : 'rgba(21, 128, 61, 0.3)'}`
-                          }} />
+                      <div 
+                        className="flex items-center justify-center gap-4 mt-4 pt-3 border-t" 
+                        style={{
+                          borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.2)',
+                          animation: 'fadeInSlide 0.3s ease-out 0.2s both'
+                        }}
+                      >
+                        <div 
+                          className="flex items-center gap-2"
+                          style={{
+                            animation: 'fadeIn 0.3s ease-out 0.3s both'
+                          }}
+                        >
+                          <div 
+                            className="w-3 h-3 rounded shadow-sm transition-all" 
+                            style={{ 
+                              backgroundColor: theme === 'dark' ? '#16a34a' : '#15803d',
+                              boxShadow: `0 2px 4px ${theme === 'dark' ? 'rgba(22, 163, 74, 0.3)' : 'rgba(21, 128, 61, 0.3)'}`,
+                              transform: 'scale(1)',
+                              transition: 'all 0.2s ease-in-out'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'scale(1.2)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'scale(1)';
+                            }}
+                          />
                           <span className="text-[11px] font-medium" style={{ color: styles.text.secondary }}>Registrada</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded border-2 shadow-sm" style={{ 
-                            borderColor: '#c8151b',
-                            backgroundColor: theme === 'dark' ? 'rgba(200, 21, 27, 0.2)' : 'rgba(200, 21, 27, 0.1)',
-                            boxShadow: '0 2px 4px rgba(200, 21, 27, 0.2)'
-                          }} />
+                        <div 
+                          className="flex items-center gap-2"
+                          style={{
+                            animation: 'fadeIn 0.3s ease-out 0.4s both'
+                          }}
+                        >
+                          <div 
+                            className="w-3 h-3 rounded border-2 shadow-sm transition-all" 
+                            style={{ 
+                              borderColor: '#c8151b',
+                              backgroundColor: theme === 'dark' ? 'rgba(200, 21, 27, 0.2)' : 'rgba(200, 21, 27, 0.1)',
+                              boxShadow: '0 2px 4px rgba(200, 21, 27, 0.2)',
+                              transform: 'scale(1)',
+                              transition: 'all 0.2s ease-in-out'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'scale(1.2)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'scale(1)';
+                            }}
+                          />
                           <span className="text-[11px] font-medium" style={{ color: styles.text.secondary }}>Hoy</span>
                         </div>
                       </div>
@@ -3763,20 +4518,12 @@ const Settings: React.FC = () => {
                             dateText = holiday.fecha || '';
                           }
                           
-                          // Detectar cambio de mes/año para agregar separador (usar el string original)
-                          const [dayStr, monthStr, yearStr] = holiday.fecha.split('/');
-                          const monthNum = parseInt(monthStr, 10);
-                          const yearNum = parseInt(yearStr, 10);
-                          
-                          // Calcular monthYear con validación
-                          let monthYear = '';
-                          if (!isNaN(monthNum) && !isNaN(yearNum) && monthNum >= 1 && monthNum <= 12) {
-                            const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-                            monthYear = `${months[monthNum - 1]} ${yearNum}`;
-                          } else {
-                            // Fallback: usar holidayDate para obtener mes y año
-                            monthYear = holidayDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-                          }
+                          // Detectar cambio de mes/año para agregar separador (usar holidayDate para consistencia)
+                          // Usar siempre holidayDate que ya está parseado correctamente
+                          const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+                          const monthNum = holidayDate.getMonth(); // 0-11
+                          const yearNum = holidayDate.getFullYear();
+                          const monthYear = `${months[monthNum]} DE ${yearNum}`.toUpperCase();
                           
                           const showSeparator = monthYear !== currentMonthYear;
                           if (showSeparator) currentMonthYear = monthYear;
@@ -3795,7 +4542,12 @@ const Settings: React.FC = () => {
                               {showSeparator && index > 0 && (
                                 <tr key={`separator-${monthYear}`}>
                                   <td colSpan={4} className="px-5 py-2">
-                                    <div className="flex items-center gap-2">
+                                    <div 
+                                      className="flex items-center gap-2"
+                                      style={{
+                                        animation: 'fadeInSlide 0.3s ease-out'
+                                      }}
+                                    >
                                       <div className="flex-1 h-px" style={{
                                         backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.2)'
                                       }} />
@@ -3842,15 +4594,19 @@ const Settings: React.FC = () => {
                                   borderBottom: index < sortedHolidays.length - 1
                                     ? `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.15)'}`
                                     : 'none',
-                                  borderLeft: isUpcoming && !isPast ? `3px solid ${theme === 'dark' ? '#60a5fa' : '#2563eb'}` : 'none'
+                                  borderLeft: isUpcoming && !isPast ? `3px solid ${theme === 'dark' ? '#60a5fa' : '#2563eb'}` : 'none',
+                                  animation: `fadeInSlide 0.3s ease-out ${index * 0.03}s both`,
+                                  transition: 'all 0.2s ease-in-out'
                                 }}
                                 onMouseEnter={(e) => {
                                   e.currentTarget.style.backgroundColor = theme === 'dark' ? '#334155' : '#f1f5f9';
+                                  e.currentTarget.style.transform = 'translateX(2px)';
                                 }}
                                 onMouseLeave={(e) => {
                                   e.currentTarget.style.backgroundColor = index % 2 === 0
                                     ? (theme === 'dark' ? '#1e293b' : '#ffffff')
                                     : (theme === 'dark' ? '#0f172a' : '#f8fafc');
+                                  e.currentTarget.style.transform = 'translateX(0)';
                                 }}
                               >
                                 <td className="px-5 py-4">
@@ -3872,18 +4628,30 @@ const Settings: React.FC = () => {
                                           {dateText}
                                         </span>
                                         {isToday && (
-                                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase" style={{
-                                            backgroundColor: theme === 'dark' ? 'rgba(200, 21, 27, 0.2)' : 'rgba(200, 21, 27, 0.15)',
-                                            color: '#c8151b'
-                                          }}>
+                                          <span 
+                                            className="px-2 py-0.5 rounded text-[10px] font-bold uppercase" 
+                                            style={{
+                                              backgroundColor: theme === 'dark' ? 'rgba(200, 21, 27, 0.2)' : 'rgba(200, 21, 27, 0.15)',
+                                              color: '#c8151b',
+                                              animation: 'pulse 2s ease-in-out infinite',
+                                              transform: 'scale(1)',
+                                              transition: 'all 0.2s ease-in-out'
+                                            }}
+                                          >
                                             Hoy
                                           </span>
                                         )}
                                         {isUpcoming && !isToday && !isPast && (
-                                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold" style={{
-                                            backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)',
-                                            color: theme === 'dark' ? '#60a5fa' : '#2563eb'
-                                          }}>
+                                          <span 
+                                            className="px-2 py-0.5 rounded text-[10px] font-semibold" 
+                                            style={{
+                                              backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)',
+                                              color: theme === 'dark' ? '#60a5fa' : '#2563eb',
+                                              animation: 'fadeIn 0.3s ease-out',
+                                              transform: 'scale(1)',
+                                              transition: 'all 0.2s ease-in-out'
+                                            }}
+                                          >
                                             En {daysUntil} {daysUntil === 1 ? 'día' : 'días'}
                                           </span>
                                         )}
@@ -4043,30 +4811,42 @@ const Settings: React.FC = () => {
                     {/* Estadísticas */}
                     <div className="flex items-center gap-3 flex-wrap">
                       {analysis.valid.length > 0 && (
-                        <div className="px-3 py-1.5 rounded-lg flex items-center gap-1.5" style={{
-                          backgroundColor: theme === 'dark' ? 'rgba(22, 163, 74, 0.15)' : 'rgba(21, 128, 61, 0.1)',
-                          border: `1px solid ${theme === 'dark' ? 'rgba(22, 163, 74, 0.3)' : 'rgba(21, 128, 61, 0.3)'}`
-                        }}>
+                        <div 
+                          className="px-3 py-1.5 rounded-lg flex items-center gap-1.5" 
+                          style={{
+                            backgroundColor: theme === 'dark' ? 'rgba(22, 163, 74, 0.15)' : 'rgba(21, 128, 61, 0.1)',
+                            border: `1px solid ${theme === 'dark' ? 'rgba(22, 163, 74, 0.3)' : 'rgba(21, 128, 61, 0.3)'}`,
+                            animation: 'fadeInSlide 0.3s ease-out'
+                          }}
+                        >
                           <span className="text-xs font-bold" style={{ color: theme === 'dark' ? '#16a34a' : '#15803d' }}>
                             ✓ {analysis.valid.length} válida{analysis.valid.length !== 1 ? 's' : ''}
                           </span>
                         </div>
                       )}
                       {analysis.duplicates.length > 0 && (
-                        <div className="px-3 py-1.5 rounded-lg flex items-center gap-1.5" style={{
-                          backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.1)',
-                          border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.3)'}`
-                        }}>
+                        <div 
+                          className="px-3 py-1.5 rounded-lg flex items-center gap-1.5" 
+                          style={{
+                            backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.1)',
+                            border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.3)'}`,
+                            animation: 'fadeInSlide 0.3s ease-out 0.1s both'
+                          }}
+                        >
                           <span className="text-xs font-bold" style={{ color: styles.text.secondary }}>
                             ⚠️ {analysis.duplicates.length} duplicada{analysis.duplicates.length !== 1 ? 's' : ''}
                           </span>
                         </div>
                       )}
                       {analysis.errors.length > 0 && (
-                        <div className="px-3 py-1.5 rounded-lg flex items-center gap-1.5" style={{
-                          backgroundColor: theme === 'dark' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)',
-                          border: `1px solid ${theme === 'dark' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
-                        }}>
+                        <div 
+                          className="px-3 py-1.5 rounded-lg flex items-center gap-1.5" 
+                          style={{
+                            backgroundColor: theme === 'dark' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)',
+                            border: `1px solid ${theme === 'dark' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+                            animation: 'fadeInSlide 0.3s ease-out 0.2s both'
+                          }}
+                        >
                           <span className="text-xs font-bold" style={{ color: '#ef4444' }}>
                             ✗ {analysis.errors.length} error{analysis.errors.length !== 1 ? 'es' : ''}
                           </span>
@@ -4098,7 +4878,8 @@ const Settings: React.FC = () => {
                                 className="flex items-center justify-between gap-2 p-2 rounded-lg" 
                                 style={{
                                   backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.05)' : 'rgba(148, 163, 184, 0.03)',
-                                  border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.15)'}`
+                                  border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.15)'}`,
+                                  animation: `fadeInSlide 0.3s ease-out ${idx * 0.05}s both`
                                 }}
                               >
                                 <div className="flex-1">
@@ -4204,7 +4985,9 @@ const Settings: React.FC = () => {
                   backgroundColor: theme === 'dark' ? '#991b1b' : '#7f1d1d',
                   boxShadow: theme === 'dark' 
                     ? '0 4px 12px rgba(153, 27, 27, 0.35)' 
-                    : '0 4px 12px rgba(127, 29, 29, 0.3)'
+                    : '0 4px 12px rgba(127, 29, 29, 0.3)',
+                  transform: 'scale(1)',
+                  transition: 'all 0.2s ease-in-out'
                 }}
                 onMouseEnter={(e) => {
                   if (!isImporting && analyzeBulkDates().valid.length > 0) {
@@ -4212,6 +4995,7 @@ const Settings: React.FC = () => {
                     e.currentTarget.style.boxShadow = theme === 'dark' 
                       ? '0 6px 16px rgba(153, 27, 27, 0.4)' 
                       : '0 6px 16px rgba(127, 29, 29, 0.35)';
+                    e.currentTarget.style.transform = 'scale(1.02)';
                   }
                 }}
                 onMouseLeave={(e) => {
@@ -4238,8 +5022,785 @@ const Settings: React.FC = () => {
         )}
 
 
+        {activeTab === 'parametros-finales' && (
+          <div 
+            className="p-6 rounded-lg border"
+            style={{
+              ...styles.card,
+              animation: 'fadeInSlide 0.3s ease-out'
+            }}
+          >
+            {/* Título y descripción */}
+            <h2 className="text-lg font-bold mb-2" style={{ color: styles.text.primary }}>
+              Parámetros de Estados Finales
+            </h2>
+            <p className="text-sm mb-6" style={{ color: styles.text.tertiary }}>
+              Gestione los parámetros que se mostrarán al transicionar a un estado marcado como final (ej: correo adjuntos, notificaciones, etc.).
+            </p>
+
+            {/* Botón para agregar parámetro */}
+            <div className="mb-6">
+              <button
+                onClick={() => handleOpenParametroModal()}
+                className="px-6 py-2 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
+                style={{
+                  backgroundColor: theme === 'dark' ? '#166534' : '#14532d',
+                  boxShadow: theme === 'dark' 
+                    ? '0 4px 12px rgba(22, 101, 52, 0.3)' 
+                    : '0 4px 12px rgba(20, 83, 45, 0.3)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#14532d' : '#0f4c1f';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#166534' : '#14532d';
+                }}
+              >
+                <Plus className="w-4 h-4" />
+                Agregar Parámetro
+              </button>
+            </div>
+
+            {/* Búsqueda de parámetro */}
+            <div className="mb-6 p-4 rounded-lg" style={{
+              backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+              border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
+            }}>
+              <div className="text-xs font-semibold uppercase mb-3 tracking-wide" style={{ color: styles.text.secondary }}>
+                Buscar Parámetro
+              </div>
+              <div className="flex items-end gap-3">
+                <div className="flex-1">
+                  <label className="block text-sm font-semibold mb-2" style={{ color: styles.text.primary }}>
+                    Buscar por nombre, descripción o ID
+                  </label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: styles.text.tertiary }} />
+                    <input
+                      type="text"
+                      value={parametroSearchTerm}
+                      onChange={(e) => setParametroSearchTerm(e.target.value)}
+                      placeholder="Buscar parámetro..."
+                      className="w-full pl-10 pr-3 py-2 rounded-lg border text-sm"
+                      style={{
+                        backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                        borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                        color: styles.text.primary
+                      }}
+                    />
+                  </div>
+                </div>
+                {parametroSearchTerm && (
+                  <button
+                    onClick={() => {
+                      setParametroSearchTerm('');
+                      setFilteredParametros(parametros);
+                    }}
+                    className="px-4 py-2 text-sm font-semibold rounded-lg transition-all flex items-center gap-2"
+                    style={{
+                      backgroundColor: 'transparent',
+                      color: styles.text.secondary,
+                      border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.15)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <X className="w-4 h-4" />
+                    Limpiar
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Tabla de parámetros */}
+            <div className="rounded-lg border overflow-hidden" style={{
+              borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'
+            }}>
+              <table className="w-full" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
+                <thead>
+                  <tr style={{
+                    backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc'
+                  }}>
+                    <th 
+                      className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider"
+                      style={{ 
+                        color: styles.text.secondary,
+                        borderBottom: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
+                      }}
+                    >
+                      NOMBRE
+                    </th>
+                    <th 
+                      className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider"
+                      style={{ 
+                        color: styles.text.secondary,
+                        borderBottom: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
+                      }}
+                    >
+                      TIPO
+                    </th>
+                    <th 
+                      className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider"
+                      style={{ 
+                        color: styles.text.secondary,
+                        borderBottom: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
+                      }}
+                    >
+                      DESCRIPCIÓN
+                    </th>
+                    <th 
+                      className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider"
+                      style={{ 
+                        color: styles.text.secondary,
+                        borderBottom: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
+                      }}
+                    >
+                      REQUERIDO
+                    </th>
+                    <th 
+                      className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider"
+                      style={{ 
+                        color: styles.text.secondary,
+                        borderBottom: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
+                      }}
+                    >
+                      ACCIONES
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredParametros.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-8 text-center text-sm" style={{ color: styles.text.tertiary }}>
+                        No se encontraron parámetros
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredParametros.map((parametro, index) => (
+                      <tr
+                        key={parametro.id}
+                        style={{
+                          backgroundColor: index % 2 === 0 
+                            ? (theme === 'dark' ? 'transparent' : 'transparent')
+                            : (theme === 'dark' ? 'rgba(148, 163, 184, 0.05)' : 'rgba(148, 163, 184, 0.03)'),
+                          borderBottom: index < filteredParametros.length - 1 
+                            ? `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.15)'}`
+                            : 'none'
+                        }}
+                      >
+                        <td className="px-4 py-3">
+                          <span className="text-sm font-medium" style={{ color: styles.text.primary }}>
+                            {parametro.name}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-xs px-2 py-1 rounded" style={{
+                            backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)',
+                            color: '#3b82f6'
+                          }}>
+                            {getTipoLabel(parametro.tipo)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-sm" style={{ color: styles.text.secondary }}>
+                            {parametro.description}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {parametro.requerido ? (
+                            <span className="text-xs px-2 py-1 rounded" style={{
+                              backgroundColor: theme === 'dark' ? 'rgba(220, 38, 38, 0.2)' : 'rgba(220, 38, 38, 0.1)',
+                              color: '#dc2626'
+                            }}>
+                              Sí
+                            </span>
+                          ) : (
+                            <span className="text-xs px-2 py-1 rounded" style={{
+                              backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.1)',
+                              color: styles.text.tertiary
+                            }}>
+                              No
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleOpenParametroModal(parametro)}
+                              className="p-1.5 rounded transition-colors"
+                              style={{
+                                color: '#3b82f6'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.1)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                              }}
+                              title="Editar"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteParametro(parametro)}
+                              className="p-1.5 rounded transition-colors"
+                              style={{
+                                color: '#dc2626'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(220, 38, 38, 0.1)' : 'rgba(220, 38, 38, 0.1)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                              }}
+                              title="Eliminar"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Modal de Confirmación de Eliminación */}
+            {deletingParametro && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{
+                backgroundColor: 'rgba(0, 0, 0, 0.5)'
+              }}>
+                <div className="rounded-xl border p-6 w-full max-w-md" style={{
+                  ...styles.card,
+                  boxShadow: theme === 'dark' 
+                    ? '0 8px 24px rgba(0, 0, 0, 0.5)' 
+                    : '0 8px 24px rgba(0, 0, 0, 0.2)'
+                }}>
+                  <div className="flex items-center gap-3 mb-4">
+                    <AlertTriangle className="w-6 h-6" style={{ color: '#dc2626' }} />
+                    <h3 className="text-lg font-bold" style={{ color: styles.text.primary }}>
+                      Confirmar Eliminación
+                    </h3>
+                  </div>
+                  <p className="text-sm mb-6" style={{ color: styles.text.secondary }}>
+                    ¿Está seguro de que desea eliminar el parámetro <strong>"{deletingParametro.name}"</strong>? Esta acción no se puede deshacer.
+                  </p>
+                  <div className="flex gap-3 justify-end">
+                    <button
+                      onClick={handleCancelDeleteParametro}
+                      className="px-4 py-2 text-sm font-semibold rounded-lg transition-all"
+                      style={{
+                        backgroundColor: 'transparent',
+                        color: styles.text.secondary,
+                        border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleConfirmDeleteParametro}
+                      className="px-4 py-2 text-sm font-semibold rounded-lg text-white transition-all"
+                      style={{
+                        backgroundColor: '#dc2626'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#b91c1c';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#dc2626';
+                      }}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Modal para Crear/Editar Parámetro */}
+            {showParametroModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{
+                backgroundColor: 'rgba(0, 0, 0, 0.5)'
+              }}>
+                <div className="rounded-xl border w-full max-w-5xl max-h-[90vh] flex flex-col" style={{
+                  ...styles.card,
+                  boxShadow: theme === 'dark' 
+                    ? '0 8px 24px rgba(0, 0, 0, 0.5)' 
+                    : '0 8px 24px rgba(0, 0, 0, 0.2)'
+                }}>
+                  {/* Header fijo */}
+                  <div className="flex justify-between items-center p-6 border-b flex-shrink-0" style={{
+                    borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'
+                  }}>
+                    <h3 className="text-xl font-bold" style={{ color: styles.text.primary }}>
+                      {isEditingParametro ? 'Editar Parámetro' : 'Nuevo Parámetro'}
+                    </h3>
+                    <button
+                      onClick={handleCloseParametroModal}
+                      className="p-1.5 rounded-lg transition-colors"
+                      style={{
+                        color: styles.text.tertiary
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  {/* Contenido con scroll */}
+                  <div className="overflow-y-auto flex-1 p-6">
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Columna Izquierda */}
+                      <div className="space-y-5">
+                        <h2 className="text-sm font-semibold mb-3 pb-2 border-b" style={{color: styles.text.primary, borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+                          Información Básica
+                        </h2>
+
+                        {/* Nombre del Parámetro */}
+                        <div>
+                          <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{ color: styles.text.secondary }}>
+                            Nombre del Parámetro <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={newParametro.name}
+                            onChange={(e) => setNewParametro({ ...newParametro, name: e.target.value })}
+                            placeholder="Ej. Correo Adjuntos"
+                            className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
+                            style={{
+                              backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                              borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                              color: styles.text.primary
+                            }}
+                            onFocus={(e) => {
+                              e.target.style.borderColor = '#107ab4';
+                              e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
+                              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
+                            }}
+                            onBlur={(e) => {
+                              e.target.style.borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)';
+                              e.target.style.boxShadow = '';
+                              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
+                            }}
+                          />
+                        </div>
+
+                        {/* Descripción */}
+                        <div>
+                          <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{ color: styles.text.secondary }}>
+                            Descripción <span className="text-red-500">*</span>
+                          </label>
+                          <textarea
+                            value={newParametro.description}
+                            onChange={(e) => setNewParametro({ ...newParametro, description: e.target.value })}
+                            placeholder="Breve descripción del parámetro..."
+                            rows={4}
+                            className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md resize-none"
+                            style={{
+                              backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                              borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                              color: styles.text.primary
+                            }}
+                            onFocus={(e) => {
+                              e.target.style.borderColor = '#107ab4';
+                              e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
+                              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
+                            }}
+                            onBlur={(e) => {
+                              e.target.style.borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)';
+                              e.target.style.boxShadow = '';
+                              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
+                            }}
+                          />
+                        </div>
+
+                        {/* Tipo de Parámetro */}
+                        <div>
+                          <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{ color: styles.text.secondary }}>
+                            Tipo de Parámetro <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={newParametro.tipo}
+                            onChange={(e) => setNewParametro({ ...newParametro, tipo: e.target.value as TipoParametro })}
+                            className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md appearance-none cursor-pointer"
+                            style={{
+                              backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                              borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                              color: styles.text.primary
+                            }}
+                            onFocus={(e) => {
+                              e.target.style.borderColor = '#107ab4';
+                              e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
+                              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
+                            }}
+                            onBlur={(e) => {
+                              e.target.style.borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)';
+                              e.target.style.boxShadow = '';
+                              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
+                            }}
+                          >
+                            <option value="texto">Texto</option>
+                            <option value="correo">Correo Electrónico</option>
+                            <option value="telefono">Teléfono</option>
+                            <option value="adjuntar_archivo">Adjuntar Archivo</option>
+                            <option value="numero">Número</option>
+                            <option value="fecha">Fecha</option>
+                            <option value="checkbox">Casilla de Verificación</option>
+                          </select>
+                        </div>
+
+                        {/* Requerido */}
+                        <div className="flex items-center gap-3 pt-2">
+                          <input
+                            type="checkbox"
+                            id="requerido"
+                            checked={newParametro.requerido || false}
+                            onChange={(e) => setNewParametro({ ...newParametro, requerido: e.target.checked })}
+                            className="w-4 h-4 rounded"
+                            style={{
+                              accentColor: '#107ab4'
+                            }}
+                          />
+                          <label htmlFor="requerido" className="text-xs font-semibold" style={{ color: styles.text.primary }}>
+                            Campo requerido
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Columna Derecha */}
+                      <div className="space-y-5">
+                        <h2 className="text-sm font-semibold mb-3 pb-2 border-b" style={{color: styles.text.primary, borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+                          Configuración del Campo
+                        </h2>
+
+                        {/* Etiqueta */}
+                        <div>
+                          <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{ color: styles.text.secondary }}>
+                            Etiqueta (Texto que se mostrará al usuario) <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={newParametro.etiqueta || ''}
+                            onChange={(e) => setNewParametro({ ...newParametro, etiqueta: e.target.value })}
+                            placeholder="Ej. Adjuntar archivos, Correo del cliente, etc."
+                            className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
+                            style={{
+                              backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                              borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                              color: styles.text.primary
+                            }}
+                            onFocus={(e) => {
+                              e.target.style.borderColor = '#107ab4';
+                              e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
+                              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
+                            }}
+                            onBlur={(e) => {
+                              e.target.style.borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)';
+                              e.target.style.boxShadow = '';
+                              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
+                            }}
+                          />
+                        </div>
+
+                        {/* Placeholder */}
+                        <div>
+                          <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{ color: styles.text.secondary }}>
+                            Placeholder (Texto de ayuda)
+                          </label>
+                          <input
+                            type="text"
+                            value={newParametro.placeholder || ''}
+                            onChange={(e) => setNewParametro({ ...newParametro, placeholder: e.target.value })}
+                            placeholder="Ej. Ingrese su correo electrónico..."
+                            className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
+                            style={{
+                              backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                              borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                              color: styles.text.primary
+                            }}
+                            onFocus={(e) => {
+                              e.target.style.borderColor = '#107ab4';
+                              e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
+                              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
+                            }}
+                            onBlur={(e) => {
+                              e.target.style.borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)';
+                              e.target.style.boxShadow = '';
+                              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
+                            }}
+                          />
+                        </div>
+
+                        {/* Opciones (para checkbox o select) */}
+                        {(newParametro.tipo === 'checkbox' || newParametro.tipo === 'texto') && (
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="block text-xs font-semibold tracking-normal" style={{ color: styles.text.secondary }}>
+                                Opciones (Opcional)
+                              </label>
+                              <button
+                                type="button"
+                                onClick={handleAddOpcion}
+                                className="px-3 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1"
+                                style={{
+                                  backgroundColor: theme === 'dark' ? 'rgba(16, 122, 180, 0.2)' : 'rgba(16, 122, 180, 0.1)',
+                                  color: '#107ab4'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(16, 122, 180, 0.3)' : 'rgba(16, 122, 180, 0.15)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(16, 122, 180, 0.2)' : 'rgba(16, 122, 180, 0.1)';
+                                }}
+                              >
+                                <Plus className="w-3 h-3" />
+                                Agregar
+                              </button>
+                            </div>
+                            {newParametro.opciones && newParametro.opciones.length > 0 && (
+                              <div className="space-y-2 max-h-40 overflow-y-auto">
+                                {newParametro.opciones.map((opcion, index) => (
+                                  <div key={index} className="flex items-center gap-2">
+                                    <input
+                                      type="text"
+                                      value={opcion}
+                                      onChange={(e) => handleUpdateOpcion(index, e.target.value)}
+                                      placeholder={`Opción ${index + 1}`}
+                                      className="flex-1 px-3 py-2 border rounded-xl text-xs"
+                                      style={{
+                                        backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                                        borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                                        color: styles.text.primary
+                                      }}
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveOpcion(index)}
+                                      className="p-2 rounded-lg transition-colors"
+                                      style={{
+                                        color: '#dc2626'
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(220, 38, 38, 0.1)' : 'rgba(220, 38, 38, 0.1)';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                      }}
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                      {/* Vista Previa - Ancho completo */}
+                      <div className="pt-6 border-t" style={{
+                        borderColor: 'rgba(148, 163, 184, 0.2)'
+                      }}>
+                        <h2 className="text-sm font-semibold mb-4 pb-2 border-b" style={{color: styles.text.primary, borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+                          Vista Previa del Campo
+                        </h2>
+
+                        <div className="space-y-2">
+                        <label className="block text-sm font-medium" style={{ color: styles.text.secondary }}>
+                          {newParametro.etiqueta || 'Etiqueta del campo'}
+                          {newParametro.requerido && <span className="text-red-500 ml-1">*</span>}
+                        </label>
+                        {newParametro.tipo === 'adjuntar_archivo' ? (
+                          <div className="border-2 border-dashed rounded-lg p-6 text-center" style={{
+                            borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                            backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff'
+                          }}>
+                            <div className="flex flex-col items-center gap-2">
+                              <div className="p-3 rounded-full" style={{
+                                backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'
+                              }}>
+                                <FileText className="w-6 h-6" style={{ color: '#3b82f6' }} />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium mb-1" style={{ color: styles.text.primary }}>
+                                  Arrastra archivos aquí o haz clic para seleccionar
+                                </p>
+                                <p className="text-xs" style={{ color: styles.text.tertiary }}>
+                                  {newParametro.placeholder || 'Formatos permitidos: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG'}
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                className="px-4 py-2 text-sm font-semibold rounded-lg transition-all mt-2"
+                                style={{
+                                  backgroundColor: theme === 'dark' ? '#3b82f6' : '#2563eb',
+                                  color: '#ffffff'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#2563eb' : '#1d4ed8';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#3b82f6' : '#2563eb';
+                                }}
+                              >
+                                Seleccionar Archivos
+                              </button>
+                            </div>
+                          </div>
+                        ) : newParametro.tipo === 'correo' ? (
+                          <input
+                            type="email"
+                            placeholder={newParametro.placeholder || 'ejemplo@correo.com'}
+                            disabled
+                            className="w-full px-3 py-2 rounded-lg border text-sm"
+                            style={{
+                              backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                              borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                              color: styles.text.tertiary,
+                              cursor: 'not-allowed'
+                            }}
+                          />
+                        ) : newParametro.tipo === 'telefono' ? (
+                          <input
+                            type="tel"
+                            placeholder={newParametro.placeholder || '+1234567890'}
+                            disabled
+                            className="w-full px-3 py-2 rounded-lg border text-sm"
+                            style={{
+                              backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                              borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                              color: styles.text.tertiary,
+                              cursor: 'not-allowed'
+                            }}
+                          />
+                        ) : newParametro.tipo === 'numero' ? (
+                          <input
+                            type="number"
+                            placeholder={newParametro.placeholder || '0'}
+                            disabled
+                            className="w-full px-3 py-2 rounded-lg border text-sm"
+                            style={{
+                              backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                              borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                              color: styles.text.tertiary,
+                              cursor: 'not-allowed'
+                            }}
+                          />
+                        ) : newParametro.tipo === 'fecha' ? (
+                          <input
+                            type="date"
+                            disabled
+                            className="w-full px-3 py-2 rounded-lg border text-sm"
+                            style={{
+                              backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                              borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                              color: styles.text.tertiary,
+                              cursor: 'not-allowed'
+                            }}
+                          />
+                        ) : newParametro.tipo === 'checkbox' ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              disabled
+                              className="w-4 h-4 rounded"
+                              style={{
+                                accentColor: theme === 'dark' ? '#3b82f6' : '#3b82f6',
+                                cursor: 'not-allowed'
+                              }}
+                            />
+                            <span className="text-sm" style={{ color: styles.text.secondary }}>
+                              {newParametro.etiqueta || 'Opción'}
+                            </span>
+                          </div>
+                        ) : (
+                          <input
+                            type="text"
+                            placeholder={newParametro.placeholder || 'Ingrese texto...'}
+                            disabled
+                            className="w-full px-3 py-2 rounded-lg border text-sm"
+                            style={{
+                              backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                              borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                              color: styles.text.tertiary,
+                              cursor: 'not-allowed'
+                            }}
+                          />
+                        )}
+                          {newParametro.placeholder && newParametro.tipo !== 'adjuntar_archivo' && (
+                            <p className="text-xs mt-1" style={{ color: styles.text.tertiary }}>
+                              Placeholder: {newParametro.placeholder}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer fijo con botones */}
+                  <div className="flex gap-3 justify-end p-6 border-t flex-shrink-0" style={{
+                    borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)',
+                    backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff'
+                  }}>
+                    <button
+                      onClick={handleCloseParametroModal}
+                      className="px-4 py-2 text-sm font-semibold rounded-lg transition-all"
+                      style={{
+                        backgroundColor: 'transparent',
+                        color: styles.text.secondary,
+                        border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleSaveParametro}
+                      className="px-4 py-2 text-sm font-semibold rounded-lg text-white transition-all"
+                      style={{
+                        backgroundColor: theme === 'dark' ? '#166534' : '#14532d'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = theme === 'dark' ? '#14532d' : '#0f4c1f';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = theme === 'dark' ? '#166534' : '#14532d';
+                      }}
+                    >
+                      {isEditingParametro ? 'Actualizar' : 'Crear'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Placeholder para otras secciones - se completarán con las siguientes imágenes */}
-        {activeTab !== 'configuracion' && activeTab !== 'categorias' && activeTab !== 'estados-flujo' && activeTab !== 'usuarios' && activeTab !== 'asuetos' && (
+        {activeTab !== 'configuracion' && activeTab !== 'categorias' && activeTab !== 'estados-flujo' && activeTab !== 'usuarios' && activeTab !== 'asuetos' && activeTab !== 'parametros-finales' && (
           <div className="p-6 rounded-lg border" style={{...styles.card}}>
             <p className="text-sm" style={{ color: styles.text.tertiary }}>
               Sección "{tabs.find(t => t.id === activeTab)?.name}" - Pendiente de implementar
