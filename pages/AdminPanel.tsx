@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import AnimatedNumber from '../components/AnimatedNumber';
+import LoadingScreen from '../components/LoadingScreen';
 
 const AdminPanel: React.FC = () => {
   const [allCasos, setAllCasos] = useState<Caso[]>([]);
@@ -347,19 +348,30 @@ const AdminPanel: React.FC = () => {
   // Datos para gráficas - usar estados dinámicos del webhook
   const casosPorEstadoChart = useMemo(() => {
     if (!estados || estados.length === 0) {
-      // Fallback a estados hardcodeados si no hay estados del webhook
+      // Fallback a estados hardcodeados si no hay estados del webhook - colores mejorados
       return [
-        { name: 'Nuevo', value: casosPorEstado.nuevo || 0, color: '#3b82f6' },
-        { name: 'En Proceso', value: casosPorEstado.enProceso || 0, color: '#d97706' },
-        { name: 'Pendiente Cliente', value: casosPorEstado.pendienteCliente || 0, color: '#9333ea' },
-        { name: 'Escalado', value: casosPorEstado.escalado || 0, color: '#dc2626' },
-        { name: 'Resuelto', value: casosPorEstado.resuelto || 0, color: '#16a34a' },
-        { name: 'Cerrado', value: casosPorEstado.cerrado || 0, color: '#64748b' }
+        { name: 'Nuevo', value: casosPorEstado.nuevo || 0, color: '#2563eb' },
+        { name: 'En Proceso', value: casosPorEstado.enProceso || 0, color: '#f59e0b' },
+        { name: 'Pendiente Cliente', value: casosPorEstado.pendienteCliente || 0, color: '#a855f7' },
+        { name: 'Escalado', value: casosPorEstado.escalado || 0, color: '#ef4444' },
+        { name: 'Resuelto', value: casosPorEstado.resuelto || 0, color: '#10b981' },
+        { name: 'Cerrado', value: casosPorEstado.cerrado || 0, color: '#6b7280' }
       ];
     }
 
-    // Colores para los estados (asignar por orden)
-    const colors = ['#3b82f6', '#d97706', '#9333ea', '#dc2626', '#16a34a', '#64748b', '#f59e0b', '#ec4899', '#14b8a6', '#6366f1'];
+    // Colores mejorados para los estados - paleta más vibrante y moderna
+    const colors = [
+      '#2563eb', // Azul vibrante para Nuevo
+      '#f59e0b', // Ámbar dorado para En Proceso
+      '#a855f7', // Púrpura vibrante para Pendiente Cliente
+      '#ef4444', // Rojo intenso para Escalado
+      '#10b981', // Verde esmeralda para Resuelto
+      '#6b7280', // Gris para Cerrado
+      '#f97316', // Naranja para estados adicionales
+      '#ec4899', // Rosa para estados adicionales
+      '#06b6d4', // Cyan para estados adicionales
+      '#8b5cf6'  // Púrpura claro para estados adicionales
+    ];
     
     // Ordenar estados por order y crear la gráfica
     const estadosOrdenados = [...estados].sort((a, b) => a.order - b.order);
@@ -372,8 +384,8 @@ const AdminPanel: React.FC = () => {
   }, [casosPorEstado, estados]);
 
   const casosAbiertosCerradosChart = useMemo(() => [
-    { name: 'Abiertos', value: casosAbiertos, color: '#3b82f6' },
-    { name: 'Cerrados', value: casosCerrados, color: '#16a34a' }
+    { name: 'Abiertos', value: casosAbiertos, color: '#3b82f6' }, // Azul vibrante
+    { name: 'Cerrados', value: casosCerrados, color: '#10b981' } // Verde esmeralda
   ], [casosAbiertos, casosCerrados]);
 
   const usuariosPorRolChart = useMemo(() => [
@@ -398,7 +410,19 @@ const AdminPanel: React.FC = () => {
           categoriaCounts[categoriaNombre] = (categoriaCounts[categoriaNombre] || 0) + 1;
         });
         
-        const colors = ['#3b82f6', '#8b5cf6', '#22c55e', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#6366f1'];
+        // Paleta de colores mejorada y más vibrante
+        const colors = [
+          '#3b82f6', // Azul vibrante
+          '#8b5cf6', // Púrpura
+          '#10b981', // Verde esmeralda
+          '#f59e0b', // Ámbar dorado
+          '#ef4444', // Rojo intenso
+          '#ec4899', // Rosa
+          '#06b6d4', // Cyan
+          '#6366f1', // Índigo
+          '#f97316', // Naranja
+          '#84cc16'  // Verde lima
+        ];
         return Object.entries(categoriaCounts).map(([name, value], index) => ({
           name: name.length > 15 ? name.substring(0, 15) + '...' : name,
           value,
@@ -614,18 +638,7 @@ const AdminPanel: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="h-32 rounded-xl animate-pulse" style={{backgroundColor: 'rgba(148, 163, 184, 0.1)'}}></div>
-          ))}
-        </div>
-        {[1, 2].map(i => (
-          <div key={i} className="h-96 rounded-xl animate-pulse" style={{backgroundColor: 'rgba(148, 163, 184, 0.1)'}}></div>
-        ))}
-      </div>
-    );
+    return <LoadingScreen message="Cargando Panel de Administración..." />;
   }
 
   // Validar que todos los datos necesarios estén disponibles

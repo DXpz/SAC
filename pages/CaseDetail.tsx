@@ -6,6 +6,7 @@ import { getStateBadgeColor } from '../constants';
 import { updateCaseStatus, updateCaseData } from '../services/caseService';
 import { ArrowLeft, MessageSquare, User, Building2, Phone, Mail, CheckCircle2, Clock, X, AlertTriangle, Lock, History, Users, TrendingUp, AlertCircle, Edit, Save, Search, Folder } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import LoadingScreen from '../components/LoadingScreen';
 
 const CaseDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -1065,14 +1066,7 @@ const CaseDetail: React.FC = () => {
     }
   };
 
-  if (!caso) return (
-    <div className="min-h-[400px] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-            <div className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin" style={{borderColor: '#c8151b'}}></div>
-            <p className="font-medium tracking-normal text-xs" style={{color: '#94a3b8'}}>Cargando Detalle...</p>
-        </div>
-    </div>
-  );
+  if (!caso) return <LoadingScreen message="Cargando Detalle del Caso..." />;
 
   // Obtener transiciones permitidas desde n8n (si están disponibles) o usar fallback
   const estadoActual = caso.estado || caso.status || 'Nuevo';
@@ -1234,18 +1228,29 @@ const CaseDetail: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-5 pb-20" style={styles.container}>
+    <div 
+      className="max-w-7xl mx-auto space-y-5 pb-20" 
+      style={{
+        ...styles.container,
+        animation: 'fadeInSlide 0.4s ease-out'
+      }}
+    >
       <button 
         onClick={() => navigate(-1)}
         className="flex items-center gap-2 text-sm font-semibold transition-all mb-1 group px-3 py-2 rounded-lg"
-        style={{color: styles.text.tertiary}}
+        style={{
+          color: styles.text.tertiary,
+          animation: 'fadeInSlide 0.3s ease-out 0.1s both'
+        }}
         onMouseEnter={(e) => {
           e.currentTarget.style.color = styles.text.secondary;
           e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(30, 41, 59, 0.4)' : '#f1f5f9';
+          e.currentTarget.style.transform = 'translateX(-2px)';
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.color = styles.text.tertiary;
           e.currentTarget.style.backgroundColor = 'transparent';
+          e.currentTarget.style.transform = 'translateX(0)';
         }}
       >
         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> Volver
@@ -1256,9 +1261,13 @@ const CaseDetail: React.FC = () => {
         <div className="lg:col-span-2 space-y-5">
           {/* Alerta de Caso Crítico */}
           {showAlert && (
-            <div className="rounded-xl border-2 border-red-500 p-4 flex items-center gap-3 animate-in fade-in" style={{
-              backgroundColor: theme === 'dark' ? 'rgba(220, 38, 38, 0.1)' : 'rgba(220, 38, 38, 0.05)'
-            }}>
+            <div 
+              className="rounded-xl border-2 border-red-500 p-4 flex items-center gap-3" 
+              style={{
+                backgroundColor: theme === 'dark' ? 'rgba(220, 38, 38, 0.1)' : 'rgba(220, 38, 38, 0.05)',
+                animation: 'fadeInSlide 0.4s ease-out'
+              }}
+            >
               <AlertTriangle className="w-6 h-6 text-red-500" />
               <div>
                 <p className="text-sm font-bold text-red-600">Caso escalado y SLA vencido</p>
@@ -1268,7 +1277,13 @@ const CaseDetail: React.FC = () => {
           )}
 
           {/* Header del Caso */}
-          <section className="rounded-xl border overflow-hidden shadow-sm" style={{...styles.card}}>
+          <section 
+            className="rounded-xl border overflow-hidden shadow-sm" 
+            style={{
+              ...styles.card,
+              animation: 'fadeInSlide 0.4s ease-out 0.15s both'
+            }}
+          >
             <div className="p-6 border-b" style={{...styles.cardHeader}}>
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div className="flex-1">
@@ -1332,16 +1347,19 @@ const CaseDetail: React.FC = () => {
                           onClick={handleSaveEdit}
                           disabled={transitionLoading}
                           className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white rounded-lg transition-all shadow-sm hover:shadow-md disabled:opacity-50"
-                          style={{backgroundColor: '#16a34a'}}
+                          style={{
+                            backgroundColor: '#16a34a',
+                            animation: 'fadeInSlide 0.3s ease-out'
+                          }}
                           onMouseEnter={(e) => {
                             if (!transitionLoading) {
                               e.currentTarget.style.backgroundColor = '#15803d';
-                              e.currentTarget.style.transform = 'translateY(-1px)';
+                              e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
                             }
                           }}
                           onMouseLeave={(e) => {
                             e.currentTarget.style.backgroundColor = '#16a34a';
-                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.transform = 'translateY(0) scale(1)';
                           }}
                         >
                           <Save className="w-4 h-4" />
@@ -1397,26 +1415,50 @@ const CaseDetail: React.FC = () => {
             </div>
 
             {/* Información SLA Detallada */}
-            <div className="p-6 border-b" style={{borderColor: styles.cardHeader.borderColor}}>
+            <div 
+              className="p-6 border-b" 
+              style={{
+                borderColor: styles.cardHeader.borderColor,
+                animation: 'fadeInSlide 0.3s ease-out 0.2s both'
+              }}
+            >
               <div className="flex items-center gap-2 mb-4">
                 <Clock className="w-4 h-4" style={{color: '#3b82f6'}} />
                 <h3 className="text-sm font-bold uppercase tracking-wide" style={{color: '#3b82f6'}}>Información SLA</h3>
               </div>
               
               <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="p-3 rounded-lg" style={{...styles.input}}>
+                <div 
+                  className="p-3 rounded-lg transition-all hover:scale-[1.02]" 
+                  style={{
+                    ...styles.input,
+                    animation: 'fadeInSlide 0.3s ease-out 0.25s both'
+                  }}
+                >
                   <p className="text-xs mb-1" style={{color: styles.text.tertiary}}>Fecha de Creación</p>
                   <p className="text-sm font-bold" style={{color: styles.text.primary}}>
                     {createdDate.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
                 </div>
-                <div className="p-3 rounded-lg" style={{...styles.input}}>
+                <div 
+                  className="p-3 rounded-lg transition-all hover:scale-[1.02]" 
+                  style={{
+                    ...styles.input,
+                    animation: 'fadeInSlide 0.3s ease-out 0.3s both'
+                  }}
+                >
                   <p className="text-xs mb-1" style={{color: styles.text.tertiary}}>Fecha Límite SLA</p>
                   <p className="text-sm font-bold" style={{color: styles.text.primary}}>
                     {slaDeadline.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
                 </div>
-                <div className="p-3 rounded-lg" style={{...styles.input}}>
+                <div 
+                  className="p-3 rounded-lg transition-all hover:scale-[1.02]" 
+                  style={{
+                    ...styles.input,
+                    animation: 'fadeInSlide 0.3s ease-out 0.35s both'
+                  }}
+                >
                   <p className="text-xs mb-1" style={{color: styles.text.tertiary}}>SLA Comprometido</p>
                   <p className="text-sm font-bold" style={{color: styles.text.primary}}>
                     {slaDays} días hábiles
@@ -1424,7 +1466,15 @@ const CaseDetail: React.FC = () => {
                   <p className="text-xs" style={{color: styles.text.tertiary}}>{slaDays * 24} horas hábiles</p>
                 </div>
                 {isSLAExpired ? (
-                  <div className="p-3 rounded-lg" style={{backgroundColor: 'rgba(220, 38, 38, 0.1)', borderColor: 'rgba(220, 38, 38, 0.3)', border: '1px solid'}}>
+                  <div 
+                    className="p-3 rounded-lg transition-all hover:scale-[1.02]" 
+                    style={{
+                      backgroundColor: 'rgba(220, 38, 38, 0.1)', 
+                      borderColor: 'rgba(220, 38, 38, 0.3)', 
+                      border: '1px solid',
+                      animation: 'fadeInSlide 0.3s ease-out 0.4s both'
+                    }}
+                  >
                     <p className="text-xs mb-1 text-red-600 font-semibold">SLA Vencido</p>
                     <p className="text-sm font-bold text-red-600">
                       {daysOverdue === 1 ? '1 día de atraso' : `${daysOverdue} días de atraso`}
@@ -1437,7 +1487,15 @@ const CaseDetail: React.FC = () => {
                     </p>
                   </div>
                 ) : (
-                  <div className="p-3 rounded-lg" style={{backgroundColor: 'rgba(34, 197, 94, 0.1)', borderColor: 'rgba(34, 197, 94, 0.3)', border: '1px solid'}}>
+                  <div 
+                    className="p-3 rounded-lg transition-all hover:scale-[1.02]" 
+                    style={{
+                      backgroundColor: 'rgba(34, 197, 94, 0.1)', 
+                      borderColor: 'rgba(34, 197, 94, 0.3)', 
+                      border: '1px solid',
+                      animation: 'fadeInSlide 0.3s ease-out 0.4s both'
+                    }}
+                  >
                     <p className="text-xs mb-1 text-green-600 font-semibold">Tiempo Restante</p>
                     <p className="text-sm font-bold text-green-600">
                       {daysRemaining} días hábiles
@@ -1472,7 +1530,12 @@ const CaseDetail: React.FC = () => {
             </div>
 
             {/* Descripción */}
-            <div className="p-6">
+            <div 
+              className="p-6"
+              style={{
+                animation: 'fadeInSlide 0.3s ease-out 0.45s both'
+              }}
+            >
               <div className="flex items-center gap-2 mb-4">
                 <div className="p-2 rounded-lg" style={{backgroundColor: '#eff6ff'}}>
                   <MessageSquare className="w-4 h-4" style={{color: '#107ab4'}} />
@@ -1507,7 +1570,14 @@ const CaseDetail: React.FC = () => {
             </div>
 
             {/* Acciones */}
-            <div className="p-6 border-t" style={{borderColor: styles.cardHeader.borderColor, backgroundColor: styles.card.backgroundColor}}>
+            <div 
+              className="p-6 border-t" 
+              style={{
+                borderColor: styles.cardHeader.borderColor, 
+                backgroundColor: styles.card.backgroundColor,
+                animation: 'fadeInSlide 0.3s ease-out 0.5s both'
+              }}
+            >
               <div className="flex items-center gap-2 mb-4">
                  {isCaseClosed ? (
                    <>
@@ -1551,17 +1621,18 @@ const CaseDetail: React.FC = () => {
                           className="px-4 py-2.5 rounded-lg text-xs font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:hover:translate-y-0"
                           style={{
                             backgroundColor: '#c8151b',
-                            boxShadow: '0 2px 8px rgba(200, 21, 27, 0.3)'
+                            boxShadow: '0 2px 8px rgba(200, 21, 27, 0.3)',
+                            animation: `fadeInSlide 0.3s ease-out ${0.5 + validTransitions.indexOf(estadoDestino) * 0.05}s both`
                           }}
                           onMouseEnter={(e) => {
                             if (!e.currentTarget.disabled) {
-                              e.currentTarget.style.transform = 'translateY(-2px)';
+                              e.currentTarget.style.transform = 'translateY(-3px) scale(1.02)';
                               e.currentTarget.style.backgroundColor = '#dc2626';
-                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(200, 21, 27, 0.4)';
+                              e.currentTarget.style.boxShadow = '0 6px 16px rgba(200, 21, 27, 0.5)';
                             }
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.transform = 'translateY(0) scale(1)';
                             e.currentTarget.style.backgroundColor = '#c8151b';
                             e.currentTarget.style.boxShadow = '0 2px 8px rgba(200, 21, 27, 0.3)';
                           }}
@@ -1579,7 +1650,13 @@ const CaseDetail: React.FC = () => {
             </div>
 
             {/* Historial del Caso - Siempre visible */}
-            <div className="p-6 border-t" style={{borderColor: styles.cardHeader.borderColor}}>
+            <div 
+              className="p-6 border-t" 
+              style={{
+                borderColor: styles.cardHeader.borderColor,
+                animation: 'fadeInSlide 0.3s ease-out 0.55s both'
+              }}
+            >
               <div className="flex items-center gap-3 mb-5">
                 <div className="p-2 rounded-lg" style={{backgroundColor: '#eff6ff'}}>
                   <History className="w-4 h-4" style={{color: '#107ab4'}} />
@@ -1688,9 +1765,16 @@ const CaseDetail: React.FC = () => {
                       // justificacion ya está declarada arriba
 
                       return (
-                        <div key={idx} className="relative pl-12 border-l-2" style={{borderColor: 'rgba(59, 130, 246, 0.2)'}}>
+                        <div 
+                          key={idx} 
+                          className="relative pl-12 border-l-2 transition-all hover:translate-x-1" 
+                          style={{
+                            borderColor: 'rgba(59, 130, 246, 0.2)',
+                            animation: `fadeInSlide 0.3s ease-out ${0.6 + idx * 0.05}s both`
+                          }}
+                        >
                           <div 
-                            className="absolute left-[-24px] top-2 w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg border-4"
+                            className="absolute left-[-24px] top-2 w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg border-4 transition-all hover:scale-110"
                             style={{
                               backgroundColor: theme === 'dark' ? '#3b82f6' : '#107ab4',
                               borderColor: styles.card.backgroundColor
@@ -1699,7 +1783,7 @@ const CaseDetail: React.FC = () => {
                             <CheckCircle2 className="w-5 h-5" />
                           </div>
                           <div 
-                            className="p-4 rounded-lg border transition-all ml-4"
+                            className="p-4 rounded-lg border transition-all ml-4 hover:shadow-md"
                             style={{
                               backgroundColor: styles.input.backgroundColor,
                               borderColor: styles.input.borderColor
@@ -1756,9 +1840,20 @@ const CaseDetail: React.FC = () => {
         </div>
 
         {/* Columna Lateral */}
-        <div className="space-y-5">
+        <div 
+          className="space-y-5"
+          style={{
+            animation: 'fadeInSlide 0.4s ease-out 0.2s both'
+          }}
+        >
           {/* Información del Cliente */}
-          <section className="rounded-xl border p-5 shadow-sm" style={{...styles.card}}>
+          <section 
+            className="rounded-xl border p-5 shadow-sm transition-all hover:shadow-md" 
+            style={{
+              ...styles.card,
+              animation: 'fadeInSlide 0.3s ease-out 0.25s both'
+            }}
+          >
             <div className="flex items-center gap-2 mb-4">
               <div className="p-2 rounded-lg" style={{backgroundColor: '#eff6ff'}}>
                 <Building2 className="w-4 h-4" style={{color: '#107ab4'}} />
@@ -1943,7 +2038,14 @@ const CaseDetail: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-2.5">
-                <div className="p-3 rounded-lg border" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
+                <div 
+                  className="p-3 rounded-lg border transition-all hover:scale-[1.02]" 
+                  style={{
+                    backgroundColor: styles.input.backgroundColor, 
+                    borderColor: styles.input.borderColor,
+                    animation: 'fadeInSlide 0.3s ease-out 0.35s both'
+                  }}
+                >
                   <p className="text-xs font-semibold mb-1" style={{color: styles.text.secondary}}>Cliente</p>
                   <p className="text-sm font-bold" style={{color: styles.text.primary}}>
                     {caso.clientName || caso.cliente?.nombreEmpresa || 'Sin cliente'}
@@ -1954,11 +2056,25 @@ const CaseDetail: React.FC = () => {
                     </p>
                   )}
                 </div>
-                <div className="flex items-center gap-3 p-3 rounded-lg border" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
+                <div 
+                  className="flex items-center gap-3 p-3 rounded-lg border transition-all hover:scale-[1.02]" 
+                  style={{
+                    backgroundColor: styles.input.backgroundColor, 
+                    borderColor: styles.input.borderColor,
+                    animation: 'fadeInSlide 0.3s ease-out 0.4s both'
+                  }}
+                >
                   <Mail className="w-4 h-4" style={{color: '#64748b'}}/>
                   <p className="text-xs font-medium" style={{color: styles.text.secondary}}>{caso.clientEmail || 'No disponible'}</p>
                 </div>
-                <div className="flex items-center gap-3 p-3 rounded-lg border" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
+                <div 
+                  className="flex items-center gap-3 p-3 rounded-lg border transition-all hover:scale-[1.02]" 
+                  style={{
+                    backgroundColor: styles.input.backgroundColor, 
+                    borderColor: styles.input.borderColor,
+                    animation: 'fadeInSlide 0.3s ease-out 0.45s both'
+                  }}
+                >
                   <Phone className="w-4 h-4" style={{color: '#64748b'}}/>
                   <p className="text-xs font-medium" style={{color: styles.text.secondary}}>{caso.clientPhone || caso.cliente?.telefono || 'No disponible'}</p>
                 </div>
@@ -1967,7 +2083,13 @@ const CaseDetail: React.FC = () => {
           </section>
 
           {/* Agente Asignado */}
-          <section className="rounded-xl border p-5 shadow-sm" style={{...styles.card}}>
+          <section 
+            className="rounded-xl border p-5 shadow-sm transition-all hover:shadow-md" 
+            style={{
+              ...styles.card,
+              animation: 'fadeInSlide 0.3s ease-out 0.3s both'
+            }}
+          >
             <div className="flex items-center justify-between gap-2 mb-4">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-lg" style={{backgroundColor: '#f1f5f9'}}>
@@ -2033,8 +2155,21 @@ const CaseDetail: React.FC = () => {
 
       {/* Modal Unificado de Justificación */}
       {showJustificationModal && pendingNewState && (
-        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4 z-50" style={{backgroundColor: styles.modal.overlay}}>
-          <div className="rounded-xl w-full max-w-sm overflow-hidden shadow-2xl border transform animate-in fade-in zoom-in" style={{...styles.modal, borderColor: styles.card.borderColor}}>
+        <div 
+          className="fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4 z-50" 
+          style={{
+            backgroundColor: styles.modal.overlay,
+            animation: 'fadeIn 0.2s ease-out'
+          }}
+        >
+          <div 
+            className="rounded-xl w-full max-w-sm overflow-hidden shadow-2xl border" 
+            style={{
+              ...styles.modal, 
+              borderColor: styles.card.borderColor,
+              animation: 'fadeInSlide 0.3s ease-out'
+            }}
+          >
             <div className="p-4 border-b flex justify-between items-center" style={{borderColor: styles.cardHeader.borderColor}}>
               <h3 className="font-bold text-sm" style={{color: styles.text.primary}}>
                 Cambiar estado a {pendingNewState}
@@ -2166,8 +2301,21 @@ const CaseDetail: React.FC = () => {
       {/* Modal de Reasignación de Agente */}
       {/* Modal de Selección Rápida de Cliente */}
       {showClienteQuickSelectModal && (
-        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4 z-50" style={{backgroundColor: styles.modal.overlay}}>
-          <div className="rounded-xl w-full max-w-2xl overflow-hidden shadow-2xl border transform animate-in fade-in zoom-in" style={{...styles.modal, borderColor: styles.card.borderColor}}>
+        <div 
+          className="fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4 z-50" 
+          style={{
+            backgroundColor: styles.modal.overlay,
+            animation: 'fadeIn 0.2s ease-out'
+          }}
+        >
+          <div 
+            className="rounded-xl w-full max-w-2xl overflow-hidden shadow-2xl border" 
+            style={{
+              ...styles.modal, 
+              borderColor: styles.card.borderColor,
+              animation: 'fadeInSlide 0.3s ease-out'
+            }}
+          >
             <div className="p-4 border-b flex justify-between items-center" style={{borderColor: styles.cardHeader.borderColor}}>
               <div>
                 <h3 className="font-bold text-sm" style={{color: styles.text.primary}}>
@@ -2303,8 +2451,21 @@ const CaseDetail: React.FC = () => {
       )}
 
       {showReassignModal && (
-        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4 z-50" style={{backgroundColor: styles.modal.overlay}}>
-          <div className="rounded-xl w-full max-w-md overflow-hidden shadow-2xl border transform animate-in fade-in zoom-in" style={{...styles.modal, borderColor: styles.card.borderColor}}>
+        <div 
+          className="fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4 z-50" 
+          style={{
+            backgroundColor: styles.modal.overlay,
+            animation: 'fadeIn 0.2s ease-out'
+          }}
+        >
+          <div 
+            className="rounded-xl w-full max-w-md overflow-hidden shadow-2xl border" 
+            style={{
+              ...styles.modal, 
+              borderColor: styles.card.borderColor,
+              animation: 'fadeInSlide 0.3s ease-out'
+            }}
+          >
             <div className="p-4 border-b flex justify-between items-center" style={{borderColor: styles.cardHeader.borderColor}}>
               <h3 className="font-bold text-sm" style={{color: styles.text.primary}}>
                 Reasignar Caso

@@ -17,6 +17,7 @@ import {
 import { useTheme } from '../contexts/ThemeContext';
 import { api } from '../services/api';
 import { Agente } from '../types';
+import LoadingScreen from '../components/LoadingScreen';
 
 // ==================================================
 // TIPOS
@@ -562,6 +563,10 @@ const AdminUsers: React.FC = () => {
     inactivos: users.filter(u => !u.activo && !u.enVacaciones).length
   };
 
+  if (loading && users.length === 0) {
+    return <LoadingScreen message="Cargando Administración de Usuarios..." />;
+  }
+
   return (
     <div className="flex flex-col h-full" style={{ overflow: 'hidden', gap: '1rem', ...styles.container }}>
       {/* Header con resumen y botón crear */}
@@ -803,10 +808,22 @@ const AdminUsers: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="rounded-xl border overflow-hidden" style={{...styles.card}}>
+          <div 
+            className="rounded-xl border overflow-hidden" 
+            style={{
+              ...styles.card,
+              animation: 'fadeInSlide 0.3s ease-out 0.1s both'
+            }}
+          >
             {/* Mensaje de resultados de búsqueda */}
             {searchTerm && filteredUsers.length > 0 && (
-              <div className="p-3 border-b" style={{borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+              <div 
+                className="p-3 border-b" 
+                style={{
+                  borderColor: 'rgba(148, 163, 184, 0.2)',
+                  animation: 'fadeInSlide 0.3s ease-out'
+                }}
+              >
                 <p className="text-xs text-center" style={{color: styles.text.tertiary}}>
                   Mostrando {filteredUsers.length} resultado(s) para "{searchTerm}"
                 </p>
@@ -817,7 +834,10 @@ const AdminUsers: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full" style={{borderCollapse: 'separate', borderSpacing: 0}}>
                 <thead>
-                  <tr style={{backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc'}}>
+                  <tr style={{
+                    backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                    animation: 'fadeInSlide 0.3s ease-out'
+                  }}>
                     <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
                       Usuario
                     </th>
@@ -864,13 +884,24 @@ const AdminUsers: React.FC = () => {
                         {/* Usuario */}
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
-                            <div className="relative flex-shrink-0">
-                              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-slate-700 to-slate-900 text-white flex items-center justify-center font-bold text-sm shadow-md">
+                            <div 
+                              className="relative flex-shrink-0"
+                              style={{
+                                animation: `fadeInSlide 0.3s ease-out ${index * 0.03 + 0.1}s both`
+                              }}
+                            >
+                              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-slate-700 to-slate-900 text-white flex items-center justify-center font-bold text-sm shadow-md transition-all">
                                 {user.nombre.charAt(0)}
                               </div>
-                              <div className="absolute -inset-0.5 rounded-lg border-2" style={{borderColor: statusColor.dot}}></div>
+                              <div className="absolute -inset-0.5 rounded-lg border-2 transition-all" style={{borderColor: statusColor.dot}}></div>
                             </div>
-                            <span className="text-sm font-semibold" style={{color: styles.text.primary}}>
+                            <span 
+                              className="text-sm font-semibold transition-all" 
+                              style={{
+                                color: styles.text.primary,
+                                animation: `fadeInSlide 0.3s ease-out ${index * 0.03 + 0.15}s both`
+                              }}
+                            >
                               {user.nombre}
                             </span>
                           </div>
@@ -878,7 +909,15 @@ const AdminUsers: React.FC = () => {
                         
                         {/* Email */}
                         <td className="px-4 py-3">
-                          <span className="text-xs" style={{color: styles.text.secondary}}>{user.email}</span>
+                          <span 
+                            className="text-xs transition-all" 
+                            style={{
+                              color: styles.text.secondary,
+                              animation: `fadeInSlide 0.3s ease-out ${index * 0.03 + 0.2}s both`
+                            }}
+                          >
+                            {user.email}
+                          </span>
                         </td>
                         
                         {/* Rol */}

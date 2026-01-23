@@ -14,6 +14,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import AnimatedNumber from '../components/AnimatedNumber';
+import LoadingScreen from '../components/LoadingScreen';
 
 type Priority = 'Critica' | 'Alta' | 'Media';
 
@@ -254,22 +255,17 @@ const AlertasCriticas: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-32 rounded-xl animate-pulse" style={{backgroundColor: 'rgba(148, 163, 184, 0.1)'}}></div>
-          ))}
-        </div>
-        {[1, 2, 3].map(i => (
-          <div key={i} className="h-48 rounded-xl animate-pulse" style={{backgroundColor: 'rgba(148, 163, 184, 0.1)'}}></div>
-        ))}
-      </div>
-    );
+    return <LoadingScreen message="Cargando Alertas Críticas..." />;
   }
 
   return (
-    <div className="space-y-6">
+    <div 
+      className="space-y-6"
+      style={{
+        ...styles.container,
+        animation: 'fadeInSlide 0.4s ease-out'
+      }}
+    >
       {/* Header con Métricas Destacadas - Alertas Críticas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Total Críticos */}
@@ -278,16 +274,19 @@ const AlertasCriticas: React.FC = () => {
           style={{
             ...styles.card,
             borderColor: criticos.length > 0 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(148, 163, 184, 0.2)',
-            backgroundColor: criticos.length > 0 ? (theme === 'dark' ? 'rgba(239, 68, 68, 0.05)' : 'rgba(239, 68, 68, 0.02)') : styles.card.backgroundColor
+            backgroundColor: criticos.length > 0 ? (theme === 'dark' ? 'rgba(239, 68, 68, 0.05)' : 'rgba(239, 68, 68, 0.02)') : styles.card.backgroundColor,
+            animation: 'fadeInSlide 0.3s ease-out 0.1s both'
           }}
           onClick={() => navigate('/app/casos')}
           onMouseEnter={(e) => {
             e.currentTarget.style.borderColor = criticos.length > 0 ? 'rgba(239, 68, 68, 0.4)' : 'rgba(148, 163, 184, 0.4)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+            e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.borderColor = criticos.length > 0 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(148, 163, 184, 0.2)';
             e.currentTarget.style.boxShadow = '';
+            e.currentTarget.style.transform = 'translateY(0) scale(1)';
           }}
         >
           {/* Icono con glow en esquina superior derecha */}
@@ -330,16 +329,19 @@ const AlertasCriticas: React.FC = () => {
           style={{
             ...styles.card,
             borderColor: casosFueraSLA > 0 ? 'rgba(245, 158, 11, 0.3)' : 'rgba(148, 163, 184, 0.2)',
-            backgroundColor: casosFueraSLA > 0 ? (theme === 'dark' ? 'rgba(245, 158, 11, 0.05)' : 'rgba(245, 158, 11, 0.02)') : styles.card.backgroundColor
+            backgroundColor: casosFueraSLA > 0 ? (theme === 'dark' ? 'rgba(245, 158, 11, 0.05)' : 'rgba(245, 158, 11, 0.02)') : styles.card.backgroundColor,
+            animation: 'fadeInSlide 0.3s ease-out 0.15s both'
           }}
           onClick={() => navigate('/app/casos')}
           onMouseEnter={(e) => {
             e.currentTarget.style.borderColor = casosFueraSLA > 0 ? 'rgba(245, 158, 11, 0.45)' : 'rgba(148, 163, 184, 0.4)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+            e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.borderColor = casosFueraSLA > 0 ? 'rgba(245, 158, 11, 0.3)' : 'rgba(148, 163, 184, 0.2)';
             e.currentTarget.style.boxShadow = '';
+            e.currentTarget.style.transform = 'translateY(0) scale(1)';
           }}
         >
           {/* Icono con glow en esquina superior derecha */}
@@ -382,16 +384,19 @@ const AlertasCriticas: React.FC = () => {
           style={{
             ...styles.card,
             borderColor: casosVencen24h > 0 ? 'rgba(249, 115, 22, 0.3)' : 'rgba(148, 163, 184, 0.2)',
-            backgroundColor: casosVencen24h > 0 ? (theme === 'dark' ? 'rgba(249, 115, 22, 0.05)' : 'rgba(249, 115, 22, 0.02)') : styles.card.backgroundColor
+            backgroundColor: casosVencen24h > 0 ? (theme === 'dark' ? 'rgba(249, 115, 22, 0.05)' : 'rgba(249, 115, 22, 0.02)') : styles.card.backgroundColor,
+            animation: 'fadeInSlide 0.3s ease-out 0.2s both'
           }}
           onClick={() => navigate('/app/casos')}
           onMouseEnter={(e) => {
             e.currentTarget.style.borderColor = casosVencen24h > 0 ? 'rgba(249, 115, 22, 0.45)' : 'rgba(148, 163, 184, 0.4)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+            e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.borderColor = casosVencen24h > 0 ? 'rgba(249, 115, 22, 0.3)' : 'rgba(148, 163, 184, 0.2)';
             e.currentTarget.style.boxShadow = '';
+            e.currentTarget.style.transform = 'translateY(0) scale(1)';
           }}
         >
           {/* Icono con glow en esquina superior derecha */}
@@ -480,10 +485,14 @@ const AlertasCriticas: React.FC = () => {
 
       {/* Lista de Casos en Formato Tabla */}
       {criticos.length > 0 ? (
-        <div className="rounded-3xl shadow-xl border overflow-hidden" style={{
-          ...styles.card,
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-        }}>
+        <div 
+          className="rounded-3xl shadow-xl border overflow-hidden" 
+          style={{
+            ...styles.card,
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+            animation: 'fadeInSlide 0.4s ease-out 0.3s both'
+          }}
+        >
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead className="border-b" style={{
@@ -597,10 +606,12 @@ const AlertasCriticas: React.FC = () => {
                             onMouseEnter={(e) => {
                               e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f8fafc';
                               e.currentTarget.style.color = styles.text.secondary;
+                              e.currentTarget.style.transform = 'scale(1.1)';
                             }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.backgroundColor = 'transparent';
                               e.currentTarget.style.color = styles.text.tertiary;
+                              e.currentTarget.style.transform = 'scale(1)';
                             }}
                             title="Ver detalle"
                           >

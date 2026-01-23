@@ -5,6 +5,7 @@ import { Caso, CaseStatus, Agente, Cliente } from '../types';
 import { STATE_COLORS } from '../constants';
 import { AlertCircle, Clock, Users, ArrowUpRight, ChevronRight, Activity, Info, Filter, UserPlus, Bell, ArrowRightLeft, TrendingUp, TrendingDown, X, User, CheckCircle2, Eye } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import LoadingScreen from '../components/LoadingScreen';
 
 type FilterPeriod = 'hoy' | 'semana' | 'mes';
 type FilterType = 'todos' | 'criticos' | 'vencidos' | string;
@@ -58,11 +59,19 @@ const SupervisorPanel: React.FC = () => {
       ]);
       const enriched = enrichCasesWithClients(casosData, clientesList);
       setCasos(enriched);
-      setAgentes(agentesData);
+      // Asegurar que se muestren TODOS los agentes, no solo los activos
+      console.log('[SupervisorPanel] Agentes cargados:', agentesData.length, agentesData);
+      // Filtrar agentes que tengan idAgente válido
+      const agentesValidos = Array.isArray(agentesData) 
+        ? agentesData.filter(a => a && (a.idAgente || a.id_agente || a.id))
+        : [];
+      console.log('[SupervisorPanel] Agentes válidos después de filtrar:', agentesValidos.length, agentesValidos);
+      setAgentes(agentesValidos);
       // Guardar en localStorage para que Layout pueda mostrarlo en el header
       const updateTime = new Date();
       localStorage.setItem('bandeja_last_update', updateTime.toISOString());
     } catch (error) {
+      console.error('[SupervisorPanel] Error al cargar datos:', error);
     } finally {
       setLoading(false);
     }
@@ -402,13 +411,7 @@ const SupervisorPanel: React.FC = () => {
   );
 
   if (loading && casos.length === 0) {
-    return (
-      <div className="space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}
-        </div>
-      </div>
-    );
+    return <LoadingScreen message="Cargando Panel de Supervisor..." />;
   }
 
   return (
@@ -630,10 +633,12 @@ const SupervisorPanel: React.FC = () => {
         >
           {[
             { key: 'todos', value: 'todos', label: 'Todos los agentes' },
-            ...(Array.isArray(agentes) ? agentes.map((agente, index) => ({
-              key: agente?.idAgente || `agente-${index}`,
-              value: agente?.idAgente || '',
-              label: agente?.nombre || 'Sin nombre'
+            ...(Array.isArray(agentes) ? agentes
+              .filter(agente => agente && (agente.idAgente || agente.id_agente || agente.id)) // Filtrar solo agentes válidos
+              .map((agente, index) => ({
+              key: agente?.idAgente || agente?.id_agente || agente?.id || `agente-${index}`,
+              value: agente?.idAgente || agente?.id_agente || agente?.id || '',
+              label: agente?.nombre || agente?.name || 'Sin nombre'
             })) : [])
           ].map(option => (
             <option key={option.key} value={option.value}>
@@ -1177,9 +1182,13 @@ const SupervisorPanel: React.FC = () => {
             {agentes.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {(agentFilter !== 'todos' 
-                  ? agentes.filter(a => a.idAgente === agentFilter).slice(0, 4)
-                  : agentes.slice(0, 4)
-                ).map((agente) => {
+                  ? agentes.filter(a => (a.idAgente || a.id_agente || a.id) === agentFilter)
+                  : agentes // Mostrar TODOS los agentes, sin filtros
+                ).map((agente, index) => {
+                  // Log para debuggear
+                  if (index === 0) {
+                    console.log('[SupervisorPanel] Renderizando agentes:', agentes.length, 'agentes en total');
+                  }
                   const estadoColors = {
                     'Activo': { 
                       dotColor: '#22c55e', 

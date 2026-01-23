@@ -887,6 +887,7 @@ export const api = {
         
         
         if (Array.isArray(agents) && agents.length > 0) {
+          console.log('[API] Agentes recibidos del webhook:', agents.length, agents);
           // Mapear los agentes al formato esperado por el frontend
           let mappedAgents = agents.map((agente: any) => {
             // Determinar el estado: el webhook puede retornar "ACTIVO", "INACTIVO", "VACACIONES"
@@ -920,7 +921,15 @@ export const api = {
               ultimoCasoAsignado: ultimoCasoAsignado,
               casosActivos: agente.casos_activos !== undefined ? agente.casos_activos : (agente.casosActivos || agente.casos_asignados || 0)
             };
-          }).filter((agente: any) => agente.idAgente); // Filtrar agentes sin ID
+          }).filter((agente: any) => {
+            // Filtrar agentes sin ID válido
+            const tieneId = agente.idAgente || agente.id_agente || agente.id;
+            if (!tieneId) {
+              console.warn('[API] Agente sin ID válido filtrado:', agente);
+            }
+            return tieneId;
+          }); // Filtrar agentes sin ID
+          console.log('[API] Agentes mapeados después de filtrar:', mappedAgents.length, mappedAgents);
           
           // Calcular el orden Round Robin en el frontend
           // Lógica: 1. Menor cantidad de casos activos = mayor prioridad

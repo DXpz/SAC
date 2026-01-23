@@ -21,6 +21,7 @@ import {
   Search
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import LoadingScreen from '../components/LoadingScreen';
 
 const GestionAgentes: React.FC = () => {
   const [agentes, setAgentes] = useState<Agente[]>([]);
@@ -336,6 +337,10 @@ const GestionAgentes: React.FC = () => {
       tertiary: theme === 'dark' ? '#94a3b8' : '#64748b'
     }
   };
+
+  if (loading && agentes.length === 0) {
+    return <LoadingScreen message="Cargando Gestión de Agentes..." />;
+  }
 
   return (
     <div className="flex flex-col h-full" style={{ overflow: 'hidden', gap: '1rem', ...styles.container }}>

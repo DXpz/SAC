@@ -6,6 +6,7 @@ import { Case, CaseStatus, Cliente, Categoria } from '../types';
 import { STATE_COLORS } from '../constants';
 import { Search, Plus, Filter, ChevronRight, RefreshCw, X } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import LoadingScreen from '../components/LoadingScreen';
 
 const BandejaCasos: React.FC = () => {
   const [casos, setCasos] = useState<Case[]>([]);
@@ -560,13 +561,7 @@ const BandejaCasos: React.FC = () => {
       </div>
 
       {loading ? (
-        <div className="rounded-3xl shadow-xl border overflow-hidden" style={{...styles.card}}>
-          <div className="p-12 text-center">
-          <div className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin mx-auto mb-4" style={{borderColor: 'var(--color-brand-red)'}}></div>
-            <h3 className="text-base font-bold mb-2" style={{color: styles.text.primary}}>Cargando casos...</h3>
-            <p className="text-sm" style={{color: '#64748b'}}>Obteniendo datos desde el servidor</p>
-          </div>
-        </div>
+        <LoadingScreen message="Cargando Bandeja de Casos..." />
       ) : error ? (
         <div className="rounded-3xl shadow-xl border p-12 text-center" style={{
           ...styles.card,

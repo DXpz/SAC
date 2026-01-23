@@ -3,8 +3,9 @@ import { useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { Case, CaseStatus, KPI } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
-import { TrendingUp, Users, Clock, ThumbsUp, ArrowUp, ArrowDown, Info, AlertTriangle, CheckCircle2, Filter } from 'lucide-react';
+import { TrendingUp, Users, Clock, ThumbsUp, ArrowUp, ArrowDown, Info, AlertTriangle, CheckCircle2, Filter, Zap, Target, TrendingDown, Shield, Activity } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import LoadingScreen from '../components/LoadingScreen';
 
 type PeriodFilter = 'hoy' | 'semana' | 'mes';
 
@@ -284,9 +285,17 @@ const GerenteDashboard: React.FC = () => {
 
   const slaProgressColor = getSLAProgressiveColor(kpis.slaCompliance);
 
-  // Generar insights automáticos usando datos reales de casos críticos
+  // Generar insights mejorados con más contexto y estructura
   const insights = useMemo(() => {
-    const insightsList: string[] = [];
+    const insightsList: Array<{
+      type: 'critical' | 'warning' | 'success' | 'info';
+      title: string;
+      description: string;
+      value?: string | number;
+      icon: React.ElementType;
+      color: string;
+    }> = [];
+    
     const casosFueraSLA = casosCriticos.filter(c => {
       const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
       return c.diasAbierto >= slaDias;
@@ -297,35 +306,128 @@ const GerenteDashboard: React.FC = () => {
       return diasRestantes > 0 && diasRestantes <= 1;
     });
     
+    // Casos fuera de SLA - Crítico
     if (casosFueraSLA.length > 0) {
-      insightsList.push(`${casosFueraSLA.length} caso${casosFueraSLA.length !== 1 ? 's' : ''} fuera de SLA`);
+      insightsList.push({
+        type: 'critical',
+        title: 'Casos Fuera de SLA',
+        description: `${casosFueraSLA.length} caso${casosFueraSLA.length !== 1 ? 's' : ''} han excedido el tiempo de resolución comprometido`,
+        value: casosFueraSLA.length,
+        icon: AlertTriangle,
+        color: '#ef4444'
+      });
     }
+    
+    // Casos escalados - Crítico
     if (escalados > 0) {
-      insightsList.push(`${escalados} caso${escalados !== 1 ? 's' : ''} escalado${escalados !== 1 ? 's' : ''} activo${escalados !== 1 ? 's' : ''}`);
+      insightsList.push({
+        type: 'critical',
+        title: 'Casos Escalados',
+        description: `${escalados} caso${escalados !== 1 ? 's' : ''} ${escalados !== 1 ? 'requieren' : 'requiere'} atención inmediata`,
+        value: escalados,
+        icon: Zap,
+        color: '#f59e0b'
+      });
     }
+    
+    // Casos que vencen en 24h - Advertencia
     if (casosVencen24h.length > 0) {
-      insightsList.push(`${casosVencen24h.length} caso${casosVencen24h.length !== 1 ? 's' : ''} vence${casosVencen24h.length !== 1 ? 'n' : ''} en <24h`);
+      insightsList.push({
+        type: 'warning',
+        title: 'Vencimiento Inminente',
+        description: `${casosVencen24h.length} caso${casosVencen24h.length !== 1 ? 's' : ''} vence${casosVencen24h.length !== 1 ? 'n' : ''} en las próximas 24 horas`,
+        value: casosVencen24h.length,
+        icon: Clock,
+        color: '#f59e0b'
+      });
     }
-    if (kpis.csatScore !== null) {
-      if (kpis.csatScore >= 4.0) {
-        insightsList.push('CSAT estable');
-      } else {
-        insightsList.push('CSAT requiere atención');
-      }
-    } else {
-      insightsList.push('CSAT: Sin datos disponibles');
-    }
+    
+    // SLA Compliance
     if (kpis.slaCompliance !== null) {
       if (kpis.slaCompliance >= slaObjective) {
-        insightsList.push('SLA en objetivo');
+        insightsList.push({
+          type: 'success',
+          title: 'Cumplimiento de SLA',
+          description: `El ${kpis.slaCompliance}% de los casos cumple con el SLA objetivo`,
+          value: `${kpis.slaCompliance}%`,
+          icon: Target,
+          color: '#10b981'
+        });
       } else {
-        insightsList.push(`SLA ${kpis.slaCompliance}% - Por debajo del objetivo`);
+        insightsList.push({
+          type: 'warning',
+          title: 'Cumplimiento de SLA',
+          description: `El cumplimiento está en ${kpis.slaCompliance}%, ${(slaObjective - kpis.slaCompliance).toFixed(1)}% por debajo del objetivo`,
+          value: `${kpis.slaCompliance}%`,
+          icon: TrendingDown,
+          color: '#f59e0b'
+        });
       }
     } else {
-      insightsList.push('SLA: Sin datos disponibles');
+      insightsList.push({
+        type: 'info',
+        title: 'Cumplimiento de SLA',
+        description: 'No hay datos disponibles para calcular el cumplimiento',
+        icon: Info,
+        color: '#64748b'
+      });
     }
+    
+    // CSAT Score
+    if (kpis.csatScore !== null) {
+      if (kpis.csatScore >= 4.0) {
+        insightsList.push({
+          type: 'success',
+          title: 'Satisfacción del Cliente',
+          description: `CSAT promedio de ${kpis.csatScore.toFixed(1)}/5 indica alta satisfacción`,
+          value: `${kpis.csatScore.toFixed(1)}/5`,
+          icon: ThumbsUp,
+          color: '#10b981'
+        });
+      } else if (kpis.csatScore >= 3.0) {
+        insightsList.push({
+          type: 'warning',
+          title: 'Satisfacción del Cliente',
+          description: `CSAT promedio de ${kpis.csatScore.toFixed(1)}/5 requiere mejora`,
+          value: `${kpis.csatScore.toFixed(1)}/5`,
+          icon: ThumbsUp,
+          color: '#f59e0b'
+        });
+      } else {
+        insightsList.push({
+          type: 'critical',
+          title: 'Satisfacción del Cliente',
+          description: `CSAT promedio de ${kpis.csatScore.toFixed(1)}/5 está por debajo de lo esperado`,
+          value: `${kpis.csatScore.toFixed(1)}/5`,
+          icon: AlertTriangle,
+          color: '#ef4444'
+        });
+      }
+    } else {
+      insightsList.push({
+        type: 'info',
+        title: 'Satisfacción del Cliente',
+        description: 'No hay datos de CSAT disponibles',
+        icon: Info,
+        color: '#64748b'
+      });
+    }
+    
+    // Actividad general
+    if (abiertos > 0) {
+      const porcentajeResueltos = totalCasos > 0 ? ((totalCasos - abiertos) / totalCasos * 100).toFixed(1) : '0';
+      insightsList.push({
+        type: 'info',
+        title: 'Actividad General',
+        description: `${abiertos} caso${abiertos !== 1 ? 's' : ''} abierto${abiertos !== 1 ? 's' : ''} de ${totalCasos} totales (${porcentajeResueltos}% resueltos)`,
+        value: `${porcentajeResueltos}%`,
+        icon: Activity,
+        color: '#3b82f6'
+      });
+    }
+    
     return insightsList;
-  }, [casosCriticos, escalados, kpis.csatScore, kpis.slaCompliance]);
+  }, [casosCriticos, escalados, kpis.csatScore, kpis.slaCompliance, abiertos, totalCasos, slaObjective]);
 
   const KPICard: React.FC<{
     label: string;
@@ -448,6 +550,10 @@ const GerenteDashboard: React.FC = () => {
     }
   };
 
+  if (loading) {
+    return <LoadingScreen message="Cargando Dashboard de Gerente..." />;
+  }
+
   return (
     <div className="space-y-3" style={styles.container}>
       {/* Header con filtro de período - FIJO EN LA PARTE SUPERIOR */}
@@ -534,24 +640,110 @@ const GerenteDashboard: React.FC = () => {
         />
       </div>
 
-      {/* Resumen Ejecutivo */}
+      {/* Resumen Ejecutivo Mejorado */}
       {insights.length > 0 && (
-        <div className="p-3 rounded-xl border shadow-sm" style={{...styles.card}}>
-          <h3 className="text-xs font-black mb-2 flex items-center gap-2 uppercase tracking-wider" style={{color: styles.text.primary}}>
-            <CheckCircle2 className="w-3.5 h-3.5" style={{color: '#64748b'}} />
-            Resumen Ejecutivo
-          </h3>
-          <ul className="space-y-1.5">
-            {insights.map((insight, idx) => (
-              <li key={idx} className="flex items-center gap-2 text-xs p-1.5 rounded-lg transition-all hover:bg-opacity-50" style={{
-                color: styles.text.secondary,
-                backgroundColor: theme === 'dark' ? 'rgba(200, 21, 27, 0.08)' : 'rgba(200, 21, 27, 0.05)'
+        <div 
+          className="p-4 rounded-xl border shadow-lg" 
+          style={{
+            ...styles.card,
+            background: theme === 'dark' 
+              ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%)'
+              : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%)',
+            animation: 'fadeInSlide 0.4s ease-out'
+          }}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-lg" style={{
+                backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)'
               }}>
-                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{backgroundColor: '#64748b'}}></div>
-                <span className="font-medium">{insight}</span>
-              </li>
-            ))}
-          </ul>
+                <Shield className="w-4 h-4" style={{color: '#3b82f6'}} />
+              </div>
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-wider" style={{color: styles.text.primary}}>
+                  Resumen Ejecutivo
+                </h3>
+                <p className="text-[10px] font-medium mt-0.5" style={{color: styles.text.tertiary}}>
+                  Visión general del estado operativo
+                </p>
+              </div>
+            </div>
+            <div className="px-2.5 py-1 rounded-lg" style={{
+              backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)'
+            }}>
+              <span className="text-xs font-bold" style={{color: '#3b82f6'}}>
+                {insights.length} {insights.length === 1 ? 'indicador' : 'indicadores'}
+              </span>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {insights.map((insight, idx) => {
+              const Icon = insight.icon;
+              const bgColor = theme === 'dark' 
+                ? `${insight.color}15`
+                : `${insight.color}10`;
+              const borderColor = theme === 'dark'
+                ? `${insight.color}30`
+                : `${insight.color}25`;
+              
+              return (
+                <div
+                  key={idx}
+                  className="p-3 rounded-lg border-2 transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
+                  style={{
+                    backgroundColor: bgColor,
+                    borderColor: borderColor,
+                    animation: `fadeInSlide 0.3s ease-out ${idx * 0.05}s both`
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = `${insight.color}50`;
+                    e.currentTarget.style.boxShadow = `0 4px 12px ${insight.color}20`;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = borderColor;
+                    e.currentTarget.style.boxShadow = '';
+                  }}
+                >
+                  <div className="flex items-start gap-3">
+                    <div 
+                      className="p-2 rounded-lg flex-shrink-0"
+                      style={{
+                        backgroundColor: theme === 'dark' 
+                          ? `${insight.color}20`
+                          : `${insight.color}15`
+                      }}
+                    >
+                      <Icon className="w-4 h-4" style={{color: insight.color}} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <h4 className="text-xs font-bold" style={{color: styles.text.primary}}>
+                          {insight.title}
+                        </h4>
+                        {insight.value && (
+                          <span 
+                            className="text-xs font-black px-2 py-0.5 rounded"
+                            style={{
+                              color: insight.color,
+                              backgroundColor: theme === 'dark'
+                                ? `${insight.color}20`
+                                : `${insight.color}15`
+                            }}
+                          >
+                            {insight.value}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] leading-relaxed" style={{color: styles.text.secondary}}>
+                        {insight.description}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
