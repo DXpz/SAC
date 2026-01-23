@@ -4487,13 +4487,15 @@ const Settings: React.FC = () => {
                         
                         let currentMonthYear = '';
                         return sortedHolidays.map((holiday, index) => {
-                          // Convertir fecha string DD/MM/YYYY a Date si no existe fechaDate (solo para cálculos)
+                          // PRIMERO: Obtener el objeto Date parseado correctamente (el mismo que se usa para mostrar la fecha)
                           let holidayDate: Date;
                           if (holiday.fechaDate) {
-                            holidayDate = holiday.fechaDate;
+                            holidayDate = new Date(holiday.fechaDate);
                           } else {
                             holidayDate = parseDateFromDDMMYYYY(holiday.fecha);
                           }
+                          // Normalizar la fecha a mediodía para evitar problemas de zona horaria
+                          holidayDate.setHours(12, 0, 0, 0);
                           
                           // Formatear fecha usando el mismo formato que "Próximo"
                           // Parsear la fecha del webhook para mostrar "10 de mayo del 2026"
@@ -4518,13 +4520,56 @@ const Settings: React.FC = () => {
                             dateText = holiday.fecha || '';
                           }
                           
-                          // Detectar cambio de mes/año para agregar separador (usar holidayDate para consistencia)
-                          // Usar siempre holidayDate que ya está parseado correctamente
+                          // Calcular mes/año usando EXACTAMENTE la misma lógica que formatDateFromDDMMYYYY
+                          // Esto garantiza que el separador coincida con la fecha mostrada en la tabla
                           const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-                          const monthNum = holidayDate.getMonth(); // 0-11
-                          const yearNum = holidayDate.getFullYear();
+                          let monthNum: number = -1;
+                          let yearNum: number = -1;
+                          
+                          // Usar el mismo parseo que formatDateFromDDMMYYYY
+                          if (holiday.fecha && typeof holiday.fecha === 'string') {
+                            const fechaStr = holiday.fecha.trim();
+                            
+                            if (fechaStr.includes('/')) {
+                              // Formato DD/MM/YYYY (igual que formatDateFromDDMMYYYY)
+                              const parts = fechaStr.split('/');
+                              if (parts.length === 3) {
+                                const day = parseInt(parts[0].trim(), 10);
+                                const month = parseInt(parts[1].trim(), 10);
+                                const year = parseInt(parts[2].trim(), 10);
+                                
+                                // Validar igual que formatDateFromDDMMYYYY
+                                if (!isNaN(day) && !isNaN(month) && !isNaN(year) && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                                  monthNum = month - 1; // Convertir a índice 0-11
+                                  yearNum = year;
+                                }
+                              }
+                            } else if (fechaStr.includes('-')) {
+                              // Formato YYYY-MM-DD (igual que formatDateFromDDMMYYYY)
+                              const parts = fechaStr.split('-');
+                              if (parts.length === 3) {
+                                const year = parseInt(parts[0].trim(), 10);
+                                const month = parseInt(parts[1].trim(), 10);
+                                const day = parseInt(parts[2].trim(), 10);
+                                
+                                // Validar igual que formatDateFromDDMMYYYY
+                                if (!isNaN(day) && !isNaN(month) && !isNaN(year) && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                                  monthNum = month - 1; // Convertir a índice 0-11
+                                  yearNum = year;
+                                }
+                              }
+                            }
+                          }
+                          
+                          // Si no se pudo parsear desde el string, usar holidayDate como último recurso
+                          if (monthNum < 0 || yearNum < 0) {
+                            monthNum = holidayDate.getMonth();
+                            yearNum = holidayDate.getFullYear();
+                          }
+                          
                           const monthYear = `${months[monthNum]} DE ${yearNum}`.toUpperCase();
                           
+                          // Detectar cambio de mes/año para agregar separador
                           const showSeparator = monthYear !== currentMonthYear;
                           if (showSeparator) currentMonthYear = monthYear;
                           
