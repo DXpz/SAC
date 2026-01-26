@@ -1,5 +1,5 @@
 
-export type Role = 'AGENTE' | 'SUPERVISOR' | 'GERENTE' | 'ADMIN';
+export type Role = 'AGENTE' | 'SUPERVISOR' | 'GERENTE' | 'ADMIN' | 'ADMINISTRADOR';
 
 export enum CaseStatus {
   NUEVO = 'Nuevo',
@@ -124,5 +124,7 @@ export type Caso = Case;
 export const UserRole = {
   AGENTE_SAC: 'AGENTE' as Role,
   SUPERVISOR: 'SUPERVISOR' as Role,
-  GERENTE: 'GERENTE' as Role
+  GERENTE: 'GERENTE' as Role,
+  ADMIN: 'ADMIN' as Role,
+  ADMINISTRADOR: 'ADMINISTRADOR' as Role
 };

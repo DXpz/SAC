@@ -116,9 +116,9 @@ const App: React.FC = () => {
                 <Route path="casos/nuevo" element={<NuevoCaso />} />
                 <Route path="casos/:id" element={<CaseDetail />} />
 
-                {/* Supervisor & Gerencia */}
+                {/* Supervisor, Gerencia & Admin */}
                 <Route path="alertas" element={
-                  <ProtectedRoute allowedRoles={[UserRole.SUPERVISOR, UserRole.GERENTE]}>
+                  <ProtectedRoute allowedRoles={[UserRole.SUPERVISOR, UserRole.GERENTE, UserRole.ADMIN, UserRole.ADMINISTRADOR]}>
                     <AlertasCriticas />
                   </ProtectedRoute>
                 } />

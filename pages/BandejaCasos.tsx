@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { Case, CaseStatus, Cliente, Categoria } from '../types';
 import { STATE_COLORS } from '../constants';
-import { Search, Plus, Filter, ChevronRight, RefreshCw, X } from 'lucide-react';
+import { Search, Plus, Filter, ChevronRight, RefreshCw, X, Grid3x3, List, User, Eye, Clock } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import LoadingScreen from '../components/LoadingScreen';
 
@@ -14,6 +14,7 @@ const BandejaCasos: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoriaFilter, setCategoriaFilter] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
@@ -537,26 +538,48 @@ const BandejaCasos: React.FC = () => {
             <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-all duration-200" style={{color: categoriaFilter === 'all' ? styles.text.tertiary : '#107ab4', transform: 'rotate(90deg)'}} />
           </div>
           
-          <button 
-            onClick={() => navigate('/app/casos/nuevo')}
-            className="text-white px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all shadow-lg"
-            style={{
-              background: 'linear-gradient(135deg, var(--color-brand-red), var(--color-accent-red))',
-              transform: 'scale(1)',
-              transition: 'all 0.2s ease-in-out',
-              animation: 'fadeInSlide 0.3s ease-out 0.2s both'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'scale(1.05) translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 8px 16px rgba(200, 21, 27, 0.3)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'scale(1) translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(200, 21, 27, 0.2)';
-            }}
-          >
-            <Plus className="w-5 h-5" /> Nuevo Caso
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Controles de vista */}
+            <div className="flex items-center gap-1 p-1 rounded-lg border" style={{borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+              <button
+                onClick={() => setViewMode('table')}
+                className={`p-2 rounded transition-all ${viewMode === 'table' ? 'bg-blue-500 text-white' : ''}`}
+                style={viewMode !== 'table' ? {color: styles.text.secondary} : {}}
+                title="Vista tabla"
+              >
+                <List className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('cards')}
+                className={`p-2 rounded transition-all ${viewMode === 'cards' ? 'bg-blue-500 text-white' : ''}`}
+                style={viewMode !== 'cards' ? {color: styles.text.secondary} : {}}
+                title="Vista tarjetas"
+              >
+                <Grid3x3 className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <button 
+              onClick={() => navigate('/app/casos/nuevo')}
+              className="text-white px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all shadow-lg"
+              style={{
+                background: 'linear-gradient(135deg, var(--color-brand-red), var(--color-accent-red))',
+                transform: 'scale(1)',
+                transition: 'all 0.2s ease-in-out',
+                animation: 'fadeInSlide 0.3s ease-out 0.2s both'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.05) translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 8px 16px rgba(200, 21, 27, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1) translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(200, 21, 27, 0.2)';
+              }}
+            >
+              <Plus className="w-5 h-5" /> Nuevo Caso
+            </button>
+          </div>
         </div>
       </div>
 
@@ -600,7 +623,7 @@ const BandejaCasos: React.FC = () => {
               : 'Intenta ajustar los filtros de búsqueda'}
           </p>
         </div>
-      ) : (
+      ) : viewMode === 'table' ? (
         <div 
           className="rounded-3xl shadow-xl border overflow-hidden" 
           style={{
@@ -763,6 +786,156 @@ const BandejaCasos: React.FC = () => {
               </tbody>
             </table>
           </div>
+        </div>
+      ) : (
+        /* Vista de Tarjetas */
+        <div 
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          style={{
+            animation: 'fadeInSlide 0.4s ease-out 0.1s both'
+          }}
+        >
+          {filtered.map((caso, idx) => {
+            const rawStatus = caso.status || (caso as any).estado;
+            const normalizedStatus = normalizeStatus(rawStatus);
+            const statusColor = (() => {
+              if (normalizedStatus === CaseStatus.NUEVO) return '#2563eb';
+              if (normalizedStatus === CaseStatus.EN_PROCESO) return '#d97706';
+              if (normalizedStatus === CaseStatus.PENDIENTE_CLIENTE) return '#9333ea';
+              if (normalizedStatus === CaseStatus.ESCALADO) return '#dc2626';
+              if (normalizedStatus === CaseStatus.RESUELTO) return '#16a34a';
+              if (normalizedStatus === CaseStatus.CERRADO) return '#64748b';
+              return '#475569';
+            })();
+            
+            // Calcular días abiertos
+            const createdAt = caso.createdAt ? new Date(caso.createdAt) : null;
+            const diasAbierto = createdAt 
+              ? Math.floor((new Date().getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24))
+              : 0;
+            
+            return (
+              <div
+                key={caso.id}
+                className="rounded-xl border-2 overflow-hidden cursor-pointer transition-all duration-200 hover:scale-[1.02]"
+                style={{
+                  ...styles.card,
+                  borderColor: 'rgba(148, 163, 184, 0.2)',
+                  borderLeftWidth: '4px',
+                  borderLeftColor: statusColor,
+                  animation: `fadeInSlide 0.3s ease-out ${0.15 + idx * 0.05}s both`
+                }}
+                onClick={() => navigate(`/app/casos/${caso.id}`)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.12)';
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = '';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.2)';
+                }}
+              >
+                {/* Header con ID y Estado */}
+                <div className="p-4 border-b" style={{
+                  backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                  borderColor: 'rgba(148, 163, 184, 0.2)'
+                }}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-black" style={{color: styles.text.primary}}>
+                      #{caso.ticketNumber || (caso as any).idCaso || caso.id}
+                    </span>
+                    <span 
+                      className="text-[10px] font-semibold uppercase tracking-wide transition-all"
+                      style={{
+                        color: statusColor,
+                        transform: 'scale(1)',
+                        transition: 'all 0.2s ease-in-out'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.05)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                      }}
+                    >
+                      {rawStatus}
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-bold line-clamp-2" style={{color: styles.text.primary}}>
+                    {caso.subject || 'Sin asunto'}
+                  </h3>
+                </div>
+                
+                {/* Contenido */}
+                <div className="p-4 space-y-3">
+                  {/* Cliente */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>Cliente:</span>
+                    <span className="text-xs font-bold flex-1 truncate" style={{color: styles.text.primary}}>
+                      {caso.clientName || caso.cliente?.nombreEmpresa || 'Por definir'}
+                    </span>
+                  </div>
+                  
+                  {/* Categoría */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>Categoría:</span>
+                    <span 
+                      className="text-[10px] font-semibold px-2 py-1 rounded-lg"
+                      style={{
+                        backgroundColor: theme === 'dark' ? '#0f172a' : '#f1f5f9',
+                        color: styles.text.secondary,
+                        borderColor: 'rgba(148, 163, 184, 0.2)'
+                      }}
+                    >
+                      {caso.category || caso.categoria?.nombre || 'General'}
+                    </span>
+                  </div>
+                  
+                  {/* Agente y Tiempo */}
+                  <div className="flex items-center justify-between pt-2 border-t" style={{borderColor: 'rgba(148, 163, 184, 0.15)'}}>
+                    <div className="flex items-center gap-1.5">
+                      {caso.agentName ? (
+                        <>
+                          <User className="w-3.5 h-3.5" style={{color: styles.text.tertiary}} />
+                          <span className="text-xs truncate max-w-[100px]" style={{color: styles.text.primary}}>
+                            {caso.agentName}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-xs italic" style={{color: styles.text.tertiary}}>
+                          Sin asignar
+                        </span>
+                      )}
+                    </div>
+                    {diasAbierto > 0 && (
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" style={{color: styles.text.tertiary}} />
+                        <span className="text-[10px] font-semibold" style={{color: styles.text.tertiary}}>
+                          {diasAbierto}d
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Footer con acción */}
+                <div className="p-3 border-t flex items-center justify-end" style={{
+                  backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                  borderColor: 'rgba(148, 163, 184, 0.2)'
+                }}>
+                  <div className="flex items-center gap-2">
+                    <Eye className="w-4 h-4" style={{color: styles.text.tertiary}} />
+                    <span className="text-[10px] font-semibold" style={{color: styles.text.secondary}}>
+                      Ver detalle
+                    </span>
+                    <ChevronRight className="w-4 h-4" style={{color: styles.text.tertiary}} />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

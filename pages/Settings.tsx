@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { api } from '../services/api';
+import LoadingLogo from '../components/LoadingLogo';
 
 const Settings: React.FC = () => {
   const { theme } = useTheme();
@@ -82,6 +83,7 @@ const Settings: React.FC = () => {
     placeholder?: string;
     etiqueta?: string;
     opciones?: string[]; // Para campos personalizados
+    estadoFinalId?: string; // ID del estado final al que pertenece este parámetro
   }
 
   const initialParametros: Parametro[] = [
@@ -115,7 +117,8 @@ const Settings: React.FC = () => {
     requerido: false,
     placeholder: '',
     etiqueta: '',
-    opciones: []
+    opciones: [],
+    estadoFinalId: ''
   });
 
   const [parametroSearchTerm, setParametroSearchTerm] = useState('');
@@ -373,7 +376,7 @@ const Settings: React.FC = () => {
         setStates(() => {
           console.log('[Settings.loadEstados] setStates callback ejecutado');
           // Usar EXACTAMENTE los IDs y nombres que vienen del webhook
-          const estadosDelWebhook = estadosFromWebhook.map((s) => ({
+          const estadosDelWebhook = estadosFromWebhook.map((s: any) => ({
             id: String(s.id || ''), // Usar el ID tal como viene del webhook
             name: String(s.name || s.nombre || ''),
             order: Number(s.order || s.orden || 0),
@@ -822,7 +825,8 @@ const Settings: React.FC = () => {
         requerido: parametro.requerido || false,
         placeholder: parametro.placeholder || '',
         etiqueta: parametro.etiqueta || '',
-        opciones: parametro.opciones ? [...parametro.opciones] : []
+        opciones: parametro.opciones ? [...parametro.opciones] : [],
+        estadoFinalId: parametro.estadoFinalId || ''
       });
     } else {
       setIsEditingParametro(false);
@@ -834,7 +838,8 @@ const Settings: React.FC = () => {
         requerido: false,
         placeholder: '',
         etiqueta: '',
-        opciones: []
+        opciones: [],
+        estadoFinalId: ''
       });
     }
     setShowParametroModal(true);
@@ -851,7 +856,8 @@ const Settings: React.FC = () => {
       requerido: false,
       placeholder: '',
       etiqueta: '',
-      opciones: []
+      opciones: [],
+      estadoFinalId: ''
     });
   };
 
@@ -868,6 +874,11 @@ const Settings: React.FC = () => {
 
     if (!newParametro.etiqueta?.trim()) {
       alert('La etiqueta del parámetro es obligatoria');
+      return;
+    }
+
+    if (!newParametro.estadoFinalId) {
+      alert('Debe seleccionar un estado final para este parámetro');
       return;
     }
 
@@ -891,7 +902,8 @@ const Settings: React.FC = () => {
                 requerido: newParametro.requerido,
                 placeholder: newParametro.placeholder?.trim() || '',
                 etiqueta: newParametro.etiqueta?.trim() || '',
-                opciones: newParametro.opciones || []
+                opciones: newParametro.opciones || [],
+                estadoFinalId: newParametro.estadoFinalId || ''
               }
             : param
         ));
@@ -906,7 +918,8 @@ const Settings: React.FC = () => {
           requerido: newParametro.requerido || false,
           placeholder: newParametro.placeholder?.trim() || '',
           etiqueta: newParametro.etiqueta?.trim() || '',
-          opciones: newParametro.opciones || []
+          opciones: newParametro.opciones || [],
+          estadoFinalId: newParametro.estadoFinalId || ''
         }]);
       }
       
@@ -3275,12 +3288,6 @@ const Settings: React.FC = () => {
                             e.currentTarget.style.transform = 'scale(1)';
                             e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
                           }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
-                          }}
                           title="Eliminar estado"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -5052,8 +5059,8 @@ const Settings: React.FC = () => {
               >
                 {isImporting ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Importando...
+                    <LoadingLogo size="small" />
+                    <span className="ml-2">Importando...</span>
                   </>
                 ) : (
                   <>
@@ -5198,6 +5205,15 @@ const Settings: React.FC = () => {
                       DESCRIPCIÓN
                     </th>
                     <th 
+                      className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider"
+                      style={{ 
+                        color: styles.text.secondary,
+                        borderBottom: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
+                      }}
+                    >
+                      ESTADO FINAL
+                    </th>
+                    <th 
                       className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider"
                       style={{ 
                         color: styles.text.secondary,
@@ -5220,7 +5236,7 @@ const Settings: React.FC = () => {
                 <tbody>
                   {filteredParametros.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-sm" style={{ color: styles.text.tertiary }}>
+                      <td colSpan={6} className="px-4 py-8 text-center text-sm" style={{ color: styles.text.tertiary }}>
                         No se encontraron parámetros
                       </td>
                     </tr>
@@ -5254,6 +5270,20 @@ const Settings: React.FC = () => {
                           <span className="text-sm" style={{ color: styles.text.secondary }}>
                             {parametro.description}
                           </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {parametro.estadoFinalId ? (
+                            <span className="text-xs px-2 py-1 rounded" style={{
+                              backgroundColor: theme === 'dark' ? 'rgba(22, 101, 52, 0.2)' : 'rgba(22, 101, 52, 0.1)',
+                              color: '#16a34a'
+                            }}>
+                              {states.find(s => s.id === parametro.estadoFinalId)?.name || 'Estado no encontrado'}
+                            </span>
+                          ) : (
+                            <span className="text-xs" style={{ color: styles.text.tertiary }}>
+                              Sin asignar
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-center">
                           {parametro.requerido ? (
@@ -5474,6 +5504,45 @@ const Settings: React.FC = () => {
                               e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
                             }}
                           />
+                        </div>
+
+                        {/* Estado Final Asociado */}
+                        <div>
+                          <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{ color: styles.text.secondary }}>
+                            Estado Final <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={newParametro.estadoFinalId || ''}
+                            onChange={(e) => setNewParametro({ ...newParametro, estadoFinalId: e.target.value })}
+                            className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md appearance-none cursor-pointer"
+                            style={{
+                              backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                              borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                              color: styles.text.primary
+                            }}
+                            onFocus={(e) => {
+                              e.target.style.borderColor = '#107ab4';
+                              e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
+                              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
+                            }}
+                            onBlur={(e) => {
+                              e.target.style.borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)';
+                              e.target.style.boxShadow = '';
+                              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
+                            }}
+                          >
+                            <option value="">Seleccione un estado final</option>
+                            {states.filter(s => s.isFinal).map(estado => (
+                              <option key={estado.id} value={estado.id}>
+                                {estado.name}
+                              </option>
+                            ))}
+                          </select>
+                          {states.filter(s => s.isFinal).length === 0 && (
+                            <p className="text-xs mt-1" style={{ color: '#f59e0b' }}>
+                              No hay estados marcados como finales. Marque al menos un estado como final en "Estados y Transiciones".
+                            </p>
+                          )}
                         </div>
 
                         {/* Tipo de Parámetro */}
@@ -6019,8 +6088,8 @@ const Settings: React.FC = () => {
               >
                 {isDeleting ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Eliminando...
+                    <LoadingLogo size="small" />
+                    <span className="ml-2">Eliminando...</span>
                   </>
                 ) : (
                   <>

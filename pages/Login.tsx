@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
-import { LogIn, Loader2, AlertCircle, ShieldCheck, Mail, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { LogIn, AlertCircle, ShieldCheck, Mail, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
+import LoadingLogo from '../components/LoadingLogo';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -390,8 +391,8 @@ const Login: React.FC = () => {
             >
               {loading ? (
                 <>
-                  <Loader2 className="w-6 h-6 animate-spin mr-2" />
-                  Validando...
+                  <LoadingLogo size="medium" className="mr-2" />
+                  <span>Validando...</span>
                 </>
               ) : (
                 <>

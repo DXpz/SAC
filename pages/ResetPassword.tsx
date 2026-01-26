@@ -2,8 +2,9 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
-import { Lock, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Lock, CheckCircle2, AlertCircle } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
+import LoadingLogo from '../components/LoadingLogo';
 
 const ResetPassword: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -155,7 +156,7 @@ const ResetPassword: React.FC = () => {
                 }
               }}
             >
-              {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Restablecer Contraseña'}
+              {loading ? <LoadingLogo size="medium" /> : 'Restablecer Contraseña'}
             </button>
           </form>
         </div>

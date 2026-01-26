@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import { UserPlus, Loader2, AlertCircle, ArrowLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { UserPlus, AlertCircle, ArrowLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import LoadingLogo from '../components/LoadingLogo';
 
 const Register: React.FC = () => {
   const [name, setName] = useState('');
@@ -205,7 +206,7 @@ const Register: React.FC = () => {
                 style={{background: 'linear-gradient(to right, var(--color-brand-red), var(--color-accent-red))'}}
               >
                 {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <LoadingLogo size="small" />
                 ) : (
                   <>
                     Crear Cuenta <UserPlus className="w-4 h-4" />

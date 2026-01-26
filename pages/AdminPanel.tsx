@@ -10,7 +10,13 @@ import {
   Ticket,
   BarChart3,
   UserCheck,
-  TrendingUp
+  AlertTriangle,
+  Clock,
+  Target,
+  Activity,
+  TrendingUp,
+  CheckCircle2,
+  XCircle
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import AnimatedNumber from '../components/AnimatedNumber';
@@ -576,6 +582,577 @@ const AdminPanel: React.FC = () => {
     }
   }, [casosSeguros, categorias]);
 
+  // Fechas para cálculos de períodos
+  const { inicioHoy, inicioSemana, inicioMes, inicioHoyAnterior, finHoyAnterior, inicioSemanaAnterior, finSemanaAnterior, inicioMesAnterior, finMesAnterior } = useMemo(() => {
+    const ahora = new Date();
+    const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+    
+    const semana = new Date(ahora);
+    semana.setDate(ahora.getDate() - ahora.getDay());
+    semana.setHours(0, 0, 0, 0);
+    
+    const mes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+    
+    // Períodos anteriores
+    const ayer = new Date(ahora);
+    ayer.setDate(ayer.getDate() - 1);
+    ayer.setHours(0, 0, 0, 0);
+    const finAyer = new Date(ayer);
+    finAyer.setHours(23, 59, 59, 999);
+    
+    const semanaAnterior = new Date(ahora);
+    const diaSemana = semanaAnterior.getDay();
+    semanaAnterior.setDate(semanaAnterior.getDate() - diaSemana - 7);
+    semanaAnterior.setHours(0, 0, 0, 0);
+    const finSemanaAnterior = new Date(semanaAnterior);
+    finSemanaAnterior.setDate(finSemanaAnterior.getDate() + 6);
+    finSemanaAnterior.setHours(23, 59, 59, 999);
+    
+    const mesAnterior = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
+    const finMesAnterior = new Date(ahora.getFullYear(), ahora.getMonth(), 0, 23, 59, 59, 999);
+    
+    return { 
+      inicioHoy: hoy, 
+      inicioSemana: semana, 
+      inicioMes: mes,
+      inicioHoyAnterior: ayer,
+      finHoyAnterior: finAyer,
+      inicioSemanaAnterior: semanaAnterior,
+      finSemanaAnterior: finSemanaAnterior,
+      inicioMesAnterior: mesAnterior,
+      finMesAnterior: finMesAnterior
+    };
+  }, []); // Solo calcular una vez al montar el componente
+  
+  // Métricas adicionales para administrador
+  const casosSinAsignar = useMemo(() => {
+    return casosSeguros.filter(c => {
+      if (!c) return false;
+      const casoStatus = String(c.status || (c as any).estado || '').trim();
+      // Solo contar casos abiertos sin asignar
+      if (isEstadoFinal(casoStatus)) return false;
+      
+      const agenteId = c.agentId || (c as any).agenteAsignado?.idAgente || (c as any).agente_user_id || '';
+      const agenteNombre = c.agentName || (c as any).agenteAsignado?.nombre || '';
+      return !agenteId && !agenteNombre;
+    }).length;
+  }, [casosSeguros, estados]);
+  
+  // Casos nuevos en diferentes períodos
+  
+  const casosNuevosHoy = useMemo(() => {
+    return casosSeguros.filter(c => {
+      if (!c) return false;
+      try {
+        const fechaCreacion = new Date(c.createdAt || c.fechaCreacion || (c as any).fecha_creacion || '');
+        if (isNaN(fechaCreacion.getTime())) return false;
+        return fechaCreacion >= inicioHoy;
+      } catch (error) {
+        return false;
+      }
+    }).length;
+  }, [casosSeguros, inicioHoy]);
+  
+  const casosNuevosSemana = useMemo(() => {
+    return casosSeguros.filter(c => {
+      if (!c) return false;
+      try {
+        const fechaCreacion = new Date(c.createdAt || c.fechaCreacion || (c as any).fecha_creacion || '');
+        if (isNaN(fechaCreacion.getTime())) return false;
+        return fechaCreacion >= inicioSemana;
+      } catch (error) {
+        return false;
+      }
+    }).length;
+  }, [casosSeguros, inicioSemana]);
+  
+  const casosNuevosMes = useMemo(() => {
+    return casosSeguros.filter(c => {
+      if (!c) return false;
+      try {
+        const fechaCreacion = new Date(c.createdAt || c.fechaCreacion || (c as any).fecha_creacion || '');
+        if (isNaN(fechaCreacion.getTime())) return false;
+        return fechaCreacion >= inicioMes;
+      } catch (error) {
+        return false;
+      }
+    }).length;
+  }, [casosSeguros, inicioMes]);
+
+  // Casos nuevos en períodos anteriores para comparación
+  const casosNuevosHoyAnterior = useMemo(() => {
+    return casosSeguros.filter(c => {
+      if (!c) return false;
+      try {
+        const fechaCreacion = new Date(c.createdAt || c.fechaCreacion || (c as any).fecha_creacion || '');
+        if (isNaN(fechaCreacion.getTime())) return false;
+        return fechaCreacion >= inicioHoyAnterior && fechaCreacion <= finHoyAnterior;
+      } catch (error) {
+        return false;
+      }
+    }).length;
+  }, [casosSeguros, inicioHoyAnterior, finHoyAnterior]);
+
+  const casosNuevosSemanaAnterior = useMemo(() => {
+    return casosSeguros.filter(c => {
+      if (!c) return false;
+      try {
+        const fechaCreacion = new Date(c.createdAt || c.fechaCreacion || (c as any).fecha_creacion || '');
+        if (isNaN(fechaCreacion.getTime())) return false;
+        return fechaCreacion >= inicioSemanaAnterior && fechaCreacion <= finSemanaAnterior;
+      } catch (error) {
+        return false;
+      }
+    }).length;
+  }, [casosSeguros, inicioSemanaAnterior, finSemanaAnterior]);
+
+  const casosNuevosMesAnterior = useMemo(() => {
+    return casosSeguros.filter(c => {
+      if (!c) return false;
+      try {
+        const fechaCreacion = new Date(c.createdAt || c.fechaCreacion || (c as any).fecha_creacion || '');
+        if (isNaN(fechaCreacion.getTime())) return false;
+        return fechaCreacion >= inicioMesAnterior && fechaCreacion <= finMesAnterior;
+      } catch (error) {
+        return false;
+      }
+    }).length;
+  }, [casosSeguros, inicioMesAnterior, finMesAnterior]);
+  
+  // Tiempo promedio de resolución (solo casos cerrados)
+  const casosResueltos = casosSeguros.filter(c => {
+    const casoStatus = String(c.status || (c as any).estado || '').trim();
+    return isEstadoFinal(casoStatus);
+  });
+  
+  const tiempoPromedioResolucion = useMemo(() => {
+    if (casosResueltos.length === 0) return 0;
+    const tiempos = casosResueltos.map(c => {
+      if (!c) return null;
+      try {
+        const fechaCreacion = new Date(c.createdAt || c.fechaCreacion || (c as any).fecha_creacion || '');
+        if (isNaN(fechaCreacion.getTime())) return null;
+        
+        // Buscar fecha de cierre en el historial (última transición a estado final)
+        let fechaCierre: Date | null = null;
+        if (c.historial && Array.isArray(c.historial) && c.historial.length > 0) {
+          // Buscar la última entrada que cambió a un estado final
+          const historialOrdenado = [...c.historial].sort((a, b) => {
+            const fechaA = new Date(a.fecha || a.date || '');
+            const fechaB = new Date(b.fecha || b.date || '');
+            return fechaB.getTime() - fechaA.getTime();
+          });
+          
+          for (const entry of historialOrdenado) {
+            const estadoEntry = String(entry.estado_nuevo || entry.newStatus || entry.estado || '').trim();
+            if (estadoEntry && isEstadoFinal(estadoEntry)) {
+              const fechaEntry = new Date(entry.fecha || entry.date || '');
+              if (!isNaN(fechaEntry.getTime())) {
+                fechaCierre = fechaEntry;
+                break;
+              }
+            }
+          }
+        }
+        
+        // Si no hay fecha en historial, usar updatedAt o fechaActualizacion
+        if (!fechaCierre) {
+          fechaCierre = new Date(c.updatedAt || c.fechaActualizacion || (c as any).fecha_actualizacion || new Date());
+        }
+        
+        if (isNaN(fechaCierre.getTime())) return null;
+        
+        const dias = Math.floor((fechaCierre.getTime() - fechaCreacion.getTime()) / (1000 * 60 * 60 * 24));
+        return dias > 0 ? dias : null;
+      } catch (error) {
+        return null;
+      }
+    }).filter((t): t is number => t !== null && t > 0);
+    
+    return tiempos.length > 0 ? Math.round(tiempos.reduce((a, b) => a + b, 0) / tiempos.length) : 0;
+  }, [casosResueltos, estados]);
+  
+  // Tasa de resolución (casos cerrados / total casos)
+  const tasaResolucion = totalCasos > 0 ? Math.round((casosCerrados / totalCasos) * 100) : 0;
+
+  // Tiempo promedio de resolución del mes anterior
+  const tiempoPromedioResolucionAnterior = useMemo(() => {
+    const casosResueltosAnterior = casosSeguros.filter(c => {
+      if (!c) return false;
+      try {
+        const casoStatus = String(c.status || (c as any).estado || '').trim();
+        if (!isEstadoFinal(casoStatus)) return false;
+        
+        // Verificar que se resolvió en el mes anterior
+        let fechaCierre: Date | null = null;
+        if (c.historial && Array.isArray(c.historial) && c.historial.length > 0) {
+          const historialOrdenado = [...c.historial].sort((a, b) => {
+            const fechaA = new Date(a.fecha || a.date || '');
+            const fechaB = new Date(b.fecha || b.date || '');
+            return fechaB.getTime() - fechaA.getTime();
+          });
+          
+          for (const entry of historialOrdenado) {
+            const estadoEntry = String(entry.estado_nuevo || entry.newStatus || entry.estado || '').trim();
+            if (estadoEntry && isEstadoFinal(estadoEntry)) {
+              const fechaEntry = new Date(entry.fecha || entry.date || '');
+              if (!isNaN(fechaEntry.getTime())) {
+                fechaCierre = fechaEntry;
+                break;
+              }
+            }
+          }
+        }
+        
+        if (!fechaCierre) {
+          fechaCierre = new Date(c.updatedAt || c.fechaActualizacion || (c as any).fecha_actualizacion || '');
+        }
+        
+        if (isNaN(fechaCierre.getTime())) return false;
+        return fechaCierre >= inicioMesAnterior && fechaCierre <= finMesAnterior;
+      } catch (error) {
+        return false;
+      }
+    });
+    
+    if (casosResueltosAnterior.length === 0) return 0;
+    
+    const tiempos = casosResueltosAnterior.map(c => {
+      if (!c) return null;
+      try {
+        const fechaCreacion = new Date(c.createdAt || c.fechaCreacion || (c as any).fecha_creacion || '');
+        if (isNaN(fechaCreacion.getTime())) return null;
+        
+        let fechaCierre: Date | null = null;
+        if (c.historial && Array.isArray(c.historial) && c.historial.length > 0) {
+          const historialOrdenado = [...c.historial].sort((a, b) => {
+            const fechaA = new Date(a.fecha || a.date || '');
+            const fechaB = new Date(b.fecha || b.date || '');
+            return fechaB.getTime() - fechaA.getTime();
+          });
+          
+          for (const entry of historialOrdenado) {
+            const estadoEntry = String(entry.estado_nuevo || entry.newStatus || entry.estado || '').trim();
+            if (estadoEntry && isEstadoFinal(estadoEntry)) {
+              const fechaEntry = new Date(entry.fecha || entry.date || '');
+              if (!isNaN(fechaEntry.getTime())) {
+                fechaCierre = fechaEntry;
+                break;
+              }
+            }
+          }
+        }
+        
+        if (!fechaCierre) {
+          fechaCierre = new Date(c.updatedAt || c.fechaActualizacion || (c as any).fecha_actualizacion || '');
+        }
+        
+        if (isNaN(fechaCierre.getTime())) return null;
+        
+        const dias = Math.floor((fechaCierre.getTime() - fechaCreacion.getTime()) / (1000 * 60 * 60 * 24));
+        return dias > 0 ? dias : null;
+      } catch (error) {
+        return null;
+      }
+    }).filter((t): t is number => t !== null && t > 0);
+    
+    return tiempos.length > 0 ? Math.round(tiempos.reduce((a, b) => a + b, 0) / tiempos.length) : 0;
+  }, [casosSeguros, estados, inicioMesAnterior, finMesAnterior]);
+
+  // Tasa de resolución del mes anterior
+  const casosCerradosAnterior = useMemo(() => {
+    return casosSeguros.filter(c => {
+      if (!c) return false;
+      const casoStatus = String(c.status || (c as any).estado || '').trim();
+      if (!isEstadoFinal(casoStatus)) return false;
+      
+      // Verificar que se cerró en el mes anterior
+      try {
+        let fechaCierre: Date | null = null;
+        if (c.historial && Array.isArray(c.historial) && c.historial.length > 0) {
+          const historialOrdenado = [...c.historial].sort((a, b) => {
+            const fechaA = new Date(a.fecha || a.date || '');
+            const fechaB = new Date(b.fecha || b.date || '');
+            return fechaB.getTime() - fechaA.getTime();
+          });
+          
+          for (const entry of historialOrdenado) {
+            const estadoEntry = String(entry.estado_nuevo || entry.newStatus || entry.estado || '').trim();
+            if (estadoEntry && isEstadoFinal(estadoEntry)) {
+              const fechaEntry = new Date(entry.fecha || entry.date || '');
+              if (!isNaN(fechaEntry.getTime())) {
+                fechaCierre = fechaEntry;
+                break;
+              }
+            }
+          }
+        }
+        
+        if (!fechaCierre) {
+          fechaCierre = new Date(c.updatedAt || c.fechaActualizacion || (c as any).fecha_actualizacion || '');
+        }
+        
+        if (isNaN(fechaCierre.getTime())) return false;
+        return fechaCierre >= inicioMesAnterior && fechaCierre <= finMesAnterior;
+      } catch (error) {
+        return false;
+      }
+    }).length;
+  }, [casosSeguros, estados, inicioMesAnterior, finMesAnterior]);
+
+  const totalCasosAnterior = useMemo(() => {
+    return casosSeguros.filter(c => {
+      if (!c) return false;
+      try {
+        const fechaCreacion = new Date(c.createdAt || c.fechaCreacion || (c as any).fecha_creacion || '');
+        if (isNaN(fechaCreacion.getTime())) return false;
+        return fechaCreacion <= finMesAnterior;
+      } catch (error) {
+        return false;
+      }
+    }).length;
+  }, [casosSeguros, finMesAnterior]);
+
+  const tasaResolucionAnterior = totalCasosAnterior > 0 
+    ? Math.round((casosCerradosAnterior / totalCasosAnterior) * 100) 
+    : 0;
+  
+  // Top agentes por casos resueltos
+  const topAgentes = useMemo(() => {
+    const agenteStats: Record<string, { nombre: string; casosResueltos: number; casosAsignados: number; tiempoPromedio: number }> = {};
+    
+    // Función helper para encontrar el nombre del agente desde la lista de agentes
+    const obtenerNombreAgente = (agenteId: string): string => {
+      if (!agenteId || agenteId.trim() === '') return '';
+      
+      // Buscar en la lista de agentes cargada
+      const agenteEncontrado = agentesSeguros.find(a => {
+        if (!a) return false;
+        const aId = String(a.idAgente || a.id || '').trim();
+        const searchId = String(agenteId).trim();
+        
+        // Comparación exacta
+        if (aId === searchId) return true;
+        
+        // Comparación sin prefijos
+        const aIdNum = aId.replace(/^AG-?/i, '').replace(/^0+/, '');
+        const searchIdNum = searchId.replace(/^AG-?/i, '').replace(/^0+/, '');
+        if (aIdNum && searchIdNum && aIdNum === searchIdNum) return true;
+        
+        // Comparación numérica pura
+        const aIdPure = aId.replace(/\D/g, '');
+        const searchIdPure = searchId.replace(/\D/g, '');
+        if (aIdPure && searchIdPure && aIdPure === searchIdPure) return true;
+        
+        return false;
+      });
+      
+      if (agenteEncontrado) {
+        return agenteEncontrado.nombre || agenteEncontrado.name || '';
+      }
+      
+      return '';
+    };
+    
+    casosSeguros.forEach(caso => {
+      if (!caso) return;
+      
+      // Buscar agente en múltiples campos posibles
+      const agenteId = caso.agentId || 
+                      (caso as any).agenteAsignado?.idAgente || 
+                      (caso as any).agente_user_id ||
+                      (caso as any).agente_id ||
+                      '';
+      
+      if (!agenteId || agenteId.trim() === '') return; // Saltar casos sin agente
+      
+      // Intentar obtener el nombre desde la lista de agentes primero
+      let agenteNombre = obtenerNombreAgente(agenteId);
+      
+      // Si no se encuentra en la lista, usar el nombre del caso como fallback
+      if (!agenteNombre || agenteNombre.trim() === '') {
+        agenteNombre = caso.agentName || 
+                      (caso as any).agenteAsignado?.nombre || 
+                      (caso as any).agente_nombre ||
+                      (caso as any).nombre_agente ||
+                      '';
+      }
+      
+      // Si aún no hay nombre, usar el ID del agente en lugar de "Sin asignar"
+      if (!agenteNombre || agenteNombre.trim() === '') {
+        agenteNombre = `Agente ${agenteId}`;
+      }
+      
+      if (!agenteStats[agenteId]) {
+        agenteStats[agenteId] = {
+          nombre: agenteNombre,
+          casosResueltos: 0,
+          casosAsignados: 0,
+          tiempoPromedio: 0
+        };
+      }
+      
+      agenteStats[agenteId].casosAsignados++;
+      
+      const casoStatus = String(caso.status || (caso as any).estado || '').trim();
+      if (isEstadoFinal(casoStatus)) {
+        agenteStats[agenteId].casosResueltos++;
+      }
+    });
+    
+    return Object.values(agenteStats)
+      .filter(a => a.casosResueltos > 0 || a.casosAsignados > 0) // Solo agentes con casos
+      .sort((a, b) => {
+        // Primero por casos resueltos, luego por casos asignados
+        if (b.casosResueltos !== a.casosResueltos) {
+          return b.casosResueltos - a.casosResueltos;
+        }
+        return b.casosAsignados - a.casosAsignados;
+      })
+      .slice(0, 5);
+  }, [casosSeguros, estados, agentesSeguros]);
+  
+  // Agentes sobrecargados (más de 10 casos asignados)
+  const agentesSobrecargados = useMemo(() => {
+    const agenteCarga: Record<string, { nombre: string; casos: number }> = {};
+    
+    // Función helper para encontrar el nombre del agente desde la lista de agentes
+    const obtenerNombreAgente = (agenteId: string): string => {
+      if (!agenteId || agenteId.trim() === '') return '';
+      
+      // Buscar en la lista de agentes cargada
+      const agenteEncontrado = agentesSeguros.find(a => {
+        if (!a) return false;
+        const aId = String(a.idAgente || a.id || '').trim();
+        const searchId = String(agenteId).trim();
+        
+        // Comparación exacta
+        if (aId === searchId) return true;
+        
+        // Comparación sin prefijos
+        const aIdNum = aId.replace(/^AG-?/i, '').replace(/^0+/, '');
+        const searchIdNum = searchId.replace(/^AG-?/i, '').replace(/^0+/, '');
+        if (aIdNum && searchIdNum && aIdNum === searchIdNum) return true;
+        
+        // Comparación numérica pura
+        const aIdPure = aId.replace(/\D/g, '');
+        const searchIdPure = searchId.replace(/\D/g, '');
+        if (aIdPure && searchIdPure && aIdPure === searchIdPure) return true;
+        
+        return false;
+      });
+      
+      if (agenteEncontrado) {
+        return agenteEncontrado.nombre || agenteEncontrado.name || '';
+      }
+      
+      return '';
+    };
+    
+    casosSeguros.forEach(caso => {
+      if (!caso) return;
+      
+      const casoStatus = String(caso.status || (caso as any).estado || '').trim();
+      if (!isEstadoFinal(casoStatus)) {
+        // Buscar agente en múltiples campos posibles
+        const agenteId = caso.agentId || 
+                        (caso as any).agenteAsignado?.idAgente || 
+                        (caso as any).agente_user_id ||
+                        (caso as any).agente_id ||
+                        '';
+        
+        if (!agenteId || agenteId.trim() === '') return; // Saltar casos sin agente
+        
+        // Intentar obtener el nombre desde la lista de agentes primero
+        let agenteNombre = obtenerNombreAgente(agenteId);
+        
+        // Si no se encuentra en la lista, usar el nombre del caso como fallback
+        if (!agenteNombre || agenteNombre.trim() === '') {
+          agenteNombre = caso.agentName || 
+                        (caso as any).agenteAsignado?.nombre || 
+                        (caso as any).agente_nombre ||
+                        (caso as any).nombre_agente ||
+                        '';
+        }
+        
+        // Si aún no hay nombre, usar el ID del agente en lugar de "Sin asignar"
+        if (!agenteNombre || agenteNombre.trim() === '') {
+          agenteNombre = `Agente ${agenteId}`;
+        }
+        
+        if (!agenteCarga[agenteId]) {
+          agenteCarga[agenteId] = { nombre: agenteNombre, casos: 0 };
+        }
+        agenteCarga[agenteId].casos++;
+      }
+    });
+    
+    return Object.values(agenteCarga)
+      .filter(a => a.casos > 10)
+      .sort((a, b) => b.casos - a.casos);
+  }, [casosSeguros, estados, agentesSeguros]);
+  
+  // Clientes más activos
+  const clientesMasActivos = useMemo(() => {
+    const clienteStats: Record<string, { nombre: string; casos: number; casosAbiertos: number }> = {};
+    
+    casosSeguros.forEach(caso => {
+      if (!caso) return;
+      
+      // Buscar cliente en múltiples campos posibles
+      const clienteId = caso.clientId || 
+                       (caso as any).cliente?.idCliente || 
+                       (caso as any).cliente_id ||
+                       '';
+      
+      const clienteNombre = caso.clientName || 
+                           (caso as any).cliente?.nombreEmpresa || 
+                           (caso as any).cliente_nombre ||
+                           (caso as any).nombre_cliente ||
+                           (caso as any).nombreEmpresa ||
+                           'Sin cliente';
+      
+      if (clienteId && clienteId.trim() !== '') {
+        if (!clienteStats[clienteId]) {
+          clienteStats[clienteId] = {
+            nombre: clienteNombre || 'Sin nombre',
+            casos: 0,
+            casosAbiertos: 0
+          };
+        }
+        
+        clienteStats[clienteId].casos++;
+        
+        const casoStatus = String(caso.status || (caso as any).estado || '').trim();
+        if (!isEstadoFinal(casoStatus)) {
+          clienteStats[clienteId].casosAbiertos++;
+        }
+      }
+    });
+    
+    return Object.values(clienteStats)
+      .filter(c => c.casos > 0) // Solo clientes con casos
+      .sort((a, b) => b.casos - a.casos)
+      .slice(0, 5);
+  }, [casosSeguros, estados]);
+  
+  // Nuevos clientes (creados en el último mes)
+  const nuevosClientes = useMemo(() => {
+    return clientesSeguros.filter(c => {
+      if (!c) return false;
+      try {
+        const fechaCreacion = new Date((c as any).fechaCreacion || 
+                                      (c as any).createdAt || 
+                                      (c as any).fecha_creacion || 
+                                      new Date());
+        if (isNaN(fechaCreacion.getTime())) return false;
+        return fechaCreacion >= inicioMes;
+      } catch (error) {
+        return false;
+      }
+    }).length;
+  }, [clientesSeguros, inicioMes]);
+
   // Estilos dinámicos basados en el tema
   const styles = {
     container: {
@@ -745,7 +1322,7 @@ const AdminPanel: React.FC = () => {
             transform: 'scale(1)',
             transition: 'all 0.2s ease-in-out'
           }}
-          onClick={() => navigate('/app/agentes')}
+          onClick={() => navigate('/app/admin/usuarios')}
           onMouseEnter={(e) => {
             e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.4)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
@@ -1392,6 +1969,270 @@ const AdminPanel: React.FC = () => {
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* Sección de Alertas Críticas */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Alertas Críticas */}
+        <div 
+          className="rounded-3xl shadow-xl border overflow-hidden"
+          style={{
+            ...styles.card,
+            animation: 'fadeInSlide 0.3s ease-out 0.7s both'
+          }}
+        >
+          <div className="p-4 border-b" style={{
+            backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+            borderColor: 'rgba(148, 163, 184, 0.2)'
+          }}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold uppercase tracking-wide flex items-center gap-2" style={{color: styles.text.secondary}}>
+                <AlertTriangle className="w-4 h-4" style={{color: casosCriticos > 0 ? '#ef4444' : styles.text.tertiary}} />
+                Alertas Críticas
+              </h3>
+              <button
+                onClick={() => navigate('/app/alertas')}
+                className="text-xs font-semibold px-3 py-1 rounded-lg transition-all hover:scale-105"
+                style={{
+                  backgroundColor: theme === 'dark' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
+                  color: '#ef4444'
+                }}
+              >
+                Ver todos
+              </button>
+            </div>
+          </div>
+          <div className="p-4 space-y-3">
+            <div 
+              className="p-3 rounded-lg border cursor-pointer transition-all hover:scale-[1.02]"
+              onClick={() => navigate('/app/admin/casos?filter=criticos')}
+              style={{
+                backgroundColor: casosCriticos > 0 
+                  ? (theme === 'dark' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)')
+                  : 'transparent',
+                borderColor: casosCriticos > 0 ? 'rgba(239, 68, 68, 0.3)' : styles.card.borderColor
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" style={{color: casosCriticos > 0 ? '#ef4444' : styles.text.tertiary}} />
+                  <span className="text-sm font-semibold" style={{color: styles.text.primary}}>Casos Críticos</span>
+                </div>
+                <span className="text-lg font-black" style={{color: casosCriticos > 0 ? '#ef4444' : styles.text.secondary}}>
+                  {casosCriticos}
+                </span>
+              </div>
+            </div>
+            <div 
+              className="p-3 rounded-lg border cursor-pointer transition-all hover:scale-[1.02]"
+              onClick={() => navigate('/app/admin/casos?filter=vencidos')}
+              style={{
+                backgroundColor: casosVencidos > 0 
+                  ? (theme === 'dark' ? 'rgba(220, 38, 38, 0.1)' : 'rgba(220, 38, 38, 0.05)')
+                  : 'transparent',
+                borderColor: casosVencidos > 0 ? 'rgba(220, 38, 38, 0.3)' : styles.card.borderColor
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4" style={{color: casosVencidos > 0 ? '#dc2626' : styles.text.tertiary}} />
+                  <span className="text-sm font-semibold" style={{color: styles.text.primary}}>Casos Vencidos</span>
+                </div>
+                <span className="text-lg font-black" style={{color: casosVencidos > 0 ? '#dc2626' : styles.text.secondary}}>
+                  {casosVencidos}
+                </span>
+              </div>
+            </div>
+            <div 
+              className="p-3 rounded-lg border cursor-pointer transition-all hover:scale-[1.02]"
+              onClick={() => navigate('/app/admin/casos?filter=sin-asignar')}
+              style={{
+                backgroundColor: casosSinAsignar > 0 
+                  ? (theme === 'dark' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.05)')
+                  : 'transparent',
+                borderColor: casosSinAsignar > 0 ? 'rgba(245, 158, 11, 0.3)' : styles.card.borderColor
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <UserCheck className="w-4 h-4" style={{color: casosSinAsignar > 0 ? '#f59e0b' : styles.text.tertiary}} />
+                  <span className="text-sm font-semibold" style={{color: styles.text.primary}}>Sin Asignar</span>
+                </div>
+                <span className="text-lg font-black" style={{color: casosSinAsignar > 0 ? '#f59e0b' : styles.text.secondary}}>
+                  {casosSinAsignar}
+                </span>
+              </div>
+            </div>
+            {agentesSobrecargados.length > 0 && (
+              <div 
+                className="p-3 rounded-lg border cursor-pointer transition-all hover:scale-[1.02]"
+                onClick={() => navigate('/app/admin/usuarios')}
+                style={{
+                  backgroundColor: theme === 'dark' ? 'rgba(168, 85, 247, 0.1)' : 'rgba(168, 85, 247, 0.05)',
+                  borderColor: 'rgba(168, 85, 247, 0.3)'
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4" style={{color: '#a855f7'}} />
+                    <span className="text-sm font-semibold" style={{color: styles.text.primary}}>Agentes Sobrecargados</span>
+                  </div>
+                  <span className="text-lg font-black" style={{color: '#a855f7'}}>
+                    {agentesSobrecargados.length}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Top Agentes */}
+        <div 
+          className="rounded-3xl shadow-xl border overflow-hidden"
+          style={{
+            ...styles.card,
+            animation: 'fadeInSlide 0.3s ease-out 0.8s both'
+          }}
+        >
+          <div className="p-4 border-b" style={{
+            backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+            borderColor: 'rgba(148, 163, 184, 0.2)'
+          }}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold uppercase tracking-wide flex items-center gap-2" style={{color: styles.text.secondary}}>
+                <Target className="w-4 h-4" />
+                Top Agentes
+              </h3>
+              <button
+                onClick={() => navigate('/app/admin/usuarios')}
+                className="text-xs font-semibold px-3 py-1 rounded-lg transition-all hover:scale-105"
+                style={{
+                  backgroundColor: theme === 'dark' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
+                  color: '#22c55e'
+                }}
+              >
+                Ver todos
+              </button>
+            </div>
+          </div>
+          <div className="p-4 space-y-2">
+            {topAgentes.length > 0 ? (
+              topAgentes.map((agente, index) => (
+                <div 
+                  key={index}
+                  className="p-3 rounded-lg border transition-all hover:scale-[1.02] cursor-pointer"
+                  onClick={() => navigate('/app/admin/usuarios')}
+                  style={{
+                    backgroundColor: index === 0 
+                      ? (theme === 'dark' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)')
+                      : 'transparent',
+                    borderColor: index === 0 ? 'rgba(34, 197, 94, 0.3)' : styles.card.borderColor
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0"
+                        style={{
+                          backgroundColor: index === 0 ? '#22c55e' : index === 1 ? '#3b82f6' : index === 2 ? '#8b5cf6' : styles.card.borderColor,
+                          color: '#ffffff'
+                        }}
+                      >
+                        {index + 1}
+                      </div>
+                      <span className="text-sm font-semibold truncate" style={{color: styles.text.primary}}>
+                        {agente.nombre}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <div className="text-right">
+                        <div className="text-xs font-black" style={{color: '#22c55e'}}>
+                          {agente.casosResueltos}
+                        </div>
+                        <div className="text-[10px]" style={{color: styles.text.tertiary}}>
+                          resueltos
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-4 text-sm" style={{color: styles.text.tertiary}}>
+                No hay datos de agentes disponibles
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Clientes Más Activos */}
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
+        <div 
+          className="rounded-3xl shadow-xl border overflow-hidden"
+          style={{
+            ...styles.card,
+            animation: 'fadeInSlide 0.3s ease-out 0.85s both'
+          }}
+        >
+          <div className="p-4 border-b" style={{
+            backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+            borderColor: 'rgba(148, 163, 184, 0.2)'
+          }}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold uppercase tracking-wide flex items-center gap-2" style={{color: styles.text.secondary}}>
+                <Building2 className="w-4 h-4" />
+                Clientes Más Activos
+              </h3>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold px-2 py-1 rounded" style={{
+                  backgroundColor: theme === 'dark' ? 'rgba(168, 85, 247, 0.1)' : 'rgba(168, 85, 247, 0.05)',
+                  color: '#a855f7'
+                }}>
+                  {nuevosClientes} nuevos
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="p-4 space-y-2">
+            {clientesMasActivos.length > 0 ? (
+              clientesMasActivos.map((cliente, index) => (
+                <div 
+                  key={index}
+                  className="p-3 rounded-lg border transition-all hover:scale-[1.02] cursor-pointer"
+                  onClick={() => navigate(`/app/admin/casos?cliente=${cliente.nombre}`)}
+                  style={{
+                    borderColor: styles.card.borderColor
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold truncate" style={{color: styles.text.primary}}>
+                        {cliente.nombre}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-xs" style={{color: styles.text.secondary}}>
+                          {cliente.casos} casos
+                        </span>
+                        {cliente.casosAbiertos > 0 && (
+                          <span className="text-xs px-2 py-0.5 rounded" style={{
+                            backgroundColor: theme === 'dark' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
+                            color: '#ef4444'
+                          }}>
+                            {cliente.casosAbiertos} abiertos
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-4 text-sm" style={{color: styles.text.tertiary}}>
+                No hay datos de clientes disponibles
+              </div>
+            )}
           </div>
         </div>
       </div>

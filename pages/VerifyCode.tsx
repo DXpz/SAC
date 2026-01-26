@@ -2,8 +2,9 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
-import { ShieldCheck, Loader2, AlertCircle } from 'lucide-react';
+import { ShieldCheck, AlertCircle } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
+import LoadingLogo from '../components/LoadingLogo';
 
 const VerifyCode: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -118,7 +119,7 @@ const VerifyCode: React.FC = () => {
                 }
               }}
             >
-              {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Verificar Código'}
+              {loading ? <LoadingLogo size="medium" /> : 'Verificar Código'}
             </button>
 
             <button 

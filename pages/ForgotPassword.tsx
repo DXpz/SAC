@@ -2,9 +2,10 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
-import { Mail, ArrowLeft, Loader2, CheckCircle2, AlertCircle, Sun, Moon } from 'lucide-react';
+import { Mail, ArrowLeft, CheckCircle2, AlertCircle, Sun, Moon } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { useTheme } from '../contexts/ThemeContext';
+import LoadingLogo from '../components/LoadingLogo';
 
 const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -137,7 +138,7 @@ const ForgotPassword: React.FC = () => {
                   }
                 }}
               >
-                {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Enviar Código de Recuperación'}
+                {loading ? <LoadingLogo size="medium" /> : 'Enviar Código de Recuperación'}
               </button>
             </form>
           </div>
@@ -242,7 +243,7 @@ const ForgotPassword: React.FC = () => {
                 e.currentTarget.style.background = 'linear-gradient(to right, var(--color-brand-blue) 0%, var(--color-brand-blue) 75%, var(--color-accent-darkred) 100%)';
               }}
             >
-              {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Enviar Código de Recuperación'}
+              {loading ? <LoadingLogo size="medium" /> : 'Enviar Código de Recuperación'}
             </button>
           </form>
         </div>

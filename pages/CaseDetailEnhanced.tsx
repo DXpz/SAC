@@ -5,6 +5,7 @@ import { Case, CaseStatus, Cliente } from '../types';
 import { STATE_COLORS } from '../constants';
 import { ArrowLeft, MessageSquare, User, Building2, Phone, Mail, CheckCircle2, Clock, X, AlertTriangle, Lock, History, Send, Users, TrendingUp } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import LoadingScreen from '../components/LoadingScreen';
 
 const CaseDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -120,14 +121,7 @@ const CaseDetail: React.FC = () => {
     }
   };
 
-  if (!caso) return (
-    <div className="min-h-[400px] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-            <div className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin" style={{borderColor: '#c8151b'}}></div>
-            <p className="font-medium tracking-normal text-xs" style={{color: '#94a3b8'}}>Cargando Detalle...</p>
-        </div>
-    </div>
-  );
+  if (!caso) return <LoadingScreen message="Cargando Detalle del Caso..." />;
 
   const normalizeStatus = (status: string | CaseStatus): CaseStatus => {
     const statusStr = String(status).trim();

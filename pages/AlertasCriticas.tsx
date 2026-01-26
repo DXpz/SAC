@@ -11,7 +11,14 @@ import {
   Eye,
   CheckCircle2,
   Timer,
-  ChevronRight
+  ChevronRight,
+  Search,
+  Filter,
+  RefreshCw,
+  Grid3x3,
+  List,
+  User,
+  X
 } from 'lucide-react';
 import AnimatedNumber from '../components/AnimatedNumber';
 import LoadingScreen from '../components/LoadingScreen';
@@ -41,6 +48,10 @@ const AlertasCriticas: React.FC = () => {
   const [criticos, setCriticos] = useState<CaseWithPriority[]>([]);
   const [loading, setLoading] = useState(true);
   const [clientes, setClientes] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterPriority, setFilterPriority] = useState<'all' | 'Critica' | 'Alta' | 'Media'>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const navigate = useNavigate();
   const { theme } = useTheme();
   const location = useLocation();
@@ -235,6 +246,47 @@ const AlertasCriticas: React.FC = () => {
   }).length;
 
   const casosEscalados = criticos.filter(c => c.status === CaseStatus.ESCALADO).length;
+
+  // Filtrar casos según búsqueda y filtros
+  const casosFiltrados = criticos.filter(caso => {
+    // Filtro de búsqueda
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = 
+        caso.ticketNumber?.toLowerCase().includes(searchLower) ||
+        caso.subject?.toLowerCase().includes(searchLower) ||
+        caso.clientName?.toLowerCase().includes(searchLower) ||
+        caso.agentName?.toLowerCase().includes(searchLower) ||
+        caso.id?.toLowerCase().includes(searchLower);
+      if (!matchesSearch) return false;
+    }
+    
+    // Filtro de prioridad
+    if (filterPriority !== 'all' && caso.priority !== filterPriority) {
+      return false;
+    }
+    
+    // Filtro de estado
+    if (filterStatus !== 'all') {
+      const normalizedStatus = normalizeStatus(caso.status);
+      if (filterStatus === 'vencido') {
+        const slaDias = caso.categoria?.slaDias || 5;
+        if (caso.diasAbierto < slaDias) return false;
+      } else if (filterStatus === 'en-riesgo') {
+        const slaDias = caso.categoria?.slaDias || 5;
+        if (caso.diasAbierto >= slaDias || (slaDias - caso.diasAbierto) > 1) return false;
+      } else if (filterStatus === 'escalado') {
+        if (normalizedStatus !== CaseStatus.ESCALADO) return false;
+      } else if (normalizedStatus !== filterStatus) {
+        return false;
+      }
+    }
+    
+    return true;
+  });
+
+  // Obtener estados únicos para el filtro
+  const estadosUnicos = Array.from(new Set(criticos.map(c => normalizeStatus(c.status))));
 
   // Estilos dinámicos basados en el tema
   const styles = {
@@ -483,39 +535,171 @@ const AlertasCriticas: React.FC = () => {
         </div>
       </div>
 
-      {/* Lista de Casos en Formato Tabla */}
-      {criticos.length > 0 ? (
-        <div 
-          className="rounded-3xl shadow-xl border overflow-hidden" 
-          style={{
-            ...styles.card,
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-            animation: 'fadeInSlide 0.4s ease-out 0.3s both'
-          }}
-        >
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="border-b" style={{
+      {/* Barra de Filtros y Búsqueda */}
+      <div 
+        className="rounded-3xl shadow-xl border overflow-hidden"
+        style={{
+          ...styles.card,
+          animation: 'fadeInSlide 0.3s ease-out 0.25s both'
+        }}
+      >
+        <div className="p-4 space-y-4">
+          {/* Primera fila: Búsqueda y controles de vista */}
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* Búsqueda */}
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4" style={{color: styles.text.tertiary}} />
+              <input
+                type="text"
+                placeholder="Buscar por ID, asunto, cliente o agente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 rounded-lg border text-sm"
+                style={{
+                  backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                  borderColor: 'rgba(148, 163, 184, 0.2)',
+                  color: styles.text.primary
+                }}
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded hover:bg-opacity-20"
+                  style={{color: styles.text.tertiary}}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            
+            {/* Controles de vista y refresh */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={loadData}
+                className="p-2 rounded-lg border transition-all hover:scale-105"
+                style={{
+                  borderColor: 'rgba(148, 163, 184, 0.2)',
+                  backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                  color: styles.text.secondary
+                }}
+                title="Actualizar"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
+              <div className="flex items-center gap-1 p-1 rounded-lg border" style={{borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`p-2 rounded transition-all ${viewMode === 'table' ? 'bg-blue-500 text-white' : ''}`}
+                  style={viewMode !== 'table' ? {color: styles.text.secondary} : {}}
+                  title="Vista tabla"
+                >
+                  <List className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('cards')}
+                  className={`p-2 rounded transition-all ${viewMode === 'cards' ? 'bg-blue-500 text-white' : ''}`}
+                  style={viewMode !== 'cards' ? {color: styles.text.secondary} : {}}
+                  title="Vista tarjetas"
+                >
+                  <Grid3x3 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          {/* Segunda fila: Filtros */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4" style={{color: styles.text.secondary}} />
+              <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>Filtros:</span>
+            </div>
+            
+            {/* Filtro de Prioridad */}
+            <select
+              value={filterPriority}
+              onChange={(e) => setFilterPriority(e.target.value as any)}
+              className="px-3 py-1.5 rounded-lg border text-xs font-semibold"
+              style={{
                 backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
-                borderColor: 'rgba(148, 163, 184, 0.2)'
-              }}>
-                <tr>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>ID Caso</th>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Asunto</th>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Cliente</th>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Prioridad</th>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Estado</th>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>SLA</th>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase text-right" style={{color: styles.text.secondary}}>Acción</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y" style={{borderColor: 'rgba(148, 163, 184, 0.15)'}}>
-                {criticos.map((caso, idx) => {
-                  const priorityConfig = getPriorityConfig(caso.priority);
-                  const slaDias = caso.categoria?.slaDias || 5;
-                  const timeStatus = getTimeStatus(caso.diasAbierto, slaDias);
-                  const TimeIcon = timeStatus.icon;
-                  const isVencido = caso.diasAbierto >= slaDias;
+                borderColor: 'rgba(148, 163, 184, 0.2)',
+                color: styles.text.primary
+              }}
+            >
+              <option value="all">Todas las prioridades</option>
+              <option value="Critica">Crítica</option>
+              <option value="Alta">Alta</option>
+              <option value="Media">Media</option>
+            </select>
+            
+            {/* Filtro de Estado/Tipo */}
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="px-3 py-1.5 rounded-lg border text-xs font-semibold"
+              style={{
+                backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                borderColor: 'rgba(148, 163, 184, 0.2)',
+                color: styles.text.primary
+              }}
+            >
+              <option value="all">Todos los tipos</option>
+              <option value="vencido">Vencidos</option>
+              <option value="en-riesgo">En riesgo (&lt;24h)</option>
+              <option value="escalado">Escalados</option>
+              {estadosUnicos.map(estado => (
+                <option key={estado} value={estado}>{estado}</option>
+              ))}
+            </select>
+            
+            {/* Contador de resultados */}
+            <div className="ml-auto text-xs font-semibold px-3 py-1.5 rounded-lg" style={{
+              backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)',
+              color: '#3b82f6'
+            }}>
+              {casosFiltrados.length} de {criticos.length} casos
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Lista de Casos */}
+      {criticos.length > 0 ? (
+        casosFiltrados.length > 0 ? (
+          viewMode === 'table' ? (
+            <div 
+              className="rounded-3xl shadow-xl border overflow-hidden" 
+              style={{
+                ...styles.card,
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+                animation: 'fadeInSlide 0.4s ease-out 0.3s both'
+              }}
+            >
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead className="border-b" style={{
+                    backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                    borderColor: 'rgba(148, 163, 184, 0.2)'
+                  }}>
+                    <tr>
+                      <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>ID Caso</th>
+                      <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Asunto</th>
+                      <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Cliente</th>
+                      <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Agente</th>
+                      <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Prioridad</th>
+                      <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Estado</th>
+                      <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Tiempo</th>
+                      <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase text-right" style={{color: styles.text.secondary}}>Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{borderColor: 'rgba(148, 163, 184, 0.15)'}}>
+                    {casosFiltrados.map((caso, idx) => {
+                      const priorityConfig = getPriorityConfig(caso.priority);
+                      const slaDias = caso.categoria?.slaDias || 5;
+                      const timeStatus = getTimeStatus(caso.diasAbierto, slaDias);
+                      const TimeIcon = timeStatus.icon;
+                      const isVencido = caso.diasAbierto >= slaDias;
+                      const diasRestantes = slaDias - caso.diasAbierto;
+                      const horasRestantes = Math.max(0, diasRestantes * 24);
 
                   return (
                     <tr 
@@ -553,10 +737,31 @@ const AlertasCriticas: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5">
+                          {caso.agentName ? (
+                            <>
+                              <User className="w-3.5 h-3.5" style={{color: styles.text.tertiary}} />
+                              <span className="text-xs font-semibold" style={{color: styles.text.primary}}>
+                                {caso.agentName}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-xs italic" style={{color: styles.text.tertiary}}>
+                              Sin asignar
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
                         <span 
-                          className="text-[10px] font-semibold uppercase tracking-wide"
+                          className="text-[10px] font-semibold uppercase tracking-wide px-2 py-1 rounded"
                           style={{
-                            color: caso.priority === 'Critica' ? '#c8151b' : caso.priority === 'Alta' ? '#f59e0b' : styles.text.tertiary
+                            color: caso.priority === 'Critica' ? '#c8151b' : caso.priority === 'Alta' ? '#f59e0b' : styles.text.tertiary,
+                            backgroundColor: caso.priority === 'Critica' 
+                              ? (theme === 'dark' ? 'rgba(200, 21, 27, 0.1)' : 'rgba(200, 21, 27, 0.05)')
+                              : caso.priority === 'Alta'
+                              ? (theme === 'dark' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.05)')
+                              : 'transparent'
                           }}
                         >
                           {caso.priority}
@@ -565,30 +770,71 @@ const AlertasCriticas: React.FC = () => {
                       <td className="px-4 py-3">
                         {(() => {
                           const rawStatus = caso.status || (caso as any).estado;
-                          const statusColors = getStatusColors(rawStatus as CaseStatus);
+                          const normalizedStatus = normalizeStatus(rawStatus);
                           return (
                             <span 
-                              className="text-[10px] font-semibold uppercase tracking-wide"
+                              className="text-[10px] font-semibold uppercase tracking-wide transition-all"
                               style={{
-                                color: statusColors.color
+                                color: (() => {
+                                  if (normalizedStatus === CaseStatus.NUEVO) return '#2563eb';
+                                  if (normalizedStatus === CaseStatus.EN_PROCESO) return '#d97706';
+                                  if (normalizedStatus === CaseStatus.PENDIENTE_CLIENTE) return '#9333ea';
+                                  if (normalizedStatus === CaseStatus.ESCALADO) return '#dc2626';
+                                  if (normalizedStatus === CaseStatus.RESUELTO) return '#16a34a';
+                                  if (normalizedStatus === CaseStatus.CERRADO) return '#64748b';
+                                  return '#475569';
+                                })(),
+                                transform: 'scale(1)',
+                                transition: 'all 0.2s ease-in-out'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'scale(1.05)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'scale(1)';
                               }}
                             >
-                              {caso.status}
+                              {rawStatus}
                             </span>
                           );
                         })()}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
-                          <TimeIcon className="w-3.5 h-3.5" style={{color: isVencido ? '#c8151b' : styles.text.tertiary}} />
-                          <span 
-                            className="text-[10px] font-semibold uppercase tracking-wide"
-                            style={{
-                              color: isVencido ? '#c8151b' : styles.text.tertiary
-                            }}
-                          >
-                            {isVencido ? 'Vencido' : `${caso.diasAbierto} días`}
-                          </span>
+                          <TimeIcon className="w-3.5 h-3.5" style={{color: isVencido ? '#c8151b' : (slaDias - caso.diasAbierto) <= 1 ? '#f97316' : styles.text.tertiary}} />
+                          {(() => {
+                            const diasRestantes = slaDias - caso.diasAbierto;
+                            const horasRestantes = Math.max(0, diasRestantes * 24);
+                            if (isVencido) {
+                              const diasVencido = caso.diasAbierto - slaDias;
+                              return (
+                                <span 
+                                  className="text-[10px] font-semibold"
+                                  style={{color: '#c8151b'}}
+                                >
+                                  +{diasVencido}d vencido
+                                </span>
+                              );
+                            } else if (diasRestantes <= 1) {
+                              return (
+                                <span 
+                                  className="text-[10px] font-semibold"
+                                  style={{color: '#f97316'}}
+                                >
+                                  {horasRestantes}h restantes
+                                </span>
+                              );
+                            } else {
+                              return (
+                                <span 
+                                  className="text-[10px] font-semibold"
+                                  style={{color: styles.text.tertiary}}
+                                >
+                                  {diasRestantes}d restantes
+                                </span>
+                              );
+                            }
+                          })()}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -627,6 +873,167 @@ const AlertasCriticas: React.FC = () => {
             </table>
           </div>
         </div>
+          ) : (
+            /* Vista de Tarjetas */
+            <div 
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+              style={{
+                animation: 'fadeInSlide 0.4s ease-out 0.3s both'
+              }}
+            >
+              {casosFiltrados.map((caso, idx) => {
+                const priorityConfig = getPriorityConfig(caso.priority);
+                const slaDias = caso.categoria?.slaDias || 5;
+                const timeStatus = getTimeStatus(caso.diasAbierto, slaDias);
+                const TimeIcon = timeStatus.icon;
+                const isVencido = caso.diasAbierto >= slaDias;
+                const diasRestantes = slaDias - caso.diasAbierto;
+                const horasRestantes = Math.max(0, diasRestantes * 24);
+                
+                return (
+                  <div
+                    key={caso.id}
+                    className="rounded-xl border-2 overflow-hidden cursor-pointer transition-all duration-200 hover:scale-[1.02]"
+                    style={{
+                      ...styles.card,
+                      borderColor: caso.priority === 'Critica' 
+                        ? 'rgba(200, 21, 27, 0.4)' 
+                        : caso.priority === 'Alta'
+                        ? 'rgba(245, 158, 11, 0.3)'
+                        : 'rgba(148, 163, 184, 0.2)',
+                      borderLeftWidth: caso.priority === 'Critica' ? '6px' : '2px',
+                      borderLeftColor: caso.priority === 'Critica' ? '#c8151b' : 'transparent',
+                      animation: `fadeInSlide 0.3s ease-out ${0.35 + idx * 0.05}s both`
+                    }}
+                    onClick={() => navigate(`/app/casos/${caso.id}`)}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.12)';
+                      e.currentTarget.style.transform = 'translateY(-4px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = '';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }}
+                  >
+                    {/* Header con ID y Prioridad */}
+                    <div className="p-4 border-b" style={{
+                      backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                      borderColor: 'rgba(148, 163, 184, 0.2)'
+                    }}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-black" style={{color: styles.text.primary}}>
+                          #{(caso as any).ticketNumber || caso.id}
+                        </span>
+                        <span 
+                          className="text-[10px] font-semibold uppercase tracking-wide px-2 py-1 rounded"
+                          style={{
+                            color: caso.priority === 'Critica' ? '#c8151b' : caso.priority === 'Alta' ? '#f59e0b' : styles.text.tertiary,
+                            backgroundColor: caso.priority === 'Critica' 
+                              ? (theme === 'dark' ? 'rgba(200, 21, 27, 0.1)' : 'rgba(200, 21, 27, 0.05)')
+                              : caso.priority === 'Alta'
+                              ? (theme === 'dark' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.05)')
+                              : 'transparent'
+                          }}
+                        >
+                          {caso.priority}
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-bold line-clamp-2" style={{color: styles.text.primary}}>
+                        {caso.subject}
+                      </h3>
+                    </div>
+                    
+                    {/* Contenido */}
+                    <div className="p-4 space-y-3">
+                      {/* Cliente y Agente */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>Cliente:</span>
+                          <span className="text-xs font-bold" style={{color: styles.text.primary}}>
+                            {caso.clientName || 'Sin cliente'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <User className="w-3.5 h-3.5" style={{color: styles.text.tertiary}} />
+                          <span className="text-xs" style={{color: caso.agentName ? styles.text.primary : styles.text.tertiary}}>
+                            {caso.agentName || 'Sin asignar'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Estado y Tiempo */}
+                      <div className="flex items-center justify-between pt-2 border-t" style={{borderColor: 'rgba(148, 163, 184, 0.15)'}}>
+                        {(() => {
+                          const rawStatus = caso.status || (caso as any).estado;
+                          const normalizedStatus = normalizeStatus(rawStatus);
+                          return (
+                            <span 
+                              className="text-[10px] font-semibold uppercase tracking-wide transition-all"
+                              style={{
+                                color: (() => {
+                                  if (normalizedStatus === CaseStatus.NUEVO) return '#2563eb';
+                                  if (normalizedStatus === CaseStatus.EN_PROCESO) return '#d97706';
+                                  if (normalizedStatus === CaseStatus.PENDIENTE_CLIENTE) return '#9333ea';
+                                  if (normalizedStatus === CaseStatus.ESCALADO) return '#dc2626';
+                                  if (normalizedStatus === CaseStatus.RESUELTO) return '#16a34a';
+                                  if (normalizedStatus === CaseStatus.CERRADO) return '#64748b';
+                                  return '#475569';
+                                })(),
+                                transform: 'scale(1)',
+                                transition: 'all 0.2s ease-in-out'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'scale(1.05)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'scale(1)';
+                              }}
+                            >
+                              {rawStatus}
+                            </span>
+                          );
+                        })()}
+                        <div className="flex items-center gap-1.5">
+                          <TimeIcon className="w-3.5 h-3.5" style={{color: isVencido ? '#c8151b' : (diasRestantes <= 1) ? '#f97316' : styles.text.tertiary}} />
+                          {isVencido ? (
+                            <span className="text-[10px] font-semibold" style={{color: '#c8151b'}}>
+                              +{caso.diasAbierto - slaDias}d
+                            </span>
+                          ) : diasRestantes <= 1 ? (
+                            <span className="text-[10px] font-semibold" style={{color: '#f97316'}}>
+                              {horasRestantes}h
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-semibold" style={{color: styles.text.tertiary}}>
+                              {diasRestantes}d
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )
+        ) : (
+          /* Sin resultados de búsqueda */
+          <div className="p-20 text-center rounded-xl border-2 border-dashed" style={{
+            ...styles.card,
+            borderColor: 'rgba(148, 163, 184, 0.25)'
+          }}>
+            <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5 border-2" style={{
+              backgroundColor: theme === 'dark' ? 'rgba(100, 116, 139, 0.1)' : 'rgba(100, 116, 139, 0.05)',
+              borderColor: 'rgba(100, 116, 139, 0.3)'
+            }}>
+              <Search className="w-10 h-10" style={{color: styles.text.tertiary}} />
+            </div>
+            <h3 className="text-xl font-bold mb-2" style={{color: styles.text.primary}}>No se encontraron resultados</h3>
+            <p className="text-sm font-medium" style={{color: styles.text.tertiary}}>
+              Intenta ajustar los filtros o términos de búsqueda.
+            </p>
+          </div>
+        )
       ) : (
           <div className="p-20 text-center rounded-xl border-2 border-dashed" style={{
             ...styles.card,

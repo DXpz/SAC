@@ -18,6 +18,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { api } from '../services/api';
 import { Agente } from '../types';
 import LoadingScreen from '../components/LoadingScreen';
+import LoadingLogo from '../components/LoadingLogo';
 
 // ==================================================
 // TIPOS
@@ -780,7 +781,7 @@ const AdminUsers: React.FC = () => {
             <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{
               backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc'
             }}>
-              <Users className="w-10 h-10 animate-pulse" style={{color: styles.text.tertiary}} />
+              <LoadingLogo size="large" />
             </div>
             <h3 className="text-base font-bold mb-2" style={{color: styles.text.primary}}>Cargando usuarios...</h3>
             <p className="text-sm" style={{color: styles.text.tertiary}}>
