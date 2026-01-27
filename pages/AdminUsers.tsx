@@ -49,6 +49,7 @@ const AdminUsers: React.FC = () => {
   const [users, setUsers] = useState<DemoUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('todos');
+  const [adminCountry, setAdminCountry] = useState<'SV' | 'GT' | null>(null);
   
   // Estados para búsqueda
   const [searchTerm, setSearchTerm] = useState('');
@@ -73,10 +74,147 @@ const AdminUsers: React.FC = () => {
     enVacaciones: false
   });
 
+  // Función helper para obtener y normalizar el país del admin
+  const getAdminCountry = async (): Promise<'SV' | 'GT' | null> => {
+    try {
+      // Primero intentar desde api.getUser() que puede tener datos más actualizados
+      const currentUser = api.getUser();
+      let pais = currentUser?.pais || '';
+      
+      // Si el país es string vacío, tratarlo como undefined
+      if (pais && String(pais).trim() !== '') {
+        const paisNormalizado = String(pais).trim().toUpperCase();
+        
+        if (paisNormalizado === 'SV' || paisNormalizado === 'EL_SALVADOR' || paisNormalizado === 'EL SALVADOR' || paisNormalizado.includes('SALVADOR')) {
+          console.log('[AdminUsers] ✅ País del admin desde api.getUser(): SV');
+          return 'SV';
+        }
+        if (paisNormalizado === 'GT' || paisNormalizado === 'GUATEMALA' || paisNormalizado.includes('GUATEMALA')) {
+          console.log('[AdminUsers] ✅ País del admin desde api.getUser(): GT');
+          return 'GT';
+        }
+      }
+      
+      // Fallback: leer desde localStorage directamente
+      const userStr = localStorage.getItem('intelfon_user');
+      if (!userStr) {
+        console.error('[AdminUsers] No se encontró usuario en localStorage');
+        return null;
+      }
+      
+      const user = JSON.parse(userStr);
+      pais = user.pais || user.country || '';
+      
+      // Si el país es string vacío, intentar obtenerlo desde la lista de usuarios
+      if (!pais || String(pais).trim() === '') {
+        console.log('[AdminUsers] 🔍 País no encontrado en localStorage, buscando en lista de usuarios...');
+        try {
+          const usuarios = await api.getUsuarios();
+          const usuarioCompleto = usuarios.find((u: any) => 
+            u.id === user.id || 
+            u.idAgente === user.id || 
+            u.id_agente === user.id ||
+            u.id_usuario === user.id ||
+            u.email === user.email ||
+            (u.nombre && u.nombre.toUpperCase() === user.name.toUpperCase())
+          );
+          
+          if (usuarioCompleto) {
+            pais = usuarioCompleto.pais || usuarioCompleto.country || usuarioCompleto.país || '';
+            console.log('[AdminUsers] ✅ País encontrado en lista de usuarios:', {
+              usuarioId: usuarioCompleto.id || usuarioCompleto.idAgente,
+              usuarioNombre: usuarioCompleto.nombre || usuarioCompleto.name,
+              pais: pais
+            });
+            
+            // Si encontramos el país, actualizar el usuario en localStorage
+            if (pais && String(pais).trim() !== '') {
+              const updatedUser = { ...user, pais: pais };
+              localStorage.setItem('intelfon_user', JSON.stringify(updatedUser));
+              console.log('[AdminUsers] ✅ País actualizado en localStorage');
+            }
+          } else {
+            console.warn('[AdminUsers] ⚠️ Usuario no encontrado en lista de usuarios');
+          }
+        } catch (error) {
+          console.error('[AdminUsers] Error obteniendo lista de usuarios:', error);
+        }
+      }
+      
+      // Validar que el país no sea string vacío
+      if (!pais || String(pais).trim() === '') {
+        console.error('[AdminUsers] ⚠️ Admin NO tiene país definido!', user);
+        return null;
+      }
+      
+      // Normalizar a códigos de 2 letras
+      const paisNormalizado = String(pais).trim().toUpperCase();
+      
+      // El Salvador: SV, El_Salvador, El Salvador, etc.
+      if (paisNormalizado === 'SV' || 
+          paisNormalizado === 'EL_SALVADOR' || 
+          paisNormalizado === 'EL SALVADOR' ||
+          paisNormalizado.includes('SALVADOR')) {
+        console.log('[AdminUsers] ✅ País normalizado: SV');
+        return 'SV';
+      }
+      
+      // Guatemala: GT, Guatemala, etc.
+      if (paisNormalizado === 'GT' || 
+          paisNormalizado === 'GUATEMALA' ||
+          paisNormalizado.includes('GUATEMALA')) {
+        console.log('[AdminUsers] ✅ País normalizado: GT');
+        return 'GT';
+      }
+      
+      console.error('[AdminUsers] ⚠️ País no reconocido:', paisNormalizado);
+      return null;
+    } catch (error) {
+      console.error('[AdminUsers] ❌ Error obteniendo país del admin:', error);
+      return null;
+    }
+  };
+
+  // Función helper para normalizar el país de un usuario
+  const normalizeUserCountry = (pais: string | undefined): 'SV' | 'GT' | null => {
+    // Si no hay país o es string vacío, retornar null
+    if (!pais || String(pais).trim() === '') {
+      return null;
+    }
+    
+    const paisNormalizado = String(pais).trim().toUpperCase();
+    
+    // El Salvador
+    if (paisNormalizado === 'SV' || 
+        paisNormalizado === 'EL_SALVADOR' || 
+        paisNormalizado === 'EL SALVADOR' ||
+        paisNormalizado.includes('SALVADOR')) {
+      return 'SV';
+    }
+    
+    // Guatemala
+    if (paisNormalizado === 'GT' || 
+        paisNormalizado === 'GUATEMALA' ||
+        paisNormalizado.includes('GUATEMALA')) {
+      return 'GT';
+    }
+    
+    return null;
+  };
+
   // Función para cargar usuarios desde el webhook
   const loadUsers = async () => {
     setLoading(true);
     try {
+      // Cargar el país del admin si es necesario
+      const currentUser = api.getUser();
+      if (currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR') {
+        if (!adminCountry) {
+          const country = await getAdminCountry();
+          setAdminCountry(country);
+          console.log('[AdminUsers] País del admin cargado:', country);
+        }
+      }
       
       // Obtener usuarios del webhook de crear usuario (que también lista usuarios)
       // El webhook devuelve todos los usuarios creados desde ese flujo
@@ -84,7 +222,7 @@ const AdminUsers: React.FC = () => {
       
       // Mapear todos los usuarios del webhook
       // El webhook puede devolver usuarios con diferentes roles (agentes, gerentes, supervisores, admin)
-      const usuariosMapeados: DemoUser[] = usuariosWebhook.map((usuario: any, index: number) => {
+      let usuariosMapeados: DemoUser[] = usuariosWebhook.map((usuario: any, index: number) => {
         // Determinar el rol: el webhook puede tener diferentes campos para el rol
         let rol: UserRole = 'AGENTE'; // Por defecto es agente
         
@@ -154,6 +292,95 @@ const AdminUsers: React.FC = () => {
           pais: usuario.pais || usuario.country || undefined
         };
       });
+      
+      // Si es ADMIN, filtrar usuarios por país del admin (OBLIGATORIO)
+      if (currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR') {
+        const countryToFilter = adminCountry || await getAdminCountry();
+        
+        if (countryToFilter) {
+          console.log('[AdminUsers] Admin detectado, filtrando usuarios por país:', countryToFilter);
+          
+          usuariosMapeados = usuariosMapeados.filter(usuario => {
+            const usuarioPais = usuario.pais || '';
+            
+            console.log('[AdminUsers] 🔍 Verificando usuario:', {
+              usuarioId: usuario.id,
+              usuarioNombre: usuario.nombre,
+              usuarioPaisRaw: usuarioPais,
+              usuarioCompleto: usuario
+            });
+            
+            const usuarioPaisNormalizado = normalizeUserCountry(usuarioPais);
+            
+            console.log('[AdminUsers] 🔍 País normalizado del usuario:', {
+              usuarioId: usuario.id,
+              usuarioNombre: usuario.nombre,
+              usuarioPaisRaw: usuarioPais,
+              usuarioPaisNormalizado: usuarioPaisNormalizado,
+              adminCountry: countryToFilter
+            });
+            
+            // Si el usuario no tiene país definido, NO mostrarlo al admin
+            if (!usuarioPaisNormalizado) {
+              console.log('[AdminUsers] ❌ Usuario SIN país definido, FILTRANDO:', {
+                usuarioId: usuario.id,
+                usuarioNombre: usuario.nombre,
+                usuarioPais: usuarioPais
+              });
+              return false;
+            }
+            
+            // Solo mostrar usuarios del mismo país que el admin
+            const matches = usuarioPaisNormalizado === countryToFilter;
+            
+            if (!matches) {
+              console.log('[AdminUsers] ❌ Usuario filtrado por país (NO coincide):', {
+                usuarioId: usuario.id,
+                usuarioNombre: usuario.nombre,
+                usuarioPais: usuarioPais,
+                usuarioPaisNormalizado: usuarioPaisNormalizado,
+                adminCountry: countryToFilter,
+                matches: false
+              });
+              return false;
+            }
+            
+            console.log('[AdminUsers] ✅ Usuario ACEPTADO (país coincide):', {
+              usuarioId: usuario.id,
+              usuarioNombre: usuario.nombre,
+              usuarioPais: usuarioPais,
+              usuarioPaisNormalizado: usuarioPaisNormalizado,
+              adminCountry: countryToFilter,
+              matches: true
+            });
+            
+            return true;
+          });
+          
+          console.log('[AdminUsers] 📊 RESUMEN - Usuarios después de filtrar por país:', {
+            totalAntes: usuariosWebhook.length,
+            totalDespues: usuariosMapeados.length,
+            adminCountry: countryToFilter,
+            usuariosFiltrados: usuariosMapeados.map(u => ({ 
+              id: u.id, 
+              nombre: u.nombre, 
+              pais: u.pais || 'SIN PAÍS' 
+            }))
+          });
+          
+          // Actualizar el estado del país del admin si no estaba establecido
+          if (!adminCountry) {
+            setAdminCountry(countryToFilter);
+          }
+        } else {
+          console.error('[AdminUsers] ⚠️ ERROR: Admin sin país definido!', {
+            user: currentUser,
+            userPais: currentUser?.pais
+          });
+          // Si el admin no tiene país, NO mostrar ningún usuario (más seguro)
+          usuariosMapeados = [];
+        }
+      }
       
       // Validar que todos los IDs sean únicos antes de establecer el estado
       const ids = usuariosMapeados.map(u => u.id);
