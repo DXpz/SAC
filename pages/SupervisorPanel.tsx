@@ -49,6 +49,134 @@ const SupervisorPanel: React.FC = () => {
     });
   };
 
+  // Función helper para obtener y normalizar el país del supervisor
+  const getSupervisorCountry = async (): Promise<'SV' | 'GT' | null> => {
+    try {
+      // Primero intentar desde api.getUser() que puede tener datos más actualizados
+      const currentUser = api.getUser();
+      let pais = currentUser?.pais || '';
+      
+      // Si el país es string vacío, tratarlo como undefined
+      if (pais && String(pais).trim() !== '') {
+        const paisNormalizado = String(pais).trim().toUpperCase();
+        
+        if (paisNormalizado === 'SV' || paisNormalizado === 'EL_SALVADOR' || paisNormalizado === 'EL SALVADOR' || paisNormalizado.includes('SALVADOR')) {
+          console.log('[SupervisorPanel] ✅ País del supervisor desde api.getUser(): SV');
+          return 'SV';
+        }
+        if (paisNormalizado === 'GT' || paisNormalizado === 'GUATEMALA' || paisNormalizado.includes('GUATEMALA')) {
+          console.log('[SupervisorPanel] ✅ País del supervisor desde api.getUser(): GT');
+          return 'GT';
+        }
+      }
+      
+      // Fallback: leer desde localStorage directamente
+      const userStr = localStorage.getItem('intelfon_user');
+      if (!userStr) {
+        console.error('[SupervisorPanel] No se encontró usuario en localStorage');
+        return null;
+      }
+      
+      const user = JSON.parse(userStr);
+      pais = user.pais || user.country || '';
+      
+      // Si el país es string vacío, intentar obtenerlo desde la lista de usuarios
+      if (!pais || String(pais).trim() === '') {
+        console.log('[SupervisorPanel] 🔍 País no encontrado en localStorage, buscando en lista de usuarios...');
+        try {
+          const usuarios = await api.getUsuarios();
+          const usuarioCompleto = usuarios.find((u: any) => 
+            u.id === user.id || 
+            u.idAgente === user.id || 
+            u.id_agente === user.id ||
+            u.id_usuario === user.id ||
+            u.email === user.email ||
+            (u.nombre && u.nombre.toUpperCase() === user.name.toUpperCase())
+          );
+          
+          if (usuarioCompleto) {
+            pais = usuarioCompleto.pais || usuarioCompleto.country || usuarioCompleto.país || '';
+            console.log('[SupervisorPanel] ✅ País encontrado en lista de usuarios:', {
+              usuarioId: usuarioCompleto.id || usuarioCompleto.idAgente,
+              usuarioNombre: usuarioCompleto.nombre || usuarioCompleto.name,
+              pais: pais
+            });
+            
+            // Si encontramos el país, actualizar el usuario en localStorage
+            if (pais && String(pais).trim() !== '') {
+              const updatedUser = { ...user, pais: pais };
+              localStorage.setItem('intelfon_user', JSON.stringify(updatedUser));
+              console.log('[SupervisorPanel] ✅ País actualizado en localStorage');
+            }
+          } else {
+            console.warn('[SupervisorPanel] ⚠️ Usuario no encontrado en lista de usuarios');
+          }
+        } catch (error) {
+          console.error('[SupervisorPanel] Error obteniendo lista de usuarios:', error);
+        }
+      }
+      
+      // Validar que el país no sea string vacío
+      if (!pais || String(pais).trim() === '') {
+        console.error('[SupervisorPanel] ⚠️ Usuario NO tiene país definido!', user);
+        return null;
+      }
+      
+      // Normalizar a códigos de 2 letras
+      const paisNormalizado = String(pais).trim().toUpperCase();
+      
+      // El Salvador: SV, El_Salvador, El Salvador, etc.
+      if (paisNormalizado === 'SV' || 
+          paisNormalizado === 'EL_SALVADOR' || 
+          paisNormalizado === 'EL SALVADOR' ||
+          paisNormalizado.includes('SALVADOR')) {
+        console.log('[SupervisorPanel] ✅ País normalizado: SV');
+        return 'SV';
+      }
+      
+      // Guatemala: GT, Guatemala, etc.
+      if (paisNormalizado === 'GT' || 
+          paisNormalizado === 'GUATEMALA' ||
+          paisNormalizado.includes('GUATEMALA')) {
+        console.log('[SupervisorPanel] ✅ País normalizado: GT');
+        return 'GT';
+      }
+      
+      console.error('[SupervisorPanel] ⚠️ País no reconocido:', paisNormalizado);
+      return null;
+    } catch (error) {
+      console.error('[SupervisorPanel] ❌ Error obteniendo país del supervisor:', error);
+      return null;
+    }
+  };
+
+  // Función helper para normalizar el país de un agente
+  const normalizeAgentCountry = (pais: string | undefined): 'SV' | 'GT' | null => {
+    // Si no hay país o es string vacío, retornar null
+    if (!pais || String(pais).trim() === '') {
+      return null;
+    }
+    
+    const paisNormalizado = String(pais).trim().toUpperCase();
+    
+    // El Salvador
+    if (paisNormalizado === 'SV' || 
+        paisNormalizado === 'EL_SALVADOR' || 
+        paisNormalizado === 'EL SALVADOR' ||
+        paisNormalizado.includes('SALVADOR')) {
+      return 'SV';
+    }
+    
+    // Guatemala
+    if (paisNormalizado === 'GT' || 
+        paisNormalizado === 'GUATEMALA' ||
+        paisNormalizado.includes('GUATEMALA')) {
+      return 'GT';
+    }
+    
+    return null;
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -62,9 +190,94 @@ const SupervisorPanel: React.FC = () => {
       // Asegurar que se muestren TODOS los agentes, no solo los activos
       console.log('[SupervisorPanel] Agentes cargados:', agentesData.length, agentesData);
       // Filtrar agentes que tengan idAgente válido
-      const agentesValidos = Array.isArray(agentesData) 
+      let agentesValidos = Array.isArray(agentesData) 
         ? agentesData.filter(a => a && (a.idAgente || a.id_agente || a.id))
         : [];
+      
+      // Filtrar agentes por país del supervisor (OBLIGATORIO para supervisores)
+      const supervisorCountry = await getSupervisorCountry();
+      const currentUser = api.getUser();
+      
+      console.log('[SupervisorPanel] Usuario actual:', {
+        id: currentUser?.id,
+        name: currentUser?.name,
+        role: currentUser?.role,
+        pais: currentUser?.pais,
+        userObject: currentUser
+      });
+      
+      // SIEMPRE filtrar si es supervisor
+      if (currentUser?.role === 'SUPERVISOR') {
+        if (supervisorCountry) {
+          console.log('[SupervisorPanel] 🔍 Filtrando agentes por país del supervisor:', supervisorCountry);
+          
+          const agentesAntes = agentesValidos.length;
+          
+          agentesValidos = agentesValidos.filter(agente => {
+            // Obtener el país del agente desde diferentes fuentes posibles
+            const agentePais = agente.pais || (agente as any).country || '';
+            
+            const agentePaisNormalizado = normalizeAgentCountry(agentePais);
+            
+            // Si el agente no tiene país definido, NO mostrarlo al supervisor
+            if (!agentePaisNormalizado) {
+              console.log('[SupervisorPanel] ❌ Agente SIN país definido, FILTRANDO:', {
+                agenteId: agente.idAgente,
+                agenteNombre: agente.nombre,
+                agentePais: agentePais
+              });
+              return false;
+            }
+            
+            // Solo mostrar agentes del mismo país que el supervisor
+            const matches = agentePaisNormalizado === supervisorCountry;
+            
+            if (!matches) {
+              console.log('[SupervisorPanel] ❌ Agente filtrado por país (NO coincide):', {
+                agenteId: agente.idAgente,
+                agenteNombre: agente.nombre,
+                agentePais: agentePais,
+                agentePaisNormalizado: agentePaisNormalizado,
+                supervisorCountry: supervisorCountry,
+                matches: false
+              });
+              return false; // EXPLÍCITAMENTE retornar false
+            }
+            
+            console.log('[SupervisorPanel] ✅ Agente ACEPTADO (país coincide):', {
+              agenteId: agente.idAgente,
+              agenteNombre: agente.nombre,
+              agentePais: agentePais,
+              agentePaisNormalizado: agentePaisNormalizado,
+              supervisorCountry: supervisorCountry,
+              matches: true
+            });
+            
+            return true; // EXPLÍCITAMENTE retornar true
+          });
+          
+          console.log('[SupervisorPanel] 📊 RESUMEN - Agentes después de filtrar por país:', {
+            totalAntes: agentesAntes,
+            totalDespues: agentesValidos.length,
+            supervisorCountry: supervisorCountry,
+            agentesFiltrados: agentesValidos.map(a => ({ 
+              id: a.idAgente, 
+              nombre: a.nombre, 
+              pais: a.pais || (a as any).country || 'SIN PAÍS' 
+            }))
+          });
+        } else {
+          console.error('[SupervisorPanel] ⚠️ ERROR: Supervisor sin país definido!', {
+            user: currentUser,
+            userPais: currentUser?.pais
+          });
+          // Si el supervisor no tiene país, NO mostrar ningún agente (más seguro)
+          agentesValidos = [];
+        }
+      } else {
+        console.log('[SupervisorPanel] Usuario NO es supervisor, mostrando todos los agentes');
+      }
+      
       console.log('[SupervisorPanel] Agentes válidos después de filtrar:', agentesValidos.length, agentesValidos);
       setAgentes(agentesValidos);
       // Guardar en localStorage para que Layout pueda mostrarlo en el header

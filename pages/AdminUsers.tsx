@@ -34,6 +34,7 @@ interface DemoUser {
   rol: UserRole;
   activo: boolean;
   enVacaciones?: boolean;
+  pais?: string;
 }
 
 type RoleFilter = 'todos' | 'AGENTE' | 'SUPERVISOR' | 'GERENTE' | 'ADMIN';
@@ -149,7 +150,8 @@ const AdminUsers: React.FC = () => {
           email: usuario.email || '',
           rol: rol,
           activo: activo,
-          enVacaciones: enVacaciones
+          enVacaciones: enVacaciones,
+          pais: usuario.pais || usuario.country || undefined
         };
       });
       
@@ -849,6 +851,9 @@ const AdminUsers: React.FC = () => {
                       Rol
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
+                      País
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
                       Estado
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
@@ -941,6 +946,57 @@ const AdminUsers: React.FC = () => {
                         >
                           {user.rol}
                         </span>
+                        </td>
+                        
+                        {/* País */}
+                        <td className="px-4 py-3">
+                          {(() => {
+                            const pais = user.pais || '';
+                            const paisNormalizado = pais ? String(pais).trim().toUpperCase() : '';
+                            let paisDisplay = '';
+                            let paisCode = '';
+                            
+                            if (paisNormalizado === 'SV' || paisNormalizado === 'EL_SALVADOR' || paisNormalizado === 'EL SALVADOR' || paisNormalizado.includes('SALVADOR')) {
+                              paisDisplay = 'El Salvador';
+                              paisCode = 'SV';
+                            } else if (paisNormalizado === 'GT' || paisNormalizado === 'GUATEMALA' || paisNormalizado.includes('GUATEMALA')) {
+                              paisDisplay = 'Guatemala';
+                              paisCode = 'GT';
+                            } else if (pais) {
+                              paisDisplay = pais;
+                              paisCode = paisNormalizado.substring(0, 2);
+                            }
+                            
+                            if (!paisDisplay) {
+                              return (
+                                <span className="text-xs" style={{color: styles.text.tertiary}}>
+                                  N/A
+                                </span>
+                              );
+                            }
+                            
+                            return (
+                              <span 
+                                className="inline-flex items-center gap-1.5 px-2 py-1 text-[10px] font-semibold rounded-lg border transition-all"
+                                style={{
+                                  backgroundColor: theme === 'dark' ? '#0f172a' : '#f1f5f9',
+                                  color: styles.text.secondary,
+                                  borderColor: 'rgba(148, 163, 184, 0.2)',
+                                  transform: 'scale(1)',
+                                  transition: 'all 0.2s ease-in-out'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.transform = 'scale(1.05)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.transform = 'scale(1)';
+                                }}
+                              >
+                                <span className="text-[9px] font-bold opacity-70">{paisCode}</span>
+                                {paisDisplay}
+                              </span>
+                            );
+                          })()}
                         </td>
                         
                         {/* Estado */}

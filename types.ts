@@ -29,6 +29,7 @@ export interface User {
   name: string;
   role: Role;
   avatar?: string;
+  pais?: string;
 }
 
 export interface KPI {
@@ -65,6 +66,7 @@ export interface Agente {
   ordenRoundRobin: number;
   ultimoCasoAsignado: string;
   casosActivos: number;
+  pais?: string;
 }
 
 // ==================================================
@@ -104,6 +106,7 @@ export interface Case {
   agentId: string;
   agentName: string;
   createdAt: string;
+  pais?: string;
   slaExpired: boolean;
   slaDeadline?: string; // Fecha final del SLA que viene del webhook
   history?: HistorialEntry[] | any[]; // Compatibilidad con formato anterior

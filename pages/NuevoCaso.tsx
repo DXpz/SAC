@@ -28,6 +28,7 @@ const NuevoCaso: React.FC = () => {
     contactName: '',
     phone: '',
     email: '',
+    pais: ''
   });
 
   const navigate = useNavigate();
@@ -88,12 +89,22 @@ const NuevoCaso: React.FC = () => {
     );
   }, [clientes, clienteSearchTerm]);
 
+  const normalizeCountryCode = (value?: string) => {
+    if (!value) return '';
+    const normalized = value.toString().trim().toUpperCase();
+    if (normalized === 'SV' || normalized === 'GT') return normalized;
+    if (normalized === 'EL SALVADOR' || normalized === 'EL_SALVADOR' || normalized === 'ELSALVADOR') return 'SV';
+    if (normalized === 'GUATEMALA') return 'GT';
+    return normalized;
+  };
+
   const handleClienteSelect = async (cliente: Cliente) => {
     // Solo autocompletar empresa/cliente, NO los datos de contacto
     setNewCase({
       ...newCase,
       clienteId: cliente.idCliente,
       clientName: cliente.nombreEmpresa,
+      pais: normalizeCountryCode(cliente.pais) || newCase.pais,
       // Dejar vacíos para que el usuario los ingrese manualmente
       contactName: '',
       phone: '',
@@ -111,6 +122,7 @@ const NuevoCaso: React.FC = () => {
       contactName: '',
       phone: '',
       email: '',
+      pais: '',
       contactChannel: '' as Channel | '',
       notificationChannel: '' as Channel | '',
     });
@@ -130,7 +142,7 @@ const NuevoCaso: React.FC = () => {
     e.preventDefault();
     
     // Validaciones básicas - Solo campos de "Detalles del Caso" son obligatorios
-    if (!newCase.subject || !newCase.description || !newCase.categoriaId) {
+    if (!newCase.subject || !newCase.description || !newCase.categoriaId || !newCase.pais) {
       setToast({ message: 'Por favor, completa todos los campos requeridos de Detalles del Caso (marcados con *)', type: 'warning' });
       return;
     }
@@ -160,6 +172,7 @@ const NuevoCaso: React.FC = () => {
         contactName: newCase.contactName,
         phone: newCase.phone,
         clientEmail: newCase.email,
+        pais: newCase.pais,
         status: CaseStatus.NUEVO,
         createdAt: new Date().toISOString()
       };
@@ -516,6 +529,32 @@ const NuevoCaso: React.FC = () => {
                 <h2 className="text-sm font-semibold mb-3 pb-2 border-b" style={{color: styles.text.primary, borderColor: 'rgba(148, 163, 184, 0.2)'}}>
                   Detalles del Caso
                 </h2>
+
+                <div>
+                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>
+                    País del Caso <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    required
+                    value={newCase.pais}
+                    onChange={(e) => setNewCase({...newCase, pais: e.target.value})}
+                    className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs appearance-none cursor-pointer shadow-sm hover:shadow-md"
+                    style={{
+                      ...styles.input,
+                      color: newCase.pais ? styles.text.secondary : styles.text.tertiary
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = styles.input.backgroundColor;
+                    }}
+                  >
+                    <option value="" disabled>Seleccionar país</option>
+                    <option value="SV">SV</option>
+                    <option value="GT">GT</option>
+                  </select>
+                </div>
 
                 <div>
                   <div className="flex items-center gap-2 mb-1.5">

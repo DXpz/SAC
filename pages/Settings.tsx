@@ -167,6 +167,7 @@ const Settings: React.FC = () => {
     email: string;
     roundRobinOrder: number;
     status: string;
+    pais?: string;
   }>>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
 
@@ -252,7 +253,8 @@ const Settings: React.FC = () => {
           role: rol,
           email: usuario.email || '',
           roundRobinOrder: roundRobinOrder,
-          status: status
+          status: status,
+          pais: usuario.pais || usuario.country || undefined
         };
       });
       
@@ -3593,6 +3595,15 @@ const Settings: React.FC = () => {
                         borderBottom: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
                       }}
                     >
+                      PAÍS
+                    </th>
+                    <th 
+                      className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider"
+                      style={{ 
+                        color: styles.text.secondary,
+                        borderBottom: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
+                      }}
+                    >
                       EMAIL
                     </th>
                     <th 
@@ -3627,13 +3638,13 @@ const Settings: React.FC = () => {
                 <tbody>
                   {loadingUsers ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-8 text-center text-sm" style={{ color: styles.text.tertiary }}>
+                      <td colSpan={9} className="px-4 py-8 text-center text-sm" style={{ color: styles.text.tertiary }}>
                         Cargando usuarios...
                       </td>
                     </tr>
                   ) : settingsUsers.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-8 text-center text-sm" style={{ color: styles.text.tertiary }}>
+                      <td colSpan={9} className="px-4 py-8 text-center text-sm" style={{ color: styles.text.tertiary }}>
                         No hay usuarios registrados
                       </td>
                     </tr>
@@ -3699,6 +3710,57 @@ const Settings: React.FC = () => {
                             {user.role === 'Gerente' && <Briefcase className="w-3 h-3" />}
                             {user.role}
                           </span>
+                        </td>
+                        
+                        {/* PAÍS */}
+                        <td className="px-4 py-3">
+                          {(() => {
+                            const pais = user.pais || '';
+                            const paisNormalizado = pais ? String(pais).trim().toUpperCase() : '';
+                            let paisDisplay = '';
+                            let paisCode = '';
+                            
+                            if (paisNormalizado === 'SV' || paisNormalizado === 'EL_SALVADOR' || paisNormalizado === 'EL SALVADOR' || paisNormalizado.includes('SALVADOR')) {
+                              paisDisplay = 'El Salvador';
+                              paisCode = 'SV';
+                            } else if (paisNormalizado === 'GT' || paisNormalizado === 'GUATEMALA' || paisNormalizado.includes('GUATEMALA')) {
+                              paisDisplay = 'Guatemala';
+                              paisCode = 'GT';
+                            } else if (pais) {
+                              paisDisplay = pais;
+                              paisCode = paisNormalizado.substring(0, 2);
+                            }
+                            
+                            if (!paisDisplay) {
+                              return (
+                                <span className="text-sm" style={{color: styles.text.tertiary}}>
+                                  N/A
+                                </span>
+                              );
+                            }
+                            
+                            return (
+                              <span 
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all"
+                                style={{
+                                  backgroundColor: theme === 'dark' ? '#0f172a' : '#f1f5f9',
+                                  color: styles.text.secondary,
+                                  borderColor: 'rgba(148, 163, 184, 0.2)',
+                                  transform: 'scale(1)',
+                                  transition: 'all 0.2s ease-in-out'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.transform = 'scale(1.05)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.transform = 'scale(1)';
+                                }}
+                              >
+                                <span className="text-[10px] font-bold opacity-70">{paisCode}</span>
+                                {paisDisplay}
+                              </span>
+                            );
+                          })()}
                         </td>
                         
                         {/* EMAIL */}

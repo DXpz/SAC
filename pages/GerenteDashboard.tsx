@@ -15,6 +15,7 @@ const GerenteDashboard: React.FC = () => {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('hoy');
   const [loading, setLoading] = useState(true);
   const [hoveredKPI, setHoveredKPI] = useState<string | null>(null);
+  const [gerenteCountry, setGerenteCountry] = useState<'SV' | 'GT' | null>(null);
   const { theme } = useTheme();
   const location = useLocation();
 
@@ -31,7 +32,146 @@ const GerenteDashboard: React.FC = () => {
     return (matchedStatus as CaseStatus) || CaseStatus.NUEVO;
   };
 
+  // Función helper para obtener y normalizar el país del gerente
+  const getGerenteCountry = async (): Promise<'SV' | 'GT' | null> => {
+    try {
+      // Primero intentar desde api.getUser() que puede tener datos más actualizados
+      const currentUser = api.getUser();
+      let pais = currentUser?.pais || '';
+      
+      // Si el país es string vacío, tratarlo como undefined
+      if (pais && String(pais).trim() !== '') {
+        const paisNormalizado = String(pais).trim().toUpperCase();
+        
+        if (paisNormalizado === 'SV' || paisNormalizado === 'EL_SALVADOR' || paisNormalizado === 'EL SALVADOR' || paisNormalizado.includes('SALVADOR')) {
+          console.log('[GerenteDashboard] ✅ País del gerente desde api.getUser(): SV');
+          return 'SV';
+        }
+        if (paisNormalizado === 'GT' || paisNormalizado === 'GUATEMALA' || paisNormalizado.includes('GUATEMALA')) {
+          console.log('[GerenteDashboard] ✅ País del gerente desde api.getUser(): GT');
+          return 'GT';
+        }
+      }
+      
+      // Fallback: leer desde localStorage directamente
+      const userStr = localStorage.getItem('intelfon_user');
+      if (!userStr) {
+        console.error('[GerenteDashboard] No se encontró usuario en localStorage');
+        return null;
+      }
+      
+      const user = JSON.parse(userStr);
+      pais = user.pais || user.country || '';
+      
+      // Si el país es string vacío, intentar obtenerlo desde la lista de usuarios
+      if (!pais || String(pais).trim() === '') {
+        console.log('[GerenteDashboard] 🔍 País no encontrado en localStorage, buscando en lista de usuarios...');
+        try {
+          const usuarios = await api.getUsuarios();
+          const usuarioCompleto = usuarios.find((u: any) => 
+            u.id === user.id || 
+            u.idAgente === user.id || 
+            u.id_agente === user.id ||
+            u.id_usuario === user.id ||
+            u.email === user.email ||
+            (u.nombre && u.nombre.toUpperCase() === user.name.toUpperCase())
+          );
+          
+          if (usuarioCompleto) {
+            pais = usuarioCompleto.pais || usuarioCompleto.country || usuarioCompleto.país || '';
+            console.log('[GerenteDashboard] ✅ País encontrado en lista de usuarios:', {
+              usuarioId: usuarioCompleto.id || usuarioCompleto.idAgente,
+              usuarioNombre: usuarioCompleto.nombre || usuarioCompleto.name,
+              pais: pais
+            });
+            
+            // Si encontramos el país, actualizar el usuario en localStorage
+            if (pais && String(pais).trim() !== '') {
+              const updatedUser = { ...user, pais: pais };
+              localStorage.setItem('intelfon_user', JSON.stringify(updatedUser));
+              console.log('[GerenteDashboard] ✅ País actualizado en localStorage');
+            }
+          } else {
+            console.warn('[GerenteDashboard] ⚠️ Usuario no encontrado en lista de usuarios');
+          }
+        } catch (error) {
+          console.error('[GerenteDashboard] Error obteniendo lista de usuarios:', error);
+        }
+      }
+      
+      // Validar que el país no sea string vacío
+      if (!pais || String(pais).trim() === '') {
+        console.error('[GerenteDashboard] ⚠️ Gerente NO tiene país definido!', user);
+        return null;
+      }
+      
+      // Normalizar a códigos de 2 letras
+      const paisNormalizado = String(pais).trim().toUpperCase();
+      
+      // El Salvador: SV, El_Salvador, El Salvador, etc.
+      if (paisNormalizado === 'SV' || 
+          paisNormalizado === 'EL_SALVADOR' || 
+          paisNormalizado === 'EL SALVADOR' ||
+          paisNormalizado.includes('SALVADOR')) {
+        console.log('[GerenteDashboard] ✅ País normalizado: SV');
+        return 'SV';
+      }
+      
+      // Guatemala: GT, Guatemala, etc.
+      if (paisNormalizado === 'GT' || 
+          paisNormalizado === 'GUATEMALA' ||
+          paisNormalizado.includes('GUATEMALA')) {
+        console.log('[GerenteDashboard] ✅ País normalizado: GT');
+        return 'GT';
+      }
+      
+      console.error('[GerenteDashboard] ⚠️ País no reconocido:', paisNormalizado);
+      return null;
+    } catch (error) {
+      console.error('[GerenteDashboard] ❌ Error obteniendo país del gerente:', error);
+      return null;
+    }
+  };
+
+  // Función helper para normalizar el país de un caso
+  const normalizeCaseCountry = (pais: string | undefined): 'SV' | 'GT' | null => {
+    // Si no hay país o es string vacío, retornar null
+    if (!pais || String(pais).trim() === '') {
+      return null;
+    }
+    
+    const paisNormalizado = String(pais).trim().toUpperCase();
+    
+    // El Salvador
+    if (paisNormalizado === 'SV' || 
+        paisNormalizado === 'EL_SALVADOR' || 
+        paisNormalizado === 'EL SALVADOR' ||
+        paisNormalizado.includes('SALVADOR')) {
+      return 'SV';
+    }
+    
+    // Guatemala
+    if (paisNormalizado === 'GT' || 
+        paisNormalizado === 'GUATEMALA' ||
+        paisNormalizado.includes('GUATEMALA')) {
+      return 'GT';
+    }
+    
+    return null;
+  };
+
   useEffect(() => {
+    // Cargar el país del gerente al montar el componente
+    const loadGerenteCountry = async () => {
+      const currentUser = api.getUser();
+      if (currentUser?.role === 'GERENTE') {
+        const country = await getGerenteCountry();
+        setGerenteCountry(country);
+        console.log('[GerenteDashboard] País del gerente cargado:', country);
+      }
+    };
+    
+    loadGerenteCountry();
     loadData();
     // Ya no usamos setInterval, solo actualizamos cuando cambia la vista
   }, [location.pathname]);
@@ -59,9 +199,8 @@ const GerenteDashboard: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [casosData, kpisData, clientesList] = await Promise.all([
+      const [casosData, clientesList] = await Promise.all([
         api.getCases(),
-        api.getKPIs(),
         loadClientes()
       ]);
       
@@ -72,7 +211,8 @@ const GerenteDashboard: React.FC = () => {
       const enriched = enrichCasesWithClients(casosValidos, clientesList);
       
       setCasos(enriched);
-      setKpis(kpisData);
+      // Los KPIs se calcularán en useMemo basados en casos filtrados por país
+      // No necesitamos setKpis aquí, se calculará automáticamente
       
       // Guardar en localStorage para que Layout pueda mostrarlo en el header
       const updateTime = new Date();
@@ -87,9 +227,43 @@ const GerenteDashboard: React.FC = () => {
     }
   };
 
-  // Filtrar casos críticos usando la misma lógica que Alertas Críticas
+  // Filtrar casos por país del gerente (sin filtro de fecha) para calcular métricas
+  const casosFiltradosPorPais = useMemo(() => {
+    const currentUser = api.getUser();
+    const isGerente = currentUser?.role === 'GERENTE';
+    
+    let casosFiltrados = casos;
+    
+    // Si es GERENTE, filtrar casos por país del gerente (OBLIGATORIO)
+    if (isGerente && gerenteCountry) {
+      casosFiltrados = casos.filter(caso => {
+        // Obtener el país del caso desde diferentes fuentes posibles
+        const casoPais = (caso as any).pais || 
+                        caso.cliente?.pais || 
+                        (caso as any).country ||
+                        '';
+        
+        const casoPaisNormalizado = normalizeCaseCountry(casoPais);
+        
+        // Si el caso no tiene país definido, NO incluirlo
+        if (!casoPaisNormalizado) {
+          return false;
+        }
+        
+        // Solo incluir casos del mismo país que el gerente
+        return casoPaisNormalizado === gerenteCountry;
+      });
+    } else if (isGerente && !gerenteCountry) {
+      // Si el gerente no tiene país, NO mostrar ningún caso
+      casosFiltrados = [];
+    }
+    
+    return casosFiltrados;
+  }, [casos, gerenteCountry]);
+
+  // Filtrar casos críticos usando la misma lógica que Alertas Críticas (basado en casos filtrados por país)
   const casosCriticos = useMemo(() => {
-    return casos.filter(c => {
+    return casosFiltradosPorPais.filter(c => {
       // Excluir casos resueltos o cerrados (a menos que estén escalados)
       const normalizedStatus = normalizeStatus(c.status);
       if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
@@ -110,9 +284,84 @@ const GerenteDashboard: React.FC = () => {
       
       return isVencido || isEscalado || isEnRiesgo;
     });
-  }, [casos]);
+  }, [casosFiltradosPorPais]);
 
   const filteredCasos = useMemo(() => {
+    const currentUser = api.getUser();
+    const isGerente = currentUser?.role === 'GERENTE';
+    
+    let casosFiltrados = casos;
+    
+    // Si es GERENTE, filtrar casos por país del gerente (OBLIGATORIO)
+    if (isGerente && gerenteCountry) {
+      console.log('[GerenteDashboard] Gerente detectado, filtrando casos por país:', gerenteCountry);
+      
+      casosFiltrados = casos.filter(caso => {
+        // Obtener el país del caso desde diferentes fuentes posibles
+        const casoPais = (caso as any).pais || 
+                        caso.cliente?.pais || 
+                        (caso as any).country ||
+                        '';
+        
+        const casoPaisNormalizado = normalizeCaseCountry(casoPais);
+        
+        // Si el caso no tiene país definido, NO mostrarlo al gerente
+        if (!casoPaisNormalizado) {
+          console.log('[GerenteDashboard] ❌ Caso SIN país definido, FILTRANDO:', {
+            casoId: caso.id,
+            casoTicket: caso.ticketNumber,
+            casoPais: casoPais
+          });
+          return false;
+        }
+        
+        // Solo mostrar casos del mismo país que el gerente
+        const matches = casoPaisNormalizado === gerenteCountry;
+        
+        if (!matches) {
+          console.log('[GerenteDashboard] ❌ Caso filtrado por país (NO coincide):', {
+            casoId: caso.id,
+            casoTicket: caso.ticketNumber,
+            casoPais: casoPais,
+            casoPaisNormalizado: casoPaisNormalizado,
+            gerenteCountry: gerenteCountry,
+            matches: false
+          });
+          return false;
+        }
+        
+        console.log('[GerenteDashboard] ✅ Caso ACEPTADO (país coincide):', {
+          casoId: caso.id,
+          casoTicket: caso.ticketNumber,
+          casoPais: casoPais,
+          casoPaisNormalizado: casoPaisNormalizado,
+          gerenteCountry: gerenteCountry,
+          matches: true
+        });
+        
+        return true;
+      });
+      
+      console.log('[GerenteDashboard] 📊 RESUMEN - Casos después de filtrar por país:', {
+        totalAntes: casos.length,
+        totalDespues: casosFiltrados.length,
+        gerenteCountry: gerenteCountry,
+        casosFiltrados: casosFiltrados.map(c => ({ 
+          id: c.id, 
+          ticket: c.ticketNumber, 
+          pais: (c as any).pais || c.cliente?.pais || 'SIN PAÍS' 
+        }))
+      });
+    } else if (isGerente && !gerenteCountry) {
+      console.error('[GerenteDashboard] ⚠️ ERROR: Gerente sin país definido!', {
+        user: currentUser,
+        userPais: currentUser?.pais
+      });
+      // Si el gerente no tiene país, NO mostrar ningún caso (más seguro)
+      casosFiltrados = [];
+    }
+    
+    // Aplicar filtro de fecha
     const now = new Date();
     let startDate = new Date();
 
@@ -126,11 +375,52 @@ const GerenteDashboard: React.FC = () => {
       startDate = new Date(now.getFullYear(), now.getMonth(), 1);
     }
 
-    return casos.filter(c => new Date(c.createdAt) >= startDate);
-  }, [casos, periodFilter]);
+    return casosFiltrados.filter(c => new Date(c.createdAt) >= startDate);
+  }, [casos, periodFilter, gerenteCountry]);
 
-  // Usar datos reales de casos críticos
-  const abiertos = casos.filter(c => {
+  // Calcular KPIs basados en casos filtrados por país
+  const kpisFiltrados = useMemo(() => {
+    const casosParaKPIs = casosFiltradosPorPais;
+    
+    // Calcular SLA Compliance basado en casos filtrados por país
+    const casosConSLA = casosParaKPIs.filter(c => {
+      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
+      return c.diasAbierto !== undefined && slaDias > 0;
+    });
+    
+    const casosCumplenSLA = casosConSLA.filter(c => {
+      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
+      return c.diasAbierto < slaDias;
+    });
+    
+    // Si no hay casos con SLA, no puede ser 100%, debe ser null o 0
+    const slaCompliance = casosConSLA.length > 0 
+      ? Math.round((casosCumplenSLA.length / casosConSLA.length) * 100)
+      : null;
+    
+    // Calcular CSAT promedio si está disponible en los casos filtrados
+    const casosConCSAT = casosParaKPIs.filter(c => {
+      const csat = (c as any).csat_rating || (c as any).csatRating || (c as any).csat;
+      return csat && !isNaN(parseFloat(csat)) && parseFloat(csat) > 0;
+    });
+    
+    // Si no hay datos de CSAT, retornar null
+    const csatScore = casosConCSAT.length > 0
+      ? casosConCSAT.reduce((sum, c) => {
+          const csat = parseFloat((c as any).csat_rating || (c as any).csatRating || (c as any).csat || '0');
+          return sum + csat;
+        }, 0) / casosConCSAT.length
+      : null;
+    
+    return {
+      totalCases: casosParaKPIs.length,
+      slaCompliance,
+      csatScore: csatScore !== null ? Math.round(csatScore * 10) / 10 : null // Redondear a 1 decimal
+    };
+  }, [casosFiltradosPorPais]);
+
+  // Usar datos reales de casos críticos (basados en casos filtrados por país)
+  const abiertos = casosFiltradosPorPais.filter(c => {
     const normalizedStatus = normalizeStatus(c.status);
     return normalizedStatus !== CaseStatus.CERRADO && normalizedStatus !== CaseStatus.RESUELTO;
   }).length;
@@ -238,19 +528,19 @@ const GerenteDashboard: React.FC = () => {
   // Incluir TODOS los estados posibles del webhook
   const chartData = useMemo(() => {
     const data = [
-      { name: 'Nuevos', value: casos.filter(c => normalizeStatus(c.status) === CaseStatus.NUEVO).length },
-      { name: 'En Proceso', value: casos.filter(c => normalizeStatus(c.status) === CaseStatus.EN_PROCESO).length },
-      { name: 'Pendiente Cliente', value: casos.filter(c => normalizeStatus(c.status) === CaseStatus.PENDIENTE_CLIENTE).length },
-      { name: 'Escalados', value: casos.filter(c => normalizeStatus(c.status) === CaseStatus.ESCALADO).length },
-      { name: 'Resueltos', value: casos.filter(c => normalizeStatus(c.status) === CaseStatus.RESUELTO).length },
-      { name: 'Cerrados', value: casos.filter(c => normalizeStatus(c.status) === CaseStatus.CERRADO).length },
+      { name: 'Nuevos', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.NUEVO).length },
+      { name: 'En Proceso', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.EN_PROCESO).length },
+      { name: 'Pendiente Cliente', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.PENDIENTE_CLIENTE).length },
+      { name: 'Escalados', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.ESCALADO).length },
+      { name: 'Resueltos', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.RESUELTO).length },
+      { name: 'Cerrados', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.CERRADO).length },
     ];
     
     return data;
-  }, [casos]);
+  }, [casosFiltradosPorPais]);
 
   // El total debe ser TODOS los casos, no solo los del gráfico
-  const totalCasos = casos.length;
+  const totalCasos = casosFiltradosPorPais.length;
 
   const chartDataWithPercent = useMemo(() => chartData.map(item => ({
     ...item,
@@ -262,9 +552,9 @@ const GerenteDashboard: React.FC = () => {
   const COLORS = ['#3b82f6', '#eab308', '#f97316', '#ef4444', '#22c55e', '#6b7280'];
 
   const slaObjective = 90;
-  const slaStatus = kpis.slaCompliance === null ? 'sin_datos' :
-                     kpis.slaCompliance >= slaObjective ? 'en_cumplimiento' : 
-                     kpis.slaCompliance >= slaObjective - 10 ? 'riesgo' : 'debajo_objetivo';
+  const slaStatus = kpisFiltrados.slaCompliance === null ? 'sin_datos' :
+                     kpisFiltrados.slaCompliance >= slaObjective ? 'en_cumplimiento' : 
+                     kpisFiltrados.slaCompliance >= slaObjective - 10 ? 'riesgo' : 'debajo_objetivo';
   
   const slaColor = slaStatus === 'sin_datos' ? 'border-slate-500' :
                    slaStatus === 'en_cumplimiento' ? 'border-green-500' :
@@ -283,7 +573,7 @@ const GerenteDashboard: React.FC = () => {
     return { from: '#dc2626', to: '#ef4444' }; // Rojo
   };
 
-  const slaProgressColor = getSLAProgressiveColor(kpis.slaCompliance);
+  const slaProgressColor = getSLAProgressiveColor(kpisFiltrados.slaCompliance);
 
   // Generar insights mejorados con más contexto y estructura
   const insights = useMemo(() => {
@@ -343,13 +633,13 @@ const GerenteDashboard: React.FC = () => {
     }
     
     // SLA Compliance
-    if (kpis.slaCompliance !== null) {
-      if (kpis.slaCompliance >= slaObjective) {
+    if (kpisFiltrados.slaCompliance !== null) {
+      if (kpisFiltrados.slaCompliance >= slaObjective) {
         insightsList.push({
           type: 'success',
           title: 'Cumplimiento de SLA',
-          description: `El ${kpis.slaCompliance}% de los casos cumple con el SLA objetivo`,
-          value: `${kpis.slaCompliance}%`,
+          description: `El ${kpisFiltrados.slaCompliance}% de los casos cumple con el SLA objetivo`,
+          value: `${kpisFiltrados.slaCompliance}%`,
           icon: Target,
           color: '#10b981'
         });
@@ -357,8 +647,8 @@ const GerenteDashboard: React.FC = () => {
         insightsList.push({
           type: 'warning',
           title: 'Cumplimiento de SLA',
-          description: `El cumplimiento está en ${kpis.slaCompliance}%, ${(slaObjective - kpis.slaCompliance).toFixed(1)}% por debajo del objetivo`,
-          value: `${kpis.slaCompliance}%`,
+          description: `El cumplimiento está en ${kpisFiltrados.slaCompliance}%, ${(slaObjective - kpisFiltrados.slaCompliance).toFixed(1)}% por debajo del objetivo`,
+          value: `${kpisFiltrados.slaCompliance}%`,
           icon: TrendingDown,
           color: '#f59e0b'
         });
@@ -374,22 +664,22 @@ const GerenteDashboard: React.FC = () => {
     }
     
     // CSAT Score
-    if (kpis.csatScore !== null) {
-      if (kpis.csatScore >= 4.0) {
+    if (kpisFiltrados.csatScore !== null) {
+      if (kpisFiltrados.csatScore >= 4.0) {
         insightsList.push({
           type: 'success',
           title: 'Satisfacción del Cliente',
-          description: `CSAT promedio de ${kpis.csatScore.toFixed(1)}/5 indica alta satisfacción`,
-          value: `${kpis.csatScore.toFixed(1)}/5`,
+          description: `CSAT promedio de ${kpisFiltrados.csatScore.toFixed(1)}/5 indica alta satisfacción`,
+          value: `${kpisFiltrados.csatScore.toFixed(1)}/5`,
           icon: ThumbsUp,
           color: '#10b981'
         });
-      } else if (kpis.csatScore >= 3.0) {
+      } else if (kpisFiltrados.csatScore >= 3.0) {
         insightsList.push({
           type: 'warning',
           title: 'Satisfacción del Cliente',
-          description: `CSAT promedio de ${kpis.csatScore.toFixed(1)}/5 requiere mejora`,
-          value: `${kpis.csatScore.toFixed(1)}/5`,
+          description: `CSAT promedio de ${kpisFiltrados.csatScore.toFixed(1)}/5 requiere mejora`,
+          value: `${kpisFiltrados.csatScore.toFixed(1)}/5`,
           icon: ThumbsUp,
           color: '#f59e0b'
         });
@@ -397,8 +687,8 @@ const GerenteDashboard: React.FC = () => {
         insightsList.push({
           type: 'critical',
           title: 'Satisfacción del Cliente',
-          description: `CSAT promedio de ${kpis.csatScore.toFixed(1)}/5 está por debajo de lo esperado`,
-          value: `${kpis.csatScore.toFixed(1)}/5`,
+          description: `CSAT promedio de ${kpisFiltrados.csatScore.toFixed(1)}/5 está por debajo de lo esperado`,
+          value: `${kpisFiltrados.csatScore.toFixed(1)}/5`,
           icon: AlertTriangle,
           color: '#ef4444'
         });
@@ -427,7 +717,7 @@ const GerenteDashboard: React.FC = () => {
     }
     
     return insightsList;
-  }, [casosCriticos, escalados, kpis.csatScore, kpis.slaCompliance, abiertos, totalCasos, slaObjective]);
+  }, [casosCriticos, escalados, kpisFiltrados.csatScore, kpisFiltrados.slaCompliance, abiertos, totalCasos, slaObjective]);
 
   const KPICard: React.FC<{
     label: string;
@@ -622,8 +912,8 @@ const GerenteDashboard: React.FC = () => {
         />
         <KPICard
           label="CSAT Promedio"
-          value={kpis.csatScore !== null ? kpis.csatScore : ('N/A' as any)}
-          color={kpis.csatScore !== null ? "#22c55e" : "#94a3b8"}
+          value={kpisFiltrados.csatScore !== null ? kpisFiltrados.csatScore : ('N/A' as any)}
+          color={kpisFiltrados.csatScore !== null ? "#22c55e" : "#94a3b8"}
           bg="bg-green-50"
           icon={ThumbsUp}
           variation={csatVar}
@@ -631,7 +921,7 @@ const GerenteDashboard: React.FC = () => {
         />
         <KPICard
           label="Total Histórico"
-          value={kpis.totalCases}
+          value={kpisFiltrados.totalCases}
           color="#ffffff"
           bg="bg-slate-50"
           icon={Users}
@@ -831,11 +1121,11 @@ const GerenteDashboard: React.FC = () => {
                 backgroundColor: theme === 'dark' ? 'rgba(51, 65, 85, 0.5)' : 'rgba(226, 232, 240, 0.8)'
               }}>
                 {/* Progreso con color progresivo: Rojo → Naranja → Amarillo → Verde */}
-                {kpis.slaCompliance !== null && (
+                {kpisFiltrados.slaCompliance !== null && (
                   <div
                     className="absolute left-0 top-0 bottom-0 transition-all duration-1000 ease-out"
                     style={{
-                      width: `${Math.min(kpis.slaCompliance, 100)}%`,
+                      width: `${Math.min(kpisFiltrados.slaCompliance, 100)}%`,
                       background: `linear-gradient(90deg, ${slaProgressColor.from} 0%, ${slaProgressColor.to} 100%)`
                     }}
                   />
@@ -868,7 +1158,7 @@ const GerenteDashboard: React.FC = () => {
                 <div className="text-5xl font-black mb-1" style={{
                   color: styles.text.primary // Siempre neutral
                 }}>
-                  {kpis.slaCompliance !== null ? `${kpis.slaCompliance}%` : 'N/A'}
+                  {kpisFiltrados.slaCompliance !== null ? `${kpisFiltrados.slaCompliance}%` : 'N/A'}
                 </div>
                 <div className="text-xs font-medium" style={{color: styles.text.tertiary}}>
                   Cumplimiento actual
@@ -888,10 +1178,10 @@ const GerenteDashboard: React.FC = () => {
                   {slaText}
                 </span>
               </div>
-              {slaStatus !== 'en_cumplimiento' && slaStatus !== 'sin_datos' && kpis.slaCompliance !== null && (
+              {slaStatus !== 'en_cumplimiento' && slaStatus !== 'sin_datos' && kpisFiltrados.slaCompliance !== null && (
                 <p className="text-[10px] mt-1.5" style={{color: styles.text.tertiary}}>
-                  {kpis.slaCompliance < slaObjective
-                    ? `${(slaObjective - kpis.slaCompliance).toFixed(1)}% por debajo del objetivo`
+                  {kpisFiltrados.slaCompliance < slaObjective
+                    ? `${(slaObjective - kpisFiltrados.slaCompliance).toFixed(1)}% por debajo del objetivo`
                     : ''}
                 </p>
               )}

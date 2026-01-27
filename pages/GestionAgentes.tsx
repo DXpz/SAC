@@ -45,9 +45,14 @@ const GestionAgentes: React.FC = () => {
     loadAgentes();
     
     const handleAgenteCreado = () => {
-      // Solo recargar cuando se dispara el evento explícitamente
+      // Limpiar caché de agentes y recargar
+      console.log('[GestionAgentes] Evento agente-creado recibido, limpiando caché y recargando...');
       localStorage.removeItem('intelfon_agents');
-      loadAgentes();
+      // Forzar recarga inmediata con un pequeño delay para asegurar que el webhook haya procesado el nuevo agente
+      setTimeout(() => {
+        console.log('[GestionAgentes] Recargando agentes después de crear nuevo agente...');
+        loadAgentes();
+      }, 1000); // Delay de 1 segundo para asegurar que el webhook haya procesado el nuevo agente
     };
     
     const handleCasoReasignado = () => {
@@ -66,14 +71,259 @@ const GestionAgentes: React.FC = () => {
   }, []);
 
 
+  // Función helper para obtener y normalizar el país del supervisor
+  const getSupervisorCountry = async (): Promise<'SV' | 'GT' | null> => {
+    try {
+      // Primero intentar desde api.getUser() que puede tener datos más actualizados
+      const currentUser = api.getUser();
+      let pais = currentUser?.pais || '';
+      
+      // Si el país es string vacío, tratarlo como undefined
+      if (pais && String(pais).trim() !== '') {
+        const paisNormalizado = String(pais).trim().toUpperCase();
+        
+        if (paisNormalizado === 'SV' || paisNormalizado === 'EL_SALVADOR' || paisNormalizado === 'EL SALVADOR' || paisNormalizado.includes('SALVADOR')) {
+          console.log('[GestionAgentes] ✅ País del supervisor desde api.getUser(): SV');
+          return 'SV';
+        }
+        if (paisNormalizado === 'GT' || paisNormalizado === 'GUATEMALA' || paisNormalizado.includes('GUATEMALA')) {
+          console.log('[GestionAgentes] ✅ País del supervisor desde api.getUser(): GT');
+          return 'GT';
+        }
+      }
+      
+      // Fallback: leer desde localStorage directamente
+      const userStr = localStorage.getItem('intelfon_user');
+      if (!userStr) {
+        console.error('[GestionAgentes] No se encontró usuario en localStorage');
+        return null;
+      }
+      
+      const user = JSON.parse(userStr);
+      pais = user.pais || user.country || '';
+      
+      console.log('[GestionAgentes] Usuario desde localStorage:', {
+        id: user.id,
+        name: user.name,
+        role: user.role,
+        pais: pais,
+        country: user.country,
+        userObject: user
+      });
+      
+      // Si el país es string vacío, intentar obtenerlo desde la lista de usuarios
+      if (!pais || String(pais).trim() === '') {
+        console.log('[GestionAgentes] 🔍 País no encontrado en localStorage, buscando en lista de usuarios...');
+        try {
+          const usuarios = await api.getUsuarios();
+          const usuarioCompleto = usuarios.find((u: any) => 
+            u.id === user.id || 
+            u.idAgente === user.id || 
+            u.id_agente === user.id ||
+            u.id_usuario === user.id ||
+            u.email === user.email ||
+            (u.nombre && u.nombre.toUpperCase() === user.name.toUpperCase())
+          );
+          
+          if (usuarioCompleto) {
+            pais = usuarioCompleto.pais || usuarioCompleto.country || usuarioCompleto.país || '';
+            console.log('[GestionAgentes] ✅ País encontrado en lista de usuarios:', {
+              usuarioId: usuarioCompleto.id || usuarioCompleto.idAgente,
+              usuarioNombre: usuarioCompleto.nombre || usuarioCompleto.name,
+              pais: pais,
+              usuarioCompleto: usuarioCompleto
+            });
+            
+            // Si encontramos el país, actualizar el usuario en localStorage
+            if (pais && String(pais).trim() !== '') {
+              const updatedUser = { ...user, pais: pais };
+              localStorage.setItem('intelfon_user', JSON.stringify(updatedUser));
+              console.log('[GestionAgentes] ✅ País actualizado en localStorage');
+            }
+          } else {
+            console.warn('[GestionAgentes] ⚠️ Usuario no encontrado en lista de usuarios');
+          }
+        } catch (error) {
+          console.error('[GestionAgentes] Error obteniendo lista de usuarios:', error);
+        }
+      }
+      
+      // Validar que el país no sea string vacío
+      if (!pais || String(pais).trim() === '') {
+        console.error('[GestionAgentes] ⚠️ Usuario NO tiene país definido!', user);
+        return null;
+      }
+      
+      // Normalizar a códigos de 2 letras
+      const paisNormalizado = String(pais).trim().toUpperCase();
+      
+      // El Salvador: SV, El_Salvador, El Salvador, etc.
+      if (paisNormalizado === 'SV' || 
+          paisNormalizado === 'EL_SALVADOR' || 
+          paisNormalizado === 'EL SALVADOR' ||
+          paisNormalizado.includes('SALVADOR')) {
+        console.log('[GestionAgentes] ✅ País normalizado: SV');
+        return 'SV';
+      }
+      
+      // Guatemala: GT, Guatemala, etc.
+      if (paisNormalizado === 'GT' || 
+          paisNormalizado === 'GUATEMALA' ||
+          paisNormalizado.includes('GUATEMALA')) {
+        console.log('[GestionAgentes] ✅ País normalizado: GT');
+        return 'GT';
+      }
+      
+      console.error('[GestionAgentes] ⚠️ País no reconocido:', paisNormalizado);
+      return null;
+    } catch (error) {
+      console.error('[GestionAgentes] ❌ Error obteniendo país del supervisor:', error);
+      return null;
+    }
+  };
+
+  // Función helper para normalizar el país de un agente
+  const normalizeAgentCountry = (pais: string | undefined): 'SV' | 'GT' | null => {
+    // Si no hay país o es string vacío, retornar null
+    if (!pais || String(pais).trim() === '') {
+      return null;
+    }
+    
+    const paisNormalizado = String(pais).trim().toUpperCase();
+    
+    // El Salvador
+    if (paisNormalizado === 'SV' || 
+        paisNormalizado === 'EL_SALVADOR' || 
+        paisNormalizado === 'EL SALVADOR' ||
+        paisNormalizado.includes('SALVADOR')) {
+      return 'SV';
+    }
+    
+    // Guatemala
+    if (paisNormalizado === 'GT' || 
+        paisNormalizado === 'GUATEMALA' ||
+        paisNormalizado.includes('GUATEMALA')) {
+      return 'GT';
+    }
+    
+    return null;
+  };
+
   const loadAgentes = async () => {
     setLoading(true);
     const data = await api.getAgentes();
     
+    console.log('[GestionAgentes] Agentes cargados del API:', data.length, data);
+    
+    // Obtener usuario actual para verificar si es supervisor
+    const currentUser = api.getUser();
+    const isSupervisor = currentUser?.role === 'SUPERVISOR';
+    
+    console.log('[GestionAgentes] Usuario actual:', {
+      id: currentUser?.id,
+      name: currentUser?.name,
+      role: currentUser?.role,
+      pais: currentUser?.pais,
+      isSupervisor: isSupervisor,
+      userObject: currentUser
+    });
+    
+    let agentesFiltrados = [...data];
+    
+    // Si es supervisor, SIEMPRE filtrar por país (obligatorio)
+    if (isSupervisor) {
+      const supervisorCountry = await getSupervisorCountry();
+      
+      console.log('[GestionAgentes] Supervisor detectado, país del supervisor:', supervisorCountry);
+      
+      if (supervisorCountry) {
+        console.log('[GestionAgentes] Filtrando agentes por país:', supervisorCountry);
+        
+        // Filtrar agentes ANTES de ordenar
+        agentesFiltrados = data.filter(agente => {
+          // Obtener el país del agente desde diferentes fuentes posibles
+          const agentePais = agente.pais || (agente as any).country || '';
+          
+          console.log('[GestionAgentes] 🔍 Verificando agente:', {
+            agenteId: agente.idAgente,
+            agenteNombre: agente.nombre,
+            agentePaisRaw: agentePais,
+            agenteCompleto: agente
+          });
+          
+          const agentePaisNormalizado = normalizeAgentCountry(agentePais);
+          
+          console.log('[GestionAgentes] 🔍 País normalizado del agente:', {
+            agenteId: agente.idAgente,
+            agenteNombre: agente.nombre,
+            agentePaisRaw: agentePais,
+            agentePaisNormalizado: agentePaisNormalizado,
+            supervisorCountry: supervisorCountry
+          });
+          
+          // Si el agente no tiene país definido, NO mostrarlo al supervisor
+          if (!agentePaisNormalizado) {
+            console.log('[GestionAgentes] ❌ Agente SIN país definido, FILTRANDO:', {
+              agenteId: agente.idAgente,
+              agenteNombre: agente.nombre,
+              agentePais: agentePais,
+              agentePaisNormalizado: agentePaisNormalizado
+            });
+            return false;
+          }
+          
+          // Solo mostrar agentes del mismo país que el supervisor
+          const matches = agentePaisNormalizado === supervisorCountry;
+          
+          if (!matches) {
+            console.log('[GestionAgentes] ❌ Agente filtrado por país (NO coincide):', {
+              agenteId: agente.idAgente,
+              agenteNombre: agente.nombre,
+              agentePais: agentePais,
+              agentePaisNormalizado: agentePaisNormalizado,
+              supervisorCountry: supervisorCountry,
+              matches: false
+            });
+            return false; // EXPLÍCITAMENTE retornar false
+          }
+          
+          console.log('[GestionAgentes] ✅ Agente ACEPTADO (país coincide):', {
+            agenteId: agente.idAgente,
+            agenteNombre: agente.nombre,
+            agentePais: agentePais,
+            agentePaisNormalizado: agentePaisNormalizado,
+            supervisorCountry: supervisorCountry,
+            matches: true
+          });
+          
+          return true; // EXPLÍCITAMENTE retornar true
+        });
+        
+        console.log('[GestionAgentes] 📊 RESUMEN - Agentes después de filtrar por país:', {
+          totalAntes: data.length,
+          totalDespues: agentesFiltrados.length,
+          supervisorCountry: supervisorCountry,
+          agentesFiltrados: agentesFiltrados.map(a => ({ 
+            id: a.idAgente, 
+            nombre: a.nombre, 
+            pais: a.pais || (a as any).country || 'SIN PAÍS' 
+          }))
+        });
+      } else {
+        console.error('[GestionAgentes] ⚠️ ERROR: Supervisor sin país definido!', {
+          user: currentUser,
+          userPais: currentUser?.pais
+        });
+        // Si el supervisor no tiene país, NO mostrar ningún agente (más seguro)
+        agentesFiltrados = [];
+      }
+    } else {
+      console.log('[GestionAgentes] Usuario NO es supervisor, mostrando todos los agentes');
+    }
     
     // Ordenar agentes por ordenRoundRobin (1, 2, 3...) para mostrar el orden del round robin
     // Los agentes activos con orden 1, 2, 3... primero, luego los inactivos/vacaciones
-    const sortedAgentes = [...data].sort((a, b) => {
+    const sortedAgentes = [...agentesFiltrados].sort((a, b) => {
       // Agentes activos primero
       if (a.estado === 'Activo' && b.estado !== 'Activo') return -1;
       if (a.estado !== 'Activo' && b.estado === 'Activo') return 1;
@@ -529,6 +779,9 @@ const GestionAgentes: React.FC = () => {
                       Agente
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
+                      País
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
                       Estado
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
@@ -604,6 +857,58 @@ const GestionAgentes: React.FC = () => {
                               </div>
                             </div>
                           </div>
+                        </td>
+                        
+                        {/* País */}
+                        <td className="px-4 py-3">
+                          {(() => {
+                            const pais = agente.pais || '';
+                            const paisNormalizado = pais ? String(pais).trim().toUpperCase() : '';
+                            let paisDisplay = '';
+                            let paisCode = '';
+                            
+                            if (paisNormalizado === 'SV' || paisNormalizado === 'EL_SALVADOR' || paisNormalizado === 'EL SALVADOR' || paisNormalizado.includes('SALVADOR')) {
+                              paisDisplay = 'El Salvador';
+                              paisCode = 'SV';
+                            } else if (paisNormalizado === 'GT' || paisNormalizado === 'GUATEMALA' || paisNormalizado.includes('GUATEMALA')) {
+                              paisDisplay = 'Guatemala';
+                              paisCode = 'GT';
+                            } else if (pais) {
+                              paisDisplay = pais;
+                              paisCode = paisNormalizado.substring(0, 2);
+                            }
+                            
+                            if (!paisDisplay) {
+                              return (
+                                <span className="text-xs" style={{color: styles.text.tertiary}}>
+                                  N/A
+                                </span>
+                              );
+                            }
+                            
+                            return (
+                              <span 
+                                className="inline-flex items-center justify-center px-2 py-1 text-xs font-semibold rounded-lg border transition-all"
+                                style={{
+                                  backgroundColor: theme === 'dark' ? '#0f172a' : '#f1f5f9',
+                                  color: styles.text.secondary,
+                                  borderColor: 'rgba(148, 163, 184, 0.2)',
+                                  transform: 'scale(1)',
+                                  transition: 'all 0.2s ease-in-out',
+                                  minWidth: '32px'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.transform = 'scale(1.05)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.transform = 'scale(1)';
+                                }}
+                                title={paisDisplay} // Mostrar nombre completo en tooltip
+                              >
+                                {paisCode || 'N/A'}
+                              </span>
+                            );
+                          })()}
                         </td>
                         
                         {/* Estado */}

@@ -360,6 +360,25 @@ const callWebhook = async (scenario: 'login' | 'reset_password' | 'new_account',
       }
       
       // Normalizar la respuesta al formato esperado internamente
+      // IMPORTANTE: Incluir el campo pais/country del webhook si está disponible
+      // Buscar país en todos los campos posibles
+      const paisEncontrado = result.pais || result.country || result.país || result.Pais || result.Country || 
+                             result.PAIS || result.COUNTRY || (result as any).pais_usuario || 
+                             (result as any).country_user || (result as any).user_pais;
+      
+      console.log('[API] 🔍 Respuesta del webhook de login (callWebhook):', {
+        result: result,
+        paisEncontrado: paisEncontrado,
+        resultPais: result.pais,
+        resultCountry: result.country,
+        resultPaís: result.país,
+        todosLosCampos: Object.keys(result),
+        valoresDeCampos: Object.keys(result).reduce((acc: any, key) => {
+          acc[key] = (result as any)[key];
+          return acc;
+        }, {})
+      });
+      
       return {
         token: `token-${result.id}-${Date.now()}`, // Generar token local basado en el ID
         user: {
@@ -367,7 +386,8 @@ const callWebhook = async (scenario: 'login' | 'reset_password' | 'new_account',
           name: result.name,
           role: result.role,
           email: result.email,
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(result.name)}&background=0f172a&color=fff`
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(result.name)}&background=0f172a&color=fff`,
+          pais: paisEncontrado || undefined // Incluir país del webhook desde cualquier campo posible
         }
       };
     } else if (scenario === 'reset_password') {
@@ -449,14 +469,47 @@ const authenticateWithWebhook = async (email: string, password: string): Promise
   
   // Almacenar información del usuario EXACTAMENTE como viene del webhook
   // NO se permite sobrescribir con mapeos locales - todo debe venir del webhook
+  // Buscar país en todos los campos posibles de data.user
+  const paisDelUsuario = data.user.pais || data.user.country || data.user.país || 
+                         data.user.Pais || data.user.Country || data.user.PAIS || 
+                         data.user.COUNTRY || (data.user as any).pais_usuario || 
+                         (data.user as any).country_user || (data.user as any).user_pais ||
+                         undefined;
+  
   const user: User = {
     id: data.user.id,
     name: data.user.name.trim(),
     role: userRole,
-    avatar: data.user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.user.name)}&background=0f172a&color=fff`
+    avatar: data.user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.user.name)}&background=0f172a&color=fff`,
+    pais: paisDelUsuario
   };
+  
+  console.log('[API] 📝 Usuario guardado después de login (authenticateWithWebhook):', {
+    id: user.id,
+    name: user.name,
+    role: user.role,
+    pais: user.pais,
+    paisDelUsuario: paisDelUsuario,
+    dataUser: data.user,
+    dataUserTodosLosCampos: Object.keys(data.user),
+    dataUserValores: Object.keys(data.user).reduce((acc: any, key) => {
+      acc[key] = (data.user as any)[key];
+      return acc;
+    }, {})
+  });
 
   localStorage.setItem('intelfon_user', JSON.stringify(user));
+  
+  // Verificar que se guardó correctamente
+  const savedUser = JSON.parse(localStorage.getItem('intelfon_user') || '{}');
+  console.log('[API] ✅ Usuario verificado después de guardar en localStorage:', {
+    id: savedUser.id,
+    name: savedUser.name,
+    role: savedUser.role,
+    pais: savedUser.pais,
+    usuarioCompleto: savedUser
+  });
+  
   return user;
 };
 
@@ -911,6 +964,17 @@ export const api = {
               }
             }
             
+            // Mapear país desde múltiples fuentes posibles
+            const paisRaw = agente.pais || agente.country || agente.país || agente.Pais || agente.Country || 
+                           (agente as any).pais_usuario || (agente as any).country_user || undefined;
+            
+            console.log('[API] Mapeando agente:', {
+              idAgente: agente.id_agente || agente.idAgente || agente.id,
+              nombre: agente.nombre || agente.name,
+              paisRaw: paisRaw,
+              agenteCompleto: agente
+            });
+            
             // Mapear campos del webhook al formato Agente
             return {
               idAgente: agente.id_agente || agente.idAgente || agente.id || '',
@@ -919,7 +983,8 @@ export const api = {
               estado: estado,
               ordenRoundRobin: 999, // Se calculará después
               ultimoCasoAsignado: ultimoCasoAsignado,
-              casosActivos: agente.casos_activos !== undefined ? agente.casos_activos : (agente.casosActivos || agente.casos_asignados || 0)
+              casosActivos: agente.casos_activos !== undefined ? agente.casos_activos : (agente.casosActivos || agente.casos_asignados || 0),
+              pais: paisRaw || undefined
             };
           }).filter((agente: any) => {
             // Filtrar agentes sin ID válido
@@ -2321,7 +2386,7 @@ export const api = {
         email: email.trim().toLowerCase(),
         password: passwordFinal, // IMPORTANTE: incluir la contraseña generada
         role: rolUsuario, // IMPORTANTE: usar 'role' no 'rol'
-        pais: additionalData?.pais || 'El_Salvador' // Incluir país si está disponible
+        pais: additionalData?.pais || 'El_Salvador' // Incluir país si está disponible (puede venir como "El Salvador", "Guatemala", "SV", "GT", etc.)
       }
     };
     

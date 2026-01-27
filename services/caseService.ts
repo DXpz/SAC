@@ -1,6 +1,7 @@
 import { API_CONFIG } from '../config';
 import { Case, CaseStatus, Channel, HistorialEntry, CaseTransition } from '../types';
 import { calculateBusinessDaysElapsed, calculateSLADelayDays } from '../utils/slaUtils';
+import { api } from './api';
 
 // URL del webhook de n8n para gestión de casos
 // En desarrollo usa ruta relativa que pasa por el proxy de Vite (/api/casos)
@@ -107,6 +108,139 @@ const getUserRole = (): 'AGENTE' | 'SUPERVISOR' | 'GERENTE' | null => {
 };
 
 /**
+ * Obtiene y normaliza el país del usuario autenticado
+ * Retorna 'SV' para El Salvador, 'GT' para Guatemala, o null si no está definido
+ */
+const getUserCountry = async (): Promise<'SV' | 'GT' | null> => {
+  try {
+    // Primero intentar desde api.getUser() que puede tener datos más actualizados
+    const currentUser = api.getUser();
+    let pais = currentUser?.pais || '';
+    
+    // Si el país es string vacío, tratarlo como undefined
+    if (pais && String(pais).trim() !== '') {
+      const paisNormalizado = String(pais).trim().toUpperCase();
+      
+      if (paisNormalizado === 'SV' || paisNormalizado === 'EL_SALVADOR' || paisNormalizado === 'EL SALVADOR' || paisNormalizado.includes('SALVADOR')) {
+        console.log('[caseService] ✅ País del supervisor desde api.getUser(): SV');
+        return 'SV';
+      }
+      if (paisNormalizado === 'GT' || paisNormalizado === 'GUATEMALA' || paisNormalizado.includes('GUATEMALA')) {
+        console.log('[caseService] ✅ País del supervisor desde api.getUser(): GT');
+        return 'GT';
+      }
+    }
+    
+    // Fallback: leer desde localStorage directamente
+    const userStr = localStorage.getItem('intelfon_user');
+    if (!userStr) {
+      console.error('[caseService] No se encontró usuario en localStorage');
+      return null;
+    }
+    
+    const user = JSON.parse(userStr);
+    pais = user.pais || user.country || '';
+    
+    // Si el país es string vacío, intentar obtenerlo desde la lista de usuarios
+    if (!pais || String(pais).trim() === '') {
+      console.log('[caseService] 🔍 País no encontrado en localStorage, buscando en lista de usuarios...');
+      try {
+        const usuarios = await api.getUsuarios();
+        const usuarioCompleto = usuarios.find((u: any) => 
+          u.id === user.id || 
+          u.idAgente === user.id || 
+          u.id_agente === user.id ||
+          u.id_usuario === user.id ||
+          u.email === user.email ||
+          (u.nombre && u.nombre.toUpperCase() === user.name.toUpperCase())
+        );
+        
+        if (usuarioCompleto) {
+          pais = usuarioCompleto.pais || usuarioCompleto.country || usuarioCompleto.país || '';
+          console.log('[caseService] ✅ País encontrado en lista de usuarios:', {
+            usuarioId: usuarioCompleto.id || usuarioCompleto.idAgente,
+            usuarioNombre: usuarioCompleto.nombre || usuarioCompleto.name,
+            pais: pais
+          });
+          
+          // Si encontramos el país, actualizar el usuario en localStorage
+          if (pais && String(pais).trim() !== '') {
+            const updatedUser = { ...user, pais: pais };
+            localStorage.setItem('intelfon_user', JSON.stringify(updatedUser));
+            console.log('[caseService] ✅ País actualizado en localStorage');
+          }
+        } else {
+          console.warn('[caseService] ⚠️ Usuario no encontrado en lista de usuarios');
+        }
+      } catch (error) {
+        console.error('[caseService] Error obteniendo lista de usuarios:', error);
+      }
+    }
+    
+    // Validar que el país no sea string vacío
+    if (!pais || String(pais).trim() === '') {
+      console.error('[caseService] ⚠️ Usuario NO tiene país definido!', user);
+      return null;
+    }
+    
+    // Normalizar a códigos de 2 letras
+    const paisNormalizado = String(pais).trim().toUpperCase();
+    
+    // El Salvador: SV, El_Salvador, El Salvador, etc.
+    if (paisNormalizado === 'SV' || 
+        paisNormalizado === 'EL_SALVADOR' || 
+        paisNormalizado === 'EL SALVADOR' ||
+        paisNormalizado.includes('SALVADOR')) {
+      console.log('[caseService] ✅ País normalizado: SV');
+      return 'SV';
+    }
+    
+    // Guatemala: GT, Guatemala, etc.
+    if (paisNormalizado === 'GT' || 
+        paisNormalizado === 'GUATEMALA' ||
+        paisNormalizado.includes('GUATEMALA')) {
+      console.log('[caseService] ✅ País normalizado: GT');
+      return 'GT';
+    }
+    
+    console.error('[caseService] ⚠️ País no reconocido:', paisNormalizado);
+    return null;
+  } catch (error) {
+    console.error('[caseService] ❌ Error obteniendo país del supervisor:', error);
+    return null;
+  }
+};
+
+/**
+ * Normaliza el país de un caso a código de 2 letras (SV o GT)
+ */
+const normalizeCaseCountry = (pais: string | undefined): 'SV' | 'GT' | null => {
+  // Si no hay país o es string vacío, retornar null
+  if (!pais || String(pais).trim() === '') {
+    return null;
+  }
+  
+  const paisNormalizado = String(pais).trim().toUpperCase();
+  
+  // El Salvador
+  if (paisNormalizado === 'SV' || 
+      paisNormalizado === 'EL_SALVADOR' || 
+      paisNormalizado === 'EL SALVADOR' ||
+      paisNormalizado.includes('SALVADOR')) {
+    return 'SV';
+  }
+  
+  // Guatemala
+  if (paisNormalizado === 'GT' || 
+      paisNormalizado === 'GUATEMALA' ||
+      paisNormalizado.includes('GUATEMALA')) {
+    return 'GT';
+  }
+  
+  return null;
+};
+
+/**
  * Mapea el canal de contacto a formato esperado por el webhook
  */
 const mapChannel = (channel: Channel | string): string => {
@@ -153,7 +287,8 @@ const mapCaseToWebhookData = (caseData: any): CaseWebhookPayload['data'] => {
       nombre_empresa: caseData.clientName || caseData.nombreEmpresa || caseData.cliente?.nombreEmpresa || 'Por definir',
       contacto_principal: caseData.contactName || caseData.contactoPrincipal || caseData.clientName || caseData.cliente?.contactoPrincipal || 'Por definir',
       email: caseData.clientEmail || caseData.email || caseData.cliente?.email || '',
-      telefono: caseData.phone || caseData.telefono || caseData.clientPhone || caseData.cliente?.telefono || ''
+      telefono: caseData.phone || caseData.telefono || caseData.clientPhone || caseData.cliente?.telefono || '',
+      pais: caseData.pais || caseData.country || caseData.cliente?.pais || caseData.client?.pais || undefined
     };
   }
   
@@ -173,6 +308,11 @@ const mapCaseToWebhookData = (caseData: any): CaseWebhookPayload['data'] => {
   // Canal de notificación
   if (caseData.canal_notificacion || caseData.notificationChannel || caseData.canalNotificacion) {
     data.canal_notificacion = mapChannel(caseData.notificationChannel || caseData.canal_notificacion || caseData.canalNotificacion);
+  }
+
+  // País del caso
+  if (caseData.pais || caseData.country) {
+    data.pais = caseData.pais || caseData.country;
   }
   
   // IMPORTANTE: NO enviar información de agente
@@ -346,6 +486,7 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
       agentId: agenteMapped?.idAgente || String(agenteUserIdFromWebhook || caseData.agente_id || caseData.agentId || ''),
       agentName: agenteMapped?.nombre || caseData.agentename || caseData.agente_name || caseData.agente_nombre || caseData.agentName || caseData.nombre_agente || '',
       createdAt: createdAt,
+      pais: caseData.pais || caseData.country || clienteMapped?.pais || '',
       slaDeadline: slaDeadlineFromWebhook || undefined, // Fecha final del SLA del webhook
       history: caseData.historial || caseData.history || [],
       historial: caseData.historial || caseData.history || [],
@@ -548,7 +689,8 @@ export const createCase = async (caseData: {
       nombre_empresa: caseData.clientName || 'Por definir',
       contacto_principal: caseData.contactName || caseData.clientName || 'Por definir',
       email: caseData.clientEmail || '',
-      telefono: caseData.phone || caseData.clientPhone || ''
+      telefono: caseData.phone || caseData.clientPhone || '',
+      pais: caseData.pais || caseData.country || caseData.cliente?.pais || undefined
     };
   }
   
@@ -617,6 +759,7 @@ export const createCase = async (caseData: {
     subject: caseData.subject,
     description: caseData.description,
     status: CaseStatus.NUEVO,
+    pais: caseData.pais || caseData.country || caseData.cliente?.pais || '',
     priority: 'Media',
     agentId: '',
     agentName: '',
@@ -691,8 +834,54 @@ export const getCases = async (): Promise<Case[]> => {
   
   const response = await callCaseWebhook(payload);
   
+  let casos = processWebhookResponse(response);
   
-  return processWebhookResponse(response);
+  // Si es SUPERVISOR, filtrar casos por país del supervisor
+  if (userRole === 'SUPERVISOR') {
+    const supervisorCountry = await getUserCountry();
+    
+    if (supervisorCountry) {
+      console.log('[caseService] Filtrando casos por país del supervisor:', supervisorCountry);
+      
+      casos = casos.filter(caso => {
+        // Obtener el país del caso desde diferentes fuentes posibles
+        const casoPais = (caso as any).pais || 
+                        caso.cliente?.pais || 
+                        (caso as any).country ||
+                        '';
+        
+        const casoPaisNormalizado = normalizeCaseCountry(casoPais);
+        
+        // Si el caso no tiene país definido, no mostrarlo al supervisor
+        if (!casoPaisNormalizado) {
+          return false;
+        }
+        
+        // Solo mostrar casos del mismo país que el supervisor
+        const matches = casoPaisNormalizado === supervisorCountry;
+        
+        if (!matches) {
+          console.log('[caseService] Caso filtrado por país:', {
+            casoId: caso.id,
+            casoPais: casoPais,
+            casoPaisNormalizado: casoPaisNormalizado,
+            supervisorCountry: supervisorCountry
+          });
+        }
+        
+        return matches;
+      });
+      
+      console.log('[caseService] Casos después de filtrar por país:', {
+        total: casos.length,
+        supervisorCountry: supervisorCountry
+      });
+    } else {
+      console.warn('[caseService] Supervisor sin país definido, mostrando todos los casos');
+    }
+  }
+  
+  return casos;
 };
 
 /**

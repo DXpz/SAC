@@ -39,6 +39,21 @@ const AdminBandejaCasos: React.FC = () => {
     return (matchedStatus as CaseStatus) || CaseStatus.NUEVO;
   };
 
+  const formatCountry = (value?: string) => {
+    if (!value) return 'N/A';
+    const normalized = value.toString().trim().toUpperCase();
+    if (!normalized) return 'N/A';
+    if (normalized === 'SV' || normalized === 'GT') return normalized;
+    if (normalized === 'EL SALVADOR' || normalized === 'EL_SALVADOR' || normalized === 'ELSALVADOR') return 'SV';
+    if (normalized === 'GUATEMALA') return 'GT';
+    return value;
+  };
+
+  const getCaseCountry = (caso: Case) => {
+    const rawCountry = (caso as any).pais || (caso as any).country || caso.cliente?.pais;
+    return formatCountry(rawCountry);
+  };
+
   // Cargar datos iniciales y cuando cambia la vista
   useEffect(() => {
     const initializeData = async () => {
@@ -731,6 +746,7 @@ const AdminBandejaCasos: React.FC = () => {
                 <tr>
                   <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>ID Caso</th>
                   <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Cliente</th>
+                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>País</th>
                   <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Asunto</th>
                   <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Categoría</th>
                   <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Estado</th>
@@ -781,6 +797,11 @@ const AdminBandejaCasos: React.FC = () => {
                             {caso.clientName || caso.cliente?.nombreEmpresa || 'Por definir'}
                           </span>
                         </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs font-semibold" style={{color: styles.text.primary}}>
+                          {getCaseCountry(caso)}
+                        </span>
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-xs font-medium max-w-[200px] truncate block" style={{color: styles.text.primary}}>

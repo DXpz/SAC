@@ -684,6 +684,7 @@ const AlertasCriticas: React.FC = () => {
                       <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>ID Caso</th>
                       <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Asunto</th>
                       <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Cliente</th>
+                      <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>País</th>
                       <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Agente</th>
                       <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Prioridad</th>
                       <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Estado</th>
@@ -735,6 +736,52 @@ const AlertasCriticas: React.FC = () => {
                             {caso.clientName || 'Sin cliente'}
                           </span>
                         </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {(() => {
+                          const pais = (caso as any).pais || caso.cliente?.pais || '';
+                          const paisNormalizado = pais ? String(pais).trim().toUpperCase() : '';
+                          let paisCode = '';
+                          
+                          if (paisNormalizado === 'SV' || paisNormalizado === 'EL_SALVADOR' || paisNormalizado === 'EL SALVADOR' || paisNormalizado.includes('SALVADOR')) {
+                            paisCode = 'SV';
+                          } else if (paisNormalizado === 'GT' || paisNormalizado === 'GUATEMALA' || paisNormalizado.includes('GUATEMALA')) {
+                            paisCode = 'GT';
+                          } else if (pais) {
+                            paisCode = paisNormalizado.substring(0, 2);
+                          }
+                          
+                          if (!paisCode) {
+                            return (
+                              <span className="text-xs" style={{color: styles.text.tertiary}}>
+                                N/A
+                              </span>
+                            );
+                          }
+                          
+                          return (
+                            <span 
+                              className="inline-flex items-center justify-center px-2 py-1 text-xs font-semibold rounded-lg border transition-all"
+                              style={{
+                                backgroundColor: theme === 'dark' ? '#0f172a' : '#f1f5f9',
+                                color: styles.text.secondary,
+                                borderColor: 'rgba(148, 163, 184, 0.2)',
+                                transform: 'scale(1)',
+                                transition: 'all 0.2s ease-in-out',
+                                minWidth: '32px'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'scale(1.05)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'scale(1)';
+                              }}
+                              title={paisNormalizado === 'SV' ? 'El Salvador' : paisNormalizado === 'GT' ? 'Guatemala' : pais}
+                            >
+                              {paisCode}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
@@ -945,13 +992,60 @@ const AlertasCriticas: React.FC = () => {
                     
                     {/* Contenido */}
                     <div className="p-4 space-y-3">
-                      {/* Cliente y Agente */}
+                      {/* Cliente, País y Agente */}
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>Cliente:</span>
                           <span className="text-xs font-bold" style={{color: styles.text.primary}}>
                             {caso.clientName || 'Sin cliente'}
                           </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>País:</span>
+                          {(() => {
+                            const pais = (caso as any).pais || caso.cliente?.pais || '';
+                            const paisNormalizado = pais ? String(pais).trim().toUpperCase() : '';
+                            let paisCode = '';
+                            
+                            if (paisNormalizado === 'SV' || paisNormalizado === 'EL_SALVADOR' || paisNormalizado === 'EL SALVADOR' || paisNormalizado.includes('SALVADOR')) {
+                              paisCode = 'SV';
+                            } else if (paisNormalizado === 'GT' || paisNormalizado === 'GUATEMALA' || paisNormalizado.includes('GUATEMALA')) {
+                              paisCode = 'GT';
+                            } else if (pais) {
+                              paisCode = paisNormalizado.substring(0, 2);
+                            }
+                            
+                            if (!paisCode) {
+                              return (
+                                <span className="text-xs" style={{color: styles.text.tertiary}}>
+                                  N/A
+                                </span>
+                              );
+                            }
+                            
+                            return (
+                              <span 
+                                className="inline-flex items-center justify-center px-2 py-1 text-xs font-semibold rounded-lg border transition-all"
+                                style={{
+                                  backgroundColor: theme === 'dark' ? '#0f172a' : '#f1f5f9',
+                                  color: styles.text.secondary,
+                                  borderColor: 'rgba(148, 163, 184, 0.2)',
+                                  transform: 'scale(1)',
+                                  transition: 'all 0.2s ease-in-out',
+                                  minWidth: '32px'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.transform = 'scale(1.05)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.transform = 'scale(1)';
+                                }}
+                                title={paisNormalizado === 'SV' ? 'El Salvador' : paisNormalizado === 'GT' ? 'Guatemala' : pais}
+                              >
+                                {paisCode}
+                              </span>
+                            );
+                          })()}
                         </div>
                         <div className="flex items-center gap-2">
                           <User className="w-3.5 h-3.5" style={{color: styles.text.tertiary}} />
