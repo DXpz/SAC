@@ -295,7 +295,7 @@ const AlertasCriticas: React.FC = () => {
       minHeight: '100vh'
     },
     card: {
-      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+      backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
       borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.2)',
       color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
     },
@@ -326,7 +326,6 @@ const AlertasCriticas: React.FC = () => {
           style={{
             ...styles.card,
             borderColor: criticos.length > 0 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(148, 163, 184, 0.2)',
-            backgroundColor: criticos.length > 0 ? (theme === 'dark' ? 'rgba(239, 68, 68, 0.05)' : 'rgba(239, 68, 68, 0.02)') : styles.card.backgroundColor,
             animation: 'fadeInSlide 0.3s ease-out 0.1s both'
           }}
           onClick={() => navigate('/app/casos')}
@@ -381,7 +380,6 @@ const AlertasCriticas: React.FC = () => {
           style={{
             ...styles.card,
             borderColor: casosFueraSLA > 0 ? 'rgba(245, 158, 11, 0.3)' : 'rgba(148, 163, 184, 0.2)',
-            backgroundColor: casosFueraSLA > 0 ? (theme === 'dark' ? 'rgba(245, 158, 11, 0.05)' : 'rgba(245, 158, 11, 0.02)') : styles.card.backgroundColor,
             animation: 'fadeInSlide 0.3s ease-out 0.15s both'
           }}
           onClick={() => navigate('/app/casos')}
@@ -436,7 +434,6 @@ const AlertasCriticas: React.FC = () => {
           style={{
             ...styles.card,
             borderColor: casosVencen24h > 0 ? 'rgba(249, 115, 22, 0.3)' : 'rgba(148, 163, 184, 0.2)',
-            backgroundColor: casosVencen24h > 0 ? (theme === 'dark' ? 'rgba(249, 115, 22, 0.05)' : 'rgba(249, 115, 22, 0.02)') : styles.card.backgroundColor,
             animation: 'fadeInSlide 0.3s ease-out 0.2s both'
           }}
           onClick={() => navigate('/app/casos')}
@@ -487,8 +484,7 @@ const AlertasCriticas: React.FC = () => {
           className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden"
           style={{
             ...styles.card,
-            borderColor: casosEscalados > 0 ? 'rgba(220, 38, 38, 0.35)' : 'rgba(148, 163, 184, 0.2)',
-            backgroundColor: casosEscalados > 0 ? (theme === 'dark' ? 'rgba(220, 38, 38, 0.08)' : 'rgba(220, 38, 38, 0.03)') : styles.card.backgroundColor
+            borderColor: casosEscalados > 0 ? 'rgba(220, 38, 38, 0.35)' : 'rgba(148, 163, 184, 0.2)'
           }}
           onClick={() => navigate('/app/casos')}
           onMouseEnter={(e) => {
@@ -556,7 +552,7 @@ const AlertasCriticas: React.FC = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 rounded-lg border text-sm"
                 style={{
-                  backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                  backgroundColor: theme === 'dark' ? '#020617' : '#f8fafc',
                   borderColor: 'rgba(148, 163, 184, 0.2)',
                   color: styles.text.primary
                 }}
@@ -579,14 +575,17 @@ const AlertasCriticas: React.FC = () => {
                 className="p-2 rounded-lg border transition-all hover:scale-105"
                 style={{
                   borderColor: 'rgba(148, 163, 184, 0.2)',
-                  backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                  backgroundColor: theme === 'dark' ? '#020617' : '#f8fafc',
                   color: styles.text.secondary
                 }}
                 title="Actualizar"
               >
                 <RefreshCw className="w-4 h-4" />
               </button>
-              <div className="flex items-center gap-1 p-1 rounded-lg border" style={{borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+              <div className="flex items-center gap-1 p-1 rounded-lg border" style={{
+                borderColor: 'rgba(148, 163, 184, 0.2)',
+                backgroundColor: theme === 'dark' ? '#020617' : '#f8fafc'
+              }}>
                 <button
                   onClick={() => setViewMode('table')}
                   className={`p-2 rounded transition-all ${viewMode === 'table' ? 'bg-blue-500 text-white' : ''}`}
@@ -620,7 +619,7 @@ const AlertasCriticas: React.FC = () => {
               onChange={(e) => setFilterPriority(e.target.value as any)}
               className="px-3 py-1.5 rounded-lg border text-xs font-semibold"
               style={{
-                backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                backgroundColor: theme === 'dark' ? '#020617' : '#f8fafc',
                 borderColor: 'rgba(148, 163, 184, 0.2)',
                 color: styles.text.primary
               }}
@@ -637,7 +636,7 @@ const AlertasCriticas: React.FC = () => {
               onChange={(e) => setFilterStatus(e.target.value)}
               className="px-3 py-1.5 rounded-lg border text-xs font-semibold"
               style={{
-                backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                backgroundColor: theme === 'dark' ? '#020617' : '#f8fafc',
                 borderColor: 'rgba(148, 163, 184, 0.2)',
                 color: styles.text.primary
               }}
@@ -669,7 +668,9 @@ const AlertasCriticas: React.FC = () => {
             <div 
               className="rounded-3xl shadow-xl border overflow-hidden" 
               style={{
-                ...styles.card,
+                backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                borderColor: styles.card.borderColor,
+                color: styles.card.color,
                 boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
                 animation: 'fadeInSlide 0.4s ease-out 0.3s both'
               }}
@@ -942,7 +943,8 @@ const AlertasCriticas: React.FC = () => {
                     key={caso.id}
                     className="rounded-xl border-2 overflow-hidden cursor-pointer transition-all duration-200 hover:scale-[1.02]"
                     style={{
-                      ...styles.card,
+                      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                      color: styles.card.color,
                       borderColor: caso.priority === 'Critica' 
                         ? 'rgba(200, 21, 27, 0.4)' 
                         : caso.priority === 'Alta'
@@ -964,7 +966,7 @@ const AlertasCriticas: React.FC = () => {
                   >
                     {/* Header con ID y Prioridad */}
                     <div className="p-4 border-b" style={{
-                      backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                      backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc',
                       borderColor: 'rgba(148, 163, 184, 0.2)'
                     }}>
                       <div className="flex items-center justify-between mb-2">
@@ -1113,7 +1115,8 @@ const AlertasCriticas: React.FC = () => {
         ) : (
           /* Sin resultados de búsqueda */
           <div className="p-20 text-center rounded-xl border-2 border-dashed" style={{
-            ...styles.card,
+            backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+            color: styles.card.color,
             borderColor: 'rgba(148, 163, 184, 0.25)'
           }}>
             <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5 border-2" style={{
@@ -1130,7 +1133,8 @@ const AlertasCriticas: React.FC = () => {
         )
       ) : (
           <div className="p-20 text-center rounded-xl border-2 border-dashed" style={{
-            ...styles.card,
+            backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+            color: styles.card.color,
             borderColor: 'rgba(148, 163, 184, 0.25)'
           }}>
             <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5 border-2" style={{

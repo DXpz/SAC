@@ -1203,12 +1203,12 @@ const CaseDetail: React.FC = () => {
       minHeight: '100vh'
     },
     card: {
-      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+      backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
       borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.2)',
       color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
     },
     cardHeader: {
-      backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+      backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc',
       borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.15)'
     },
     text: {
@@ -1217,12 +1217,12 @@ const CaseDetail: React.FC = () => {
       tertiary: theme === 'dark' ? '#94a3b8' : '#64748b'
     },
     input: {
-      backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+      backgroundColor: theme === 'dark' ? '#020617' : '#f8fafc',
       borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.2)',
       color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
     },
     modal: {
-      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+      backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
       overlay: theme === 'dark' ? 'rgba(0, 0, 0, 0.8)' : 'rgba(15, 23, 42, 0.5)'
     }
   };
@@ -2783,7 +2783,7 @@ const CaseDetail: React.FC = () => {
             <div 
               className="rounded-2xl overflow-hidden shadow-2xl border"
               style={{
-                backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                 borderColor: '#f59e0b',
                 animation: 'fadeInUp 0.5s ease-out 0.4s both'
               }}

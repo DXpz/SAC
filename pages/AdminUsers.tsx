@@ -781,7 +781,7 @@ const AdminUsers: React.FC = () => {
       minHeight: '100vh'
     },
     card: {
-      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+      backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
       borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.2)',
       color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
     },
@@ -900,7 +900,7 @@ const AdminUsers: React.FC = () => {
                   placeholder="Buscar usuario por nombre..."
                   className="w-full pl-10 pr-10 py-2 text-xs rounded-lg border transition-all focus:outline-none"
                   style={{
-                    backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                    backgroundColor: theme === 'dark' ? '#020617' : '#f8fafc',
                     borderColor: showSuggestions ? 'rgba(200, 21, 27, 0.4)' : 'rgba(148, 163, 184, 0.3)',
                     color: styles.text.primary
                   }}
@@ -927,7 +927,7 @@ const AdminUsers: React.FC = () => {
                   ref={suggestionsRef}
                   className="absolute z-50 w-full mt-1 rounded-lg border shadow-xl max-h-48 overflow-y-auto"
                   style={{
-                    backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                    backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                     borderColor: 'rgba(148, 163, 184, 0.3)',
                     boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)',
                     animation: 'fadeInSlide 0.2s ease-out'
@@ -1236,7 +1236,7 @@ const AdminUsers: React.FC = () => {
                         className="hover:opacity-90 transition-opacity"
                         style={{
                           backgroundColor: index % 2 === 0 
-                            ? (theme === 'dark' ? '#1e293b' : '#ffffff')
+                            ? (theme === 'dark' ? '#020617' : '#ffffff')
                             : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
                           borderBottom: index < paginatedUsers.length - 1 ? '1px solid rgba(148, 163, 184, 0.1)' : 'none',
                           animation: `fadeInSlide 0.3s ease-out ${index * 0.03}s both`,

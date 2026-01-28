@@ -383,7 +383,7 @@ const AdminBandejaCasos: React.FC = () => {
       minHeight: '100vh'
     },
     card: {
-      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+      backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
       borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.2)',
       color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
     },
@@ -393,7 +393,7 @@ const AdminBandejaCasos: React.FC = () => {
       tertiary: theme === 'dark' ? '#94a3b8' : '#64748b'
     },
     input: {
-      backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+      backgroundColor: theme === 'dark' ? '#020617' : '#f8fafc',
       borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.2)',
       color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
     }
@@ -445,7 +445,7 @@ const AdminBandejaCasos: React.FC = () => {
             onFocus={(e) => {
               e.target.style.borderColor = 'var(--color-accent-blue)';
               e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
+              e.target.style.backgroundColor = theme === 'dark' ? '#020617' : '#ffffff';
             }}
             onBlur={(e) => {
               e.target.style.borderColor = styles.input.borderColor;
@@ -466,7 +466,7 @@ const AdminBandejaCasos: React.FC = () => {
               className="w-full pl-10 pr-8 py-2.5 border rounded-xl focus:outline-none transition-all text-xs font-semibold appearance-none cursor-pointer"
               style={{
                 backgroundColor: statusFilter === 'all' 
-                  ? styles.card.backgroundColor
+                  ? (theme === 'dark' ? '#020617' : '#ffffff')
                   : (theme === 'dark' ? 'rgba(16, 122, 180, 0.15)' : '#e0f2fe'),
                 borderColor: statusFilter === 'all' 
                   ? styles.card.borderColor
@@ -495,7 +495,7 @@ const AdminBandejaCasos: React.FC = () => {
               className="w-full pl-10 pr-8 py-2.5 border rounded-xl focus:outline-none transition-all text-xs font-semibold appearance-none cursor-pointer"
               style={{
                 backgroundColor: categoriaFilter === 'all' 
-                  ? styles.card.backgroundColor
+                  ? (theme === 'dark' ? '#020617' : '#ffffff')
                   : (theme === 'dark' ? 'rgba(16, 122, 180, 0.15)' : '#e0f2fe'),
                 borderColor: categoriaFilter === 'all' 
                   ? styles.card.borderColor
@@ -534,7 +534,7 @@ const AdminBandejaCasos: React.FC = () => {
                   <div 
                     className="absolute left-full ml-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-normal opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none"
                     style={{
-                      backgroundColor: theme === 'dark' ? '#1e293b' : '#0f172a',
+                      backgroundColor: theme === 'dark' ? '#020617' : '#0f172a',
                       color: theme === 'dark' ? '#f1f5f9' : '#ffffff',
                       border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`,
                       boxShadow: theme === 'dark' 
@@ -552,7 +552,7 @@ const AdminBandejaCasos: React.FC = () => {
                       style={{
                         borderTop: '4px solid transparent',
                         borderBottom: '4px solid transparent',
-                        borderRight: `4px solid ${theme === 'dark' ? '#1e293b' : '#0f172a'}`
+                        borderRight: `4px solid ${theme === 'dark' ? '#020617' : '#0f172a'}`
                       }}
                     />
                   </div>
@@ -705,8 +705,9 @@ const AdminBandejaCasos: React.FC = () => {
         <LoadingScreen message="Cargando casos..." />
       ) : error ? (
         <div className="rounded-3xl shadow-xl border p-12 text-center" style={{
-          ...styles.card,
-          borderColor: 'rgba(200, 21, 27, 0.3)'
+          backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+          borderColor: 'rgba(200, 21, 27, 0.3)',
+          color: styles.card.color
         }}>
           <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{backgroundColor: 'rgba(200, 21, 27, 0.2)'}}>
             <X className="w-10 h-10" style={{color: '#f87171'}} />
@@ -722,7 +723,7 @@ const AdminBandejaCasos: React.FC = () => {
           </button>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-3xl shadow-xl border p-12 text-center" style={{...styles.card, boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'}}>
+        <div className="rounded-3xl shadow-xl border p-12 text-center" style={{backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff', borderColor: styles.card.borderColor, color: styles.card.color, boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'}}>
           <div className="w-24 h-24 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg" style={{
             backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc'
           }}>
@@ -736,7 +737,7 @@ const AdminBandejaCasos: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="rounded-3xl shadow-xl border overflow-hidden" style={{...styles.card, boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'}}>
+        <div className="rounded-3xl shadow-xl border overflow-hidden" style={{backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff', borderColor: styles.card.borderColor, color: styles.card.color, boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'}}>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead className="border-b" style={{
@@ -772,7 +773,7 @@ const AdminBandejaCasos: React.FC = () => {
                         backgroundColor: 'transparent',
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
+                        e.currentTarget.style.backgroundColor = theme === 'dark' ? '#020617' : '#f1f5f9';
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.backgroundColor = 'transparent';
@@ -832,7 +833,7 @@ const AdminBandejaCasos: React.FC = () => {
                               <div 
                                 className="absolute left-full ml-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-normal opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none"
                                 style={{
-                                  backgroundColor: theme === 'dark' ? '#1e293b' : '#0f172a',
+                                  backgroundColor: theme === 'dark' ? '#020617' : '#0f172a',
                                   color: theme === 'dark' ? '#f1f5f9' : '#ffffff',
                                   border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`,
                                   boxShadow: theme === 'dark' 
@@ -850,7 +851,7 @@ const AdminBandejaCasos: React.FC = () => {
                                   style={{
                                     borderTop: '4px solid transparent',
                                     borderBottom: '4px solid transparent',
-                                    borderRight: `4px solid ${theme === 'dark' ? '#1e293b' : '#0f172a'}`
+                                    borderRight: `4px solid ${theme === 'dark' ? '#020617' : '#0f172a'}`
                                   }}
                                 />
                               </div>

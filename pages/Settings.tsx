@@ -2322,7 +2322,7 @@ const Settings: React.FC = () => {
       minHeight: '100vh'
     },
     card: {
-      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+      backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
       borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.2)',
       color: theme === 'dark' ? '#f1f5f9' : '#0f172a',
       boxShadow: theme === 'dark' 
@@ -2563,7 +2563,7 @@ const Settings: React.FC = () => {
                       placeholder="Ej. Soporte Redes"
                       className="w-full px-3 py-2 rounded-lg border text-sm"
                       style={{
-                        backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                        backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                         borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
                         color: styles.text.primary
                       }}
@@ -2583,7 +2583,7 @@ const Settings: React.FC = () => {
                       onChange={(e) => setNewCategory({ ...newCategory, slaDays: parseInt(e.target.value) || 1 })}
                       className="w-full px-3 py-2 rounded-lg border text-sm"
                       style={{
-                        backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                        backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                         borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
                         color: styles.text.primary
                       }}
@@ -2623,7 +2623,7 @@ const Settings: React.FC = () => {
                     rows={2}
                     className="w-full px-3 py-2 rounded-lg border text-sm resize-none"
                     style={{
-                      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                          backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                       borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
                       color: styles.text.primary
                     }}
@@ -2654,7 +2654,7 @@ const Settings: React.FC = () => {
                       placeholder="Buscar categoría..."
                       className="w-full pl-10 pr-3 py-2 rounded-lg border text-sm"
                       style={{
-                        backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                        backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                         borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
                         color: styles.text.primary
                       }}
@@ -2741,7 +2741,7 @@ const Settings: React.FC = () => {
                       key={category.id}
                       style={{
                         backgroundColor: index % 2 === 0
-                          ? (theme === 'dark' ? '#1e293b' : '#ffffff')
+                          ? (theme === 'dark' ? '#020617' : '#ffffff')
                           : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
                         borderBottom: index < filteredCategories.length - 1
                           ? `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.2)'}`
@@ -2779,7 +2779,7 @@ const Settings: React.FC = () => {
                             <div 
                               className="absolute left-full ml-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-normal opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none"
                               style={{
-                                backgroundColor: theme === 'dark' ? '#1e293b' : '#0f172a',
+                                backgroundColor: theme === 'dark' ? '#020617' : '#0f172a',
                                 color: theme === 'dark' ? '#f1f5f9' : '#ffffff',
                                 border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`,
                                 boxShadow: theme === 'dark' 
@@ -2797,7 +2797,7 @@ const Settings: React.FC = () => {
                                 style={{
                                   borderTop: '4px solid transparent',
                                   borderBottom: '4px solid transparent',
-                                  borderRight: `4px solid ${theme === 'dark' ? '#1e293b' : '#0f172a'}`
+                                  borderRight: `4px solid ${theme === 'dark' ? '#020617' : '#0f172a'}`
                                 }}
                               />
                             </div>
@@ -2899,7 +2899,7 @@ const Settings: React.FC = () => {
                         placeholder="Ej. Soporte Redes"
                         className="w-full px-3 py-2 rounded-lg border text-sm"
                         style={{
-                          backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                          backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                           borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
                           color: styles.text.primary
                         }}
@@ -2921,7 +2921,7 @@ const Settings: React.FC = () => {
                           }}
                           className="w-full px-3 py-2 rounded-lg border text-sm"
                           style={{
-                            backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                            backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                             borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
                             color: styles.text.primary
                           }}
@@ -2940,7 +2940,7 @@ const Settings: React.FC = () => {
                         rows={2}
                         className="w-full px-3 py-2 rounded-lg border text-sm resize-none"
                         style={{
-                          backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                          backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                           borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
                           color: styles.text.primary
                         }}
@@ -3138,7 +3138,7 @@ const Settings: React.FC = () => {
                     placeholder="Ej. Validación Técnica"
                     className="w-full px-3 py-2 rounded-lg border text-sm"
                     style={{
-                      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                          backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                       borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
                       color: styles.text.primary
                     }}
@@ -3159,7 +3159,7 @@ const Settings: React.FC = () => {
                     <div 
                       className="absolute px-3 py-2 rounded-lg text-xs font-medium whitespace-normal max-w-xs text-center opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none"
                       style={{
-                        backgroundColor: theme === 'dark' ? '#1e293b' : '#0f172a',
+                        backgroundColor: theme === 'dark' ? '#020617' : '#0f172a',
                         color: theme === 'dark' ? '#f1f5f9' : '#ffffff',
                         border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`,
                         boxShadow: theme === 'dark' 
@@ -3184,7 +3184,7 @@ const Settings: React.FC = () => {
                           transform: 'translateX(-50%)',
                           borderLeft: '4px solid transparent',
                           borderRight: '4px solid transparent',
-                          borderTop: `4px solid ${theme === 'dark' ? '#1e293b' : '#0f172a'}`
+                          borderTop: `4px solid ${theme === 'dark' ? '#020617' : '#0f172a'}`
                         }}
                       />
                     </div>
@@ -3197,7 +3197,7 @@ const Settings: React.FC = () => {
                     style={{
                       backgroundColor: newState.isFinal 
                         ? (theme === 'dark' ? '#166534' : '#14532d')
-                        : (theme === 'dark' ? '#1e293b' : '#ffffff'),
+                        : (theme === 'dark' ? '#020617' : '#ffffff'),
                       borderColor: newState.isFinal
                         ? (theme === 'dark' ? '#166534' : '#14532d')
                         : (theme === 'dark' ? 'rgba(148, 163, 184, 0.4)' : 'rgba(148, 163, 184, 0.5)'),
@@ -3294,7 +3294,7 @@ const Settings: React.FC = () => {
                             onBlur={() => handleSaveEditState(state.id)}
                             className="flex-1 px-2 py-1 rounded border text-sm font-medium"
                             style={{
-                              backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                              backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                               borderColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.5)' : 'rgba(37, 99, 235, 0.5)',
                               color: styles.text.primary
                             }}
@@ -3322,7 +3322,7 @@ const Settings: React.FC = () => {
                             <div 
                               className="absolute px-3 py-2 rounded-lg text-xs font-medium whitespace-normal max-w-xs text-center opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none"
                               style={{
-                                backgroundColor: theme === 'dark' ? '#1e293b' : '#0f172a',
+                                backgroundColor: theme === 'dark' ? '#020617' : '#0f172a',
                                 color: theme === 'dark' ? '#f1f5f9' : '#ffffff',
                                 border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`,
                                 boxShadow: theme === 'dark' 
@@ -3353,7 +3353,7 @@ const Settings: React.FC = () => {
                                   transform: 'translateY(-50%)',
                                   borderTop: '4px solid transparent',
                                   borderBottom: '4px solid transparent',
-                                  borderLeft: `4px solid ${theme === 'dark' ? '#1e293b' : '#0f172a'}`
+                                  borderLeft: `4px solid ${theme === 'dark' ? '#020617' : '#0f172a'}`
                                 }}
                               />
                             </div>
@@ -3366,7 +3366,7 @@ const Settings: React.FC = () => {
                             style={{
                               backgroundColor: state.isFinal 
                                         ? (theme === 'dark' ? '#166534' : '#14532d')
-                                        : (theme === 'dark' ? '#1e293b' : '#ffffff'),
+                                        : (theme === 'dark' ? '#020617' : '#ffffff'),
                                       borderColor: state.isFinal
                                         ? (theme === 'dark' ? '#166534' : '#14532d')
                                 : (theme === 'dark' ? 'rgba(148, 163, 184, 0.4)' : 'rgba(148, 163, 184, 0.5)'),
@@ -3595,7 +3595,7 @@ const Settings: React.FC = () => {
                             key={fromState.id}
                             style={{
                               backgroundColor: rowIndex % 2 === 0
-                                ? (theme === 'dark' ? '#1e293b' : '#ffffff')
+                                ? (theme === 'dark' ? '#020617' : '#ffffff')
                                 : (theme === 'dark' ? '#0f172a' : '#f8fafc')
                             }}
                           >
@@ -3627,7 +3627,7 @@ const Settings: React.FC = () => {
                                     style={{
                                       backgroundColor: (transitions[fromState.id]?.[toState.id] || false)
                                         ? (theme === 'dark' ? '#166534' : '#14532d')
-                                        : (theme === 'dark' ? '#1e293b' : '#ffffff'),
+                                        : (theme === 'dark' ? '#020617' : '#ffffff'),
                                       borderColor: (transitions[fromState.id]?.[toState.id] || false)
                                         ? (theme === 'dark' ? '#166534' : '#14532d')
                                         : (theme === 'dark' ? 'rgba(148, 163, 184, 0.4)' : 'rgba(148, 163, 184, 0.5)'),
@@ -3805,7 +3805,7 @@ const Settings: React.FC = () => {
                           key={user.id}
                           style={{
                             backgroundColor: index % 2 === 0
-                              ? (theme === 'dark' ? '#1e293b' : '#ffffff')
+                              ? (theme === 'dark' ? '#020617' : '#ffffff')
                               : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
                             borderBottom: index < settingsUsers.length - 1
                               ? `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.2)'}`
@@ -4120,7 +4120,7 @@ const Settings: React.FC = () => {
                     <div 
                       className="absolute top-full left-0 mt-2 p-5 rounded-xl border z-20"
                       style={{
-                        backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                        backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                         borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.35)',
                         boxShadow: theme === 'dark' 
                           ? '0 8px 24px rgba(0, 0, 0, 0.4)' 
@@ -4201,7 +4201,7 @@ const Settings: React.FC = () => {
                                 <div 
                                   className="absolute top-full left-0 mt-1 p-2 rounded-lg border"
                                   style={{
-                                    backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                                    backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                                     borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
                                     boxShadow: theme === 'dark' 
                                       ? '0 8px 24px rgba(0, 0, 0, 0.4)' 
@@ -4294,7 +4294,7 @@ const Settings: React.FC = () => {
                                 <div 
                                   className="absolute top-full mt-1 p-4 rounded-xl border max-h-80 overflow-y-auto"
                                   style={{
-                                    backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                                    backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                                     borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
                                     boxShadow: theme === 'dark' 
                                       ? '0 8px 24px rgba(0, 0, 0, 0.4)' 
@@ -4619,13 +4619,13 @@ const Settings: React.FC = () => {
                 boxShadow: theme === 'dark' 
                   ? '0 4px 12px rgba(0, 0, 0, 0.2)' 
                   : '0 4px 12px rgba(0, 0, 0, 0.08)',
-                backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff'
+                backgroundColor: theme === 'dark' ? '#020617' : '#ffffff'
               }}>
                 <table className="w-full" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
                   <thead>
                     <tr style={{
                       background: theme === 'dark' 
-                        ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)'
+                        ? 'linear-gradient(135deg, #0f172a 0%, #020617 100%)'
                         : 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)'
                     }}>
                       <th 
@@ -4847,7 +4847,7 @@ const Settings: React.FC = () => {
                                 className="group transition-all"
                                 style={{
                                   backgroundColor: index % 2 === 0
-                                    ? (theme === 'dark' ? '#1e293b' : '#ffffff')
+                                    ? (theme === 'dark' ? '#020617' : '#ffffff')
                                     : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
                                   borderBottom: index < sortedHolidays.length - 1
                                     ? `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.15)'}`
@@ -4862,7 +4862,7 @@ const Settings: React.FC = () => {
                                 }}
                                 onMouseLeave={(e) => {
                                   e.currentTarget.style.backgroundColor = index % 2 === 0
-                                    ? (theme === 'dark' ? '#1e293b' : '#ffffff')
+                                    ? (theme === 'dark' ? '#020617' : '#ffffff')
                                     : (theme === 'dark' ? '#0f172a' : '#f8fafc');
                                   e.currentTarget.style.transform = 'translateX(0)';
                                 }}
@@ -4980,7 +4980,7 @@ const Settings: React.FC = () => {
                 ? '0 4px 12px rgba(0, 0, 0, 0.25)' 
                 : '0 4px 12px rgba(0, 0, 0, 0.08)',
               background: theme === 'dark' 
-                ? 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)'
+                ? 'linear-gradient(135deg, #020617 0%, #0f172a 100%)'
                 : 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
             }}>
               <div className="flex items-center gap-3 mb-4">
@@ -5341,7 +5341,7 @@ const Settings: React.FC = () => {
                       placeholder="Buscar parámetro..."
                       className="w-full pl-10 pr-3 py-2 rounded-lg border text-sm"
                       style={{
-                        backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                        backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                         borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
                         color: styles.text.primary
                       }}
@@ -5666,19 +5666,19 @@ const Settings: React.FC = () => {
                             placeholder="Ej. Correo Adjuntos"
                             className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
                             style={{
-                              backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                              backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                               borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
                               color: styles.text.primary
                             }}
                             onFocus={(e) => {
                               e.target.style.borderColor = '#107ab4';
                               e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
+                              e.target.style.backgroundColor = theme === 'dark' ? '#020617' : '#f1f5f9';
                             }}
                             onBlur={(e) => {
                               e.target.style.borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)';
                               e.target.style.boxShadow = '';
-                              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
+                              e.target.style.backgroundColor = theme === 'dark' ? '#020617' : '#ffffff';
                             }}
                           />
                         </div>
@@ -5695,19 +5695,19 @@ const Settings: React.FC = () => {
                             rows={4}
                             className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md resize-none"
                             style={{
-                              backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                              backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                               borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
                               color: styles.text.primary
                             }}
                             onFocus={(e) => {
                               e.target.style.borderColor = '#107ab4';
                               e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
+                              e.target.style.backgroundColor = theme === 'dark' ? '#020617' : '#f1f5f9';
                             }}
                             onBlur={(e) => {
                               e.target.style.borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)';
                               e.target.style.boxShadow = '';
-                              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
+                              e.target.style.backgroundColor = theme === 'dark' ? '#020617' : '#ffffff';
                             }}
                           />
                         </div>
@@ -5722,19 +5722,19 @@ const Settings: React.FC = () => {
                             onChange={(e) => setNewParametro({ ...newParametro, estadoFinalId: e.target.value })}
                             className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md appearance-none cursor-pointer"
                             style={{
-                              backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                              backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                               borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
                               color: styles.text.primary
                             }}
                             onFocus={(e) => {
                               e.target.style.borderColor = '#107ab4';
                               e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
+                              e.target.style.backgroundColor = theme === 'dark' ? '#020617' : '#f1f5f9';
                             }}
                             onBlur={(e) => {
                               e.target.style.borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)';
                               e.target.style.boxShadow = '';
-                              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
+                              e.target.style.backgroundColor = theme === 'dark' ? '#020617' : '#ffffff';
                             }}
                           >
                             <option value="">Seleccione un estado final</option>
@@ -5761,19 +5761,19 @@ const Settings: React.FC = () => {
                             onChange={(e) => setNewParametro({ ...newParametro, tipo: e.target.value as TipoParametro })}
                             className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md appearance-none cursor-pointer"
                             style={{
-                              backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                              backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                               borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
                               color: styles.text.primary
                             }}
                             onFocus={(e) => {
                               e.target.style.borderColor = '#107ab4';
                               e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
+                              e.target.style.backgroundColor = theme === 'dark' ? '#020617' : '#f1f5f9';
                             }}
                             onBlur={(e) => {
                               e.target.style.borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)';
                               e.target.style.boxShadow = '';
-                              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
+                              e.target.style.backgroundColor = theme === 'dark' ? '#020617' : '#ffffff';
                             }}
                           >
                             <option value="texto">Texto</option>
@@ -5822,19 +5822,19 @@ const Settings: React.FC = () => {
                             placeholder="Ej. Adjuntar archivos, Correo del cliente, etc."
                             className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
                             style={{
-                              backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                              backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                               borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
                               color: styles.text.primary
                             }}
                             onFocus={(e) => {
                               e.target.style.borderColor = '#107ab4';
                               e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
+                              e.target.style.backgroundColor = theme === 'dark' ? '#020617' : '#f1f5f9';
                             }}
                             onBlur={(e) => {
                               e.target.style.borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)';
                               e.target.style.boxShadow = '';
-                              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
+                              e.target.style.backgroundColor = theme === 'dark' ? '#020617' : '#ffffff';
                             }}
                           />
                         </div>
@@ -5851,19 +5851,19 @@ const Settings: React.FC = () => {
                             placeholder="Ej. Ingrese su correo electrónico..."
                             className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
                             style={{
-                              backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                              backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                               borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
                               color: styles.text.primary
                             }}
                             onFocus={(e) => {
                               e.target.style.borderColor = '#107ab4';
                               e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
+                              e.target.style.backgroundColor = theme === 'dark' ? '#020617' : '#f1f5f9';
                             }}
                             onBlur={(e) => {
                               e.target.style.borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)';
                               e.target.style.boxShadow = '';
-                              e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
+                              e.target.style.backgroundColor = theme === 'dark' ? '#020617' : '#ffffff';
                             }}
                           />
                         </div>
@@ -5905,7 +5905,7 @@ const Settings: React.FC = () => {
                                       placeholder={`Opción ${index + 1}`}
                                       className="flex-1 px-3 py-2 border rounded-xl text-xs"
                                       style={{
-                                        backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                                        backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                                         borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
                                         color: styles.text.primary
                                       }}
@@ -5951,7 +5951,7 @@ const Settings: React.FC = () => {
                         {newParametro.tipo === 'adjuntar_archivo' ? (
                           <div className="border-2 border-dashed rounded-lg p-6 text-center" style={{
                             borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
-                            backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff'
+                            backgroundColor: theme === 'dark' ? '#020617' : '#ffffff'
                           }}>
                             <div className="flex flex-col items-center gap-2">
                               <div className="p-3 rounded-full" style={{
@@ -5992,7 +5992,7 @@ const Settings: React.FC = () => {
                             disabled
                             className="w-full px-3 py-2 rounded-lg border text-sm"
                             style={{
-                              backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                              backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                               borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
                               color: styles.text.tertiary,
                               cursor: 'not-allowed'
@@ -6005,7 +6005,7 @@ const Settings: React.FC = () => {
                             disabled
                             className="w-full px-3 py-2 rounded-lg border text-sm"
                             style={{
-                              backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                              backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                               borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
                               color: styles.text.tertiary,
                               cursor: 'not-allowed'
@@ -6018,7 +6018,7 @@ const Settings: React.FC = () => {
                             disabled
                             className="w-full px-3 py-2 rounded-lg border text-sm"
                             style={{
-                              backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                              backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                               borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
                               color: styles.text.tertiary,
                               cursor: 'not-allowed'
@@ -6030,7 +6030,7 @@ const Settings: React.FC = () => {
                             disabled
                             className="w-full px-3 py-2 rounded-lg border text-sm"
                             style={{
-                              backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                              backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                               borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
                               color: styles.text.tertiary,
                               cursor: 'not-allowed'
@@ -6058,7 +6058,7 @@ const Settings: React.FC = () => {
                             disabled
                             className="w-full px-3 py-2 rounded-lg border text-sm"
                             style={{
-                              backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                              backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                               borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
                               color: styles.text.tertiary,
                               cursor: 'not-allowed'
@@ -6078,7 +6078,7 @@ const Settings: React.FC = () => {
                   {/* Footer fijo con botones */}
                   <div className="flex gap-3 justify-end p-6 border-t flex-shrink-0" style={{
                     borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)',
-                    backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff'
+                    backgroundColor: theme === 'dark' ? '#020617' : '#ffffff'
                   }}>
                     <button
                       onClick={handleCloseParametroModal}

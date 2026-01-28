@@ -639,7 +639,7 @@ const GestionAgentes: React.FC = () => {
       minHeight: '100vh'
     },
     card: {
-      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+      backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
       borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.2)',
       color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
     },
@@ -665,7 +665,11 @@ const GestionAgentes: React.FC = () => {
           />
         </div>
       )}
-      <div className="p-4 rounded-xl border flex-shrink-0 flex flex-col gap-3" style={{...styles.card}}>
+      <div className="p-4 rounded-xl border flex-shrink-0 flex flex-col gap-3" style={{
+        backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
+        borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.2)',
+        color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
+      }}>
          <div className="flex items-center justify-between gap-3">
            <div className="flex items-center gap-3">
            <div className="flex items-center gap-1.5">
@@ -715,7 +719,7 @@ const GestionAgentes: React.FC = () => {
                  placeholder="Buscar agente por nombre..."
                  className="w-full pl-10 pr-10 py-2 text-xs rounded-lg border transition-all focus:outline-none"
                  style={{
-                   backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                   backgroundColor: theme === 'dark' ? '#020617' : '#f8fafc',
                    borderColor: showSuggestions ? 'rgba(200, 21, 27, 0.4)' : 'rgba(148, 163, 184, 0.3)',
                    color: styles.text.primary
                  }}
@@ -742,7 +746,7 @@ const GestionAgentes: React.FC = () => {
                  ref={suggestionsRef}
                  className="absolute z-50 w-full mt-1 rounded-lg border shadow-xl max-h-48 overflow-y-auto"
                  style={{
-                   backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+                   backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                    borderColor: 'rgba(148, 163, 184, 0.3)',
                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)'
                  }}
@@ -782,7 +786,7 @@ const GestionAgentes: React.FC = () => {
               onClick={handleExportCsv}
               className="px-3 py-2 text-xs font-semibold rounded-lg border transition-all flex items-center gap-2"
               style={{
-                backgroundColor: 'transparent',
+                backgroundColor: theme === 'dark' ? '#020617' : '#f8fafc',
                 borderColor: 'rgba(148, 163, 184, 0.3)',
                 color: styles.text.secondary,
               }}
@@ -819,7 +823,8 @@ const GestionAgentes: React.FC = () => {
                        borderColor: 'rgba(34, 197, 94, 0.4)',
                        color: '#22c55e'
                      } : {
-                       backgroundColor: 'transparent',
+                       backgroundColor: theme === 'dark' ? '#020617' : '#f8fafc',
+                       borderColor: 'rgba(148, 163, 184, 0.3)',
                        color: styles.text.secondary
                      }),
                      animation: `fadeInSlide 0.3s ease-out ${idx * 0.04}s both`,
@@ -980,7 +985,7 @@ const GestionAgentes: React.FC = () => {
                         className="hover:opacity-90 transition-opacity"
                         style={{
                           backgroundColor: index % 2 === 0 
-                            ? (theme === 'dark' ? '#1e293b' : '#ffffff')
+                            ? (theme === 'dark' ? '#020617' : '#ffffff')
                             : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
                           borderBottom: index < filteredAgentes.length - 1 ? '1px solid rgba(148, 163, 184, 0.1)' : 'none'
                         }}

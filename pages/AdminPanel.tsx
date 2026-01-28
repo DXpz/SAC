@@ -1160,7 +1160,7 @@ const AdminPanel: React.FC = () => {
       minHeight: '100vh'
     },
     card: {
-      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+      backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
       borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.2)',
       color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
     },
@@ -1178,7 +1178,7 @@ const AdminPanel: React.FC = () => {
         <div 
           className="recharts-custom-tooltip"
           style={{
-            backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+            backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
             border: `1px solid ${styles.card.borderColor}`,
             borderRadius: '8px',
             padding: '12px',
@@ -1674,7 +1674,7 @@ const AdminPanel: React.FC = () => {
           }}
         >
           <div className="p-4 border-b" style={{
-            backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+            backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc',
             borderColor: 'rgba(148, 163, 184, 0.2)'
           }}>
             <div className="flex items-center justify-between">
@@ -1755,7 +1755,7 @@ const AdminPanel: React.FC = () => {
           }}
         >
           <div className="p-4 border-b" style={{
-            backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+            backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc',
             borderColor: 'rgba(148, 163, 184, 0.2)'
           }}>
             <h3 className="text-sm font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>
@@ -1818,7 +1818,7 @@ const AdminPanel: React.FC = () => {
           }}
         >
           <div className="p-4 border-b" style={{
-            backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+            backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc',
             borderColor: 'rgba(148, 163, 184, 0.2)'
           }}>
             <div className="flex items-center justify-between">
@@ -1899,7 +1899,7 @@ const AdminPanel: React.FC = () => {
           }}
         >
           <div className="p-4 border-b" style={{
-            backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+            backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc',
             borderColor: 'rgba(148, 163, 184, 0.2)'
           }}>
             <div className="flex items-center justify-between">
@@ -1970,7 +1970,7 @@ const AdminPanel: React.FC = () => {
           }}
         >
           <div className="p-4 border-b" style={{
-            backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+            backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc',
             borderColor: 'rgba(148, 163, 184, 0.2)'
           }}>
             <div className="flex items-center justify-between">
@@ -2083,7 +2083,7 @@ const AdminPanel: React.FC = () => {
           }}
         >
           <div className="p-4 border-b" style={{
-            backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+            backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc',
             borderColor: 'rgba(148, 163, 184, 0.2)'
           }}>
             <div className="flex items-center justify-between">
@@ -2163,7 +2163,7 @@ const AdminPanel: React.FC = () => {
           }}
         >
           <div className="p-4 border-b" style={{
-            backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+            backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc',
             borderColor: 'rgba(148, 163, 184, 0.2)'
           }}>
             <div className="flex items-center justify-between">

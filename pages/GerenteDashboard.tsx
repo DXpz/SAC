@@ -789,7 +789,7 @@ const GerenteDashboard: React.FC = () => {
           <div 
             className="absolute bottom-full left-0 mb-2 px-3 py-2 text-xs rounded-lg shadow-lg whitespace-nowrap z-50"
             style={{
-              backgroundColor: theme === 'dark' ? '#1e293b' : '#0f172a',
+              backgroundColor: theme === 'dark' ? '#020617' : '#0f172a',
               color: '#ffffff',
               border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
             }}
@@ -797,7 +797,7 @@ const GerenteDashboard: React.FC = () => {
             {tooltip}
             <div 
               className="absolute top-full left-4 -mt-1 border-4 border-transparent"
-              style={{borderTopColor: theme === 'dark' ? '#1e293b' : '#0f172a'}}
+              style={{borderTopColor: theme === 'dark' ? '#020617' : '#0f172a'}}
             ></div>
           </div>
         )}
@@ -812,7 +812,7 @@ const GerenteDashboard: React.FC = () => {
       minHeight: '100vh'
     },
     card: {
-      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+      backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
       borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.2)',
       color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
     },
@@ -855,7 +855,7 @@ const GerenteDashboard: React.FC = () => {
                   }}
                   onMouseEnter={(e) => {
                     if (periodFilter !== period) {
-                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f8fafc';
+                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#020617' : '#f8fafc';
                     }
                   }}
                   onMouseLeave={(e) => {

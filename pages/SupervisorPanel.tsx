@@ -600,7 +600,7 @@ const SupervisorPanel: React.FC = () => {
       minHeight: '100vh'
     },
     card: {
-      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+      backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
       borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.2)',
       color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
     },
@@ -610,7 +610,7 @@ const SupervisorPanel: React.FC = () => {
       tertiary: theme === 'dark' ? '#94a3b8' : '#64748b'
     },
     input: {
-      backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+      backgroundColor: theme === 'dark' ? '#020617' : '#f8fafc',
       borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.2)',
       color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
     }
@@ -650,7 +650,11 @@ const SupervisorPanel: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 p-3 rounded-lg border" style={{...styles.card}}>
+      <div className="flex flex-wrap items-center gap-3 p-3 rounded-lg border" style={{
+        backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
+        borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.2)',
+        color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
+      }}>
           <div className="flex items-center gap-1.5">
             <Filter className="w-3.5 h-3.5" style={{color: styles.text.tertiary}} />
             <span className="text-[10px] font-semibold uppercase tracking-wide" style={{color: styles.text.secondary}}>Tiempo</span>
@@ -671,7 +675,7 @@ const SupervisorPanel: React.FC = () => {
               }}
               onMouseEnter={(e) => {
                 if (periodFilter !== 'hoy') {
-                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f8fafc';
+                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f8fafc';
                 }
               }}
               onMouseLeave={(e) => {
@@ -698,7 +702,7 @@ const SupervisorPanel: React.FC = () => {
               }}
               onMouseEnter={(e) => {
                 if (periodFilter !== 'semana') {
-                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f8fafc';
+                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f8fafc';
                 }
               }}
               onMouseLeave={(e) => {
@@ -725,7 +729,7 @@ const SupervisorPanel: React.FC = () => {
               }}
               onMouseEnter={(e) => {
                 if (periodFilter !== 'mes') {
-                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f8fafc';
+                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f8fafc';
                 }
               }}
               onMouseLeave={(e) => {
@@ -758,7 +762,7 @@ const SupervisorPanel: React.FC = () => {
               }}
               onMouseEnter={(e) => {
                 if (typeFilter !== 'todos') {
-                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f8fafc';
+                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f8fafc';
                 }
               }}
               onMouseLeave={(e) => {
@@ -786,7 +790,7 @@ const SupervisorPanel: React.FC = () => {
               }}
               onMouseEnter={(e) => {
                 if (typeFilter !== 'criticos') {
-                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f8fafc';
+                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f8fafc';
                 }
               }}
               onMouseLeave={(e) => {
@@ -814,7 +818,7 @@ const SupervisorPanel: React.FC = () => {
               }}
               onMouseEnter={(e) => {
                 if (typeFilter !== 'vencidos') {
-                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f8fafc';
+                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f8fafc';
                 }
               }}
               onMouseLeave={(e) => {
@@ -838,7 +842,7 @@ const SupervisorPanel: React.FC = () => {
             color: styles.text.secondary
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f8fafc';
+            e.currentTarget.style.backgroundColor = theme === 'dark' ? '#020617' : '#f8fafc';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = 'transparent';
@@ -903,7 +907,7 @@ const SupervisorPanel: React.FC = () => {
               onMouseEnter={(e) => {
                 e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
                 e.currentTarget.style.transform = 'translateY(-1px)';
-                e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f8fafc';
+                e.currentTarget.style.backgroundColor = theme === 'dark' ? '#020617' : '#f8fafc';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.boxShadow = '';
@@ -925,7 +929,7 @@ const SupervisorPanel: React.FC = () => {
               onMouseEnter={(e) => {
                 e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
                 e.currentTarget.style.transform = 'translateY(-1px)';
-                e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f8fafc';
+                e.currentTarget.style.backgroundColor = theme === 'dark' ? '#020617' : '#f8fafc';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.boxShadow = '';
@@ -1528,9 +1532,8 @@ const SupervisorPanel: React.FC = () => {
               </button>
             )}
           </div>
-          <div className="rounded-2xl border shadow-sm p-5" style={{...styles.card}}>
-            {agentes.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {agentes.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {(agentFilter !== 'todos' 
                   ? agentes.filter(a => (a.idAgente || a.id_agente || a.id) === agentFilter)
                   : agentes // Mostrar TODOS los agentes, sin filtros
@@ -1655,30 +1658,29 @@ const SupervisorPanel: React.FC = () => {
                     </div>
                   );
                 })}
-              </div>
-            ) : (
-              <div className="p-6 text-center">
-                <p className="font-medium text-sm" style={{color: styles.text.tertiary}}>No hay agentes registrados</p>
-              </div>
-            )}
-            {agentes.length > 4 && (
-              <button 
-                onClick={() => navigate('/app/agentes')}
-                className="w-full mt-5 py-2.5 text-sm font-semibold border rounded-xl transition-all"
-                style={{color: styles.text.tertiary, borderColor: 'rgba(148, 163, 184, 0.3)'}}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f8fafc';
-                  e.currentTarget.style.color = styles.text.secondary;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = styles.text.tertiary;
-                }}
-              >
-                Ver todos ({agentes.length} agentes)
-              </button>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="p-6 text-center">
+              <p className="font-medium text-sm" style={{color: styles.text.tertiary}}>No hay agentes registrados</p>
+            </div>
+          )}
+          {agentes.length > 4 && (
+            <button 
+              onClick={() => navigate('/app/agentes')}
+              className="w-full mt-5 py-2.5 text-sm font-semibold border rounded-xl transition-all"
+              style={{color: styles.text.tertiary, borderColor: 'rgba(148, 163, 184, 0.3)'}}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f8fafc';
+                e.currentTarget.style.color = styles.text.secondary;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = styles.text.tertiary;
+              }}
+            >
+              Ver todos ({agentes.length} agentes)
+            </button>
+          )}
         </div>
       </div>
     </div>

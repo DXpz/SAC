@@ -347,7 +347,7 @@ const NuevoCaso: React.FC = () => {
       minHeight: '100vh'
     },
     card: {
-      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
+      backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
       borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.2)',
       color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
     },
@@ -357,7 +357,7 @@ const NuevoCaso: React.FC = () => {
       tertiary: theme === 'dark' ? '#94a3b8' : '#64748b'
     },
     input: {
-      backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+      backgroundColor: theme === 'dark' ? '#020617' : '#f8fafc',
       borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.2)',
       color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
     }
@@ -414,7 +414,7 @@ const NuevoCaso: React.FC = () => {
                         setShowClienteDropdown(true);
                         e.target.style.borderColor = 'var(--color-accent-blue)';
                         e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                        e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
+                        e.target.style.backgroundColor = theme === 'dark' ? '#020617' : '#ffffff';
                       }}
                       onBlur={(e) => {
                         e.target.style.borderColor = styles.input.borderColor;
@@ -521,7 +521,7 @@ const NuevoCaso: React.FC = () => {
                     onFocus={(e) => {
                       e.target.style.borderColor = 'var(--color-accent-blue)';
                       e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                      e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
+                      e.target.style.backgroundColor = theme === 'dark' ? '#020617' : '#f1f5f9';
                     }}
                     onBlur={(e) => {
                       e.target.style.borderColor = styles.input.borderColor;
@@ -546,7 +546,7 @@ const NuevoCaso: React.FC = () => {
                       onFocus={(e) => {
                         e.target.style.borderColor = 'var(--color-accent-blue)';
                         e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                        e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
+                        e.target.style.backgroundColor = theme === 'dark' ? '#020617' : '#ffffff';
                       }}
                       onBlur={(e) => {
                         e.target.style.borderColor = styles.input.borderColor;
@@ -569,7 +569,7 @@ const NuevoCaso: React.FC = () => {
                       onFocus={(e) => {
                         e.target.style.borderColor = 'var(--color-accent-blue)';
                         e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                        e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
+                        e.target.style.backgroundColor = theme === 'dark' ? '#020617' : '#ffffff';
                       }}
                       onBlur={(e) => {
                         e.target.style.borderColor = styles.input.borderColor;
@@ -594,7 +594,7 @@ const NuevoCaso: React.FC = () => {
                     onFocus={(e) => {
                       e.target.style.borderColor = 'var(--color-accent-blue)';
                       e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                      e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
+                      e.target.style.backgroundColor = theme === 'dark' ? '#020617' : '#f1f5f9';
                     }}
                     onBlur={(e) => {
                       e.target.style.borderColor = styles.input.borderColor;
@@ -618,7 +618,7 @@ const NuevoCaso: React.FC = () => {
                       color: newCase.contactChannel ? styles.text.secondary : styles.text.tertiary
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
+                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#020617' : '#ffffff';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = styles.input.backgroundColor;
@@ -644,7 +644,7 @@ const NuevoCaso: React.FC = () => {
                       color: newCase.notificationChannel ? styles.text.secondary : styles.text.tertiary
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
+                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#020617' : '#ffffff';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = styles.input.backgroundColor;
@@ -680,7 +680,7 @@ const NuevoCaso: React.FC = () => {
                       color: newCase.pais ? styles.text.secondary : styles.text.tertiary
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
+                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#020617' : '#ffffff';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = styles.input.backgroundColor;
@@ -712,7 +712,7 @@ const NuevoCaso: React.FC = () => {
                           <div 
                             className="absolute left-full ml-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-normal opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none"
                             style={{
-                              backgroundColor: theme === 'dark' ? '#1e293b' : '#0f172a',
+                              backgroundColor: theme === 'dark' ? '#020617' : '#0f172a',
                               color: theme === 'dark' ? '#f1f5f9' : '#ffffff',
                               border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`,
                               boxShadow: theme === 'dark' 
@@ -747,7 +747,7 @@ const NuevoCaso: React.FC = () => {
                         ...styles.input
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#ffffff';
+                        e.currentTarget.style.backgroundColor = theme === 'dark' ? '#020617' : '#ffffff';
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.backgroundColor = styles.input.backgroundColor;
@@ -755,7 +755,7 @@ const NuevoCaso: React.FC = () => {
                       onFocus={(e) => {
                         e.target.style.borderColor = 'var(--color-accent-blue)';
                         e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                        e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
+                        e.target.style.backgroundColor = theme === 'dark' ? '#020617' : '#f1f5f9';
                       }}
                       onBlur={(e) => {
                         e.target.style.borderColor = styles.input.borderColor;
@@ -839,7 +839,7 @@ const NuevoCaso: React.FC = () => {
                                   <div 
                                     className="absolute right-full mr-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-normal opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all z-[100] pointer-events-none"
                                     style={{
-                                      backgroundColor: theme === 'dark' ? '#1e293b' : '#0f172a',
+                                      backgroundColor: theme === 'dark' ? '#020617' : '#0f172a',
                                       color: theme === 'dark' ? '#f1f5f9' : '#ffffff',
                                       border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`,
                                       boxShadow: theme === 'dark' 
@@ -857,7 +857,7 @@ const NuevoCaso: React.FC = () => {
                                       style={{
                                         borderTop: '4px solid transparent',
                                         borderBottom: '4px solid transparent',
-                                        borderLeft: `4px solid ${theme === 'dark' ? '#1e293b' : '#0f172a'}`
+                                        borderLeft: `4px solid ${theme === 'dark' ? '#020617' : '#0f172a'}`
                                       }}
                                     />
                                   </div>
@@ -886,7 +886,7 @@ const NuevoCaso: React.FC = () => {
                     onFocus={(e) => {
                       e.target.style.borderColor = 'var(--color-accent-blue)';
                       e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                      e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
+                      e.target.style.backgroundColor = theme === 'dark' ? '#020617' : '#f1f5f9';
                     }}
                     onBlur={(e) => {
                       e.target.style.borderColor = styles.input.borderColor;
@@ -911,7 +911,7 @@ const NuevoCaso: React.FC = () => {
                     onFocus={(e) => {
                       e.target.style.borderColor = 'var(--color-accent-blue)';
                       e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                      e.target.style.backgroundColor = theme === 'dark' ? '#1e293b' : '#f1f5f9';
+                      e.target.style.backgroundColor = theme === 'dark' ? '#020617' : '#f1f5f9';
                     }}
                     onBlur={(e) => {
                       e.target.style.borderColor = styles.input.borderColor;
