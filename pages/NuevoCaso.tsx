@@ -15,6 +15,7 @@ const NuevoCaso: React.FC = () => {
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [userCountry, setUserCountry] = useState<'SV' | 'GT' | null>(null);
   const { theme } = useTheme();
   
   const [newCase, setNewCase] = useState({
@@ -33,8 +34,98 @@ const NuevoCaso: React.FC = () => {
 
   const navigate = useNavigate();
 
+  // Función para obtener y normalizar el país del usuario
+  const getUserCountry = async (): Promise<'SV' | 'GT' | null> => {
+    try {
+      const currentUser = api.getUser();
+      const userRole = currentUser?.role;
+      
+      // Admin ve todos los clientes, no necesita filtrar
+      if (userRole === 'ADMIN' || userRole === 'ADMINISTRADOR') {
+        return null;
+      }
+      
+      let pais = currentUser?.pais || '';
+      
+      // Si el país es string vacío, tratarlo como undefined
+      if (pais && String(pais).trim() !== '') {
+        const paisNormalizado = String(pais).trim().toUpperCase();
+        
+        if (paisNormalizado === 'SV' || paisNormalizado === 'EL_SALVADOR' || paisNormalizado === 'EL SALVADOR' || paisNormalizado.includes('SALVADOR')) {
+          return 'SV';
+        }
+        if (paisNormalizado === 'GT' || paisNormalizado === 'GUATEMALA' || paisNormalizado.includes('GUATEMALA')) {
+          return 'GT';
+        }
+      }
+      
+      // Fallback: leer desde localStorage directamente
+      const userStr = localStorage.getItem('intelfon_user');
+      if (!userStr) {
+        return null;
+      }
+      
+      const user = JSON.parse(userStr);
+      pais = user.pais || user.country || '';
+      
+      // Si el país es string vacío, intentar obtenerlo desde la lista de usuarios
+      if (!pais || String(pais).trim() === '') {
+        try {
+          const usuarios = await api.getUsuarios();
+          const usuarioCompleto = usuarios.find((u: any) => 
+            u.id === user.id || 
+            u.email === user.email ||
+            (u.nombre && user.name && u.nombre.toUpperCase() === user.name.toUpperCase())
+          );
+          
+          if (usuarioCompleto) {
+            pais = usuarioCompleto.pais || usuarioCompleto.country || usuarioCompleto.país || '';
+            
+            // Si encontramos el país, actualizar el usuario en localStorage
+            if (pais && String(pais).trim() !== '') {
+              const updatedUser = { ...user, pais: pais };
+              localStorage.setItem('intelfon_user', JSON.stringify(updatedUser));
+            }
+          }
+        } catch (error) {
+          console.error('[NuevoCaso] Error obteniendo lista de usuarios:', error);
+        }
+      }
+      
+      // Validar que el país no sea string vacío
+      if (!pais || String(pais).trim() === '') {
+        return null;
+      }
+      
+      // Normalizar a códigos de 2 letras
+      const paisNormalizado = String(pais).trim().toUpperCase();
+      
+      if (paisNormalizado === 'SV' || 
+          paisNormalizado === 'EL_SALVADOR' || 
+          paisNormalizado === 'EL SALVADOR' ||
+          paisNormalizado.includes('SALVADOR')) {
+        return 'SV';
+      }
+      
+      if (paisNormalizado === 'GT' || 
+          paisNormalizado === 'GUATEMALA' ||
+          paisNormalizado.includes('GUATEMALA')) {
+        return 'GT';
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('[NuevoCaso] Error obteniendo país del usuario:', error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     const initializeData = async () => {
+      // Cargar país del usuario primero
+      const country = await getUserCountry();
+      setUserCountry(country);
+      
       await loadClientes();
       await loadCategorias();
       // Guardar hora de actualización para mostrar en el header
@@ -74,20 +165,65 @@ const NuevoCaso: React.FC = () => {
     setCategorias(data);
   };
 
-  // Filtrar clientes según el término de búsqueda
-  const filteredClientes = useMemo(() => {
-    if (!clienteSearchTerm.trim()) {
-      return clientes.slice(0, 50);
+  // Normalizar país del cliente para comparación
+  const normalizeClienteCountry = (pais?: string): 'SV' | 'GT' | null => {
+    if (!pais || String(pais).trim() === '') {
+      return null;
     }
-    const term = clienteSearchTerm.toLowerCase();
-    return clientes.filter(cliente => 
-      cliente.idCliente.toLowerCase().includes(term) ||
-      cliente.nombreEmpresa.toLowerCase().includes(term) ||
-      cliente.contactoPrincipal.toLowerCase().includes(term) ||
-      cliente.email.toLowerCase().includes(term) ||
-      cliente.telefono.includes(term)
-    );
-  }, [clientes, clienteSearchTerm]);
+    
+    const paisNormalizado = String(pais).trim().toUpperCase();
+    
+    if (paisNormalizado === 'SV' || 
+        paisNormalizado === 'EL_SALVADOR' || 
+        paisNormalizado === 'EL SALVADOR' ||
+        paisNormalizado.includes('SALVADOR')) {
+      return 'SV';
+    }
+    
+    if (paisNormalizado === 'GT' || 
+        paisNormalizado === 'GUATEMALA' ||
+        paisNormalizado.includes('GUATEMALA')) {
+      return 'GT';
+    }
+    
+    return null;
+  };
+
+  // Filtrar clientes según el término de búsqueda y el país del usuario
+  const filteredClientes = useMemo(() => {
+    let clientesFiltrados = clientes;
+    
+    // Si el usuario tiene país definido (no es admin), filtrar clientes por país
+    if (userCountry) {
+      clientesFiltrados = clientes.filter(cliente => {
+        const clientePais = normalizeClienteCountry(cliente.pais);
+        return clientePais === userCountry;
+      });
+      
+      console.log('[NuevoCaso] Filtrando clientes por país del usuario:', {
+        userCountry,
+        totalClientes: clientes.length,
+        clientesFiltrados: clientesFiltrados.length
+      });
+    } else {
+      // Admin ve todos los clientes
+      console.log('[NuevoCaso] Admin detectado, mostrando todos los clientes');
+    }
+    
+    // Aplicar filtro de búsqueda si hay término
+    if (clienteSearchTerm.trim()) {
+      const term = clienteSearchTerm.toLowerCase();
+      clientesFiltrados = clientesFiltrados.filter(cliente => 
+        cliente.idCliente.toLowerCase().includes(term) ||
+        cliente.nombreEmpresa.toLowerCase().includes(term) ||
+        cliente.contactoPrincipal.toLowerCase().includes(term) ||
+        cliente.email.toLowerCase().includes(term) ||
+        cliente.telefono.includes(term)
+      );
+    }
+    
+    return clientesFiltrados.slice(0, 50);
+  }, [clientes, clienteSearchTerm, userCountry]);
 
   const normalizeCountryCode = (value?: string) => {
     if (!value) return '';
@@ -532,7 +668,7 @@ const NuevoCaso: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>
-                    País del Caso <span className="text-red-500">*</span>
+                    Empresa del Caso <span className="text-red-500">*</span>
                   </label>
                   <select
                     required
@@ -550,7 +686,7 @@ const NuevoCaso: React.FC = () => {
                       e.currentTarget.style.backgroundColor = styles.input.backgroundColor;
                     }}
                   >
-                    <option value="" disabled>Seleccionar país</option>
+                    <option value="" disabled>Seleccionar empresa</option>
                     <option value="SV">SV</option>
                     <option value="GT">GT</option>
                   </select>

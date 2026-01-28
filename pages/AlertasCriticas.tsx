@@ -684,7 +684,7 @@ const AlertasCriticas: React.FC = () => {
                       <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>ID Caso</th>
                       <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Asunto</th>
                       <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Cliente</th>
-                      <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>País</th>
+                      <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Empresa</th>
                       <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Agente</th>
                       <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Prioridad</th>
                       <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Estado</th>
@@ -992,7 +992,7 @@ const AlertasCriticas: React.FC = () => {
                     
                     {/* Contenido */}
                     <div className="p-4 space-y-3">
-                      {/* Cliente, País y Agente */}
+                      {/* Cliente, Empresa y Agente */}
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>Cliente:</span>
@@ -1001,7 +1001,7 @@ const AlertasCriticas: React.FC = () => {
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>País:</span>
+                          <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>Empresa:</span>
                           {(() => {
                             const pais = (caso as any).pais || caso.cliente?.pais || '';
                             const paisNormalizado = pais ? String(pais).trim().toUpperCase() : '';

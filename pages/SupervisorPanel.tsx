@@ -986,17 +986,17 @@ const SupervisorPanel: React.FC = () => {
             className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
             style={{
               ...styles.card,
-              borderColor: 'rgba(59, 130, 246, 0.25)',
-              backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.05)' : 'rgba(59, 130, 246, 0.02)'
+              borderColor: 'rgba(71, 85, 105, 0.3)',
+              backgroundColor: styles.card.backgroundColor
             }}
             onMouseEnter={(e) => {
               handleTooltipEnter('casos-abiertos');
-              e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+              e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
               e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
             }}
             onMouseLeave={(e) => {
               handleTooltipLeave();
-              e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.25)';
+              e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.3)';
               e.currentTarget.style.boxShadow = '';
             }}
           >
@@ -1025,19 +1025,17 @@ const SupervisorPanel: React.FC = () => {
             className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
             style={{
               ...styles.card,
-              borderColor: casosVencidosCount > 0 ? 'rgba(220, 38, 38, 0.25)' : 'rgba(148, 163, 184, 0.2)',
-              backgroundColor: casosVencidosCount > 0 
-                ? (theme === 'dark' ? 'rgba(220, 38, 38, 0.05)' : 'rgba(220, 38, 38, 0.02)')
-                : styles.card.backgroundColor
+              borderColor: 'rgba(71, 85, 105, 0.3)',
+              backgroundColor: styles.card.backgroundColor
             }}
             onMouseEnter={(e) => {
               handleTooltipEnter('casos-vencidos');
-              e.currentTarget.style.borderColor = casosVencidosCount > 0 ? 'rgba(220, 38, 38, 0.4)' : 'rgba(148, 163, 184, 0.3)';
+              e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
               e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
             }}
             onMouseLeave={(e) => {
               handleTooltipLeave();
-              e.currentTarget.style.borderColor = casosVencidosCount > 0 ? 'rgba(220, 38, 38, 0.25)' : 'rgba(148, 163, 184, 0.2)';
+              e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.3)';
               e.currentTarget.style.boxShadow = '';
             }}
           >
@@ -1066,17 +1064,17 @@ const SupervisorPanel: React.FC = () => {
             className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
             style={{
               ...styles.card,
-              borderColor: 'rgba(59, 130, 246, 0.25)',
-              backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.05)' : 'rgba(59, 130, 246, 0.02)'
+              borderColor: 'rgba(71, 85, 105, 0.3)',
+              backgroundColor: styles.card.backgroundColor
             }}
             onMouseEnter={(e) => {
               handleTooltipEnter('casos-totales');
-              e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+              e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
               e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
             }}
             onMouseLeave={(e) => {
               handleTooltipLeave();
-              e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.25)';
+              e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.3)';
               e.currentTarget.style.boxShadow = '';
             }}
           >
@@ -1105,19 +1103,17 @@ const SupervisorPanel: React.FC = () => {
             className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
             style={{
               ...styles.card,
-              borderColor: casosCriticos.length > 0 ? 'rgba(200, 21, 27, 0.25)' : 'rgba(148, 163, 184, 0.2)',
-              backgroundColor: casosCriticos.length > 0 
-                ? (theme === 'dark' ? 'rgba(200, 21, 27, 0.05)' : 'rgba(200, 21, 27, 0.02)')
-                : styles.card.backgroundColor
+              borderColor: 'rgba(71, 85, 105, 0.3)',
+              backgroundColor: styles.card.backgroundColor
             }}
             onMouseEnter={(e) => {
               setShowTooltip('casos-criticos');
-              e.currentTarget.style.borderColor = casosCriticosCount > 0 ? 'rgba(200, 21, 27, 0.4)' : 'rgba(148, 163, 184, 0.3)';
+              e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
               e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
             }}
             onMouseLeave={(e) => {
               setShowTooltip(null);
-              e.currentTarget.style.borderColor = casosCriticosCount > 0 ? 'rgba(200, 21, 27, 0.25)' : 'rgba(148, 163, 184, 0.2)';
+              e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.3)';
               e.currentTarget.style.boxShadow = '';
             }}
           >
@@ -1146,31 +1142,17 @@ const SupervisorPanel: React.FC = () => {
             className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
             style={{
               ...styles.card,
-              borderColor: slaPromedio === null 
-                ? 'rgba(148, 163, 184, 0.2)'
-                : slaPromedio >= 90 
-                  ? 'rgba(34, 197, 94, 0.25)' 
-                  : slaPromedio >= 70 
-                    ? 'rgba(245, 158, 11, 0.25)'
-                    : 'rgba(200, 21, 27, 0.25)',
-              backgroundColor: slaPromedio === null
-                ? styles.card.backgroundColor
-                : slaPromedio >= 90
-                  ? (theme === 'dark' ? 'rgba(34, 197, 94, 0.05)' : 'rgba(34, 197, 94, 0.02)')
-                  : slaPromedio >= 70
-                    ? (theme === 'dark' ? 'rgba(245, 158, 11, 0.05)' : 'rgba(245, 158, 11, 0.02)')
-                    : (theme === 'dark' ? 'rgba(200, 21, 27, 0.05)' : 'rgba(200, 21, 27, 0.02)')
+              borderColor: 'rgba(71, 85, 105, 0.3)',
+              backgroundColor: styles.card.backgroundColor
             }}
             onMouseEnter={(e) => {
               handleTooltipEnter('sla-promedio');
-              const currentBorder = e.currentTarget.style.borderColor;
-              e.currentTarget.style.borderColor = currentBorder.replace('0.25', '0.4').replace('0.2', '0.3');
+              e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
               e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
             }}
             onMouseLeave={(e) => {
               handleTooltipLeave();
-              const currentBorder = e.currentTarget.style.borderColor;
-              e.currentTarget.style.borderColor = currentBorder.replace('0.4', '0.25').replace('0.3', '0.2');
+              e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.3)';
               e.currentTarget.style.boxShadow = '';
             }}
           >
@@ -1217,17 +1199,17 @@ const SupervisorPanel: React.FC = () => {
             className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
             style={{
               ...styles.card,
-              borderColor: 'rgba(34, 197, 94, 0.25)',
-              backgroundColor: theme === 'dark' ? 'rgba(34, 197, 94, 0.05)' : 'rgba(34, 197, 94, 0.02)'
+              borderColor: 'rgba(71, 85, 105, 0.3)',
+              backgroundColor: styles.card.backgroundColor
             }}
             onMouseEnter={(e) => {
               handleTooltipEnter('agentes-online');
-              e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.4)';
+              e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
               e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
             }}
             onMouseLeave={(e) => {
               handleTooltipLeave();
-              e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.25)';
+              e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.3)';
               e.currentTarget.style.boxShadow = '';
             }}
           >
@@ -1256,7 +1238,7 @@ const SupervisorPanel: React.FC = () => {
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg" style={{backgroundColor: 'rgba(200, 21, 27, 0.1)'}}>
+              <div className="p-2 rounded-lg" style={{backgroundColor: theme === 'dark' ? '#020617' : 'rgba(200, 21, 27, 0.1)'}}>
                 <AlertCircle className="w-4 h-4" style={{color: '#f87171'}} />
               </div>
               <div>
@@ -1500,7 +1482,7 @@ const SupervisorPanel: React.FC = () => {
         <div className="space-y-5">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg" style={{backgroundColor: 'rgba(59, 130, 246, 0.1)'}}>
+              <div className="p-2 rounded-lg" style={{backgroundColor: theme === 'dark' ? '#020617' : 'rgba(59, 130, 246, 0.1)'}}>
                 <Users className="w-4 h-4" style={{color: '#3b82f6'}} />
               </div>
               <div>

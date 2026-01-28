@@ -1537,7 +1537,7 @@ const CaseDetail: React.FC = () => {
               }}
             >
               <div className="flex items-center gap-2 mb-4">
-                <div className="p-2 rounded-lg" style={{backgroundColor: '#eff6ff'}}>
+                <div className="p-2 rounded-lg" style={{backgroundColor: theme === 'dark' ? '#020617' : '#eff6ff'}}>
                   <MessageSquare className="w-4 h-4" style={{color: '#107ab4'}} />
                 </div>
                 <h3 className="text-sm font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Descripción del Caso</h3>
@@ -1580,15 +1580,15 @@ const CaseDetail: React.FC = () => {
             >
               <div className="flex items-center gap-2 mb-4">
                  {isCaseClosed ? (
-                   <>
-                    <div className="p-2 rounded-lg" style={{backgroundColor: '#f1f5f9'}}>
+                 <> 
+                    <div className="p-2 rounded-lg" style={{backgroundColor: theme === 'dark' ? '#020617' : '#f1f5f9'}}>
                       <Lock className="w-4 h-4" style={{color: '#64748b'}} />
                     </div>
                     <h3 className="text-sm font-bold uppercase tracking-wide" style={{color: '#64748b'}}>Acciones Bloqueadas</h3>
                    </>
                  ) : (
                    <>
-                    <div className="p-2 rounded-lg" style={{backgroundColor: '#eff6ff'}}>
+                    <div className="p-2 rounded-lg" style={{backgroundColor: theme === 'dark' ? '#020617' : '#eff6ff'}}>
                       <CheckCircle2 className="w-4 h-4" style={{color: '#107ab4'}} />
                     </div>
                     <h3 className="text-sm font-bold uppercase tracking-wide" style={{color: styles.text.primary}}>Acciones Disponibles</h3>
@@ -1658,7 +1658,7 @@ const CaseDetail: React.FC = () => {
               }}
             >
               <div className="flex items-center gap-3 mb-5">
-                <div className="p-2 rounded-lg" style={{backgroundColor: '#eff6ff'}}>
+                <div className="p-2 rounded-lg" style={{backgroundColor: theme === 'dark' ? '#020617' : '#eff6ff'}}>
                   <History className="w-4 h-4" style={{color: '#107ab4'}} />
                 </div>
                 <h3 className="text-sm font-bold uppercase tracking-wide" style={{color: styles.text.primary}}>Historial del Caso</h3>
@@ -1855,7 +1855,7 @@ const CaseDetail: React.FC = () => {
             }}
           >
             <div className="flex items-center gap-2 mb-4">
-              <div className="p-2 rounded-lg" style={{backgroundColor: '#eff6ff'}}>
+              <div className="p-2 rounded-lg" style={{backgroundColor: theme === 'dark' ? '#020617' : '#eff6ff'}}>
                 <Building2 className="w-4 h-4" style={{color: '#107ab4'}} />
               </div>
               <h3 className="text-sm font-bold uppercase tracking-wide" style={{color: styles.text.primary}}>Cliente</h3>
@@ -2092,7 +2092,7 @@ const CaseDetail: React.FC = () => {
           >
             <div className="flex items-center justify-between gap-2 mb-4">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg" style={{backgroundColor: '#f1f5f9'}}>
+                <div className="p-2 rounded-lg" style={{backgroundColor: theme === 'dark' ? '#020617' : '#f1f5f9'}}>
                   <User className="w-4 h-4" style={{color: '#64748b'}} />
                 </div>
                 <h3 className="text-sm font-bold uppercase tracking-wide" style={{color: styles.text.primary}}>Agente Asignado</h3>

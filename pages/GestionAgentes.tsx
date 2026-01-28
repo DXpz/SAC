@@ -18,16 +18,21 @@ import {
   CheckCircle2,
   TrendingUp,
   Clock,
-  Search
+  Search,
+  Download
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import LoadingScreen from '../components/LoadingScreen';
+import Toast, { ToastType } from '../components/Toast';
+
+type EstadoFilter = 'todos' | 'activos' | 'vacaciones' | 'inactivos';
 
 const GestionAgentes: React.FC = () => {
   const [agentes, setAgentes] = useState<Agente[]>([]);
   const [loading, setLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [agenteToDelete, setAgenteToDelete] = useState<Agente | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   const { theme } = useTheme();
   const navigate = useNavigate();
   
@@ -37,6 +42,7 @@ const GestionAgentes: React.FC = () => {
   const [focusedSuggestionIndex, setFocusedSuggestionIndex] = useState(-1);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>('todos');
 
 
   useEffect(() => {
@@ -474,6 +480,50 @@ const GestionAgentes: React.FC = () => {
     return ultimoCaso >= hoy ? 1 : 0;
   };
 
+  const handleExportCsv = () => {
+    if (!filteredAgentes.length) {
+      setToast({ message: 'No hay agentes para exportar con los filtros actuales', type: 'warning' });
+      return;
+    }
+
+    const headers = ['Nombre', 'Email', 'Pais', 'Estado', 'CasosActivos', 'OrdenRoundRobin'];
+    const rows = filteredAgentes.map(agente => {
+      const pais = agente.pais || '';
+      const estado = agente.estado || '';
+      const casosActivos = typeof agente.casosActivos === 'number' ? agente.casosActivos : 0;
+      const orden = typeof agente.ordenRoundRobin === 'number' ? agente.ordenRoundRobin : '';
+
+      return [
+        agente.nombre || '',
+        agente.email || '',
+        pais,
+        estado,
+        String(casosActivos),
+        String(orden),
+      ];
+    });
+
+    const escapeCsv = (value: string) =>
+      `"${String(value).replace(/"/g, '""')}"`;
+
+    const csvContent = [
+      headers.map(escapeCsv).join(','),
+      ...rows.map(row => row.map(escapeCsv).join(',')),
+    ].join('\n');
+
+    const blob = new Blob([csvContent], {
+      type: 'text/csv;charset=utf-8;',
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'agentes_filtrados.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   // Calcular resumen de agentes
   const resumenAgentes = {
     total: agentes.length,
@@ -482,16 +532,28 @@ const GestionAgentes: React.FC = () => {
     inactivos: agentes.filter(a => a.estado === 'Inactivo').length
   };
 
-  // Filtrar agentes por término de búsqueda
+  // Filtrar agentes por término de búsqueda + estado
   const filteredAgentes = React.useMemo(() => {
-    if (!searchTerm.trim()) {
-      return agentes;
+    let resultado = agentes;
+
+    if (estadoFilter !== 'todos') {
+      resultado = resultado.filter(a => {
+        if (estadoFilter === 'activos') return a.estado === 'Activo';
+        if (estadoFilter === 'vacaciones') return a.estado === 'Vacaciones';
+        if (estadoFilter === 'inactivos') return a.estado === 'Inactivo';
+        return true;
+      });
     }
+
+    if (!searchTerm.trim()) {
+      return resultado;
+    }
+
     const term = searchTerm.toLowerCase().trim();
-    return agentes.filter(agente => 
+    return resultado.filter(agente => 
       agente.nombre.toLowerCase().includes(term)
     );
-  }, [agentes, searchTerm]);
+  }, [agentes, searchTerm, estadoFilter]);
 
   // Generar sugerencias de autocompletado
   const suggestions = React.useMemo(() => {
@@ -594,8 +656,18 @@ const GestionAgentes: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full" style={{ overflow: 'hidden', gap: '1rem', ...styles.container }}>
-      <div className="p-4 rounded-xl border flex-shrink-0 flex justify-between items-center" style={{...styles.card}}>
-         <div className="flex items-center gap-3">
+      {toast && (
+        <div className="fixed top-4 right-4 z-50">
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        </div>
+      )}
+      <div className="p-4 rounded-xl border flex-shrink-0 flex flex-col gap-3" style={{...styles.card}}>
+         <div className="flex items-center justify-between gap-3">
+           <div className="flex items-center gap-3">
            <div className="flex items-center gap-1.5">
              <div className="w-2 h-2 rounded-full" style={{backgroundColor: '#22c55e'}}></div>
              <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>
@@ -618,8 +690,9 @@ const GestionAgentes: React.FC = () => {
                </span>
              </div>
            )}
+           </div>
          </div>
-         <div className="flex items-center gap-3">
+         <div className="flex items-center justify-between gap-3">
            {/* Campo de búsqueda */}
            <div className="relative" style={{ minWidth: '250px' }}>
              <div className="relative">
@@ -696,14 +769,87 @@ const GestionAgentes: React.FC = () => {
              )}
            </div>
            
-           <button 
-             onClick={() => navigate('/app/crear-cuenta')}
-             className="px-4 py-2 text-white text-xs font-bold rounded-lg hover:shadow-lg transition-all flex items-center gap-2 hover:-translate-y-0.5"
-             style={{background: 'linear-gradient(to right, var(--color-brand-red), var(--color-accent-red))', boxShadow: '0 4px 12px rgba(200, 21, 27, 0.2)'}}
-           >
-             <UserPlus className="w-4 h-4" />
-             Nueva Cuenta
-           </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => navigate('/app/crear-cuenta')}
+              className="px-4 py-2 text-white text-xs font-bold rounded-lg hover:shadow-lg transition-all flex items-center gap-2 hover:-translate-y-0.5"
+              style={{background: 'linear-gradient(to right, var(--color-brand-red), var(--color-accent-red))', boxShadow: '0 4px 12px rgba(200, 21, 27, 0.2)'}}
+            >
+              <UserPlus className="w-4 h-4" />
+              Nueva Cuenta
+            </button>
+            <button
+              onClick={handleExportCsv}
+              className="px-3 py-2 text-xs font-semibold rounded-lg border transition-all flex items-center gap-2"
+              style={{
+                backgroundColor: 'transparent',
+                borderColor: 'rgba(148, 163, 184, 0.3)',
+                color: styles.text.secondary,
+              }}
+            >
+              <Download className="w-4 h-4" />
+              Exportar CSV
+            </button>
+          </div>
+         </div>
+         
+         {/* Filtros por estado */}
+         <div className="flex flex-wrap items-center gap-3 pt-2 border-t" style={{ borderColor: 'rgba(148, 163, 184, 0.15)' }}>
+           <div className="flex items-center gap-2">
+             <AlertTriangle className="w-4 h-4" style={{color: styles.text.tertiary}} />
+             <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>Estado:</span>
+             <div className="flex flex-wrap gap-2">
+               {([
+                 { id: 'todos', label: 'Todos' },
+                 { id: 'activos', label: 'Activos' },
+                 { id: 'vacaciones', label: 'Vacaciones' },
+                 { id: 'inactivos', label: 'Inactivos' },
+               ] as { id: EstadoFilter; label: string }[]).map((item, idx) => (
+                 <button
+                   key={item.id}
+                   onClick={() => setEstadoFilter(item.id)}
+                   className={`px-3 py-1 text-[10px] font-semibold rounded-lg transition-all border ${
+                     estadoFilter === item.id 
+                       ? '' 
+                       : 'border-slate-600 hover:border-slate-500'
+                   }`}
+                   style={{
+                     ...(estadoFilter === item.id ? {
+                       backgroundColor: 'rgba(34, 197, 94, 0.12)',
+                       borderColor: 'rgba(34, 197, 94, 0.4)',
+                       color: '#22c55e'
+                     } : {
+                       backgroundColor: 'transparent',
+                       color: styles.text.secondary
+                     }),
+                     animation: `fadeInSlide 0.3s ease-out ${idx * 0.04}s both`,
+                     transform: 'scale(1)',
+                     transition: 'all 0.2s ease-in-out'
+                   }}
+                   onMouseEnter={(e) => {
+                     if (estadoFilter !== item.id) {
+                       e.currentTarget.style.transform = 'scale(1.05)';
+                     }
+                   }}
+                   onMouseLeave={(e) => {
+                     e.currentTarget.style.transform = 'scale(1)';
+                   }}
+                 >
+                   {item.label}
+                 </button>
+               ))}
+             </div>
+             {estadoFilter !== 'todos' && (
+               <button
+                 onClick={() => setEstadoFilter('todos')}
+                 className="px-2.5 py-1 text-[10px] font-semibold flex items-center gap-1.5 transition-colors"
+                 style={{color: styles.text.tertiary}}
+               >
+                 <X className="w-3 h-3" />
+                 Limpiar estado
+               </button>
+             )}
+           </div>
          </div>
       </div>
 
@@ -779,7 +925,7 @@ const GestionAgentes: React.FC = () => {
                       Agente
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
-                      País
+                      Empresa
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
                       Estado
@@ -859,7 +1005,7 @@ const GestionAgentes: React.FC = () => {
                           </div>
                         </td>
                         
-                        {/* País */}
+                        {/* Empresa */}
                         <td className="px-4 py-3">
                           {(() => {
                             const pais = agente.pais || '';

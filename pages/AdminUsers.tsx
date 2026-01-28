@@ -12,13 +12,15 @@ import {
   CheckCircle2,
   AlertCircle,
   Filter,
-  Search
+  Search,
+  Download
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { api } from '../services/api';
 import { Agente } from '../types';
 import LoadingScreen from '../components/LoadingScreen';
 import LoadingLogo from '../components/LoadingLogo';
+import Toast, { ToastType } from '../components/Toast';
 
 // ==================================================
 // TIPOS
@@ -38,6 +40,10 @@ interface DemoUser {
 }
 
 type RoleFilter = 'todos' | 'AGENTE' | 'SUPERVISOR' | 'GERENTE' | 'ADMIN';
+type EstadoFilter = 'todos' | 'activos' | 'inactivos' | 'vacaciones';
+
+type SortField = 'nombre' | 'email' | 'rol' | 'pais' | 'estado';
+type SortDirection = 'asc' | 'desc';
 
 // ==================================================
 // COMPONENTE PRINCIPAL
@@ -50,6 +56,13 @@ const AdminUsers: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('todos');
   const [adminCountry, setAdminCountry] = useState<'SV' | 'GT' | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>('todos');
+  const [sortField, setSortField] = useState<SortField>('nombre');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 25;
+  const [pageSize, setPageSize] = useState<number>(PAGE_SIZE);
   
   // Estados para búsqueda
   const [searchTerm, setSearchTerm] = useState('');
@@ -293,93 +306,9 @@ const AdminUsers: React.FC = () => {
         };
       });
       
-      // Si es ADMIN, filtrar usuarios por país del admin (OBLIGATORIO)
+      // Admin ve todos los usuarios de ambos países (sin filtrar por país)
       if (currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR') {
-        const countryToFilter = adminCountry || await getAdminCountry();
-        
-        if (countryToFilter) {
-          console.log('[AdminUsers] Admin detectado, filtrando usuarios por país:', countryToFilter);
-          
-          usuariosMapeados = usuariosMapeados.filter(usuario => {
-            const usuarioPais = usuario.pais || '';
-            
-            console.log('[AdminUsers] 🔍 Verificando usuario:', {
-              usuarioId: usuario.id,
-              usuarioNombre: usuario.nombre,
-              usuarioPaisRaw: usuarioPais,
-              usuarioCompleto: usuario
-            });
-            
-            const usuarioPaisNormalizado = normalizeUserCountry(usuarioPais);
-            
-            console.log('[AdminUsers] 🔍 País normalizado del usuario:', {
-              usuarioId: usuario.id,
-              usuarioNombre: usuario.nombre,
-              usuarioPaisRaw: usuarioPais,
-              usuarioPaisNormalizado: usuarioPaisNormalizado,
-              adminCountry: countryToFilter
-            });
-            
-            // Si el usuario no tiene país definido, NO mostrarlo al admin
-            if (!usuarioPaisNormalizado) {
-              console.log('[AdminUsers] ❌ Usuario SIN país definido, FILTRANDO:', {
-                usuarioId: usuario.id,
-                usuarioNombre: usuario.nombre,
-                usuarioPais: usuarioPais
-              });
-              return false;
-            }
-            
-            // Solo mostrar usuarios del mismo país que el admin
-            const matches = usuarioPaisNormalizado === countryToFilter;
-            
-            if (!matches) {
-              console.log('[AdminUsers] ❌ Usuario filtrado por país (NO coincide):', {
-                usuarioId: usuario.id,
-                usuarioNombre: usuario.nombre,
-                usuarioPais: usuarioPais,
-                usuarioPaisNormalizado: usuarioPaisNormalizado,
-                adminCountry: countryToFilter,
-                matches: false
-              });
-              return false;
-            }
-            
-            console.log('[AdminUsers] ✅ Usuario ACEPTADO (país coincide):', {
-              usuarioId: usuario.id,
-              usuarioNombre: usuario.nombre,
-              usuarioPais: usuarioPais,
-              usuarioPaisNormalizado: usuarioPaisNormalizado,
-              adminCountry: countryToFilter,
-              matches: true
-            });
-            
-            return true;
-          });
-          
-          console.log('[AdminUsers] 📊 RESUMEN - Usuarios después de filtrar por país:', {
-            totalAntes: usuariosWebhook.length,
-            totalDespues: usuariosMapeados.length,
-            adminCountry: countryToFilter,
-            usuariosFiltrados: usuariosMapeados.map(u => ({ 
-              id: u.id, 
-              nombre: u.nombre, 
-              pais: u.pais || 'SIN PAÍS' 
-            }))
-          });
-          
-          // Actualizar el estado del país del admin si no estaba establecido
-          if (!adminCountry) {
-            setAdminCountry(countryToFilter);
-          }
-        } else {
-          console.error('[AdminUsers] ⚠️ ERROR: Admin sin país definido!', {
-            user: currentUser,
-            userPais: currentUser?.pais
-          });
-          // Si el admin no tiene país, NO mostrar ningún usuario (más seguro)
-          usuariosMapeados = [];
-        }
+        console.log('[AdminUsers] Admin detectado, mostrando TODOS los usuarios de ambos países');
       }
       
       // Validar que todos los IDs sean únicos antes de establecer el estado
@@ -416,6 +345,8 @@ const AdminUsers: React.FC = () => {
 
   // Filtrar usuarios por término de búsqueda
   const filteredUsersBySearch = useMemo(() => {
+    // Resetear a primera página cuando cambian los resultados
+    setCurrentPage(1);
     if (!searchTerm.trim()) {
       return users;
     }
@@ -432,8 +363,113 @@ const AdminUsers: React.FC = () => {
     if (roleFilter !== 'todos') {
       filtered = filtered.filter(u => u.rol === roleFilter);
     }
-    return filtered;
-  }, [filteredUsersBySearch, roleFilter]);
+
+    if (estadoFilter !== 'todos') {
+      filtered = filtered.filter(u => {
+        const esVacaciones = !!u.enVacaciones;
+        const esActivo = !!u.activo && !u.enVacaciones;
+        const esInactivo = !u.activo && !u.enVacaciones;
+
+        if (estadoFilter === 'vacaciones') return esVacaciones;
+        if (estadoFilter === 'activos') return esActivo;
+        if (estadoFilter === 'inactivos') return esInactivo;
+        return true;
+      });
+    }
+    // Ordenar resultados
+    const sorted = [...filtered].sort((a, b) => {
+      const dir = sortDirection === 'asc' ? 1 : -1;
+      const getValue = (user: DemoUser) => {
+        switch (sortField) {
+          case 'email':
+            return user.email.toLowerCase();
+          case 'rol':
+            return user.rol.toLowerCase();
+          case 'pais':
+            return (user.pais || '').toLowerCase();
+          case 'estado':
+            // Priorizar vacaciones > activos > inactivos en orden lógico
+            if (user.enVacaciones) return '1';
+            if (user.activo) return '2';
+            return '3';
+          case 'nombre':
+          default:
+            return user.nombre.toLowerCase();
+        }
+      };
+      const aVal = getValue(a);
+      const bVal = getValue(b);
+      if (aVal < bVal) return -1 * dir;
+      if (aVal > bVal) return 1 * dir;
+      return 0;
+    });
+    return sorted;
+  }, [filteredUsersBySearch, roleFilter, sortField, sortDirection]);
+
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  }, [filteredUsers.length, pageSize]);
+
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredUsers.slice(start, start + pageSize);
+  }, [filteredUsers, currentPage, pageSize]);
+
+  const handleChangeSort = (field: SortField) => {
+    setCurrentPage(1);
+    setSortField(prevField => {
+      if (prevField === field) {
+        setSortDirection(prevDir => (prevDir === 'asc' ? 'desc' : 'asc'));
+        return prevField;
+      }
+      setSortDirection('asc');
+      return field;
+    });
+  };
+
+  const handleExportCsv = () => {
+    if (!filteredUsers.length) {
+      setToast({ message: 'No hay usuarios para exportar con los filtros actuales', type: 'warning' });
+      return;
+    }
+
+    const headers = ['Nombre', 'Email', 'Rol', 'Pais', 'Estado'];
+    const rows = filteredUsers.map(user => {
+      const estado = user.enVacaciones
+        ? 'Vacaciones'
+        : user.activo
+        ? 'Activo'
+        : 'Inactivo';
+
+      return [
+        user.nombre || '',
+        user.email || '',
+        user.rol || '',
+        user.pais || '',
+        estado,
+      ];
+    });
+
+    const escapeCsv = (value: string) =>
+      `"${String(value).replace(/"/g, '""')}"`;
+
+    const csvContent = [
+      headers.map(escapeCsv).join(','),
+      ...rows.map(row => row.map(escapeCsv).join(',')),
+    ].join('\n');
+
+    const blob = new Blob([csvContent], {
+      type: 'text/csv;charset=utf-8;',
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'usuarios_filtrados.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   // Generar sugerencias de autocompletado
   const suggestions = useMemo(() => {
@@ -519,15 +555,14 @@ const AdminUsers: React.FC = () => {
   // ==================================================
 
   const createUser = async () => {
-    
     if (!formData.nombre.trim() || !formData.email.trim()) {
-      alert('El nombre y el email son obligatorios');
+      setToast({ message: 'El nombre y el email son obligatorios', type: 'warning' });
       return;
     }
 
     // Validar email único
     if (users.some(u => u.email.toLowerCase() === formData.email.toLowerCase())) {
-      alert('El email ya está en uso');
+      setToast({ message: 'El email ya está en uso', type: 'warning' });
       return;
     }
 
@@ -555,19 +590,11 @@ const AdminUsers: React.FC = () => {
       setShowCreateModal(false);
       setFormData({ nombre: '', email: '', rol: 'AGENTE', pais: 'El_Salvador', activo: true, enVacaciones: false });
     } catch (error: any) {
-      // Mensaje de error más detallado para debugging
       let errorMessage = error.message || 'Error desconocido al crear el usuario';
-      
-      if (errorMessage.includes('Unexpected end of JSON input')) {
-        errorMessage = '❌ El webhook no devolvió una respuesta válida.\n\n' +
-                      '🔍 Posibles causas:\n' +
-                      '• El flujo de n8n no está devolviendo datos\n' +
-                      '• El webhook no tiene un nodo "Respond to Webhook" al final\n' +
-                      '• El flujo tiene un error y no completa la ejecución\n\n' +
-                      '💡 Solución: Verifica el flujo de n8n y asegúrate de que devuelva los datos del usuario.';
+      if (typeof errorMessage === 'string' && errorMessage.includes('Unexpected end of JSON input')) {
+        errorMessage = 'El webhook no devolvió una respuesta válida. Verifica el flujo de n8n y asegúrate de que responda correctamente.';
       }
-      
-      alert(errorMessage);
+      setToast({ message: errorMessage, type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -692,13 +719,13 @@ const AdminUsers: React.FC = () => {
   const updateUser = () => {
     if (!selectedUser) return;
     if (!formData.nombre.trim() || !formData.email.trim()) {
-      alert('El nombre y el email son obligatorios');
+      setToast({ message: 'El nombre y el email son obligatorios', type: 'warning' });
       return;
     }
 
     // Validar email único (excepto el usuario actual)
     if (users.some(u => u.id !== selectedUser.id && u.email.toLowerCase() === formData.email.toLowerCase())) {
-      alert('El email ya está en uso');
+      setToast({ message: 'El email ya está en uso', type: 'warning' });
       return;
     }
 
@@ -799,46 +826,56 @@ const AdminUsers: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full" style={{ overflow: 'hidden', gap: '1rem', ...styles.container }}>
-      {/* Header con resumen y botón crear */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-50">
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        </div>
+      )}
+      {/* Header con resumen, búsqueda, acciones y filtros */}
       <div 
-        className="p-4 rounded-xl border flex-shrink-0 flex justify-between items-center" 
+        className="p-4 rounded-xl border flex-shrink-0 flex flex-col gap-3" 
         style={{
           ...styles.card,
           animation: 'fadeInSlide 0.3s ease-out'
         }}
       >
-        <div className="flex items-center gap-4">
-          <div>
-            <h1 className="text-lg font-black mb-1" style={{color: styles.text.primary}}>
-              Administración de Usuarios
-            </h1>
-            <p className="text-xs" style={{color: styles.text.tertiary}}>Gestiona usuarios del sistema</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full" style={{backgroundColor: '#22c55e'}}></div>
-              <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>
-                {resumenUsers.activos} <span style={{color: styles.text.tertiary}}>Activos</span>
-              </span>
+        {/* Fila superior: título, resumen, búsqueda, acciones */}
+        <div className="flex flex-wrap justify-between items-center gap-4">
+          <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-lg font-black mb-1" style={{color: styles.text.primary}}>
+                Administración de Usuarios
+              </h1>
+              <p className="text-xs" style={{color: styles.text.tertiary}}>Gestiona usuarios del sistema</p>
             </div>
-            {resumenUsers.vacaciones > 0 && (
+            <div className="hidden md:flex items-center gap-3">
               <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full" style={{backgroundColor: '#f59e0b'}}></div>
+                <div className="w-2 h-2 rounded-full" style={{backgroundColor: '#22c55e'}}></div>
                 <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>
-                  {resumenUsers.vacaciones} <span style={{color: styles.text.tertiary}}>Vacaciones</span>
+                  {resumenUsers.activos} <span style={{color: styles.text.tertiary}}>Activos</span>
                 </span>
               </div>
-            )}
-            {resumenUsers.inactivos > 0 && (
-              <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full" style={{backgroundColor: '#94a3b8'}}></div>
-                <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>
-                  {resumenUsers.inactivos} <span style={{color: styles.text.tertiary}}>Inactivos</span>
-                </span>
-              </div>
-            )}
+              {resumenUsers.vacaciones > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full" style={{backgroundColor: '#f59e0b'}}></div>
+                  <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>
+                    {resumenUsers.vacaciones} <span style={{color: styles.text.tertiary}}>Vacaciones</span>
+                  </span>
+                </div>
+              )}
+              {resumenUsers.inactivos > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full" style={{backgroundColor: '#94a3b8'}}></div>
+                  <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>
+                    {resumenUsers.inactivos} <span style={{color: styles.text.tertiary}}>Inactivos</span>
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             {/* Campo de búsqueda */}
@@ -941,66 +978,130 @@ const AdminUsers: React.FC = () => {
               <UserPlus className="w-4 h-4" />
               Nuevo Usuario
             </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Filtros por rol */}
-      <div 
-        className="p-4 rounded-xl border flex-shrink-0 flex items-center gap-3" 
-        style={{
-          ...styles.card,
-          animation: 'fadeInSlide 0.3s ease-out 0.1s both'
-        }}
-      >
-        <Filter className="w-4 h-4" style={{color: styles.text.tertiary}} />
-        <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>Filtrar por rol:</span>
-        <div className="flex gap-2">
-          {(['todos', 'ADMIN', 'GERENTE', 'SUPERVISOR', 'AGENTE'] as RoleFilter[]).map((rol, idx) => (
             <button
-              key={rol}
-              onClick={() => setRoleFilter(rol)}
-              className={`px-3 py-1 text-[10px] font-semibold rounded-lg transition-all border ${
-                roleFilter === rol 
-                  ? '' 
-                  : 'border-slate-600 hover:border-slate-500'
-              }`}
+              onClick={handleExportCsv}
+              className="px-3 py-2 text-xs font-semibold rounded-lg border transition-all flex items-center gap-2"
               style={{
-                ...(roleFilter === rol ? {
-                  backgroundColor: 'rgba(200, 21, 27, 0.15)',
-                  borderColor: 'rgba(200, 21, 27, 0.4)',
-                  color: '#f87171'
-                } : {
-                  backgroundColor: 'transparent',
-                  color: styles.text.secondary
-                }),
-                animation: `fadeInSlide 0.3s ease-out ${idx * 0.05}s both`,
-                transform: 'scale(1)',
-                transition: 'all 0.2s ease-in-out'
-              }}
-              onMouseEnter={(e) => {
-                if (roleFilter !== rol) {
-                  e.currentTarget.style.transform = 'scale(1.05)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
+                backgroundColor: 'transparent',
+                borderColor: 'rgba(148, 163, 184, 0.3)',
+                color: styles.text.secondary,
               }}
             >
-              {rol === 'todos' ? 'Todos' : rol}
+              <Download className="w-4 h-4" />
+              Exportar CSV
             </button>
-          ))}
+          </div>
         </div>
-        {roleFilter !== 'todos' && (
-          <button
-            onClick={() => setRoleFilter('todos')}
-            className="ml-auto px-2.5 py-1 text-[10px] font-semibold flex items-center gap-1.5 transition-colors"
-            style={{color: styles.text.tertiary}}
-          >
-            <X className="w-3 h-3" />
-            Limpiar
-          </button>
-        )}
+
+        {/* Fila inferior: filtros por rol y estado */}
+        <div className="flex flex-wrap items-center gap-4 pt-2 border-t" style={{ borderColor: 'rgba(148, 163, 184, 0.15)' }}>
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4" style={{color: styles.text.tertiary}} />
+            <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>Rol:</span>
+            <div className="flex flex-wrap gap-2">
+              {(['todos', 'ADMIN', 'GERENTE', 'SUPERVISOR', 'AGENTE'] as RoleFilter[]).map((rol, idx) => (
+                <button
+                  key={rol}
+                  onClick={() => setRoleFilter(rol)}
+                  className={`px-3 py-1 text-[10px] font-semibold rounded-lg transition-all border ${
+                    roleFilter === rol 
+                      ? '' 
+                      : 'border-slate-600 hover:border-slate-500'
+                  }`}
+                  style={{
+                    ...(roleFilter === rol ? {
+                      backgroundColor: 'rgba(200, 21, 27, 0.15)',
+                      borderColor: 'rgba(200, 21, 27, 0.4)',
+                      color: '#f87171'
+                    } : {
+                      backgroundColor: 'transparent',
+                      color: styles.text.secondary
+                    }),
+                    animation: `fadeInSlide 0.3s ease-out ${idx * 0.05}s both`,
+                    transform: 'scale(1)',
+                    transition: 'all 0.2s ease-in-out'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (roleFilter !== rol) {
+                      e.currentTarget.style.transform = 'scale(1.05)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  {rol === 'todos' ? 'Todos' : rol}
+                </button>
+              ))}
+            </div>
+            {roleFilter !== 'todos' && (
+              <button
+                onClick={() => setRoleFilter('todos')}
+                className="px-2.5 py-1 text-[10px] font-semibold flex items-center gap-1.5 transition-colors"
+                style={{color: styles.text.tertiary}}
+              >
+                <X className="w-3 h-3" />
+                Limpiar rol
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" style={{color: styles.text.tertiary}} />
+            <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>Estado:</span>
+            <div className="flex flex-wrap gap-2">
+              {([
+                { id: 'todos', label: 'Todos' },
+                { id: 'activos', label: 'Activos' },
+                { id: 'vacaciones', label: 'Vacaciones' },
+                { id: 'inactivos', label: 'Inactivos' },
+              ] as { id: EstadoFilter; label: string }[]).map((item, idx) => (
+                <button
+                  key={item.id}
+                  onClick={() => setEstadoFilter(item.id)}
+                  className={`px-3 py-1 text-[10px] font-semibold rounded-lg transition-all border ${
+                    estadoFilter === item.id 
+                      ? '' 
+                      : 'border-slate-600 hover:border-slate-500'
+                  }`}
+                  style={{
+                    ...(estadoFilter === item.id ? {
+                      backgroundColor: 'rgba(34, 197, 94, 0.12)',
+                      borderColor: 'rgba(34, 197, 94, 0.4)',
+                      color: '#22c55e'
+                    } : {
+                      backgroundColor: 'transparent',
+                      color: styles.text.secondary
+                    }),
+                    animation: `fadeInSlide 0.3s ease-out ${idx * 0.04}s both`,
+                    transform: 'scale(1)',
+                    transition: 'all 0.2s ease-in-out'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (estadoFilter !== item.id) {
+                      e.currentTarget.style.transform = 'scale(1.05)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            {estadoFilter !== 'todos' && (
+              <button
+                onClick={() => setEstadoFilter('todos')}
+                className="px-2.5 py-1 text-[10px] font-semibold flex items-center gap-1.5 transition-colors"
+                style={{color: styles.text.tertiary}}
+              >
+                <X className="w-3 h-3" />
+                Limpiar estado
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Tabla de usuarios */}
@@ -1068,20 +1169,55 @@ const AdminUsers: React.FC = () => {
                     backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
                     animation: 'fadeInSlide 0.3s ease-out'
                   }}>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
-                      Usuario
+                    <th
+                      className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer select-none"
+                      style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}
+                      onClick={() => handleChangeSort('nombre')}
+                    >
+                      Usuario{' '}
+                      {sortField === 'nombre' && (
+                        <span>{sortDirection === 'asc' ? '▲' : '▼'}</span>
+                      )}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
-                      Email
+                    <th
+                      className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer select-none"
+                      style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}
+                      onClick={() => handleChangeSort('email')}
+                    >
+                      Email{' '}
+                      {sortField === 'email' && (
+                        <span>{sortDirection === 'asc' ? '▲' : '▼'}</span>
+                      )}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
-                      Rol
+                    <th
+                      className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer select-none"
+                      style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}
+                      onClick={() => handleChangeSort('rol')}
+                    >
+                      Rol{' '}
+                      {sortField === 'rol' && (
+                        <span>{sortDirection === 'asc' ? '▲' : '▼'}</span>
+                      )}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
-                      País
+                    <th
+                      className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer select-none"
+                      style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}
+                      onClick={() => handleChangeSort('pais')}
+                    >
+                      Empresa{' '}
+                      {sortField === 'pais' && (
+                        <span>{sortDirection === 'asc' ? '▲' : '▼'}</span>
+                      )}
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
-                      Estado
+                    <th
+                      className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer select-none"
+                      style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}
+                      onClick={() => handleChangeSort('estado')}
+                    >
+                      Estado{' '}
+                      {sortField === 'estado' && (
+                        <span>{sortDirection === 'asc' ? '▲' : '▼'}</span>
+                      )}
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>
                       Acciones
@@ -1089,7 +1225,7 @@ const AdminUsers: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredUsers.map((user, index) => {
+                  {paginatedUsers.map((user, index) => {
                     const roleBadge = getRoleBadgeColor(user.rol);
                     const statusColor = getStatusColor(user);
                     const statusText = user.enVacaciones ? 'Vacaciones' : user.activo ? 'Activo' : 'Inactivo';
@@ -1102,7 +1238,7 @@ const AdminUsers: React.FC = () => {
                           backgroundColor: index % 2 === 0 
                             ? (theme === 'dark' ? '#1e293b' : '#ffffff')
                             : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
-                          borderBottom: index < filteredUsers.length - 1 ? '1px solid rgba(148, 163, 184, 0.1)' : 'none',
+                          borderBottom: index < paginatedUsers.length - 1 ? '1px solid rgba(148, 163, 184, 0.1)' : 'none',
                           animation: `fadeInSlide 0.3s ease-out ${index * 0.03}s both`,
                           transform: 'translateY(0)'
                         }}
@@ -1354,6 +1490,76 @@ const AdminUsers: React.FC = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Footer de paginación */}
+            <div
+              className="flex items-center justify-between px-4 py-3 border-t text-xs"
+              style={{ borderColor: 'rgba(148, 163, 184, 0.2)', color: styles.text.secondary }}
+            >
+              <div className="flex items-center gap-2">
+                <span>
+                  Mostrando{' '}
+                  <strong>
+                    {filteredUsers.length === 0
+                      ? 0
+                      : (currentPage - 1) * pageSize + 1}
+                    {' - '}
+                    {Math.min(currentPage * pageSize, filteredUsers.length)}
+                  </strong>{' '}
+                  de <strong>{filteredUsers.length}</strong> usuarios
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1">
+                  <span>Tamaño de página:</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      const newSize = Number(e.target.value) || PAGE_SIZE;
+                      setPageSize(newSize);
+                      setCurrentPage(1);
+                    }}
+                    className="border rounded px-2 py-1 bg-transparent text-xs"
+                    style={{ borderColor: 'rgba(148, 163, 184, 0.4)' }}
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    className="px-2 py-1 border rounded disabled:opacity-40"
+                    style={{
+                      borderColor: 'rgba(148, 163, 184, 0.4)',
+                      backgroundColor: 'transparent',
+                    }}
+                  >
+                    Anterior
+                  </button>
+                  <span>
+                    Página <strong>{currentPage}</strong> de{' '}
+                    <strong>{totalPages}</strong>
+                  </span>
+                  <button
+                    disabled={currentPage === totalPages}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                    }
+                    className="px-2 py-1 border rounded disabled:opacity-40"
+                    style={{
+                      borderColor: 'rgba(148, 163, 184, 0.4)',
+                      backgroundColor: 'transparent',
+                    }}
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -1411,7 +1617,7 @@ const AdminUsers: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{color: styles.text.secondary}}>País</label>
+                <label className="block text-xs font-semibold mb-1" style={{color: styles.text.secondary}}>Empresa</label>
                 <select
                   value={formData.pais}
                   onChange={(e) => setFormData({...formData, pais: e.target.value})}

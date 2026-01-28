@@ -15,6 +15,7 @@ const GerenteDashboard: React.FC = () => {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('hoy');
   const [loading, setLoading] = useState(true);
   const [hoveredKPI, setHoveredKPI] = useState<string | null>(null);
+  const [showInsights, setShowInsights] = useState(true);
   const [gerenteCountry, setGerenteCountry] = useState<'SV' | 'GT' | null>(null);
   const { theme } = useTheme();
   const location = useLocation();
@@ -264,11 +265,10 @@ const GerenteDashboard: React.FC = () => {
   // Filtrar casos críticos usando la misma lógica que Alertas Críticas (basado en casos filtrados por país)
   const casosCriticos = useMemo(() => {
     return casosFiltradosPorPais.filter(c => {
-      // Excluir casos resueltos o cerrados (a menos que estén escalados)
+      // Excluir casos resueltos o cerrados
       const normalizedStatus = normalizeStatus(c.status);
       if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
-        // Solo incluir si está escalado
-        return normalizedStatus === CaseStatus.ESCALADO;
+        return false;
       }
       
       const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
@@ -547,9 +547,8 @@ const GerenteDashboard: React.FC = () => {
     percent: totalCasos > 0 ? ((item.value / totalCasos) * 100).toFixed(1) : '0.0'
   })), [chartData, totalCasos]);
 
-  // Colores para cada estado: Nuevos, En Proceso, Pendiente Cliente, Escalados, Resueltos, Cerrados
-  // Usando los mismos colores oficiales del sistema para consistencia
-  const COLORS = ['#3b82f6', '#eab308', '#f97316', '#ef4444', '#22c55e', '#6b7280'];
+  // Colores para cada estado: paleta más minimalista y consistente (azules/violetas suaves)
+  const COLORS = ['#3b82f6', '#6366f1', '#0ea5e9', '#22c55e', '#a855f7', '#64748b'];
 
   const slaObjective = 90;
   const slaStatus = kpisFiltrados.slaCompliance === null ? 'sin_datos' :
@@ -729,32 +728,16 @@ const GerenteDashboard: React.FC = () => {
     isHighlighted?: boolean;
     tooltip?: string;
   }> = ({ label, value, color, bg, icon: Icon, variation, isHighlighted = false, tooltip }) => {
-    // Determinar colores según el tipo de tarjeta
-    let borderColor = 'rgba(148, 163, 184, 0.2)';
+    // Fondo siempre neutro; solo el número (y opcionalmente el icono) llevan color
+    let borderColor = 'rgba(71, 85, 105, 0.3)';
     let backgroundColor = styles.card.backgroundColor;
     let iconColor = styles.text.tertiary;
-    let valueColor = styles.text.primary;
-    
-    if (bg === 'bg-slate-900') {
-      borderColor = 'rgba(59, 130, 246, 0.25)';
-      backgroundColor = theme === 'dark' ? 'rgba(59, 130, 246, 0.05)' : 'rgba(59, 130, 246, 0.02)';
-      iconColor = '#3b82f6';
-      valueColor = '#3b82f6';
-    } else if (bg === 'bg-red-50' || isHighlighted) {
-      borderColor = 'rgba(220, 38, 38, 0.25)';
-      backgroundColor = theme === 'dark' ? 'rgba(220, 38, 38, 0.05)' : 'rgba(220, 38, 38, 0.02)';
+    let valueColor = color || styles.text.primary;
+
+    if (isHighlighted) {
+      borderColor = 'rgba(71, 85, 105, 0.3)';
       iconColor = '#ef4444';
       valueColor = '#ef4444';
-    } else if (bg === 'bg-green-50') {
-      borderColor = 'rgba(34, 197, 94, 0.25)';
-      backgroundColor = theme === 'dark' ? 'rgba(34, 197, 94, 0.05)' : 'rgba(34, 197, 94, 0.02)';
-      iconColor = '#22c55e';
-      valueColor = '#22c55e';
-    } else {
-      borderColor = 'rgba(148, 163, 184, 0.2)';
-      backgroundColor = styles.card.backgroundColor;
-      iconColor = styles.text.tertiary;
-      valueColor = styles.text.primary;
     }
 
     return (
@@ -767,12 +750,12 @@ const GerenteDashboard: React.FC = () => {
         }}
         onMouseEnter={(e) => {
           setHoveredKPI(label);
-          e.currentTarget.style.borderColor = borderColor.replace('0.25', '0.4').replace('0.2', '0.3');
+          e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
           e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
         }}
         onMouseLeave={(e) => {
           setHoveredKPI(null);
-          e.currentTarget.style.borderColor = borderColor;
+          e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.3)';
           e.currentTarget.style.boxShadow = '';
         }}
       >
@@ -930,22 +913,22 @@ const GerenteDashboard: React.FC = () => {
         />
       </div>
 
-      {/* Resumen Ejecutivo Mejorado */}
+      {/* Resumen Ejecutivo (desplegable, listado minimalista) */}
       {insights.length > 0 && (
         <div 
-          className="p-4 rounded-xl border shadow-lg" 
+          className="mt-2"
           style={{
-            ...styles.card,
-            background: theme === 'dark' 
-              ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%)'
-              : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%)',
-            animation: 'fadeInSlide 0.4s ease-out'
+            animation: 'fadeInSlide 0.3s ease-out'
           }}
         >
-          <div className="flex items-center justify-between mb-4">
+          <button
+            type="button"
+            className="w-full flex items-center justify-between gap-2 text-left"
+            onClick={() => setShowInsights(prev => !prev)}
+          >
             <div className="flex items-center gap-2.5">
               <div className="p-2 rounded-lg" style={{
-                backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)'
+                backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)'
               }}>
                 <Shield className="w-4 h-4" style={{color: '#3b82f6'}} />
               </div>
@@ -958,82 +941,69 @@ const GerenteDashboard: React.FC = () => {
                 </p>
               </div>
             </div>
-            <div className="px-2.5 py-1 rounded-lg" style={{
-              backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)'
-            }}>
-              <span className="text-xs font-bold" style={{color: '#3b82f6'}}>
+            <div className="flex items-center gap-3">
+              <span className="px-2.5 py-1 rounded-lg text-xs font-bold" style={{
+                backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)',
+                color: '#3b82f6'
+              }}>
                 {insights.length} {insights.length === 1 ? 'indicador' : 'indicadores'}
               </span>
+              <span
+                className="text-xs font-semibold px-2 py-1 rounded-md"
+                style={{color: styles.text.secondary}}
+              >
+                {showInsights ? 'Ocultar' : 'Mostrar'}
+              </span>
             </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {insights.map((insight, idx) => {
-              const Icon = insight.icon;
-              const bgColor = theme === 'dark' 
-                ? `${insight.color}15`
-                : `${insight.color}10`;
-              const borderColor = theme === 'dark'
-                ? `${insight.color}30`
-                : `${insight.color}25`;
-              
-              return (
-                <div
-                  key={idx}
-                  className="p-3 rounded-lg border-2 transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
-                  style={{
-                    backgroundColor: bgColor,
-                    borderColor: borderColor,
-                    animation: `fadeInSlide 0.3s ease-out ${idx * 0.05}s both`
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = `${insight.color}50`;
-                    e.currentTarget.style.boxShadow = `0 4px 12px ${insight.color}20`;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = borderColor;
-                    e.currentTarget.style.boxShadow = '';
-                  }}
-                >
-                  <div className="flex items-start gap-3">
+          </button>
+
+          {showInsights && (
+            <div className="mt-3 border-t pt-3 space-y-2" style={{borderColor: 'rgba(148, 163, 184, 0.25)'}}>
+              {insights.map((insight, idx) => {
+                const Icon = insight.icon;
+                return (
+                  <div
+                    key={idx}
+                    className="flex items-start gap-3 px-1.5 py-1 rounded-md hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors"
+                    style={{
+                      animation: `fadeInSlide 0.25s ease-out ${idx * 0.03}s both`
+                    }}
+                  >
                     <div 
                       className="p-2 rounded-lg flex-shrink-0"
                       style={{
-                        backgroundColor: theme === 'dark' 
-                          ? `${insight.color}20`
-                          : `${insight.color}15`
+                        backgroundColor: theme === 'dark' ? '#020617' : '#e5e7eb'
                       }}
                     >
                       <Icon className="w-4 h-4" style={{color: insight.color}} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <h4 className="text-xs font-bold" style={{color: styles.text.primary}}>
+                      <div className="flex items-center justify-between gap-2 mb-0.5">
+                        <p className="text-xs font-semibold" style={{color: styles.text.primary}}>
                           {insight.title}
-                        </h4>
+                        </p>
                         {insight.value && (
                           <span 
-                            className="text-xs font-black px-2 py-0.5 rounded"
+                            className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
                             style={{
-                              color: insight.color,
-                              backgroundColor: theme === 'dark'
-                                ? `${insight.color}20`
-                                : `${insight.color}15`
+                              color: styles.text.secondary,
+                              backgroundColor: theme === 'dark' ? 'rgba(15,23,42,0.8)' : '#f1f5f9',
+                              border: '1px solid rgba(148, 163, 184, 0.3)'
                             }}
                           >
                             {insight.value}
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] leading-relaxed" style={{color: styles.text.secondary}}>
+                      <p className="text-[11px] leading-relaxed" style={{color: styles.text.secondary}}>
                         {insight.description}
                       </p>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

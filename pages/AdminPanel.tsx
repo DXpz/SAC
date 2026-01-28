@@ -1232,20 +1232,20 @@ const AdminPanel: React.FC = () => {
           className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden"
           style={{
             ...styles.card,
-            borderColor: 'rgba(59, 130, 246, 0.25)',
-            backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.05)' : 'rgba(59, 130, 246, 0.02)',
+            borderColor: 'rgba(71, 85, 105, 0.3)',
+            backgroundColor: styles.card.backgroundColor,
             animation: 'fadeInSlide 0.3s ease-out 0.05s both',
             transform: 'scale(1)',
             transition: 'all 0.2s ease-in-out'
           }}
           onClick={() => navigate('/app/admin/casos')}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+            e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
             e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.25)';
+            e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.3)';
             e.currentTarget.style.boxShadow = '';
             e.currentTarget.style.transform = 'scale(1) translateY(0)';
           }}
@@ -1274,20 +1274,20 @@ const AdminPanel: React.FC = () => {
           className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden"
           style={{
             ...styles.card,
-            borderColor: 'rgba(139, 92, 246, 0.25)',
-            backgroundColor: theme === 'dark' ? 'rgba(139, 92, 246, 0.05)' : 'rgba(139, 92, 246, 0.02)',
+            borderColor: 'rgba(71, 85, 105, 0.3)',
+            backgroundColor: styles.card.backgroundColor,
             animation: 'fadeInSlide 0.3s ease-out 0.1s both',
             transform: 'scale(1)',
             transition: 'all 0.2s ease-in-out'
           }}
           onClick={() => navigate('/app/admin/usuarios')}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.4)';
+            e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
             e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.25)';
+            e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.3)';
             e.currentTarget.style.boxShadow = '';
             e.currentTarget.style.transform = 'scale(1) translateY(0)';
           }}
@@ -1316,20 +1316,20 @@ const AdminPanel: React.FC = () => {
           className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden"
           style={{
             ...styles.card,
-            borderColor: 'rgba(34, 197, 94, 0.25)',
-            backgroundColor: theme === 'dark' ? 'rgba(34, 197, 94, 0.05)' : 'rgba(34, 197, 94, 0.02)',
+            borderColor: 'rgba(71, 85, 105, 0.3)',
+            backgroundColor: styles.card.backgroundColor,
             animation: 'fadeInSlide 0.3s ease-out 0.15s both',
             transform: 'scale(1)',
             transition: 'all 0.2s ease-in-out'
           }}
           onClick={() => navigate('/app/admin/usuarios')}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.4)';
+            e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
             e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.25)';
+            e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.3)';
             e.currentTarget.style.boxShadow = '';
             e.currentTarget.style.transform = 'scale(1) translateY(0)';
           }}
@@ -1358,20 +1358,20 @@ const AdminPanel: React.FC = () => {
           className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden"
           style={{
             ...styles.card,
-            borderColor: 'rgba(168, 85, 247, 0.25)',
-            backgroundColor: theme === 'dark' ? 'rgba(168, 85, 247, 0.05)' : 'rgba(168, 85, 247, 0.02)',
+            borderColor: 'rgba(71, 85, 105, 0.3)',
+            backgroundColor: styles.card.backgroundColor,
             animation: 'fadeInSlide 0.3s ease-out 0.2s both',
             transform: 'scale(1)',
             transition: 'all 0.2s ease-in-out'
           }}
           onClick={() => navigate('/app/admin/casos')}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.4)';
+            e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
             e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.25)';
+            e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.3)';
             e.currentTarget.style.boxShadow = '';
             e.currentTarget.style.transform = 'scale(1) translateY(0)';
           }}
@@ -1403,22 +1403,20 @@ const AdminPanel: React.FC = () => {
           className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden"
           style={{
             ...styles.card,
-            borderColor: casosCriticos > 0 ? 'rgba(200, 21, 27, 0.25)' : 'rgba(148, 163, 184, 0.2)',
-            backgroundColor: casosCriticos > 0 
-              ? (theme === 'dark' ? 'rgba(200, 21, 27, 0.05)' : 'rgba(200, 21, 27, 0.02)')
-              : styles.card.backgroundColor,
+            borderColor: 'rgba(71, 85, 105, 0.3)',
+            backgroundColor: styles.card.backgroundColor,
             animation: 'fadeInSlide 0.3s ease-out 0.25s both',
             transform: 'scale(1)',
             transition: 'all 0.2s ease-in-out'
           }}
           onClick={() => navigate('/app/admin/casos')}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = casosCriticos > 0 ? 'rgba(200, 21, 27, 0.4)' : 'rgba(148, 163, 184, 0.3)';
+            e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
             e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = casosCriticos > 0 ? 'rgba(200, 21, 27, 0.25)' : 'rgba(148, 163, 184, 0.2)';
+            e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.3)';
             e.currentTarget.style.boxShadow = '';
             e.currentTarget.style.transform = 'scale(1) translateY(0)';
           }}
@@ -1447,22 +1445,20 @@ const AdminPanel: React.FC = () => {
           className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden"
           style={{
             ...styles.card,
-            borderColor: casosVencidos > 0 ? 'rgba(220, 38, 38, 0.25)' : 'rgba(148, 163, 184, 0.2)',
-            backgroundColor: casosVencidos > 0 
-              ? (theme === 'dark' ? 'rgba(220, 38, 38, 0.05)' : 'rgba(220, 38, 38, 0.02)')
-              : styles.card.backgroundColor,
+            borderColor: 'rgba(71, 85, 105, 0.3)',
+            backgroundColor: styles.card.backgroundColor,
             animation: 'fadeInSlide 0.3s ease-out 0.3s both',
             transform: 'scale(1)',
             transition: 'all 0.2s ease-in-out'
           }}
           onClick={() => navigate('/app/admin/casos')}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = casosVencidos > 0 ? 'rgba(220, 38, 38, 0.4)' : 'rgba(148, 163, 184, 0.3)';
+            e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
             e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = casosVencidos > 0 ? 'rgba(220, 38, 38, 0.25)' : 'rgba(148, 163, 184, 0.2)';
+            e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.3)';
             e.currentTarget.style.boxShadow = '';
             e.currentTarget.style.transform = 'scale(1) translateY(0)';
           }}
@@ -1494,25 +1490,19 @@ const AdminPanel: React.FC = () => {
           className="p-4 rounded-xl border-2 transition-all duration-200 relative overflow-hidden"
           style={{
             ...styles.card,
-            borderColor: kpis && kpis.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 80 
-              ? 'rgba(34, 197, 94, 0.25)' 
-              : kpis && kpis.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 60
-              ? 'rgba(245, 158, 11, 0.25)'
-              : 'rgba(148, 163, 184, 0.2)',
-            backgroundColor: kpis && kpis.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 80
-              ? (theme === 'dark' ? 'rgba(34, 197, 94, 0.05)' : 'rgba(34, 197, 94, 0.02)')
-              : kpis && kpis.slaCompliance !== null && kpis.slaCompliance !== undefined && kpis.slaCompliance >= 60
-              ? (theme === 'dark' ? 'rgba(245, 158, 11, 0.05)' : 'rgba(245, 158, 11, 0.02)')
-              : styles.card.backgroundColor,
+            borderColor: 'rgba(71, 85, 105, 0.3)',
+            backgroundColor: styles.card.backgroundColor,
             animation: 'fadeInSlide 0.3s ease-out 0.35s both',
             transform: 'scale(1)',
             transition: 'all 0.2s ease-in-out'
           }}
           onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
             e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
           }}
           onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.3)';
             e.currentTarget.style.transform = 'scale(1) translateY(0)';
             e.currentTarget.style.boxShadow = '';
           }}
@@ -1562,25 +1552,19 @@ const AdminPanel: React.FC = () => {
           className="p-4 rounded-xl border-2 transition-all duration-200 relative overflow-hidden"
           style={{
             ...styles.card,
-            borderColor: kpis && kpis.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 4
-              ? 'rgba(34, 197, 94, 0.25)'
-              : kpis && kpis.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 3
-              ? 'rgba(245, 158, 11, 0.25)'
-              : 'rgba(148, 163, 184, 0.2)',
-            backgroundColor: kpis && kpis.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 4
-              ? (theme === 'dark' ? 'rgba(34, 197, 94, 0.05)' : 'rgba(34, 197, 94, 0.02)')
-              : kpis && kpis.csatScore !== null && kpis.csatScore !== undefined && kpis.csatScore >= 3
-              ? (theme === 'dark' ? 'rgba(245, 158, 11, 0.05)' : 'rgba(245, 158, 11, 0.02)')
-              : styles.card.backgroundColor,
+            borderColor: 'rgba(71, 85, 105, 0.3)',
+            backgroundColor: styles.card.backgroundColor,
             animation: 'fadeInSlide 0.3s ease-out 0.4s both',
             transform: 'scale(1)',
             transition: 'all 0.2s ease-in-out'
           }}
           onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
             e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
           }}
           onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.3)';
             e.currentTarget.style.transform = 'scale(1) translateY(0)';
             e.currentTarget.style.boxShadow = '';
           }}
@@ -1633,16 +1617,18 @@ const AdminPanel: React.FC = () => {
           className="p-4 rounded-xl border-2 transition-all duration-200 relative overflow-hidden"
           style={{
             ...styles.card,
-            borderColor: 'rgba(148, 163, 184, 0.2)',
+            borderColor: 'rgba(71, 85, 105, 0.3)',
             animation: 'fadeInSlide 0.3s ease-out 0.45s both',
             transform: 'scale(1)',
             transition: 'all 0.2s ease-in-out'
           }}
           onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
             e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
           }}
           onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.3)';
             e.currentTarget.style.transform = 'scale(1) translateY(0)';
             e.currentTarget.style.boxShadow = '';
           }}

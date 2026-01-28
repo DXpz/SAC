@@ -875,7 +875,7 @@ const BandejaCasos: React.FC = () => {
                 <tr>
                   <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>ID Caso</th>
                   <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Cliente</th>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>País</th>
+                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Empresa</th>
                   <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Categoría</th>
                   <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Estado</th>
                   <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase text-right" style={{color: styles.text.secondary}}>Acción</th>
@@ -1174,9 +1174,9 @@ const BandejaCasos: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* País */}
+                  {/* Empresa */}
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>País:</span>
+                    <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>Empresa:</span>
                     <span 
                       className="text-[10px] font-semibold px-2 py-1 rounded-lg"
                       style={{

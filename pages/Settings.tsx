@@ -397,93 +397,9 @@ const Settings: React.FC = () => {
         };
       });
       
-      // Si es ADMIN, filtrar usuarios por país del admin (OBLIGATORIO)
+      // Admin ve todos los usuarios de ambos países (sin filtrar por país)
       if (currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR') {
-        const countryToFilter = adminCountry || await getAdminCountry();
-        
-        if (countryToFilter) {
-          console.log('[Settings] Admin detectado, filtrando usuarios por país:', countryToFilter);
-          
-          usuariosMapeados = usuariosMapeados.filter(usuario => {
-            const usuarioPais = usuario.pais || '';
-            
-            console.log('[Settings] 🔍 Verificando usuario:', {
-              usuarioId: usuario.id,
-              usuarioNombre: usuario.name,
-              usuarioPaisRaw: usuarioPais,
-              usuarioCompleto: usuario
-            });
-            
-            const usuarioPaisNormalizado = normalizeUserCountry(usuarioPais);
-            
-            console.log('[Settings] 🔍 País normalizado del usuario:', {
-              usuarioId: usuario.id,
-              usuarioNombre: usuario.name,
-              usuarioPaisRaw: usuarioPais,
-              usuarioPaisNormalizado: usuarioPaisNormalizado,
-              adminCountry: countryToFilter
-            });
-            
-            // Si el usuario no tiene país definido, NO mostrarlo al admin
-            if (!usuarioPaisNormalizado) {
-              console.log('[Settings] ❌ Usuario SIN país definido, FILTRANDO:', {
-                usuarioId: usuario.id,
-                usuarioNombre: usuario.name,
-                usuarioPais: usuarioPais
-              });
-              return false;
-            }
-            
-            // Solo mostrar usuarios del mismo país que el admin
-            const matches = usuarioPaisNormalizado === countryToFilter;
-            
-            if (!matches) {
-              console.log('[Settings] ❌ Usuario filtrado por país (NO coincide):', {
-                usuarioId: usuario.id,
-                usuarioNombre: usuario.name,
-                usuarioPais: usuarioPais,
-                usuarioPaisNormalizado: usuarioPaisNormalizado,
-                adminCountry: countryToFilter,
-                matches: false
-              });
-              return false;
-            }
-            
-            console.log('[Settings] ✅ Usuario ACEPTADO (país coincide):', {
-              usuarioId: usuario.id,
-              usuarioNombre: usuario.name,
-              usuarioPais: usuarioPais,
-              usuarioPaisNormalizado: usuarioPaisNormalizado,
-              adminCountry: countryToFilter,
-              matches: true
-            });
-            
-            return true;
-          });
-          
-          console.log('[Settings] 📊 RESUMEN - Usuarios después de filtrar por país:', {
-            totalAntes: usuariosWebhook.length,
-            totalDespues: usuariosMapeados.length,
-            adminCountry: countryToFilter,
-            usuariosFiltrados: usuariosMapeados.map(u => ({ 
-              id: u.id, 
-              nombre: u.name, 
-              pais: u.pais || 'SIN PAÍS' 
-            }))
-          });
-          
-          // Actualizar el estado del país del admin si no estaba establecido
-          if (!adminCountry) {
-            setAdminCountry(countryToFilter);
-          }
-        } else {
-          console.error('[Settings] ⚠️ ERROR: Admin sin país definido!', {
-            user: currentUser,
-            userPais: currentUser?.pais
-          });
-          // Si el admin no tiene país, NO mostrar ningún usuario (más seguro)
-          usuariosMapeados = [];
-        }
+        console.log('[Settings] Admin detectado, mostrando TODOS los usuarios de ambos países');
       }
       
       setSettingsUsers(usuariosMapeados);
@@ -3823,7 +3739,7 @@ const Settings: React.FC = () => {
                         borderBottom: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
                       }}
                     >
-                      PAÍS
+                      EMPRESA
                     </th>
                     <th 
                       className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider"
@@ -4070,7 +3986,7 @@ const Settings: React.FC = () => {
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <div className="p-2 rounded-lg" style={{
-                      backgroundColor: theme === 'dark' ? 'rgba(22, 163, 74, 0.15)' : 'rgba(21, 128, 61, 0.1)'
+                      backgroundColor: theme === 'dark' ? '#020617' : 'rgba(21, 128, 61, 0.1)'
                     }}>
                       <Calendar className="w-5 h-5" style={{ color: theme === 'dark' ? '#16a34a' : '#15803d' }} />
                     </div>
