@@ -422,10 +422,10 @@ const AdminBandejaCasos: React.FC = () => {
     <div className="space-y-6" style={styles.container}>
       {/* Barra de búsqueda y filtros */}
       <div 
-        className="flex flex-col gap-4 p-4 rounded-3xl shadow-xl border backdrop-blur-sm"
+        className="flex flex-col gap-4 p-4 rounded-xl border flex-shrink-0 flex flex-col gap-3"
         style={{
           ...styles.card,
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+          animation: 'fadeInSlide 0.3s ease-out'
         }}
       >
         {/* Búsqueda */}
@@ -704,10 +704,9 @@ const AdminBandejaCasos: React.FC = () => {
       {loading ? (
         <LoadingScreen message="Cargando casos..." />
       ) : error ? (
-        <div className="rounded-3xl shadow-xl border p-12 text-center" style={{
-          backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
-          borderColor: 'rgba(200, 21, 27, 0.3)',
-          color: styles.card.color
+        <div className="rounded-xl border p-12 text-center" style={{
+          ...styles.card,
+          borderColor: 'rgba(200, 21, 27, 0.3)'
         }}>
           <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{backgroundColor: 'rgba(200, 21, 27, 0.2)'}}>
             <X className="w-10 h-10" style={{color: '#f87171'}} />
@@ -723,7 +722,7 @@ const AdminBandejaCasos: React.FC = () => {
           </button>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-3xl shadow-xl border p-12 text-center" style={{backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff', borderColor: styles.card.borderColor, color: styles.card.color, boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'}}>
+        <div className="rounded-xl border p-12 text-center" style={{...styles.card}}>
           <div className="w-24 h-24 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg" style={{
             backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc'
           }}>
@@ -737,28 +736,28 @@ const AdminBandejaCasos: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="rounded-3xl shadow-xl border overflow-hidden" style={{backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff', borderColor: styles.card.borderColor, color: styles.card.color, boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'}}>
+        <div className="rounded-xl border overflow-hidden" style={{...styles.card, animation: 'fadeInSlide 0.3s ease-out 0.1s both'}}>
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="border-b" style={{
-                backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
-                borderColor: 'rgba(148, 163, 184, 0.2)'
-              }}>
-                <tr>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>ID Caso</th>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Cliente</th>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Empresa</th>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Asunto</th>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Categoría</th>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Estado</th>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Agente</th>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>SLA</th>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Días</th>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Fecha</th>
-                  <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase text-right" style={{color: styles.text.secondary}}>Acción</th>
+            <table className="w-full" style={{borderCollapse: 'separate', borderSpacing: 0}}>
+              <thead>
+                <tr style={{
+                  backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                  animation: 'fadeInSlide 0.3s ease-out'
+                }}>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>ID Caso</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Cliente</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Empresa</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Asunto</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Categoría</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Estado</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Agente</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>SLA</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Días</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Fecha</th>
+                  <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Acción</th>
                 </tr>
               </thead>
-              <tbody className="divide-y" style={{borderColor: 'rgba(148, 163, 184, 0.15)'}}>
+              <tbody>
                 {filtered.map((caso, idx) => {
                   const rawStatus = caso.status || (caso as any).estado;
                   const normalizedStatus = normalizeStatus(rawStatus);
@@ -768,15 +767,19 @@ const AdminBandejaCasos: React.FC = () => {
                   return (
                     <tr 
                       key={caso.id} 
-                      className="transition-all duration-200 cursor-pointer group relative"
+                      className="hover:opacity-90 transition-opacity cursor-pointer"
                       style={{
-                        backgroundColor: 'transparent',
+                        backgroundColor: idx % 2 === 0 
+                          ? (theme === 'dark' ? '#020617' : '#ffffff')
+                          : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
+                        borderBottom: idx < filtered.length - 1 ? '1px solid rgba(148, 163, 184, 0.1)' : 'none',
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = theme === 'dark' ? '#020617' : '#f1f5f9';
+                        e.currentTarget.style.transform = 'translateX(2px)';
+                        e.currentTarget.style.transition = 'transform 0.2s ease-in-out';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.transform = 'translateY(0)';
                       }} 
                       onClick={() => navigate(`/app/casos/${caso.id}`)}
                     >

@@ -15,7 +15,7 @@ const GerenteDashboard: React.FC = () => {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('hoy');
   const [loading, setLoading] = useState(true);
   const [hoveredKPI, setHoveredKPI] = useState<string | null>(null);
-  const [showInsights, setShowInsights] = useState(true);
+  const [showInsights, setShowInsights] = useState(false);
   const [gerenteCountry, setGerenteCountry] = useState<'SV' | 'GT' | null>(null);
   const { theme } = useTheme();
   const location = useLocation();
@@ -916,8 +916,9 @@ const GerenteDashboard: React.FC = () => {
       {/* Resumen Ejecutivo (desplegable, listado minimalista) */}
       {insights.length > 0 && (
         <div 
-          className="mt-2"
+          className="p-4 rounded-xl border shadow-sm mt-2"
           style={{
+            ...styles.card,
             animation: 'fadeInSlide 0.3s ease-out'
           }}
         >

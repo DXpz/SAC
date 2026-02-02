@@ -533,7 +533,7 @@ const AlertasCriticas: React.FC = () => {
 
       {/* Barra de Filtros y Búsqueda */}
       <div 
-        className="rounded-3xl shadow-xl border overflow-hidden"
+        className="rounded-xl border p-4 flex-shrink-0 flex flex-col gap-3"
         style={{
           ...styles.card,
           animation: 'fadeInSlide 0.3s ease-out 0.25s both'
@@ -666,34 +666,31 @@ const AlertasCriticas: React.FC = () => {
         casosFiltrados.length > 0 ? (
           viewMode === 'table' ? (
             <div 
-              className="rounded-3xl shadow-xl border overflow-hidden" 
+              className="rounded-xl border overflow-hidden" 
               style={{
-                backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
-                borderColor: styles.card.borderColor,
-                color: styles.card.color,
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+                ...styles.card,
                 animation: 'fadeInSlide 0.4s ease-out 0.3s both'
               }}
             >
               <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead className="border-b" style={{
-                    backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
-                    borderColor: 'rgba(148, 163, 184, 0.2)'
-                  }}>
-                    <tr>
-                      <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>ID Caso</th>
-                      <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Asunto</th>
-                      <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Cliente</th>
-                      <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Empresa</th>
-                      <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Agente</th>
-                      <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Prioridad</th>
-                      <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Estado</th>
-                      <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Tiempo</th>
-                      <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase text-right" style={{color: styles.text.secondary}}>Acción</th>
+                <table className="w-full" style={{borderCollapse: 'separate', borderSpacing: 0}}>
+                  <thead>
+                    <tr style={{
+                      backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                      animation: 'fadeInSlide 0.3s ease-out'
+                    }}>
+                      <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>ID Caso</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Asunto</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Cliente</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Empresa</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Agente</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Prioridad</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Estado</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Tiempo</th>
+                      <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Acción</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y" style={{borderColor: 'rgba(148, 163, 184, 0.15)'}}>
+                  <tbody>
                     {casosFiltrados.map((caso, idx) => {
                       const priorityConfig = getPriorityConfig(caso.priority);
                       const slaDias = caso.categoria?.slaDias || 5;
@@ -706,16 +703,20 @@ const AlertasCriticas: React.FC = () => {
                   return (
                     <tr 
                       key={caso.id} 
-                      className="transition-all duration-200 cursor-pointer group relative"
+                      className="hover:opacity-90 transition-opacity cursor-pointer"
                       style={{
-                        backgroundColor: 'transparent',
+                        backgroundColor: idx % 2 === 0 
+                          ? (theme === 'dark' ? '#020617' : '#ffffff')
+                          : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
+                        borderBottom: idx < casosFiltrados.length - 1 ? '1px solid rgba(148, 163, 184, 0.1)' : 'none',
                         borderLeft: caso.priority === 'Critica' ? '4px solid #c8151b' : 'none'
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f1f5f9';
+                        e.currentTarget.style.transform = 'translateX(2px)';
+                        e.currentTarget.style.transition = 'transform 0.2s ease-in-out';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.transform = 'translateY(0)';
                       }} 
                       onClick={() => navigate(`/app/casos/${caso.id}`)}
                     >
@@ -941,17 +942,11 @@ const AlertasCriticas: React.FC = () => {
                 return (
                   <div
                     key={caso.id}
-                    className="rounded-xl border-2 overflow-hidden cursor-pointer transition-all duration-200 hover:scale-[1.02]"
+                    className="rounded-xl border overflow-hidden cursor-pointer transition-all duration-200 hover:scale-[1.02]"
                     style={{
-                      backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
-                      color: styles.card.color,
-                      borderColor: caso.priority === 'Critica' 
-                        ? 'rgba(200, 21, 27, 0.4)' 
-                        : caso.priority === 'Alta'
-                        ? 'rgba(245, 158, 11, 0.3)'
-                        : 'rgba(148, 163, 184, 0.2)',
-                      borderLeftWidth: caso.priority === 'Critica' ? '6px' : '2px',
-                      borderLeftColor: caso.priority === 'Critica' ? '#c8151b' : 'transparent',
+                      ...styles.card,
+                      borderLeftWidth: caso.priority === 'Critica' ? '6px' : '4px',
+                      borderLeftColor: caso.priority === 'Critica' ? '#c8151b' : caso.priority === 'Alta' ? '#f59e0b' : 'rgba(148, 163, 184, 0.3)',
                       animation: `fadeInSlide 0.3s ease-out ${0.35 + idx * 0.05}s both`
                     }}
                     onClick={() => navigate(`/app/casos/${caso.id}`)}
@@ -966,7 +961,7 @@ const AlertasCriticas: React.FC = () => {
                   >
                     {/* Header con ID y Prioridad */}
                     <div className="p-4 border-b" style={{
-                      backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc',
+                      backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
                       borderColor: 'rgba(148, 163, 184, 0.2)'
                     }}>
                       <div className="flex items-center justify-between mb-2">
@@ -1114,9 +1109,8 @@ const AlertasCriticas: React.FC = () => {
           )
         ) : (
           /* Sin resultados de búsqueda */
-          <div className="p-20 text-center rounded-xl border-2 border-dashed" style={{
-            backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
-            color: styles.card.color,
+          <div className="p-20 text-center rounded-xl border border-dashed" style={{
+            ...styles.card,
             borderColor: 'rgba(148, 163, 184, 0.25)'
           }}>
             <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5 border-2" style={{
@@ -1132,9 +1126,8 @@ const AlertasCriticas: React.FC = () => {
           </div>
         )
       ) : (
-          <div className="p-20 text-center rounded-xl border-2 border-dashed" style={{
-            backgroundColor: theme === 'dark' ? '#1e293b' : '#ffffff',
-            color: styles.card.color,
+          <div className="p-20 text-center rounded-xl border border-dashed" style={{
+            ...styles.card,
             borderColor: 'rgba(148, 163, 184, 0.25)'
           }}>
             <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5 border-2" style={{
