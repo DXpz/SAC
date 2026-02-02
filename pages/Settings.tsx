@@ -2376,7 +2376,7 @@ const Settings: React.FC = () => {
         <div className="flex items-center gap-3 mb-4">
           <SettingsIcon 
             className="w-6 h-6" 
-            style={{ color: theme === 'dark' ? '#3b82f6' : '#2563eb' }}
+            style={{ color: theme === 'dark' ? '#991b1b' : '#7a1a1a' }}
           />
           <h1 className="text-xl font-bold" style={{ color: styles.text.primary }}>
             Administración del Sistema
@@ -2414,7 +2414,7 @@ const Settings: React.FC = () => {
                 className="flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all relative"
                 style={{
                   color: isActive 
-                    ? (theme === 'dark' ? '#3b82f6' : '#2563eb')
+                    ? (theme === 'dark' ? '#991b1b' : '#7a1a1a')
                     : styles.text.secondary
                 }}
               >
@@ -2429,7 +2429,7 @@ const Settings: React.FC = () => {
             style={{
               left: `${indicatorStyle.left}px`,
               width: `${indicatorStyle.width}px`,
-              backgroundColor: theme === 'dark' ? '#3b82f6' : '#2563eb',
+              backgroundColor: theme === 'dark' ? '#991b1b' : '#7a1a1a',
               transform: 'translateY(2px)' // Alinear con el borde inferior
             }}
           />
@@ -2507,16 +2507,16 @@ const Settings: React.FC = () => {
                 onClick={handleSave}
                 className="px-6 py-3 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
                 style={{
-                  backgroundColor: theme === 'dark' ? '#ef4444' : '#dc2626',
-                  boxShadow: theme === 'dark' 
-                    ? '0 4px 12px rgba(239, 68, 68, 0.3)' 
-                    : '0 4px 12px rgba(220, 38, 38, 0.3)'
+                backgroundColor: theme === 'dark' ? '#991b1b' : '#7a1a1a',
+                boxShadow: theme === 'dark' 
+                  ? '0 4px 12px rgba(153, 27, 27, 0.3)' 
+                  : '0 4px 12px rgba(122, 26, 26, 0.3)'
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = theme === 'dark' ? '#dc2626' : '#b91c1c';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#ef4444' : '#dc2626';
+                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#991b1b' : '#7a1a1a';
                 }}
               >
                 <Save className="w-4 h-4" />
@@ -3051,16 +3051,16 @@ const Settings: React.FC = () => {
                       onClick={handleConfirmDelete}
                       className="px-6 py-2 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
                       style={{
-                        backgroundColor: theme === 'dark' ? '#ef4444' : '#dc2626',
-                        boxShadow: theme === 'dark' 
-                          ? '0 4px 12px rgba(239, 68, 68, 0.3)' 
-                          : '0 4px 12px rgba(220, 38, 38, 0.3)'
+                backgroundColor: theme === 'dark' ? '#991b1b' : '#7a1a1a',
+                boxShadow: theme === 'dark' 
+                  ? '0 4px 12px rgba(153, 27, 27, 0.3)' 
+                  : '0 4px 12px rgba(122, 26, 26, 0.3)'
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.backgroundColor = theme === 'dark' ? '#dc2626' : '#b91c1c';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = theme === 'dark' ? '#ef4444' : '#dc2626';
+                        e.currentTarget.style.backgroundColor = theme === 'dark' ? '#991b1b' : '#7a1a1a';
                       }}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -3096,16 +3096,16 @@ const Settings: React.FC = () => {
                     onClick={handleSaveStates}
                     className="px-6 py-3 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
                     style={{
-                      backgroundColor: theme === 'dark' ? '#ef4444' : '#dc2626',
-                      boxShadow: theme === 'dark' 
-                        ? '0 4px 12px rgba(239, 68, 68, 0.3)' 
-                        : '0 4px 12px rgba(220, 38, 38, 0.3)'
+                backgroundColor: theme === 'dark' ? '#991b1b' : '#7a1a1a',
+                boxShadow: theme === 'dark' 
+                  ? '0 4px 12px rgba(153, 27, 27, 0.3)' 
+                  : '0 4px 12px rgba(122, 26, 26, 0.3)'
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = theme === 'dark' ? '#dc2626' : '#b91c1c';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#ef4444' : '#dc2626';
+                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#991b1b' : '#7a1a1a';
                     }}
                   >
                     <Save className="w-4 h-4" />
@@ -3505,16 +3505,16 @@ const Settings: React.FC = () => {
                       onClick={handleConfirmDeleteState}
                       className="px-6 py-2 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
                       style={{
-                        backgroundColor: theme === 'dark' ? '#ef4444' : '#dc2626',
-                        boxShadow: theme === 'dark' 
-                          ? '0 4px 12px rgba(239, 68, 68, 0.3)' 
-                          : '0 4px 12px rgba(220, 38, 38, 0.3)'
+                backgroundColor: theme === 'dark' ? '#991b1b' : '#7a1a1a',
+                boxShadow: theme === 'dark' 
+                  ? '0 4px 12px rgba(153, 27, 27, 0.3)' 
+                  : '0 4px 12px rgba(122, 26, 26, 0.3)'
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.backgroundColor = theme === 'dark' ? '#dc2626' : '#b91c1c';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = theme === 'dark' ? '#ef4444' : '#dc2626';
+                        e.currentTarget.style.backgroundColor = theme === 'dark' ? '#991b1b' : '#7a1a1a';
                       }}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -3670,16 +3670,16 @@ const Settings: React.FC = () => {
               <button
                 className="px-6 py-3 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
                 style={{
-                  backgroundColor: theme === 'dark' ? '#ef4444' : '#dc2626',
-                  boxShadow: theme === 'dark' 
-                    ? '0 4px 12px rgba(239, 68, 68, 0.3)' 
-                    : '0 4px 12px rgba(220, 38, 38, 0.3)'
+                backgroundColor: theme === 'dark' ? '#991b1b' : '#7a1a1a',
+                boxShadow: theme === 'dark' 
+                  ? '0 4px 12px rgba(153, 27, 27, 0.3)' 
+                  : '0 4px 12px rgba(122, 26, 26, 0.3)'
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = theme === 'dark' ? '#dc2626' : '#b91c1c';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#ef4444' : '#dc2626';
+                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#991b1b' : '#7a1a1a';
                 }}
               >
                 <UserPlus className="w-4 h-4" />

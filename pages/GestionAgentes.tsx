@@ -688,7 +688,7 @@ const GestionAgentes: React.FC = () => {
            )}
            {resumenAgentes.inactivos > 0 && (
              <div className="flex items-center gap-1.5">
-               <div className="w-2 h-2 rounded-full" style={{backgroundColor: '#ef4444'}}></div>
+               <div className="w-2 h-2 rounded-full" style={{backgroundColor: '#991b1b'}}></div>
                <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>
                  {resumenAgentes.inactivos} <span style={{color: styles.text.tertiary}}>Inactivos</span>
                </span>

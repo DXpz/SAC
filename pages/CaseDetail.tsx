@@ -1471,17 +1471,16 @@ const CaseDetail: React.FC = () => {
                   <div 
                     className="p-3 rounded-lg transition-all hover:scale-[1.02]" 
                     style={{
-                      backgroundColor: 'rgba(220, 38, 38, 0.1)', 
-                      borderColor: 'rgba(220, 38, 38, 0.3)', 
-                      border: '1px solid',
+                      backgroundColor: 'rgba(153, 27, 27, 0.25)', 
+                      border: '1px solid rgba(153, 27, 27, 0.4)',
                       animation: 'fadeInSlide 0.3s ease-out 0.4s both'
                     }}
                   >
-                    <p className="text-xs mb-1 text-red-600 font-semibold">SLA Vencido</p>
-                    <p className="text-sm font-bold text-red-600">
+                    <p className="text-xs mb-1 font-semibold" style={{color: '#f87171'}}>SLA Vencido</p>
+                    <p className="text-sm font-bold" style={{color: '#fca5a5'}}>
                       {daysOverdue === 1 ? '1 día de atraso' : `${daysOverdue} días de atraso`}
                     </p>
-                    <p className="text-xs text-red-500">
+                    <p className="text-xs" style={{color: '#f87171'}}>
                       {hoursOverdue > 0 
                         ? `${daysOverdue * 24 + hoursOverdue} horas hábiles de retraso`
                         : `${daysOverdue * 24} horas hábiles de retraso`
@@ -2694,8 +2693,8 @@ const CaseDetail: React.FC = () => {
               <div
                 className="w-40 h-40 rounded-full flex items-center justify-center"
                 style={{
-                  background: 'linear-gradient(135deg, #dc2626, #ef4444)',
-                  boxShadow: '0 20px 60px rgba(220, 38, 38, 0.5)'
+                  background: 'linear-gradient(135deg, #7a1a1a, #991b1b)',
+                  boxShadow: '0 20px 60px rgba(122, 26, 26, 0.5)'
                 }}
               >
                 <AlertCircle 

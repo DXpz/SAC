@@ -1,11 +1,11 @@
 :root {
   /* COLORES PRIMARIOS */
-  --color-brand-red: #c8151b;
+  --color-brand-red: #7a1a1a;
   --color-brand-blue: #145478; /* Azul oscuro primario */
   --color-brand-gray: #afacb2;
 
   /* COLORES SECUNDARIOS */
-  --color-accent-red: #f52938;
+  --color-accent-red: #991b1b;
   --color-accent-darkred: #700306;
   --color-accent-blue: #107ab4; /* Azul brillante */
   --color-accent-blue-2: #409abb; /* Azul medio */

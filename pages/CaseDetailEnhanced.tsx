@@ -336,12 +336,12 @@ const CaseDetail: React.FC = () => {
                   <p className="text-xs" style={{color: styles.text.tertiary}}>{slaDays * 24} horas hábiles</p>
                 </div>
                 {caso.slaExpired ? (
-                  <div className="p-3 rounded-lg" style={{backgroundColor: 'rgba(220, 38, 38, 0.1)', borderColor: 'rgba(220, 38, 38, 0.3)', border: '1px solid'}}>
-                    <p className="text-xs mb-1 text-red-600">Días de Retraso</p>
-                    <p className="text-sm font-bold text-red-600">
+                  <div className="p-3 rounded-lg" style={{backgroundColor: 'rgba(153, 27, 27, 0.25)', border: '1px solid rgba(153, 27, 27, 0.4)'}}>
+                    <p className="text-xs mb-1" style={{color: '#f87171'}}>Días de Retraso</p>
+                    <p className="text-sm font-bold" style={{color: '#fca5a5'}}>
                       {daysOverdue} días hábiles
                     </p>
-                    <p className="text-xs text-red-600">{daysOverdue * 24 + hoursOverdue} horas hábiles de retraso</p>
+                    <p className="text-xs" style={{color: '#f87171'}}>{daysOverdue * 24 + hoursOverdue} horas hábiles de retraso</p>
                   </div>
                 ) : (
                   <div className="p-3 rounded-lg" style={{backgroundColor: 'rgba(34, 197, 94, 0.1)', borderColor: 'rgba(34, 197, 94, 0.3)', border: '1px solid'}}>

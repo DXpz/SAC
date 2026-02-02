@@ -1816,7 +1816,7 @@ const AdminUsers: React.FC = () => {
               <button
                 onClick={deleteUser}
                 className="flex-1 px-4 py-2 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all"
-                style={{backgroundColor: '#ef4444'}}
+                style={{backgroundColor: '#991b1b'}}
               >
                 Eliminar
               </button>
