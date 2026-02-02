@@ -181,17 +181,38 @@ const BandejaCasos: React.FC = () => {
     return null;
   };
 
-  // Función para obtener los colores del estado
-  const getStatusColors = (status: CaseStatus) => {
-    const statusColors: Record<CaseStatus, { backgroundColor: string; color: string; borderColor: string }> = {
-      [CaseStatus.NUEVO]: { backgroundColor: '#dbeafe', color: '#1e40af', borderColor: '#3b82f6' },
-      [CaseStatus.EN_PROCESO]: { backgroundColor: '#fef3c7', color: '#92400e', borderColor: '#f59e0b' },
-      [CaseStatus.PENDIENTE_CLIENTE]: { backgroundColor: '#f3e8ff', color: '#6b21a8', borderColor: '#a855f7' },
-      [CaseStatus.ESCALADO]: { backgroundColor: '#fee2e2', color: '#991b1b', borderColor: '#ef4444' },
-      [CaseStatus.RESUELTO]: { backgroundColor: '#d1fae5', color: '#065f46', borderColor: '#10b981' },
-      [CaseStatus.CERRADO]: { backgroundColor: '#f1f5f9', color: '#334155', borderColor: '#64748b' }
+  // Función para obtener colores del badge de estado (como en Admin de usuarios)
+  const getStatusBadgeStyle = (status: CaseStatus): { bg: string; text: string; border: string } => {
+    const dark: Record<CaseStatus, { bg: string; text: string; border: string }> = {
+      [CaseStatus.NUEVO]: { bg: 'rgba(59, 130, 246, 0.15)', text: '#3b82f6', border: 'rgba(59, 130, 246, 0.3)' },
+      [CaseStatus.EN_PROCESO]: { bg: 'rgba(245, 158, 11, 0.15)', text: '#f59e0b', border: 'rgba(245, 158, 11, 0.3)' },
+      [CaseStatus.PENDIENTE_CLIENTE]: { bg: 'rgba(168, 85, 247, 0.15)', text: '#a855f7', border: 'rgba(168, 85, 247, 0.3)' },
+      [CaseStatus.ESCALADO]: { bg: 'rgba(239, 68, 68, 0.15)', text: '#ef4444', border: 'rgba(239, 68, 68, 0.3)' },
+      [CaseStatus.RESUELTO]: { bg: 'rgba(34, 197, 94, 0.15)', text: '#22c55e', border: 'rgba(34, 197, 94, 0.3)' },
+      [CaseStatus.CERRADO]: { bg: 'rgba(148, 163, 184, 0.15)', text: '#94a3b8', border: 'rgba(148, 163, 184, 0.3)' }
     };
-    return statusColors[status] || { backgroundColor: '#f1f5f9', color: '#475569', borderColor: '#cbd5e1' };
+    const light: Record<CaseStatus, { bg: string; text: string; border: string }> = {
+      [CaseStatus.NUEVO]: { bg: '#dbeafe', text: '#1e40af', border: '#3b82f6' },
+      [CaseStatus.EN_PROCESO]: { bg: '#fef3c7', text: '#92400e', border: '#f59e0b' },
+      [CaseStatus.PENDIENTE_CLIENTE]: { bg: '#f3e8ff', text: '#6b21a8', border: '#a855f7' },
+      [CaseStatus.ESCALADO]: { bg: '#fee2e2', text: '#991b1b', border: '#ef4444' },
+      [CaseStatus.RESUELTO]: { bg: '#d1fae5', text: '#065f46', border: '#10b981' },
+      [CaseStatus.CERRADO]: { bg: '#f1f5f9', text: '#334155', border: '#64748b' }
+    };
+    const style = theme === 'dark' ? dark[status] : light[status];
+    return style || (theme === 'dark' ? { bg: 'rgba(148, 163, 184, 0.15)', text: '#94a3b8', border: 'rgba(148, 163, 184, 0.3)' } : { bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' });
+  };
+
+  // Badge estilo para empresa (SV / GT)
+  const getEmpresaBadgeStyle = (paisCode: string): { bg: string; text: string; border: string } => {
+    if (paisCode === 'SV') return theme === 'dark' ? { bg: 'rgba(59, 130, 246, 0.15)', text: '#60a5fa', border: 'rgba(59, 130, 246, 0.3)' } : { bg: '#dbeafe', text: '#1d4ed8', border: '#3b82f6' };
+    if (paisCode === 'GT') return theme === 'dark' ? { bg: 'rgba(34, 197, 94, 0.15)', text: '#4ade80', border: 'rgba(34, 197, 94, 0.3)' } : { bg: '#dcfce7', text: '#166534', border: '#22c55e' };
+    return theme === 'dark' ? { bg: 'rgba(148, 163, 184, 0.15)', text: '#94a3b8', border: 'rgba(148, 163, 184, 0.3)' } : { bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' };
+  };
+
+  // Badge estilo para categoría
+  const getCategoriaBadgeStyle = (): { bg: string; text: string; border: string } => {
+    return theme === 'dark' ? { bg: 'rgba(100, 116, 139, 0.15)', text: '#94a3b8', border: 'rgba(148, 163, 184, 0.3)' } : { bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' };
   };
 
   // Cargar datos iniciales en secuencia
@@ -907,11 +928,11 @@ const BandejaCasos: React.FC = () => {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <span 
-                          className="text-[10px] font-semibold px-2.5 py-1.5 rounded-xl border shadow-sm transition-all"
+                          className="inline-flex px-2 py-1 text-[10px] font-semibold rounded-lg border transition-all"
                           style={{
-                            backgroundColor: theme === 'dark' ? '#0f172a' : '#f1f5f9',
-                            color: styles.text.secondary,
-                            borderColor: 'rgba(148, 163, 184, 0.2)',
+                            backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.12)' : '#dbeafe',
+                            color: theme === 'dark' ? '#60a5fa' : '#1d4ed8',
+                            borderColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.3)' : '#93c5fd',
                             transform: 'scale(1)',
                             transition: 'all 0.2s ease-in-out'
                           }}
@@ -950,14 +971,14 @@ const BandejaCasos: React.FC = () => {
                             </span>
                           );
                         }
-                        
+                        const empresaStyle = getEmpresaBadgeStyle(paisCode);
                         return (
                           <span 
-                            className="inline-flex items-center justify-center px-2 py-1 text-xs font-semibold rounded-lg border transition-all"
+                            className="inline-flex items-center justify-center px-2 py-1 text-[10px] font-semibold rounded-lg border transition-all"
                             style={{
-                              backgroundColor: theme === 'dark' ? '#0f172a' : '#f1f5f9',
-                              color: styles.text.secondary,
-                              borderColor: 'rgba(148, 163, 184, 0.2)',
+                              backgroundColor: empresaStyle.bg,
+                              color: empresaStyle.text,
+                              borderColor: empresaStyle.border,
                               transform: 'scale(1)',
                               transition: 'all 0.2s ease-in-out',
                               minWidth: '32px'
@@ -976,42 +997,42 @@ const BandejaCasos: React.FC = () => {
                       })()}
                     </td>
                     <td className="px-4 py-3">
-                      <span 
-                        className="inline-flex items-center text-[10px] font-semibold px-2.5 py-1.5 rounded-xl border shadow-sm transition-all"
-                        style={{
-                          backgroundColor: theme === 'dark' ? '#0f172a' : '#f1f5f9',
-                          color: styles.text.secondary,
-                          borderColor: 'rgba(148, 163, 184, 0.2)',
-                          transform: 'scale(1)',
-                          transition: 'all 0.2s ease-in-out'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'scale(1.05)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'scale(1)';
-                        }}
-                      >
-                        {caso.category || caso.categoria?.nombre}
-                      </span>
+                      {(() => {
+                        const catStyle = getCategoriaBadgeStyle();
+                        return (
+                          <span 
+                            className="inline-flex px-2 py-1 text-[10px] font-semibold rounded-lg border transition-all"
+                            style={{
+                              backgroundColor: catStyle.bg,
+                              color: catStyle.text,
+                              borderColor: catStyle.border,
+                              transform: 'scale(1)',
+                              transition: 'all 0.2s ease-in-out'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'scale(1.05)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'scale(1)';
+                            }}
+                          >
+                            {caso.category || caso.categoria?.nombre}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-3">
                       {(() => {
                         const rawStatus = caso.status || (caso as any).estado;
                         const normalizedStatus = normalizeStatus(rawStatus);
+                        const badgeStyle = getStatusBadgeStyle(normalizedStatus);
                         return (
                           <span 
-                            className="text-[10px] font-semibold uppercase tracking-wide transition-all"
+                            className="inline-flex px-2 py-1 text-[10px] font-semibold rounded-lg border transition-all uppercase tracking-wide"
                             style={{
-                              color: (() => {
-                                if (normalizedStatus === CaseStatus.NUEVO) return '#2563eb';
-                                if (normalizedStatus === CaseStatus.EN_PROCESO) return '#d97706';
-                                if (normalizedStatus === CaseStatus.PENDIENTE_CLIENTE) return '#9333ea';
-                                if (normalizedStatus === CaseStatus.ESCALADO) return '#dc2626';
-                                if (normalizedStatus === CaseStatus.RESUELTO) return '#16a34a';
-                                if (normalizedStatus === CaseStatus.CERRADO) return '#64748b';
-                                return '#475569';
-                              })(),
+                              backgroundColor: badgeStyle.bg,
+                              color: badgeStyle.text,
+                              borderColor: badgeStyle.border,
                               transform: 'scale(1)',
                               transition: 'all 0.2s ease-in-out'
                             }}
@@ -1023,7 +1044,7 @@ const BandejaCasos: React.FC = () => {
                             }}
                           >
                             {rawStatus}
-                      </span>
+                          </span>
                         );
                       })()}
                     </td>

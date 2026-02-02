@@ -1674,7 +1674,7 @@ const AdminPanel: React.FC = () => {
           }}
         >
           <div className="p-4 border-b" style={{
-            backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc',
+            backgroundColor: theme === 'dark' ? '#020617' : '#f8fafc',
             borderColor: 'rgba(148, 163, 184, 0.2)'
           }}>
             <div className="flex items-center justify-between">
@@ -1686,7 +1686,7 @@ const AdminPanel: React.FC = () => {
               </span>
             </div>
           </div>
-          <div className="p-6">
+          <div className="p-6" style={{ backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc' }}>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={casosPorEstadoChartSafe}>
                 <CartesianGrid 
@@ -1755,14 +1755,14 @@ const AdminPanel: React.FC = () => {
           }}
         >
           <div className="p-4 border-b" style={{
-            backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc',
+            backgroundColor: theme === 'dark' ? '#020617' : '#f8fafc',
             borderColor: 'rgba(148, 163, 184, 0.2)'
           }}>
             <h3 className="text-sm font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>
               Casos Abiertos vs Cerrados
             </h3>
           </div>
-          <div className="p-6">
+          <div className="p-6" style={{ backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc' }}>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
@@ -1818,7 +1818,7 @@ const AdminPanel: React.FC = () => {
           }}
         >
           <div className="p-4 border-b" style={{
-            backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc',
+            backgroundColor: theme === 'dark' ? '#020617' : '#f8fafc',
             borderColor: 'rgba(148, 163, 184, 0.2)'
           }}>
             <div className="flex items-center justify-between">
@@ -1830,7 +1830,7 @@ const AdminPanel: React.FC = () => {
               </span>
             </div>
           </div>
-          <div className="p-6">
+          <div className="p-6" style={{ backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc' }}>
             <ResponsiveContainer width="100%" height={250}>
               <BarChart layout="vertical" data={usuariosPorRolChart}>
                 <CartesianGrid 
@@ -1899,7 +1899,7 @@ const AdminPanel: React.FC = () => {
           }}
         >
           <div className="p-4 border-b" style={{
-            backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc',
+            backgroundColor: theme === 'dark' ? '#020617' : '#f8fafc',
             borderColor: 'rgba(148, 163, 184, 0.2)'
           }}>
             <div className="flex items-center justify-between">
@@ -1911,7 +1911,7 @@ const AdminPanel: React.FC = () => {
               </span>
             </div>
           </div>
-          <div className="p-6">
+          <div className="p-6" style={{ backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc' }}>
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={casosPorCategoriaChart}>
                 <CartesianGrid 
@@ -1970,7 +1970,7 @@ const AdminPanel: React.FC = () => {
           }}
         >
           <div className="p-4 border-b" style={{
-            backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc',
+            backgroundColor: theme === 'dark' ? '#020617' : '#f8fafc',
             borderColor: 'rgba(148, 163, 184, 0.2)'
           }}>
             <div className="flex items-center justify-between">
@@ -1990,14 +1990,12 @@ const AdminPanel: React.FC = () => {
               </button>
             </div>
           </div>
-          <div className="p-4 space-y-3">
+          <div className="p-4 space-y-3" style={{ backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc' }}>
             <div 
               className="p-3 rounded-lg border cursor-pointer transition-all hover:scale-[1.02]"
               onClick={() => navigate('/app/admin/casos?filter=criticos')}
               style={{
-                backgroundColor: casosCriticos > 0 
-                  ? (theme === 'dark' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)')
-                  : 'transparent',
+                backgroundColor: theme === 'dark' ? '#020617' : (casosCriticos > 0 ? 'rgba(239, 68, 68, 0.05)' : '#ffffff'),
                 borderColor: casosCriticos > 0 ? 'rgba(239, 68, 68, 0.3)' : styles.card.borderColor
               }}
             >
@@ -2015,9 +2013,7 @@ const AdminPanel: React.FC = () => {
               className="p-3 rounded-lg border cursor-pointer transition-all hover:scale-[1.02]"
               onClick={() => navigate('/app/admin/casos?filter=vencidos')}
               style={{
-                backgroundColor: casosVencidos > 0 
-                  ? (theme === 'dark' ? 'rgba(220, 38, 38, 0.1)' : 'rgba(220, 38, 38, 0.05)')
-                  : 'transparent',
+                backgroundColor: theme === 'dark' ? '#020617' : (casosVencidos > 0 ? 'rgba(220, 38, 38, 0.05)' : '#ffffff'),
                 borderColor: casosVencidos > 0 ? 'rgba(220, 38, 38, 0.3)' : styles.card.borderColor
               }}
             >
@@ -2035,9 +2031,7 @@ const AdminPanel: React.FC = () => {
               className="p-3 rounded-lg border cursor-pointer transition-all hover:scale-[1.02]"
               onClick={() => navigate('/app/admin/casos?filter=sin-asignar')}
               style={{
-                backgroundColor: casosSinAsignar > 0 
-                  ? (theme === 'dark' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.05)')
-                  : 'transparent',
+                backgroundColor: theme === 'dark' ? '#020617' : (casosSinAsignar > 0 ? 'rgba(245, 158, 11, 0.05)' : '#ffffff'),
                 borderColor: casosSinAsignar > 0 ? 'rgba(245, 158, 11, 0.3)' : styles.card.borderColor
               }}
             >
@@ -2056,7 +2050,7 @@ const AdminPanel: React.FC = () => {
                 className="p-3 rounded-lg border cursor-pointer transition-all hover:scale-[1.02]"
                 onClick={() => navigate('/app/admin/usuarios')}
                 style={{
-                  backgroundColor: theme === 'dark' ? 'rgba(168, 85, 247, 0.1)' : 'rgba(168, 85, 247, 0.05)',
+                  backgroundColor: theme === 'dark' ? '#020617' : 'rgba(168, 85, 247, 0.05)',
                   borderColor: 'rgba(168, 85, 247, 0.3)'
                 }}
               >
@@ -2083,7 +2077,7 @@ const AdminPanel: React.FC = () => {
           }}
         >
           <div className="p-4 border-b" style={{
-            backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc',
+            backgroundColor: theme === 'dark' ? '#020617' : '#f8fafc',
             borderColor: 'rgba(148, 163, 184, 0.2)'
           }}>
             <div className="flex items-center justify-between">
@@ -2103,7 +2097,7 @@ const AdminPanel: React.FC = () => {
               </button>
             </div>
           </div>
-          <div className="p-4 space-y-2">
+          <div className="p-4 space-y-2" style={{ backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc' }}>
             {topAgentes.length > 0 ? (
               topAgentes.map((agente, index) => (
                 <div 
@@ -2111,9 +2105,7 @@ const AdminPanel: React.FC = () => {
                   className="p-3 rounded-lg border transition-all hover:scale-[1.02] cursor-pointer"
                   onClick={() => navigate('/app/admin/usuarios')}
                   style={{
-                    backgroundColor: index === 0 
-                      ? (theme === 'dark' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)')
-                      : 'transparent',
+                    backgroundColor: theme === 'dark' ? '#020617' : (index === 0 ? 'rgba(34, 197, 94, 0.05)' : '#ffffff'),
                     borderColor: index === 0 ? 'rgba(34, 197, 94, 0.3)' : styles.card.borderColor
                   }}
                 >
@@ -2163,7 +2155,7 @@ const AdminPanel: React.FC = () => {
           }}
         >
           <div className="p-4 border-b" style={{
-            backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc',
+            backgroundColor: theme === 'dark' ? '#020617' : '#f8fafc',
             borderColor: 'rgba(148, 163, 184, 0.2)'
           }}>
             <div className="flex items-center justify-between">
@@ -2181,7 +2173,7 @@ const AdminPanel: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="p-4 space-y-2">
+          <div className="p-4 space-y-2" style={{ backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc' }}>
             {clientesMasActivos.length > 0 ? (
               clientesMasActivos.map((cliente, index) => (
                 <div 
@@ -2189,6 +2181,7 @@ const AdminPanel: React.FC = () => {
                   className="p-3 rounded-lg border transition-all hover:scale-[1.02] cursor-pointer"
                   onClick={() => navigate(`/app/admin/casos?cliente=${cliente.nombre}`)}
                   style={{
+                    backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                     borderColor: styles.card.borderColor
                   }}
                 >

@@ -588,41 +588,26 @@ const callCaseWebhook = async (payload: CaseWebhookPayload): Promise<CaseWebhook
       throw new Error(`Error ${response.status}: ${response.statusText}`);
     }
     
-    // Intentar parsear JSON
+    // Leer cuerpo y parsear JSON de forma robusta
+    const responseText = await response.text();
     let result: CaseWebhookResponse;
-    let responseText = '';
-    try {
-      responseText = await response.text();
-      
-      if (responseText.trim() === '') {
-        result = { success: true };
-      } else {
+
+    if (responseText.trim() === '') {
+      result = { success: true };
+    } else {
+      try {
         result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('[caseService] Respuesta del webhook no es JSON válido:', responseText?.slice(0, 200));
+        throw new Error('La respuesta del servidor no es JSON válido. Verifica que el webhook retorne JSON.');
       }
-      
-      
-      // VERIFICACIÓN TEMPRANA: Detectar valid: false INMEDIATAMENTE después de parsear
-      if (result && typeof result === 'object' && !Array.isArray(result)) {
-        const validEarly = (result as any).valid;
-        
-        if (validEarly === "false" || validEarly === false || validEarly === "False" || validEarly === "FALSE" || 
-            (typeof validEarly === 'string' && validEarly.toLowerCase().trim() === 'false')) {
-        }
-      }
-      
-      if (Array.isArray(result) && result.length > 0) {
-        if (result[0] && typeof result[0] === 'object') {
-          if ('historial_caso' in result[0]) {
-          }
-          if ('detalle_caso' in result[0]) {
-          }
-        }
-      }
-    } catch (parseError) {
-      if (response.ok) {
-        result = { success: true };
-      } else {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
+    }
+
+    // VERIFICACIÓN TEMPRANA: Detectar valid: false
+    if (result && typeof result === 'object' && !Array.isArray(result)) {
+      const validEarly = (result as any).valid;
+      if (validEarly === 'false' || validEarly === false || (typeof validEarly === 'string' && validEarly.toLowerCase().trim() === 'false')) {
+        // Se maneja después según el flujo
       }
     }
     
@@ -961,9 +946,28 @@ const processWebhookResponse = (response: CaseWebhookResponse): Case[] => {
     const mappedCase = mapWebhookResponseToCase(response.case);
     return mappedCase ? [mappedCase] : [];
   }
-  
-  // Si no se reconoce el formato, loguear y retornar vacío
-  
+
+  // Formato 5: Objeto con datos anidados (ej. { body: { data: [...] } }, { result: { cases: [...] } })
+  if (response && typeof response === 'object' && !Array.isArray(response)) {
+    const nested = (response as any).body || (response as any).result || (response as any).output;
+    if (nested && typeof nested === 'object') {
+      const arr = nested.data ?? nested.cases ?? nested.casos ?? (Array.isArray(nested) ? nested : null);
+      if (Array.isArray(arr) && arr.length > 0) {
+        return mapWebhookResponseToCases(arr);
+      }
+    }
+    // Buscar cualquier propiedad que sea un array de objetos tipo caso
+    for (const key of Object.keys(response)) {
+      const val = (response as any)[key];
+      if (Array.isArray(val) && val.length > 0) {
+        const first = val[0];
+        if (first && typeof first === 'object' && (first.case_id != null || first.id != null || first.ticketNumber != null)) {
+          return mapWebhookResponseToCases(val);
+        }
+      }
+    }
+  }
+
   return [];
 };
 

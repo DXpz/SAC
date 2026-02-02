@@ -918,23 +918,42 @@ export const api = {
         // 1. { agents: [...] } o { agentes: [...] }
         // 2. Array directo de agentes
         // 3. [{ data: [...] }] - estructura anidada
-        // 4. { data: [...] } - estructura con data
+        // 4. { data: [...] } o { data: { agents/agentes: [...] } }
         let agents: any[] = [];
-        
-        if (result.agents) {
+
+        if (Array.isArray(result.agents)) {
           agents = result.agents;
-        } else if (result.agentes) {
+        } else if (Array.isArray(result.agentes)) {
           agents = result.agentes;
-        } else if (result.data && Array.isArray(result.data)) {
-          agents = result.data;
+        } else if (result.data) {
+          if (Array.isArray(result.data)) {
+            agents = result.data;
+          } else if (result.data && typeof result.data === 'object') {
+            agents = result.data.agents ?? result.data.agentes ?? [];
+            if (!Array.isArray(agents)) agents = [];
+          }
         } else if (Array.isArray(result)) {
-          // Si es un array, puede ser directamente agentes o [{ data: [...] }]
           if (result.length > 0 && result[0]?.data && Array.isArray(result[0].data)) {
-            // Formato: [{ data: [...] }]
             agents = result[0].data;
+          } else if (result.length > 0 && result[0]?.data?.agents) {
+            agents = result[0].data.agents;
+          } else if (result.length > 0 && result[0]?.data?.agentes) {
+            agents = result[0].data.agentes;
           } else {
-            // Formato: [agente1, agente2, ...]
             agents = result;
+          }
+        }
+        // Fallback: buscar cualquier array de objetos con id_agente/idAgente
+        if (agents.length === 0 && result && typeof result === 'object') {
+          for (const key of Object.keys(result)) {
+            const val = (result as any)[key];
+            if (Array.isArray(val) && val.length > 0) {
+              const first = val[0];
+              if (first && typeof first === 'object' && (first.id_agente != null || first.idAgente != null || first.id != null)) {
+                agents = val;
+                break;
+              }
+            }
           }
         }
         
@@ -1153,35 +1172,45 @@ export const api = {
         // El webhook puede retornar diferentes formatos:
         // 1. { users: [...] } o { usuarios: [...] }
         // 2. Array directo de usuarios
-        // 3. { data: [...] } - estructura con data
+        // 3. { data: [...] } o { data: { users/usuarios: [...] } }
         // 4. [{ data: [...] }] - array con objeto que contiene data
         let usuarios: any[] = [];
-        
+
         if (Array.isArray(result)) {
-          // Si es un array, verificar si el primer elemento tiene una propiedad "data"
           if (result.length > 0 && result[0] && typeof result[0] === 'object' && 'data' in result[0]) {
-            // Es un array como [{ data: [...] }], extraer el array interno
-            if (Array.isArray(result[0].data)) {
-              usuarios = result[0].data;
+            const d = result[0].data;
+            if (Array.isArray(d)) {
+              usuarios = d;
+            } else if (d && typeof d === 'object' && (Array.isArray(d.users) || Array.isArray(d.usuarios))) {
+              usuarios = d.users ?? d.usuarios ?? [];
             } else {
               usuarios = result;
             }
           } else {
             usuarios = result;
           }
-        } else if (result.users && Array.isArray(result.users)) {
-          usuarios = result.users;
-        } else if (result.usuarios && Array.isArray(result.usuarios)) {
-          usuarios = result.usuarios;
-        } else if (result.data && Array.isArray(result.data)) {
-          usuarios = result.data;
-        } else if (result.data && result.data.users && Array.isArray(result.data.users)) {
-          usuarios = result.data.users;
-        } else if (result.data && result.data.usuarios && Array.isArray(result.data.usuarios)) {
-          usuarios = result.data.usuarios;
-        } else {
+        } else if (result && typeof result === 'object') {
+          if (Array.isArray(result.users)) usuarios = result.users;
+          else if (Array.isArray(result.usuarios)) usuarios = result.usuarios;
+          else if (Array.isArray(result.data)) usuarios = result.data;
+          else if (result.data && typeof result.data === 'object') {
+            usuarios = result.data.users ?? result.data.usuarios ?? [];
+            if (!Array.isArray(usuarios)) usuarios = [];
+          }
+          // Fallback: primera propiedad que sea array de objetos con id/email
+          if (usuarios.length === 0) {
+            for (const key of Object.keys(result)) {
+              const val = (result as any)[key];
+              if (Array.isArray(val) && val.length > 0) {
+                const first = val[0];
+                if (first && typeof first === 'object' && (first.id != null || first.email != null || first.user_id != null)) {
+                  usuarios = val;
+                  break;
+                }
+              }
+            }
+          }
         }
-
 
         return usuarios;
       } catch (error: any) {
@@ -1225,22 +1254,34 @@ export const api = {
       let clientesArray: any[] = [];
 
       if (Array.isArray(response)) {
-        // Verificar si el primer elemento tiene una propiedad 'data'
-        if (response.length > 0 && response[0]?.data && Array.isArray(response[0].data)) {
-          clientesArray = response[0].data;
+        if (response.length > 0 && response[0]?.data) {
+          const d = response[0].data;
+          clientesArray = Array.isArray(d) ? d : (d?.clientes ?? d?.clients ?? []);
+          if (!Array.isArray(clientesArray)) clientesArray = [];
         } else {
-        // Si la respuesta es directamente un array
-        clientesArray = response;
+          clientesArray = response;
         }
-      } else if (response?.clients && Array.isArray(response.clients)) {
-        // Si viene dentro de una propiedad 'clients'
-        clientesArray = response.clients;
-      } else if (response?.data && Array.isArray(response.data)) {
-        // Si viene dentro de una propiedad 'data'
-        clientesArray = response.data;
-      } else if (response?.result && Array.isArray(response.result)) {
-        // Si viene dentro de una propiedad 'result'
-        clientesArray = response.result;
+      } else if (response && typeof response === 'object') {
+        if (Array.isArray(response.clients)) clientesArray = response.clients;
+        else if (Array.isArray(response.clientes)) clientesArray = response.clientes;
+        else if (Array.isArray(response.data)) clientesArray = response.data;
+        else if (response.data && typeof response.data === 'object') {
+          clientesArray = response.data.clientes ?? response.data.clients ?? response.data.data ?? [];
+          if (!Array.isArray(clientesArray)) clientesArray = [];
+        } else if (Array.isArray(response.result)) clientesArray = response.result;
+        // Fallback: primera propiedad que sea array de objetos con cliente_id/idCliente
+        if (clientesArray.length === 0) {
+          for (const key of Object.keys(response)) {
+            const val = (response as any)[key];
+            if (Array.isArray(val) && val.length > 0) {
+              const first = val[0];
+              if (first && typeof first === 'object' && (first.cliente_id != null || first.idCliente != null || first.id != null)) {
+                clientesArray = val;
+                break;
+              }
+            }
+          }
+        }
       }
 
       if (clientesArray.length > 0) {
@@ -1479,14 +1520,19 @@ export const api = {
                        (Array.isArray(firstItem.items) ? firstItem.items : []);
         }
       } else if (response && typeof response === 'object') {
-        // Si no es array, buscar propiedades comunes
-        categories = response.categories || 
-                     response.categorias || 
-                     response.data || 
+        // Si no es array, buscar propiedades comunes (incl. data anidado)
+        const dataObj = response.data && typeof response.data === 'object' && !Array.isArray(response.data)
+          ? response.data
+          : null;
+        categories = response.categories ||
+                     response.categorias ||
+                     (Array.isArray(response.data) ? response.data : null) ||
+                     (dataObj ? (dataObj.categories ?? dataObj.categorias ?? dataObj.data) : null) ||
                      response.result ||
                      response.results ||
-                     (Array.isArray(response.items) ? response.items : []) ||
+                     (Array.isArray(response.items) ? response.items : null) ||
                      [];
+        if (!Array.isArray(categories)) categories = [];
       }
 
       console.log('Categorías extraídas:', categories);

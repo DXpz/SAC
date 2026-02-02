@@ -418,6 +418,36 @@ const AdminBandejaCasos: React.FC = () => {
     return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
+  // Badges con color (como en Admin de usuarios)
+  const getStatusBadgeStyle = (status: CaseStatus): { bg: string; text: string; border: string } => {
+    const dark: Record<CaseStatus, { bg: string; text: string; border: string }> = {
+      [CaseStatus.NUEVO]: { bg: 'rgba(59, 130, 246, 0.15)', text: '#3b82f6', border: 'rgba(59, 130, 246, 0.3)' },
+      [CaseStatus.EN_PROCESO]: { bg: 'rgba(245, 158, 11, 0.15)', text: '#f59e0b', border: 'rgba(245, 158, 11, 0.3)' },
+      [CaseStatus.PENDIENTE_CLIENTE]: { bg: 'rgba(168, 85, 247, 0.15)', text: '#a855f7', border: 'rgba(168, 85, 247, 0.3)' },
+      [CaseStatus.ESCALADO]: { bg: 'rgba(239, 68, 68, 0.15)', text: '#ef4444', border: 'rgba(239, 68, 68, 0.3)' },
+      [CaseStatus.RESUELTO]: { bg: 'rgba(34, 197, 94, 0.15)', text: '#22c55e', border: 'rgba(34, 197, 94, 0.3)' },
+      [CaseStatus.CERRADO]: { bg: 'rgba(148, 163, 184, 0.15)', text: '#94a3b8', border: 'rgba(148, 163, 184, 0.3)' }
+    };
+    const light: Record<CaseStatus, { bg: string; text: string; border: string }> = {
+      [CaseStatus.NUEVO]: { bg: '#dbeafe', text: '#1e40af', border: '#3b82f6' },
+      [CaseStatus.EN_PROCESO]: { bg: '#fef3c7', text: '#92400e', border: '#f59e0b' },
+      [CaseStatus.PENDIENTE_CLIENTE]: { bg: '#f3e8ff', text: '#6b21a8', border: '#a855f7' },
+      [CaseStatus.ESCALADO]: { bg: '#fee2e2', text: '#991b1b', border: '#ef4444' },
+      [CaseStatus.RESUELTO]: { bg: '#d1fae5', text: '#065f46', border: '#10b981' },
+      [CaseStatus.CERRADO]: { bg: '#f1f5f9', text: '#334155', border: '#64748b' }
+    };
+    const style = theme === 'dark' ? dark[status] : light[status];
+    return style || (theme === 'dark' ? { bg: 'rgba(148, 163, 184, 0.15)', text: '#94a3b8', border: 'rgba(148, 163, 184, 0.3)' } : { bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' });
+  };
+  const getEmpresaBadgeStyle = (paisCode: string): { bg: string; text: string; border: string } => {
+    if (paisCode === 'SV') return theme === 'dark' ? { bg: 'rgba(59, 130, 246, 0.15)', text: '#60a5fa', border: 'rgba(59, 130, 246, 0.3)' } : { bg: '#dbeafe', text: '#1d4ed8', border: '#3b82f6' };
+    if (paisCode === 'GT') return theme === 'dark' ? { bg: 'rgba(34, 197, 94, 0.15)', text: '#4ade80', border: 'rgba(34, 197, 94, 0.3)' } : { bg: '#dcfce7', text: '#166534', border: '#22c55e' };
+    return theme === 'dark' ? { bg: 'rgba(148, 163, 184, 0.15)', text: '#94a3b8', border: 'rgba(148, 163, 184, 0.3)' } : { bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' };
+  };
+  const getCategoriaBadgeStyle = (): { bg: string; text: string; border: string } => {
+    return theme === 'dark' ? { bg: 'rgba(100, 116, 139, 0.15)', text: '#94a3b8', border: 'rgba(148, 163, 184, 0.3)' } : { bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' };
+  };
+
   return (
     <div className="space-y-6" style={styles.container}>
       {/* Barra de búsqueda y filtros */}
@@ -790,10 +820,10 @@ const AdminBandejaCasos: React.FC = () => {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-semibold px-2.5 py-1.5 rounded-xl border shadow-sm" style={{
-                            backgroundColor: theme === 'dark' ? '#0f172a' : '#f1f5f9',
-                            color: styles.text.secondary,
-                            borderColor: 'rgba(148, 163, 184, 0.2)'
+                          <span className="inline-flex px-2 py-1 text-[10px] font-semibold rounded-lg border transition-all" style={{
+                            backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.12)' : '#dbeafe',
+                            color: theme === 'dark' ? '#60a5fa' : '#1d4ed8',
+                            borderColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.3)' : '#93c5fd'
                           }}>
                             {caso.clientId || caso.cliente?.idCliente || 'N/A'}
                           </span>
@@ -803,9 +833,16 @@ const AdminBandejaCasos: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-xs font-semibold" style={{color: styles.text.primary}}>
-                          {getCaseCountry(caso)}
-                        </span>
+                        {(() => {
+                          const paisCode = getCaseCountry(caso);
+                          if (!paisCode || paisCode === 'N/A') return <span className="text-xs" style={{color: styles.text.tertiary}}>N/A</span>;
+                          const empresaStyle = getEmpresaBadgeStyle(paisCode);
+                          return (
+                            <span className="inline-flex items-center justify-center px-2 py-1 text-[10px] font-semibold rounded-lg border transition-all" style={{ backgroundColor: empresaStyle.bg, color: empresaStyle.text, borderColor: empresaStyle.border, minWidth: '32px' }}>
+                              {paisCode}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-xs font-medium max-w-[200px] truncate block" style={{color: styles.text.primary}}>
@@ -814,13 +851,14 @@ const AdminBandejaCasos: React.FC = () => {
                       </td>
                       <td className="px-4 py-3">
                         <div className="inline-flex items-center gap-1.5">
-                          <span className="inline-flex items-center text-[10px] font-semibold px-2.5 py-1.5 rounded-xl border shadow-sm" style={{
-                            backgroundColor: theme === 'dark' ? '#0f172a' : '#f1f5f9',
-                            color: styles.text.secondary,
-                            borderColor: 'rgba(148, 163, 184, 0.2)'
-                          }}>
-                            {caso.category || caso.categoria?.nombre || 'General'}
-                          </span>
+                          {(() => {
+                            const catStyle = getCategoriaBadgeStyle();
+                            return (
+                              <span className="inline-flex items-center px-2 py-1 text-[10px] font-semibold rounded-lg border transition-all" style={{ backgroundColor: catStyle.bg, color: catStyle.text, borderColor: catStyle.border }}>
+                                {caso.category || caso.categoria?.nombre || 'General'}
+                              </span>
+                            );
+                          })()}
                           {caso.categoria && (caso.categoria.descripcion || (caso.categoria as any).description) && (
                             <div className="relative group">
                               <HelpCircle 
@@ -863,22 +901,14 @@ const AdminBandejaCasos: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span 
-                          className="text-[10px] font-semibold uppercase tracking-wide"
-                          style={{
-                            color: (() => {
-                              if (normalizedStatus === CaseStatus.NUEVO) return '#2563eb';
-                              if (normalizedStatus === CaseStatus.EN_PROCESO) return '#d97706';
-                              if (normalizedStatus === CaseStatus.PENDIENTE_CLIENTE) return '#9333ea';
-                              if (normalizedStatus === CaseStatus.ESCALADO) return '#dc2626';
-                              if (normalizedStatus === CaseStatus.RESUELTO) return '#16a34a';
-                              if (normalizedStatus === CaseStatus.CERRADO) return '#64748b';
-                              return '#475569';
-                            })()
-                          }}
-                        >
-                          {rawStatus}
-                        </span>
+                        {(() => {
+                          const badgeStyle = getStatusBadgeStyle(normalizedStatus);
+                          return (
+                            <span className="inline-flex px-2 py-1 text-[10px] font-semibold rounded-lg border transition-all uppercase tracking-wide" style={{ backgroundColor: badgeStyle.bg, color: badgeStyle.text, borderColor: badgeStyle.border }}>
+                              {rawStatus}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-xs font-medium" style={{color: styles.text.secondary}}>

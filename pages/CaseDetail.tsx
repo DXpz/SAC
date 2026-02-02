@@ -1208,7 +1208,7 @@ const CaseDetail: React.FC = () => {
       color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
     },
     cardHeader: {
-      backgroundColor: theme === 'dark' ? '#1e293b' : '#f8fafc',
+      backgroundColor: theme === 'dark' ? '#020617' : '#f8fafc',
       borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.15)'
     },
     text: {
@@ -1280,7 +1280,9 @@ const CaseDetail: React.FC = () => {
           <section 
             className="rounded-xl border overflow-hidden shadow-sm" 
             style={{
-              ...styles.card,
+              backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
+              borderColor: styles.card.borderColor,
+              color: styles.card.color,
               animation: 'fadeInSlide 0.4s ease-out 0.15s both'
             }}
           >
@@ -1850,7 +1852,9 @@ const CaseDetail: React.FC = () => {
           <section 
             className="rounded-xl border p-5 shadow-sm transition-all hover:shadow-md" 
             style={{
-              ...styles.card,
+              backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
+              borderColor: styles.card.borderColor,
+              color: styles.card.color,
               animation: 'fadeInSlide 0.3s ease-out 0.25s both'
             }}
           >
@@ -2086,7 +2090,9 @@ const CaseDetail: React.FC = () => {
           <section 
             className="rounded-xl border p-5 shadow-sm transition-all hover:shadow-md" 
             style={{
-              ...styles.card,
+              backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
+              borderColor: styles.card.borderColor,
+              color: styles.card.color,
               animation: 'fadeInSlide 0.3s ease-out 0.3s both'
             }}
           >
