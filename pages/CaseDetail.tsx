@@ -26,6 +26,8 @@ const CaseDetail: React.FC = () => {
   const [showErrorAnimation, setShowErrorAnimation] = useState(false);
   const [showInvalidCommentAnimation, setShowInvalidCommentAnimation] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [isEstadoFinal, setIsEstadoFinal] = useState(false); // Nuevo estado para detectar si es un estado final
+  const [estadoFinalParams, setEstadoFinalParams] = useState<any>(null); // Parámetros del estado final
   
   // Estados para modo de edición
   const [isEditing, setIsEditing] = useState(false);
@@ -617,6 +619,8 @@ const CaseDetail: React.FC = () => {
       setShowJustificationModal(false);
       setPendingNewState(null);
       setJustification('');
+      setIsEstadoFinal(false);
+      setEstadoFinalParams(null);
       
       // Mostrar animación de éxito SOLO si llegamos aquí (webhook aceptó y NO hubo error)
       // IMPORTANTE: Solo mostrar si NO hubo error (esto se verifica porque estamos en el try)
@@ -698,6 +702,8 @@ const CaseDetail: React.FC = () => {
         setShowJustificationModal(false);
         setPendingNewState(null);
         setJustification('');
+        setIsEstadoFinal(false);
+        setEstadoFinalParams(null);
         
         // Evitar mostrar alert si el error es de extensiones del navegador
         if (!errorMsg.includes('message channel') && !errorMsg.includes('listener')) {
@@ -788,10 +794,29 @@ const CaseDetail: React.FC = () => {
       }
     }
 
-    // Abrir modal de justificación
+    // Verificar si el estado destino es un estado final
+    const estadosFinales = (caso as any)?.estadosFinales || [];
+    const estadoFinalEncontrado = estadosFinales.find((ef: any) => {
+      const estadoFinalNormalizado = normalizeEstadoName(ef.id || ef.nombre || '');
+      const newStateNorm = normalizeEstadoName(newState);
+      return estadoFinalNormalizado === newStateNorm && ef.estado_final === true;
+    });
+    
+    const esEstadoFinal = !!estadoFinalEncontrado;
+    
+    console.log('[CaseDetail] Verificando si es estado final:', {
+      newState,
+      estadosFinales,
+      estadoFinalEncontrado,
+      esEstadoFinal
+    });
+
+    // Abrir modal de justificación (o formulario de cierre si es estado final)
     setPendingNewState(newState);
     setJustification('');
     setErrorMessage('');
+    setIsEstadoFinal(esEstadoFinal); // Guardar si es estado final
+    setEstadoFinalParams(estadoFinalEncontrado || null); // Guardar los parámetros del estado final
     setShowJustificationModal(true);
   };
 
@@ -2185,6 +2210,8 @@ const CaseDetail: React.FC = () => {
                   setPendingNewState(null);
                   setJustification('');
                   setErrorMessage('');
+                  setIsEstadoFinal(false);
+                  setEstadoFinalParams(null);
                 }}
                 className="p-1.5 rounded-lg transition-colors"
                 style={{color: '#64748b'}}
@@ -2204,56 +2231,164 @@ const CaseDetail: React.FC = () => {
               <p className="text-xs font-medium leading-relaxed" style={{color: styles.text.tertiary}}>
                 Se cambiará el estado del caso de <strong>{caso?.estado || caso?.status || 'Nuevo'}</strong> a <strong>{pendingNewState}</strong>.
               </p>
-              <div>
-                <label className="block text-xs font-bold mb-2" style={{color: styles.text.secondary}}>
-                  Justificación del cambio <span className="text-red-500">*</span>
-                </label>
-                <textarea 
-                  className="w-full h-24 p-3 rounded-lg border outline-none focus:ring-2 transition-all text-xs resize-none"
-                  style={{
-                    backgroundColor: styles.input.backgroundColor,
-                    borderColor: justification.trim() ? styles.input.borderColor : 'rgba(220, 38, 38, 0.4)',
-                    color: styles.input.color
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#107ab4';
-                    e.target.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#ffffff';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(16, 122, 180, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    if (!justification.trim()) {
-                      e.target.style.borderColor = 'rgba(220, 38, 38, 0.5)';
-                    } else {
-                      e.target.style.borderColor = styles.input.borderColor;
-                    }
-                    e.target.style.backgroundColor = styles.input.backgroundColor;
-                    e.target.style.boxShadow = 'none';
-                  }}
-                  placeholder="Describe el motivo del cambio de estado..."
-                  value={justification}
-                  onChange={e => {
-                    setJustification(e.target.value);
-                    const textarea = e.target;
-                    if (e.target.value.trim()) {
-                      textarea.style.borderColor = styles.input.borderColor;
-                    } else {
-                      textarea.style.borderColor = 'rgba(220, 38, 38, 0.4)';
-                    }
-                  }}
-                  required
-                />
-                {errorMessage && (
-                  <div className="mt-3 p-3 rounded-lg border-2 border-red-500" style={{backgroundColor: 'rgba(220, 38, 38, 0.1)'}}>
-                    <div className="flex items-start gap-2">
-                      <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-xs font-bold text-red-600 mb-1">Comentario no válido</p>
-                        <p className="text-xs text-red-600">{errorMessage}</p>
-                      </div>
+              
+              {/* Si es estado final, mostrar formulario especial */}
+              {isEstadoFinal && estadoFinalParams ? (
+                <div className="p-4 rounded-lg border-2" style={{
+                  backgroundColor: theme === 'dark' ? 'rgba(16, 122, 180, 0.1)' : 'rgba(16, 122, 180, 0.05)',
+                  borderColor: '#107ab4'
+                }}>
+                  <div className="flex items-start gap-3 mb-4">
+                    <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-bold text-blue-600 mb-1">Estado Final de Caso</p>
+                      <p className="text-xs" style={{color: styles.text.secondary}}>
+                        Este es un estado final. El caso se cerrará después de confirmar.
+                      </p>
                     </div>
                   </div>
-                )}
-              </div>
+                  
+                  {/* Formulario con parámetros del estado final */}
+                  <div className="space-y-3">
+                    <div className="p-3 rounded-lg" style={{
+                      backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(248, 250, 252, 1)',
+                      border: '1px solid rgba(148, 163, 184, 0.2)'
+                    }}>
+                      <h4 className="text-xs font-bold mb-3" style={{color: styles.text.primary}}>
+                        Información del Estado Final
+                      </h4>
+                      
+                      {/* ID del estado */}
+                      <div className="mb-2">
+                        <label className="text-xs font-semibold" style={{color: styles.text.secondary}}>
+                          ID:
+                        </label>
+                        <p className="text-xs mt-0.5" style={{color: styles.text.primary}}>
+                          {estadoFinalParams.id || 'N/A'}
+                        </p>
+                      </div>
+                      
+                      {/* Nombre del estado */}
+                      <div className="mb-2">
+                        <label className="text-xs font-semibold" style={{color: styles.text.secondary}}>
+                          Nombre:
+                        </label>
+                        <p className="text-xs mt-0.5" style={{color: styles.text.primary}}>
+                          {estadoFinalParams.nombre || 'N/A'}
+                        </p>
+                      </div>
+                      
+                      {/* Descripción */}
+                      {estadoFinalParams.descripcion && (
+                        <div className="mb-2">
+                          <label className="text-xs font-semibold" style={{color: styles.text.secondary}}>
+                            Descripción:
+                          </label>
+                          <p className="text-xs mt-0.5" style={{color: styles.text.primary}}>
+                            {estadoFinalParams.descripcion}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {/* Orden */}
+                      {estadoFinalParams.orden !== undefined && (
+                        <div className="mb-2">
+                          <label className="text-xs font-semibold" style={{color: styles.text.secondary}}>
+                            Orden:
+                          </label>
+                          <p className="text-xs mt-0.5" style={{color: styles.text.primary}}>
+                            {estadoFinalParams.orden}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {/* Estado Final (badge) */}
+                      <div className="mb-2">
+                        <label className="text-xs font-semibold" style={{color: styles.text.secondary}}>
+                          Tipo:
+                        </label>
+                        <div className="mt-1">
+                          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-800">
+                            {estadoFinalParams.estado_final ? '✓ Estado Final' : 'Estado Intermedio'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Row Number (si existe) */}
+                      {estadoFinalParams.row_number !== undefined && (
+                        <div className="text-xs" style={{color: styles.text.tertiary, opacity: 0.7}}>
+                          Row: {estadoFinalParams.row_number}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Placeholder para campos adicionales del formulario */}
+                    <div className="p-3 rounded-lg" style={{
+                      backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.05)' : 'rgba(248, 250, 252, 0.5)',
+                      border: '2px dashed rgba(148, 163, 184, 0.3)'
+                    }}>
+                      <p className="text-xs font-medium text-center" style={{color: styles.text.tertiary}}>
+                        📋 Aquí van los campos adicionales del formulario de cierre
+                      </p>
+                      <p className="text-xs text-center mt-1" style={{color: styles.text.tertiary, opacity: 0.7}}>
+                        (Por ejemplo: motivo cierre, comentarios finales, etc.)
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Si NO es estado final, mostrar el textarea normal de justificación */
+                <div>
+                  <label className="block text-xs font-bold mb-2" style={{color: styles.text.secondary}}>
+                    Justificación del cambio <span className="text-red-500">*</span>
+                  </label>
+                  <textarea 
+                    className="w-full h-24 p-3 rounded-lg border outline-none focus:ring-2 transition-all text-xs resize-none"
+                    style={{
+                      backgroundColor: styles.input.backgroundColor,
+                      borderColor: justification.trim() ? styles.input.borderColor : 'rgba(220, 38, 38, 0.4)',
+                      color: styles.input.color
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#107ab4';
+                      e.target.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#ffffff';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(16, 122, 180, 0.1)';
+                    }}
+                    onBlur={(e) => {
+                      if (!justification.trim()) {
+                        e.target.style.borderColor = 'rgba(220, 38, 38, 0.5)';
+                      } else {
+                        e.target.style.borderColor = styles.input.borderColor;
+                      }
+                      e.target.style.backgroundColor = styles.input.backgroundColor;
+                      e.target.style.boxShadow = 'none';
+                    }}
+                    placeholder="Describe el motivo del cambio de estado..."
+                    value={justification}
+                    onChange={e => {
+                      setJustification(e.target.value);
+                      const textarea = e.target;
+                      if (e.target.value.trim()) {
+                        textarea.style.borderColor = styles.input.borderColor;
+                      } else {
+                        textarea.style.borderColor = 'rgba(220, 38, 38, 0.4)';
+                      }
+                    }}
+                    required
+                  />
+                  {errorMessage && (
+                    <div className="mt-3 p-3 rounded-lg border-2 border-red-500" style={{backgroundColor: 'rgba(220, 38, 38, 0.1)'}}>
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-bold text-red-600 mb-1">Comentario no válido</p>
+                          <p className="text-xs text-red-600">{errorMessage}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="flex gap-2.5 pt-2">
                 <button 
                   type="button"
@@ -2261,6 +2396,8 @@ const CaseDetail: React.FC = () => {
                     setShowJustificationModal(false);
                     setPendingNewState(null);
                     setJustification('');
+                    setIsEstadoFinal(false);
+                    setEstadoFinalParams(null);
                   }}
                   className="flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all border"
                   style={{
@@ -2281,7 +2418,7 @@ const CaseDetail: React.FC = () => {
                 </button>
                 <button 
                   onClick={confirmStateChange}
-                  disabled={transitionLoading || !justification.trim()}
+                  disabled={transitionLoading || (isEstadoFinal ? true : !justification.trim())}
                   className="flex-1 py-2.5 text-xs font-semibold text-white rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{backgroundColor: '#c8151b'}}
                   onMouseEnter={(e) => {
@@ -2295,7 +2432,7 @@ const CaseDetail: React.FC = () => {
                     e.currentTarget.style.transform = 'translateY(0)';
                   }}
                 >
-                  {transitionLoading ? 'Procesando...' : 'Confirmar'}
+                  {transitionLoading ? 'Procesando...' : isEstadoFinal ? 'Completar Formulario' : 'Confirmar'}
                 </button>
               </div>
             </div>

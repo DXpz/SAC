@@ -1006,8 +1006,35 @@ export const getCaseById = async (caseId: string): Promise<Case | null> => {
       const historialArray = Array.isArray(firstItem.historial_caso) ? firstItem.historial_caso : [];
       const detalleCasoArray = Array.isArray(firstItem.detalle_caso) ? firstItem.detalle_caso : [];
       const agenteArray = Array.isArray(firstItem.agente) ? firstItem.agente : [];
-      const transicionesArray = Array.isArray(firstItem.transiciones) ? firstItem.transiciones : [];
       
+      // PARSEAR transiciones si vienen como string JSON
+      let transicionesArray: any[] = [];
+      if (typeof firstItem.transiciones === 'string') {
+        try {
+          transicionesArray = JSON.parse(firstItem.transiciones);
+        } catch (error) {
+          console.error('[caseService] Error parseando transiciones:', error);
+          transicionesArray = [];
+        }
+      } else if (Array.isArray(firstItem.transiciones)) {
+        transicionesArray = firstItem.transiciones;
+      }
+      
+      // PARSEAR estados_finales si vienen como string JSON
+      let estadosFinalesArray: any[] = [];
+      if (typeof firstItem.estados_finales === 'string') {
+        try {
+          estadosFinalesArray = JSON.parse(firstItem.estados_finales);
+        } catch (error) {
+          console.error('[caseService] Error parseando estados_finales:', error);
+          estadosFinalesArray = [];
+        }
+      } else if (Array.isArray(firstItem.estados_finales)) {
+        estadosFinalesArray = firstItem.estados_finales;
+      }
+      
+      console.log('[caseService] Transiciones parseadas:', transicionesArray);
+      console.log('[caseService] Estados finales parseados:', estadosFinalesArray);
       
       // Mapear el historial
       const historialMapeado = historialArray.length > 0 
@@ -1019,6 +1046,7 @@ export const getCaseById = async (caseId: string): Promise<Case | null> => {
         row_number: transicion.row_number,
         estado_origen: transicion.estado_origen || transicion.estadoOrigen || '',
         estado_destino: transicion.estado_destino || transicion.estadoDestino || '',
+        permitido: transicion.permitido !== undefined ? transicion.permitido : true,
         ...transicion // Preservar cualquier otro campo adicional
       }));
       
@@ -1044,6 +1072,9 @@ export const getCaseById = async (caseId: string): Promise<Case | null> => {
         if (casoActualizado) {
           // Agregar las transiciones permitidas
           casoActualizado.transiciones = transicionesMapeadas;
+          
+          // Agregar los estados finales disponibles
+          (casoActualizado as any).estadosFinales = estadosFinalesArray;
           
           // Usar el historial del webhook (historial_caso) si está disponible
           // Este es el historial completo y correcto que viene de n8n
@@ -1340,8 +1371,35 @@ export const updateCaseStatus = async (
       const historialArray = Array.isArray(firstItem.historial_caso) ? firstItem.historial_caso : [];
       const detalleCasoArray = Array.isArray(firstItem.detalle_caso) ? firstItem.detalle_caso : [];
       const agenteArray = Array.isArray(firstItem.agente) ? firstItem.agente : [];
-      const transicionesArray = Array.isArray(firstItem.transiciones) ? firstItem.transiciones : [];
       
+      // PARSEAR transiciones si vienen como string JSON
+      let transicionesArray: any[] = [];
+      if (typeof firstItem.transiciones === 'string') {
+        try {
+          transicionesArray = JSON.parse(firstItem.transiciones);
+        } catch (error) {
+          console.error('[updateCaseStatus] Error parseando transiciones:', error);
+          transicionesArray = [];
+        }
+      } else if (Array.isArray(firstItem.transiciones)) {
+        transicionesArray = firstItem.transiciones;
+      }
+      
+      // PARSEAR estados_finales si vienen como string JSON
+      let estadosFinalesArray: any[] = [];
+      if (typeof firstItem.estados_finales === 'string') {
+        try {
+          estadosFinalesArray = JSON.parse(firstItem.estados_finales);
+        } catch (error) {
+          console.error('[updateCaseStatus] Error parseando estados_finales:', error);
+          estadosFinalesArray = [];
+        }
+      } else if (Array.isArray(firstItem.estados_finales)) {
+        estadosFinalesArray = firstItem.estados_finales;
+      }
+      
+      console.log('[updateCaseStatus] Transiciones parseadas:', transicionesArray);
+      console.log('[updateCaseStatus] Estados finales parseados:', estadosFinalesArray);
       
       // Mapear el historial
       const historialMapeado = historialArray.length > 0 
@@ -1353,6 +1411,7 @@ export const updateCaseStatus = async (
         row_number: transicion.row_number,
         estado_origen: transicion.estado_origen || transicion.estadoOrigen || '',
         estado_destino: transicion.estado_destino || transicion.estadoDestino || '',
+        permitido: transicion.permitido !== undefined ? transicion.permitido : true,
         ...transicion // Preservar cualquier otro campo adicional
       }));
       
@@ -1378,6 +1437,9 @@ export const updateCaseStatus = async (
         if (casoActualizado) {
           // Agregar las transiciones permitidas
           casoActualizado.transiciones = transicionesMapeadas;
+          
+          // Agregar los estados finales disponibles
+          (casoActualizado as any).estadosFinales = estadosFinalesArray;
           
           // Usar el historial del webhook (historial_caso) si está disponible
           // Este es el historial completo y correcto que viene de n8n

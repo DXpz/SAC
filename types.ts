@@ -89,6 +89,17 @@ export interface CaseTransition {
   row_number?: number;
   estado_origen: string;
   estado_destino: string;
+  permitido?: boolean;
+  [key: string]: any; // Para campos adicionales que pueda retornar el webhook
+}
+
+export interface EstadoFinal {
+  row_number?: number;
+  id: string;
+  nombre: string;
+  descripcion?: string;
+  orden?: number;
+  estado_final: boolean;
   [key: string]: any; // Para campos adicionales que pueda retornar el webhook
 }
 
@@ -120,6 +131,8 @@ export interface Case {
   cliente: Cliente;
   // Transiciones permitidas para este caso (viene de case.query)
   transiciones?: CaseTransition[];
+  // Estados finales disponibles (viene de case.query)
+  estadosFinales?: EstadoFinal[];
 }
 
 // Mantener Caso para compatibilidad con componentes existentes
