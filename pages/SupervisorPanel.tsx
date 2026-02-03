@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { Caso, CaseStatus, Agente, Cliente } from '../types';
 import { STATE_COLORS } from '../constants';
-import { AlertCircle, Clock, Users, ArrowUpRight, ChevronRight, Activity, Info, Filter, UserPlus, Bell, ArrowRightLeft, TrendingUp, TrendingDown, X, User, CheckCircle2, Eye, RefreshCw, Zap } from 'lucide-react';
+import { AlertCircle, Clock, Users, ArrowUpRight, ChevronRight, Activity, Info, Filter, UserPlus, Bell, ArrowRightLeft, TrendingUp, TrendingDown, X, User, CheckCircle2, Eye, RefreshCw, Zap, FileText } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import LoadingScreen from '../components/LoadingScreen';
 
@@ -1568,92 +1568,131 @@ const SupervisorPanel: React.FC = () => {
                   const estado = estadoColors[agente.estado as keyof typeof estadoColors] || estadoColors.Inactivo;
                   const stats = getAgenteStats(agente.idAgente);
                   
+                  const isActivo = agente.estado === 'Activo';
+                  const slaColor = stats.cumplimientoSLA === null ? '#94a3b8' :
+                    stats.cumplimientoSLA >= 90 ? '#22c55e' :
+                    stats.cumplimientoSLA >= 70 ? '#f59e0b' :
+                    '#991b1b';
+                  const slaEsBajo = stats.cumplimientoSLA !== null && stats.cumplimientoSLA < 70;
+                  const cardBg = theme === 'dark' ? '#0c1222' : '#f8fafc';
+                  const cardBgHover = theme === 'dark' ? '#111827' : '#f1f5f9';
+                  const cardBorder = theme === 'dark' ? 'rgba(75, 85, 99, 0.4)' : 'rgba(148, 163, 184, 0.25)';
+
                   return (
-                    <div key={agente.idAgente} className="p-3.5 rounded-xl transition-all border-2 shadow-sm" 
+                    <div key={agente.idAgente} className="group p-4 rounded-[12px] transition-all duration-300 border shadow-sm" 
                       style={{
-                        ...styles.card,
-                        borderColor: estado.borderColor,
-                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+                        backgroundColor: cardBg,
+                        borderColor: cardBorder,
+                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+                        borderWidth: '1px'
                       }} 
                       onMouseEnter={(e) => { 
-                        e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f8fafc';
-                        e.currentTarget.style.borderColor = estado.borderColor;
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.backgroundColor = cardBgHover;
+                        e.currentTarget.style.boxShadow = isActivo 
+                          ? '0 8px 24px rgba(0, 0, 0, 0.15), 0 0 20px rgba(34, 197, 94, 0.12)' 
+                          : '0 8px 24px rgba(0, 0, 0, 0.15)';
+                        e.currentTarget.style.transform = 'translateY(-3px)';
                       }} 
                       onMouseLeave={(e) => { 
-                        e.currentTarget.style.backgroundColor = styles.card.backgroundColor;
-                        e.currentTarget.style.borderColor = estado.borderColor;
-                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
+                        e.currentTarget.style.backgroundColor = cardBg;
+                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.08)';
                         e.currentTarget.style.transform = 'translateY(0)';
                       }}>
-                      {/* Header: Avatar, Nombre y Badge de Estado */}
-                      <div className="flex items-center gap-2 mb-3">
-                        {/* Avatar con inicial */}
+                      {/* Header: Avatar con halo, Nombre y Badge Estado */}
+                      <div className="flex items-center gap-3 mb-3">
+                        {/* Avatar con halo verde neón para Activo */}
                         <div 
-                          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 font-bold text-sm shadow-sm"
+                          className="relative flex-shrink-0 transition-shadow duration-300 group-hover:shadow-lg"
                           style={{
-                            backgroundColor: theme === 'dark' ? '#334155' : '#e2e8f0',
-                            color: styles.text.primary
+                            padding: isActivo ? '3px' : '0',
+                            borderRadius: '10px',
+                            boxShadow: isActivo 
+                              ? '0 0 12px rgba(34, 197, 94, 0.5), inset 0 0 8px rgba(34, 197, 94, 0.15)' 
+                              : 'none'
                           }}
                         >
-                          {agente.nombre.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <p className="text-sm font-bold truncate" style={{color: styles.text.primary}}>{agente.nombre}</p>
-                            {/* Badge discreto de estado */}
-                            <span 
-                              className="text-[10px] font-medium flex-shrink-0 flex items-center gap-0.5"
+                          {isActivo && (
+                            <div 
+                              className="absolute inset-0 rounded-[10px] opacity-60 group-hover:opacity-80 transition-opacity"
                               style={{
-                                color: estado.textColor
+                                border: '1px solid rgba(34, 197, 94, 0.6)',
+                                boxShadow: '0 0 16px rgba(34, 197, 94, 0.4)'
                               }}
-                            >
-                              <span style={{fontSize: '8px'}}>●</span>
-                              {estado.status}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* SLA como KPI principal */}
-                      <div className="mb-2.5">
-                        <div className="flex items-baseline gap-1.5">
-                          <p 
-                            className="text-2xl font-black leading-none"
+                            />
+                          )}
+                          <div 
+                            className="relative w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm"
                             style={{
-                              color: stats.cumplimientoSLA === null ? '#94a3b8' :
-                                     stats.cumplimientoSLA >= 90 ? '#22c55e' :
-                                     stats.cumplimientoSLA >= 70 ? '#f59e0b' :
-                                     '#ef4444'
+                              backgroundColor: theme === 'dark' ? '#334155' : '#e2e8f0',
+                              color: styles.text.primary
                             }}
                           >
-                            {stats.cumplimientoSLA === null ? 'N/A' : `${stats.cumplimientoSLA}%`}
-                          </p>
-                          <span className="text-[10px] font-semibold" style={{color: styles.text.tertiary}}>SLA</span>
+                            {agente.nombre.charAt(0).toUpperCase()}
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold truncate" style={{color: styles.text.primary}}>{agente.nombre}</p>
+                          <span 
+                            className="text-[9px] font-medium opacity-90"
+                            style={{ color: estado.textColor }}
+                            aria-label={`Estado: ${estado.status}`}
+                          >
+                            {estado.status}
+                          </span>
                         </div>
                       </div>
                       
-                      {/* Casos y Críticos en una línea */}
-                      <div className="mb-2.5">
-                        <p className="text-xs font-medium" style={{color: styles.text.secondary}}>
-                          <span style={{color: styles.text.primary}}>Casos: {stats.casos}</span>
-                          <span className="mx-1.5" style={{color: styles.text.tertiary}}>•</span>
-                          <span style={{color: stats.criticos > 0 ? '#dc2626' : styles.text.primary}}>Críticos: {stats.criticos}</span>
+                      {/* SLA como KPI principal - tipografía limpia */}
+                      <div className="mb-3">
+                        <p 
+                          className="text-2xl font-semibold tracking-tight leading-none tabular-nums"
+                          style={
+                            slaEsBajo
+                              ? {
+                                  background: 'linear-gradient(135deg, #991b1b 0%, #dc2626 100%)',
+                                  WebkitBackgroundClip: 'text',
+                                  WebkitTextFillColor: 'transparent',
+                                  backgroundClip: 'text'
+                                }
+                              : { color: slaColor }
+                          }
+                        >
+                          {stats.cumplimientoSLA === null ? 'N/A' : `${stats.cumplimientoSLA}%`}
                         </p>
+                        <span className="text-[10px] font-medium tracking-wide" style={{color: styles.text.tertiary}}>SLA</span>
                       </div>
                       
-                      {/* Tiempo promedio con icono */}
-                      <div className="pt-2.5 border-t" style={{borderColor: 'rgba(148, 163, 184, 0.15)'}}>
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <span className="text-xs">⏱</span>
+                      {/* Métricas Casos y Críticos con iconos */}
+                      <div className="flex items-center gap-4 mb-3">
+                        <div className="flex items-center gap-1.5">
+                          <FileText className="w-3.5 h-3.5 flex-shrink-0" style={{color: styles.text.tertiary}} />
+                          <span className="text-xs font-semibold" style={{color: styles.text.primary}}>{stats.casos}</span>
+                          <span className="text-[10px]" style={{color: styles.text.tertiary}}>Casos</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" style={{color: stats.criticos > 0 ? '#dc2626' : styles.text.tertiary}} />
+                          <span className="text-xs font-semibold" style={{color: stats.criticos > 0 ? '#dc2626' : styles.text.primary}}>{stats.criticos}</span>
+                          <span className="text-[10px]" style={{color: styles.text.tertiary}}>Críticos</span>
+                        </div>
+                      </div>
+                      
+                      {/* Footer: Tiempo promedio con divisoria tenue */}
+                      <div 
+                        className="pt-3 -mx-4 -mb-4 px-4 pb-3 rounded-b-[8px]"
+                        style={{
+                          borderTop: '1px solid rgba(75, 85, 99, 0.2)',
+                          backgroundColor: theme === 'dark' ? 'rgba(0, 0, 0, 0.2)' : 'rgba(148, 163, 184, 0.08)'
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-3.5 h-3.5 flex-shrink-0" style={{color: styles.text.tertiary}} />
                           <span className="text-xs font-bold" style={{
                             color: stats.tiempoPromedio === 'N/A' ? '#94a3b8' : styles.text.primary
                           }}>
                             {stats.tiempoPromedio}
                           </span>
                         </div>
-                        <p className="text-[10px] font-medium" style={{color: styles.text.tertiary}}>Tiempo promedio</p>
+                        <p className="text-[9px] font-medium mt-0.5" style={{color: styles.text.tertiary}}>Tiempo promedio</p>
                       </div>
                     </div>
                   );
