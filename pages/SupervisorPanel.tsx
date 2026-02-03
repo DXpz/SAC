@@ -1574,9 +1574,9 @@ const SupervisorPanel: React.FC = () => {
                     stats.cumplimientoSLA >= 70 ? '#f59e0b' :
                     '#991b1b';
                   const slaEsBajo = stats.cumplimientoSLA !== null && stats.cumplimientoSLA < 70;
-                  const cardBg = theme === 'dark' ? '#0c1222' : '#f8fafc';
-                  const cardBgHover = theme === 'dark' ? '#111827' : '#f1f5f9';
-                  const cardBorder = theme === 'dark' ? 'rgba(75, 85, 99, 0.4)' : 'rgba(148, 163, 184, 0.25)';
+                  const cardBg = styles.card.backgroundColor;
+                  const cardBgHover = theme === 'dark' ? '#0f172a' : '#f1f5f9';
+                  const cardBorder = styles.card.borderColor;
 
                   return (
                     <div key={agente.idAgente} className="group p-4 rounded-[12px] transition-all duration-300 border shadow-sm" 
@@ -1680,8 +1680,8 @@ const SupervisorPanel: React.FC = () => {
                       <div 
                         className="pt-3 -mx-4 -mb-4 px-4 pb-3 rounded-b-[8px]"
                         style={{
-                          borderTop: '1px solid rgba(75, 85, 99, 0.2)',
-                          backgroundColor: theme === 'dark' ? 'rgba(0, 0, 0, 0.2)' : 'rgba(148, 163, 184, 0.08)'
+                          borderTop: `1px solid ${styles.card.borderColor}`,
+                          backgroundColor: theme === 'dark' ? 'rgba(15, 23, 42, 0.5)' : 'rgba(148, 163, 184, 0.08)'
                         }}
                       >
                         <div className="flex items-center gap-2">
