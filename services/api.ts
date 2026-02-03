@@ -2899,5 +2899,170 @@ export const api = {
       console.error('[api.readHolidays] ❌ Error al leer asuetos:', error);
       throw new Error(error.message || 'Error al leer las fechas de asuetos');
     }
+  },
+
+  // ==================== PARÁMETROS FINALES ====================
+
+  /**
+   * Leer todos los parámetros de estados finales desde el webhook
+   */
+  async readParametros(): Promise<any[]> {
+    const user = this.getUser();
+    if (!user) {
+      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
+    }
+
+    // Construir el actor con el formato esperado
+    const actor = buildActorPayload(user);
+    
+    // Mapear el role
+    const roleMap: Record<string, string> = {
+      'ADMIN': 'ADMINISTRADOR',
+      'AGENTE': 'AGENTE',
+      'SUPERVISOR': 'SUPERVISOR',
+      'GERENTE': 'GERENTE'
+    };
+    const mappedRole = roleMap[actor.role] || actor.role;
+
+    // Construir el payload según el formato especificado
+    const payload = {
+      action: 'parametro.read',
+      actor: {
+        user_id: actor.user_id,
+        email: actor.email,
+        role: mappedRole
+      },
+      data: {
+        id: ''  // Vacío para leer todos
+      }
+    };
+
+    console.log('[api.readParametros] Payload:', JSON.stringify(payload, null, 2));
+
+    try {
+      const response = await callEstadosWebhook('POST', payload);
+      console.log('[api.readParametros] Respuesta del webhook:', response);
+
+      // Procesar la respuesta - el formato puede variar
+      let parametros: any[] = [];
+      
+      if (Array.isArray(response)) {
+        // Si es un array directo
+        if (response.length > 0 && response[0]?.data && Array.isArray(response[0].data)) {
+          parametros = response[0].data;
+        } else {
+          parametros = response;
+        }
+      } else if (response && typeof response === 'object') {
+        // Si es un objeto con propiedad data
+        if (Array.isArray(response.data)) {
+          parametros = response.data;
+        }
+      }
+
+      console.log('[api.readParametros] Parámetros procesados:', parametros);
+      return parametros;
+    } catch (error: any) {
+      console.error('[api.readParametros] Error:', error);
+      throw new Error(error.message || 'Error al leer los parámetros');
+    }
+  },
+
+  /**
+   * Crear un nuevo parámetro de estado final
+   */
+  async createParametro(parametroData: {
+    nombre_parametro: string;
+    descripcion: string;
+    id_estado_final: string;
+    tipo: string;
+    etiqueta: string;
+    placeholder?: string;
+    requerido?: boolean;
+  }): Promise<any> {
+    const user = this.getUser();
+    if (!user) {
+      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
+    }
+
+    // Construir el actor
+    const actor = buildActorPayload(user);
+    
+    // Mapear el role
+    const roleMap: Record<string, string> = {
+      'ADMIN': 'ADMINISTRADOR',
+      'AGENTE': 'AGENTE',
+      'SUPERVISOR': 'SUPERVISOR',
+      'GERENTE': 'GERENTE'
+    };
+    const mappedRole = roleMap[actor.role] || actor.role;
+
+    // Construir el payload
+    const payload = {
+      action: 'parametro.create',
+      actor: {
+        user_id: actor.user_id,
+        email: actor.email,
+        role: mappedRole
+      },
+      data: parametroData
+    };
+
+    console.log('[api.createParametro] Payload:', JSON.stringify(payload, null, 2));
+
+    try {
+      const response = await callEstadosWebhook('POST', payload);
+      console.log('[api.createParametro] Respuesta del webhook:', response);
+      return response;
+    } catch (error: any) {
+      console.error('[api.createParametro] Error:', error);
+      throw new Error(error.message || 'Error al crear el parámetro');
+    }
+  },
+
+  /**
+   * Eliminar un parámetro de estado final
+   */
+  async deleteParametro(id: string): Promise<any> {
+    const user = this.getUser();
+    if (!user) {
+      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
+    }
+
+    // Construir el actor
+    const actor = buildActorPayload(user);
+    
+    // Mapear el role
+    const roleMap: Record<string, string> = {
+      'ADMIN': 'ADMINISTRADOR',
+      'AGENTE': 'AGENTE',
+      'SUPERVISOR': 'SUPERVISOR',
+      'GERENTE': 'GERENTE'
+    };
+    const mappedRole = roleMap[actor.role] || actor.role;
+
+    // Construir el payload
+    const payload = {
+      action: 'parametro.delete',
+      actor: {
+        user_id: actor.user_id,
+        email: actor.email,
+        role: mappedRole
+      },
+      data: {
+        id: id
+      }
+    };
+
+    console.log('[api.deleteParametro] Payload:', JSON.stringify(payload, null, 2));
+
+    try {
+      const response = await callEstadosWebhook('POST', payload);
+      console.log('[api.deleteParametro] Respuesta del webhook:', response);
+      return response;
+    } catch (error: any) {
+      console.error('[api.deleteParametro] Error:', error);
+      throw new Error(error.message || 'Error al eliminar el parámetro');
+    }
   }
 };

@@ -22,7 +22,8 @@ import {
   AlertTriangle,
   Search,
   FileText,
-  Clock
+  Clock,
+  AlertCircle
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { api } from '../services/api';
@@ -129,6 +130,14 @@ const Settings: React.FC = () => {
     id: string;
     name: string;
   } | null>(null);
+
+  // Estados para animaciones de éxito y error en parámetros
+  const [showParametroSuccess, setShowParametroSuccess] = useState(false);
+  const [showParametroError, setShowParametroError] = useState(false);
+  const [parametroSuccessMessage, setParametroSuccessMessage] = useState('');
+  const [parametroErrorMessage, setParametroErrorMessage] = useState('');
+  const [isSavingParametro, setIsSavingParametro] = useState(false);
+  const [isDeletingParametro, setIsDeletingParametro] = useState(false);
 
   // Estados iniciales solo como placeholder; los IDs REALES vienen del webhook (normalizados)
   const [states, setStates] = useState([
@@ -693,6 +702,67 @@ const Settings: React.FC = () => {
     }
   };
 
+  // Función para cargar parámetros desde el webhook
+  const loadParametros = async () => {
+    console.log('[Settings.loadParametros] Iniciando carga de parámetros...');
+    
+    try {
+      console.log('[Settings.loadParametros] Llamando a api.readParametros()...');
+      const parametrosFromWebhook = await api.readParametros();
+      console.log('[Settings.loadParametros] Parámetros recibidos del webhook:', parametrosFromWebhook);
+      
+      if (parametrosFromWebhook && Array.isArray(parametrosFromWebhook) && parametrosFromWebhook.length > 0) {
+        console.log('[Settings.loadParametros] ✅ Parámetros válidos recibidos, actualizando...');
+        
+        // Función para mapear tipos del webhook a tipos locales
+        const mapTipo = (tipo: string): TipoParametro => {
+          const tipoLower = String(tipo || '').toLowerCase().trim();
+          const tipoMap: Record<string, TipoParametro> = {
+            'text': 'texto',
+            'texto': 'texto',
+            'email': 'correo',
+            'correo': 'correo',
+            'file': 'adjuntar_archivo',
+            'adjuntar_archivo': 'adjuntar_archivo',
+            'phone': 'telefono',
+            'telefono': 'telefono',
+            'number': 'numero',
+            'numero': 'numero',
+            'date': 'fecha',
+            'fecha': 'fecha',
+            'checkbox': 'checkbox'
+          };
+          return tipoMap[tipoLower] || 'texto';
+        };
+        
+        // Mapear los parámetros del webhook al formato local
+        const parametrosMapeados = parametrosFromWebhook.map((param: any) => ({
+          id: String(param.id || param.parametro_id || Date.now()),
+          name: param.nombre_parametro || param.name || 'Sin nombre',
+          description: param.descripcion || param.description || '',
+          tipo: mapTipo(param.tipo),
+          requerido: param.requerido || false,
+          placeholder: param.placeholder || '',
+          etiqueta: param.etiqueta || param.label || '',
+          opciones: param.opciones || [],
+          estadoFinalId: param.id_estado_final || param.estadoFinalId || ''
+        }));
+        
+        console.log('[Settings.loadParametros] Parámetros mapeados:', parametrosMapeados);
+        setParametros(parametrosMapeados);
+        console.log('[Settings.loadParametros] ✅ Parámetros actualizados exitosamente');
+      } else {
+        console.warn('[Settings.loadParametros] ⚠️ No se recibieron parámetros del webhook');
+        // Mantener parámetros vacíos o los actuales
+        setParametros([]);
+      }
+    } catch (error: any) {
+      console.error('[Settings.loadParametros] ❌ Error al cargar parámetros:', error);
+      console.error('[Settings.loadParametros] Mensaje de error:', error.message);
+      // Mantener parámetros actuales en caso de error
+    }
+  };
+
   // Cargar estados y transiciones cuando se activa el tab de estados y flujos
   useEffect(() => {
     if (activeTab === 'estados-flujo') {
@@ -704,6 +774,15 @@ const Settings: React.FC = () => {
           loadTransiciones();
         }, 500);
       });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  // Cargar parámetros cuando se activa el tab de configuración
+  useEffect(() => {
+    if (activeTab === 'configuracion') {
+      console.log('[Settings] Tab configuracion activado, cargando parámetros...');
+      loadParametros();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
@@ -1028,16 +1107,12 @@ const Settings: React.FC = () => {
       return;
     }
 
-    try {
-      // TODO: Crear función en api.ts para crear/actualizar parámetros
-      // if (isEditingParametro) {
-      //   await api.updateParametroFinal({...});
-      // } else {
-      //   await api.createParametroFinal({...});
-      // }
+    setIsSavingParametro(true);
 
+    try {
       if (isEditingParametro && editingParametroId) {
-        // Actualizar parámetro existente
+        // Actualizar parámetro existente (por ahora solo local)
+        // TODO: Implementar actualización en webhook si es necesario
         setParametros(parametros.map(param => 
           param.id === editingParametroId 
             ? {
@@ -1053,27 +1128,59 @@ const Settings: React.FC = () => {
               }
             : param
         ));
+        
+        // Mostrar mensaje de éxito para edición
+        setParametroSuccessMessage('Parámetro actualizado exitosamente');
       } else {
-        // Agregar nuevo parámetro
-        const newId = String(Date.now());
-        setParametros([...parametros, {
-          id: newId,
-          name: newParametro.name.trim(),
-          description: newParametro.description.trim(),
+        // Crear nuevo parámetro usando el webhook
+        console.log('[Settings.handleSaveParametro] Creando nuevo parámetro...');
+        
+        const parametroData = {
+          nombre_parametro: newParametro.name.trim(),
+          descripcion: newParametro.description.trim(),
+          id_estado_final: newParametro.estadoFinalId || '',
           tipo: newParametro.tipo,
-          requerido: newParametro.requerido || false,
-          placeholder: newParametro.placeholder?.trim() || '',
           etiqueta: newParametro.etiqueta?.trim() || '',
-          opciones: newParametro.opciones || [],
-          estadoFinalId: newParametro.estadoFinalId || ''
-        }]);
+          placeholder: newParametro.placeholder?.trim() || '',
+          requerido: newParametro.requerido || false
+        };
+
+        console.log('[Settings.handleSaveParametro] Datos a enviar:', parametroData);
+        
+        await api.createParametro(parametroData);
+        
+        console.log('[Settings.handleSaveParametro] ✅ Parámetro creado exitosamente');
+        
+        // Recargar parámetros después de crear
+        await loadParametros();
+        
+        // Mostrar mensaje de éxito para creación
+        setParametroSuccessMessage('Parámetro creado exitosamente');
       }
       
       handleCloseParametroModal();
       setHasChanges(true);
+      setIsSavingParametro(false);
+      
+      // Mostrar animación de éxito
+      setShowParametroSuccess(true);
+      
+      // Ocultar después de 2 segundos
+      setTimeout(() => {
+        setShowParametroSuccess(false);
+      }, 2000);
     } catch (error: any) {
       console.error('Error al guardar parámetro:', error);
-      alert(error.message || 'Error al guardar el parámetro. Por favor, intente nuevamente.');
+      setIsSavingParametro(false);
+      
+      // Mostrar animación de error
+      setParametroErrorMessage(error.message || 'Error al guardar el parámetro');
+      setShowParametroError(true);
+      
+      // Ocultar después de 2 segundos
+      setTimeout(() => {
+        setShowParametroError(false);
+      }, 2000);
     }
   };
 
@@ -1107,20 +1214,46 @@ const Settings: React.FC = () => {
   };
 
   const handleConfirmDeleteParametro = async () => {
-    if (!deletingParametro) return;
+    if (!deletingParametro || isDeletingParametro) return;
+
+    setIsDeletingParametro(true);
 
     try {
-      // TODO: Crear función en api.ts para eliminar parámetros
-      // await api.deleteParametroFinal(deletingParametro.id);
-
-      // Eliminar de la lista local
-      setParametros(parametros.filter(param => param.id !== deletingParametro.id));
+      console.log('[Settings.handleConfirmDeleteParametro] Eliminando parámetro:', deletingParametro);
+      
+      // Eliminar usando el webhook
+      await api.deleteParametro(deletingParametro.id);
+      
+      console.log('[Settings.handleConfirmDeleteParametro] ✅ Parámetro eliminado exitosamente');
+      
+      // Recargar parámetros después de eliminar
+      await loadParametros();
+      
       setHasChanges(true);
       setDeletingParametro(null);
+      setIsDeletingParametro(false);
+      
+      // Mostrar mensaje de éxito
+      setParametroSuccessMessage('Parámetro eliminado exitosamente');
+      setShowParametroSuccess(true);
+      
+      // Ocultar después de 2 segundos
+      setTimeout(() => {
+        setShowParametroSuccess(false);
+      }, 2000);
     } catch (error: any) {
       console.error('Error al eliminar parámetro:', error);
-      alert(error.message || 'Error al eliminar el parámetro. Por favor, intente nuevamente.');
       setDeletingParametro(null);
+      setIsDeletingParametro(false);
+      
+      // Mostrar animación de error
+      setParametroErrorMessage(error.message || 'Error al eliminar el parámetro');
+      setShowParametroError(true);
+      
+      // Ocultar después de 2 segundos
+      setTimeout(() => {
+        setShowParametroError(false);
+      }, 2000);
     }
   };
 
@@ -1128,10 +1261,10 @@ const Settings: React.FC = () => {
     setDeletingParametro(null);
   };
 
-  // Inicializar parámetros filtrados
+  // Inicializar y sincronizar parámetros filtrados
   useEffect(() => {
     setFilteredParametros(parametros);
-  }, []);
+  }, [parametros]);
 
   // Filtrar parámetros por término de búsqueda
   useEffect(() => {
@@ -5456,7 +5589,8 @@ const Settings: React.FC = () => {
                             : (theme === 'dark' ? 'rgba(148, 163, 184, 0.05)' : 'rgba(148, 163, 184, 0.03)'),
                           borderBottom: index < filteredParametros.length - 1 
                             ? `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.15)'}`
-                            : 'none'
+                            : 'none',
+                          animation: `fadeInSlide 0.3s ease-out ${index * 0.05}s both`
                         }}
                       >
                         <td className="px-4 py-3">
@@ -5509,23 +5643,7 @@ const Settings: React.FC = () => {
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleOpenParametroModal(parametro)}
-                              className="p-1.5 rounded transition-colors"
-                              style={{
-                                color: '#3b82f6'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.1)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = 'transparent';
-                              }}
-                              title="Editar"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
+                          <div className="flex items-center justify-center">
                             <button
                               onClick={() => handleDeleteParametro(parametro)}
                               className="p-1.5 rounded transition-colors"
@@ -5553,73 +5671,250 @@ const Settings: React.FC = () => {
 
             {/* Modal de Confirmación de Eliminación */}
             {deletingParametro && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{
-                backgroundColor: 'rgba(0, 0, 0, 0.5)'
-              }}>
-                <div className="rounded-xl border p-6 w-full max-w-md" style={{
-                  ...styles.card,
-                  boxShadow: theme === 'dark' 
-                    ? '0 8px 24px rgba(0, 0, 0, 0.5)' 
-                    : '0 8px 24px rgba(0, 0, 0, 0.2)'
-                }}>
-                  <div className="flex items-center gap-3 mb-4">
-                    <AlertTriangle className="w-6 h-6" style={{ color: '#dc2626' }} />
-                    <h3 className="text-lg font-bold" style={{ color: styles.text.primary }}>
-                      Confirmar Eliminación
+              <div 
+                className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+                style={{
+                  backgroundColor: 'rgba(0, 0, 0, 0.5)'
+                }}
+                onClick={() => {
+                  if (!isDeletingParametro) {
+                    handleCancelDeleteParametro();
+                  }
+                }}
+              >
+                <div 
+                  className="rounded-xl border p-6 w-full max-w-md animate-in zoom-in-95 duration-200"
+                  style={{
+                    ...styles.card,
+                    boxShadow: theme === 'dark' 
+                      ? '0 8px 24px rgba(0, 0, 0, 0.5)' 
+                      : '0 8px 24px rgba(0, 0, 0, 0.2)'
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex flex-col items-center mb-4">
+                    <div 
+                      className="w-16 h-16 rounded-full flex items-center justify-center mb-4 animate-in zoom-in duration-300"
+                      style={{
+                        backgroundColor: theme === 'dark' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)'
+                      }}
+                    >
+                      <AlertTriangle 
+                        className="w-8 h-8 animate-in zoom-in duration-300" 
+                        style={{ color: '#ef4444' }}
+                      />
+                    </div>
+                    <h3 className="text-lg font-bold mb-2" style={{ color: styles.text.primary }}>
+                      ¿Eliminar parámetro?
                     </h3>
+                    <p className="text-sm text-center" style={{ color: styles.text.secondary }}>
+                      Está a punto de eliminar el parámetro <strong style={{ color: styles.text.primary }}>"{deletingParametro.name}"</strong>. Esta acción no se puede deshacer.
+                    </p>
                   </div>
-                  <p className="text-sm mb-6" style={{ color: styles.text.secondary }}>
-                    ¿Está seguro de que desea eliminar el parámetro <strong>"{deletingParametro.name}"</strong>? Esta acción no se puede deshacer.
-                  </p>
-                  <div className="flex gap-3 justify-end">
+
+                  <div className="flex justify-end gap-3 pt-4">
                     <button
                       onClick={handleCancelDeleteParametro}
+                      disabled={isDeletingParametro}
                       className="px-4 py-2 text-sm font-semibold rounded-lg transition-all"
                       style={{
                         backgroundColor: 'transparent',
                         color: styles.text.secondary,
-                        border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`
+                        border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`,
+                        opacity: isDeletingParametro ? 0.5 : 1,
+                        cursor: isDeletingParametro ? 'not-allowed' : 'pointer'
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.15)';
+                        if (!isDeletingParametro) {
+                          e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.15)';
+                        }
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent';
+                        if (!isDeletingParametro) {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }
                       }}
                     >
                       Cancelar
                     </button>
                     <button
                       onClick={handleConfirmDeleteParametro}
-                      className="px-4 py-2 text-sm font-semibold rounded-lg text-white transition-all"
+                      disabled={isDeletingParametro}
+                      className="px-6 py-2 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
                       style={{
-                        backgroundColor: '#dc2626'
+                        backgroundColor: isDeletingParametro
+                          ? (theme === 'dark' ? '#7a1a1a' : '#7a1a1a')
+                          : (theme === 'dark' ? '#991b1b' : '#7a1a1a'),
+                        boxShadow: theme === 'dark' 
+                          ? '0 4px 12px rgba(153, 27, 27, 0.3)' 
+                          : '0 4px 12px rgba(122, 26, 26, 0.3)',
+                        opacity: isDeletingParametro ? 0.7 : 1,
+                        cursor: isDeletingParametro ? 'not-allowed' : 'pointer'
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#b91c1c';
+                        if (!isDeletingParametro) {
+                          e.currentTarget.style.backgroundColor = theme === 'dark' ? '#dc2626' : '#b91c1c';
+                        }
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#dc2626';
+                        if (!isDeletingParametro) {
+                          e.currentTarget.style.backgroundColor = theme === 'dark' ? '#991b1b' : '#7a1a1a';
+                        }
                       }}
                     >
-                      Eliminar
+                      {isDeletingParametro ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Eliminando...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="w-4 h-4" />
+                          Eliminar
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
               </div>
             )}
 
+            {/* Animación de éxito a pantalla completa */}
+            {showParametroSuccess && (
+              <div 
+                className="fixed inset-0 z-50 flex items-center justify-center"
+                style={{
+                  backgroundColor: 'rgba(15, 23, 42, 0.7)',
+                  backdropFilter: 'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
+                  animation: 'fadeIn 0.3s ease-out'
+                }}
+              >
+                <div 
+                  className="flex flex-col items-center justify-center"
+                  style={{
+                    animation: 'scaleInBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+                  }}
+                >
+                  {/* Icono de check animado */}
+                  <div
+                    className="relative mb-6"
+                    style={{
+                      animation: 'checkMark 0.5s ease-out 0.3s both'
+                    }}
+                  >
+                    <div
+                      className="w-24 h-24 rounded-full flex items-center justify-center"
+                      style={{
+                        background: 'linear-gradient(135deg, #16a34a, #22c55e)',
+                        boxShadow: '0 20px 60px rgba(22, 163, 74, 0.4)'
+                      }}
+                    >
+                      <CheckCircle2 
+                        className="w-14 h-14 text-white" 
+                        style={{
+                          strokeWidth: 2.5
+                        }}
+                      />
+                    </div>
+                    {/* Anillo de expansión */}
+                    <div
+                      className="absolute inset-0 rounded-full"
+                      style={{
+                        border: '3px solid #16a34a',
+                        animation: 'ringExpand 0.8s ease-out 0.2s',
+                        opacity: 0
+                      }}
+                    />
+                  </div>
+                  
+                  {/* Mensaje */}
+                  <h2
+                    className="text-2xl font-bold mb-2"
+                    style={{
+                      color: '#ffffff',
+                      animation: 'fadeInUp 0.5s ease-out 0.4s both'
+                    }}
+                  >
+                    {parametroSuccessMessage}
+                  </h2>
+                </div>
+              </div>
+            )}
+
+            {/* Animación de error a pantalla completa */}
+            {showParametroError && (
+              <div 
+                className="fixed inset-0 z-50 flex items-center justify-center"
+                style={{
+                  backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                  backdropFilter: 'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
+                  animation: 'fadeIn 0.3s ease-out'
+                }}
+              >
+                <div 
+                  className="flex flex-col items-center justify-center"
+                  style={{
+                    animation: 'scaleInBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+                  }}
+                >
+                  {/* Icono de error animado */}
+                  <div
+                    className="relative"
+                    style={{
+                      animation: 'errorPop 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.3s both'
+                    }}
+                  >
+                    <div
+                      className="w-40 h-40 rounded-full flex items-center justify-center"
+                      style={{
+                        background: 'linear-gradient(135deg, #7a1a1a, #991b1b)',
+                        boxShadow: '0 20px 60px rgba(122, 26, 26, 0.5)'
+                      }}
+                    >
+                      <AlertCircle 
+                        className="w-20 h-20 text-white" 
+                        style={{
+                          strokeWidth: 2.5
+                        }}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Mensaje */}
+                  <h2
+                    className="text-xl font-bold mt-6"
+                    style={{
+                      color: '#ffffff',
+                      animation: 'fadeInUp 0.5s ease-out 0.4s both'
+                    }}
+                  >
+                    {parametroErrorMessage}
+                  </h2>
+                </div>
+              </div>
+            )}
+
             {/* Modal para Crear/Editar Parámetro */}
             {showParametroModal && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{
-                backgroundColor: 'rgba(0, 0, 0, 0.5)'
-              }}>
-                <div className="rounded-xl border w-full max-w-5xl max-h-[90vh] flex flex-col" style={{
-                  ...styles.card,
-                  boxShadow: theme === 'dark' 
-                    ? '0 8px 24px rgba(0, 0, 0, 0.5)' 
-                    : '0 8px 24px rgba(0, 0, 0, 0.2)'
-                }}>
+              <div 
+                className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" 
+                style={{
+                  backgroundColor: 'rgba(0, 0, 0, 0.5)'
+                }}
+                onClick={handleCloseParametroModal}
+              >
+                <div 
+                  className="rounded-xl border w-full max-w-5xl max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200" 
+                  style={{
+                    ...styles.card,
+                    boxShadow: theme === 'dark' 
+                      ? '0 8px 24px rgba(0, 0, 0, 0.5)' 
+                      : '0 8px 24px rgba(0, 0, 0, 0.2)'
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {/* Header fijo */}
                   <div className="flex justify-between items-center p-6 border-b flex-shrink-0" style={{
                     borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'
@@ -6099,18 +6394,34 @@ const Settings: React.FC = () => {
                     </button>
                     <button
                       onClick={handleSaveParametro}
-                      className="px-4 py-2 text-sm font-semibold rounded-lg text-white transition-all"
+                      disabled={isSavingParametro}
+                      className="px-4 py-2 text-sm font-semibold rounded-lg text-white transition-all flex items-center gap-2"
                       style={{
-                        backgroundColor: theme === 'dark' ? '#166534' : '#14532d'
+                        backgroundColor: isSavingParametro 
+                          ? (theme === 'dark' ? '#0f4c1f' : '#0f4c1f')
+                          : (theme === 'dark' ? '#166534' : '#14532d'),
+                        opacity: isSavingParametro ? 0.7 : 1,
+                        cursor: isSavingParametro ? 'not-allowed' : 'pointer'
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = theme === 'dark' ? '#14532d' : '#0f4c1f';
+                        if (!isSavingParametro) {
+                          e.currentTarget.style.backgroundColor = theme === 'dark' ? '#14532d' : '#0f4c1f';
+                        }
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = theme === 'dark' ? '#166534' : '#14532d';
+                        if (!isSavingParametro) {
+                          e.currentTarget.style.backgroundColor = theme === 'dark' ? '#166534' : '#14532d';
+                        }
                       }}
                     >
-                      {isEditingParametro ? 'Actualizar' : 'Crear'}
+                      {isSavingParametro ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Guardando...
+                        </>
+                      ) : (
+                        isEditingParametro ? 'Actualizar' : 'Crear'
+                      )}
                     </button>
                   </div>
                 </div>
@@ -6312,6 +6623,81 @@ const Settings: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Estilos de animación inline para parámetros */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes scaleInBounce {
+          0% {
+            transform: scale(0);
+            opacity: 0;
+          }
+          50% {
+            transform: scale(1.1);
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes checkMark {
+          0% {
+            transform: scale(0);
+            opacity: 0;
+          }
+          50% {
+            transform: scale(1.2);
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes errorPop {
+          0% {
+            transform: scale(0) rotate(-10deg);
+            opacity: 0;
+          }
+          50% {
+            transform: scale(1.3) rotate(5deg);
+          }
+          70% {
+            transform: scale(0.9) rotate(-2deg);
+          }
+          100% {
+            transform: scale(1) rotate(0deg);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes ringExpand {
+          0% {
+            transform: scale(1);
+            opacity: 0.8;
+          }
+          100% {
+            transform: scale(1.5);
+            opacity: 0;
+          }
+        }
+        
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 };
