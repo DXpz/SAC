@@ -1,0 +1,19 @@
+name: Admin Login Authentication Test
+page: login
+page_path: /#/login
+task: Verify successful login authentication with admin credentials and redirection
+  to admin dashboard
+steps:
+- Navigate to the application base URL
+- Verify the login form is displayed with email and password fields
+- Enter admin email address in the email textbox
+- Enter admin password in the password textbox
+- Verify the 'Entrar al Sistema' button becomes enabled
+- Click the 'Entrar al Sistema' button to submit login
+- Wait for authentication process to complete
+- Verify successful redirection to admin dashboard page
+- Verify user is identified as 'ADMINISTRADOR' on the dashboard
+- Verify admin panel functionality is accessible with navigation menu options
+- Verify dashboard displays statistics and case management features
+expected_result: User is authenticated and redirected to admin dashboard with full
+  functionality and admin privileges displayed

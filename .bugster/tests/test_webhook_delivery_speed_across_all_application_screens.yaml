@@ -1,0 +1,32 @@
+name: Test webhook delivery speed across all application screens
+page: login
+page_path: /
+task: Login with different credentials and verify webhook delivery speed across all
+  major screens and interactions
+steps:
+- Navigate to the application home page
+- Enter email address in the email field
+- Enter password in the password field
+- Click the login button
+- Wait for login to complete and verify webhook processing logs appear
+- Click on a case from the cases list to view case details
+- Wait for case detail page to load and verify webhook activity for categories, agents,
+  and case data
+- Click the back button to return to cases list
+- Click the 'New Case' button to open case creation form
+- Type search term in the client search field
+- Select a company from the dropdown
+- Click the category dropdown button
+- Select a category from the dropdown options
+- Enter a subject in the subject field
+- Enter a description in the description field
+- Test client search with a specific client ID
+- Select a contact method from the dropdown
+- Click back to return to cases dashboard
+- Change the status filter to test filtering webhooks
+- Enter search text to test search functionality webhooks
+- Switch to card view to test view change webhooks
+- Verify all webhook responses are processed quickly with real-time updates throughout
+  the test
+expected_result: Webhooks should deliver information quickly (typically <3 seconds)
+  across all screens with real-time updates and filtering

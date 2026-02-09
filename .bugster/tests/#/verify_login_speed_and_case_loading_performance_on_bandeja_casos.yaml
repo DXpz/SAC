@@ -1,0 +1,19 @@
+name: Verify login speed and case loading performance on bandeja casos
+page: bandeja_casos
+page_path: /#/app/agente
+task: Test the performance of user authentication and case loading speed when accessing
+  the bandeja casos (case tray) page
+steps:
+- Navigate to the application login page
+- Enter valid email credentials in the email field
+- Enter valid password in the password field
+- Click the 'Entrar al Sistema' (login) button
+- Verify login completes and redirects to bandeja casos page within 3 seconds
+- Verify cases load immediately and are displayed in table format
+- Verify multiple cases are visible with details including case numbers, companies,
+  and status
+- "Verify real-time timestamp shows '\xDAltima actualizaci\xF3n' with current time"
+- Verify console logs show efficient case processing and country filtering
+- Verify cases are filtered by agent's country and displayed without noticeable delay
+expected_result: Login completes within 3 seconds and cases appear immediately upon
+  page load with real-time updates displayed

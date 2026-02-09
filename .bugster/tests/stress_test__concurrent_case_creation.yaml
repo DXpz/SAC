@@ -1,0 +1,44 @@
+name: Stress Test - Concurrent Case Creation
+page: cases
+page_path: /casos
+task: Verify the system can handle multiple cases being created simultaneously without
+  errors or data corruption
+steps:
+- Navigate to the application home page
+- Log in with valid credentials
+- Navigate to the case management dashboard
+- Click the 'New Case' button
+- Select a company from the dropdown
+- Select 'Technical Support' category
+- Enter 'Stress Test Case 1' in the subject field
+- Enter a description for the first case
+- Click 'Register Case' button
+- Wait for the case to be created successfully
+- Click 'New Case' button again
+- Select a company from the dropdown
+- Select 'Billing' category
+- Enter 'Stress Test Case 2' in the subject field
+- Enter a description for the second case
+- Click 'Register Case' button
+- Open a new browser tab
+- Navigate directly to the new case creation page
+- Select a company from the dropdown
+- Select 'Claims' category
+- Enter 'Stress Test Case 3 - Concurrent' in the subject field
+- Enter a description for the third case
+- Click 'Register Case' button while the second case is still processing
+- Switch back to the first tab
+- Verify the second case was created successfully
+- Click 'New Case' button again
+- Select a company from the dropdown
+- Select 'Other' category
+- Enter 'Stress Test Case 4 - Final' in the subject field
+- Enter a description for the fourth case
+- Click 'Register Case' button
+- Wait for the case creation to complete
+- Navigate back to the case dashboard
+- Verify all cases appear in the case list with unique IDs
+- Verify the total case count has increased appropriately
+- Verify no errors occurred during concurrent case creation
+expected_result: All cases are successfully created with unique IDs, proper status
+  messages appear, and the total case count increases correctly

@@ -1,0 +1,18 @@
+name: User Login Authentication Test
+page: login
+page_path: /
+task: Verify successful user authentication with valid credentials and redirect to
+  supervisor dashboard
+steps:
+- Navigate to the application login page
+- Enter valid email address in the email field
+- Enter valid password in the password field
+- Verify the 'Entrar al Sistema' button becomes enabled
+- Click the 'Entrar al Sistema' button
+- Wait for authentication to complete
+- Verify successful redirect to supervisor dashboard
+- Verify user profile displays correct username and role
+- Verify dashboard loads with proper navigation menu and case statistics
+- Verify logout option is available
+expected_result: User successfully logs in and is redirected to supervisor dashboard
+  with proper user profile and system access

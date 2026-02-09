@@ -1,0 +1,23 @@
+name: Verify automatic case assignment to agent with fewest cases
+page: case_management
+page_path: /
+task: Verify that when creating a new case, the system automatically assigns it to
+  the agent with the fewest active cases without manual intervention
+steps:
+- Navigate to the application login page
+- Enter valid credentials and log in
+- Navigate to the supervisor panel
+- Record the current case count for each agent before creating a new case
+- Click the 'Nuevo Caso' button to create a new case
+- Select a company from the company dropdown
+- "Select 'Soporte T\xE9cnico' from the category dropdown"
+- Enter a test subject in the subject field
+- Enter a test description in the description field
+- Click the 'Registrar Caso' button to submit the case
+- Wait for the case creation to complete
+- Navigate back to the supervisor panel
+- Verify the case count for each agent has been updated
+- Verify the new case was assigned to the agent who previously had the fewest cases
+- Confirm no manual reassignment was required
+expected_result: New case is automatically assigned to the agent with the lowest case
+  count, and agent case counts are updated accordingly

@@ -1,0 +1,28 @@
+name: Dual Session Case Creation Stress Test
+page: login
+page_path: /
+task: Open two simultaneous browser sessions with different user credentials and perform
+  stress testing by creating multiple cases in each session
+steps:
+- Navigate to the application login page
+- Open a new browser tab to create a second session
+- Navigate to the login page in the second tab
+- In the first tab, enter valid credentials in the email and password fields
+- Click the login button in the first tab
+- Switch to the second tab and enter different valid credentials
+- Click the login button in the second tab
+- Verify both sessions successfully log in and reach their respective dashboards
+- In the first session, navigate to the case management area by clicking 'Bandeja
+  Global'
+- Click the 'Nuevo Caso' button to access the case creation form
+- Switch to the second session and click the 'Nuevo Caso' button
+- Verify both sessions have loaded the case creation forms
+- Record the start time for the stress test
+- Begin creating cases simultaneously in both sessions
+- Fill out required form fields for each case
+- Submit each case and measure creation time
+- Repeat case creation process to create at least 5 cases in each session
+- Monitor system performance and response times during concurrent case creation
+- Verify all cases are successfully created without errors or timeouts
+expected_result: Both sessions should successfully log in, navigate to case creation
+  forms, and create cases without performance issues or timeouts

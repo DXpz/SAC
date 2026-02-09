@@ -1,0 +1,23 @@
+{
+  "metadata": {
+    "timestamp": 1770153446308,
+    "git": {
+      "branch": "test",
+      "commit": "43654ad62a5bb99d982fd1f8b152e9e26af8235c"
+    }
+  },
+  "data": {
+    "frameworks": [
+      {
+        "id": "react",
+        "name": "React",
+        "dir_path": "C:\\Users\\Carla\\Documents\\SAC-test"
+      }
+    ],
+    "commands": {
+      "test": {
+        "firstExecuted": true
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+name: User Login Flow - Agent Dashboard Access
+page: login
+page_path: /
+task: Verify that a user can successfully log in with valid credentials and be redirected
+  to the appropriate dashboard
+steps:
+- Navigate to the application login page
+- Enter valid email address in the email field
+- Enter valid password in the password field
+- Verify the 'Enter System' button becomes enabled
+- Click the 'Enter System' button
+- Wait for authentication to complete
+- Verify successful redirect to agent dashboard
+- Verify user name and role are displayed correctly
+- Verify case management interface loads with navigation sidebar
+- Verify case table displays with existing cases
+- Verify logout functionality is available
+expected_result: User successfully logs in and is redirected to agent dashboard with
+  user profile displayed and functional case management interface loaded

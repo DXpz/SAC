@@ -1,0 +1,18 @@
+name: Multi-user concurrent case creation stress test
+page: login
+page_path: /
+task: Test system performance by creating multiple cases simultaneously with two different
+  user sessions
+steps:
+- Open first browser session and navigate to the application
+- Login with first user credentials
+- Open second browser session and navigate to the application
+- Login with second user credentials
+- In first session, begin creating new cases rapidly
+- In second session, simultaneously begin creating new cases rapidly
+- Create up to 10 cases from each session concurrently
+- Verify all cases are created successfully
+- Verify system maintains stable connection throughout the test
+- Verify no data corruption or loss occurs during concurrent operations
+expected_result: System should handle concurrent case creation from multiple users
+  without connection failures or performance degradation

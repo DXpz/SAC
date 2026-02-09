@@ -1,0 +1,21 @@
+name: Create New Agent Account
+page: agent_management
+page_path: /app/agentes
+task: Create a new agent account through the agent management interface
+steps:
+- Navigate to the application home page
+- Enter email address in the login form
+- Enter password in the login form
+- Click the login button
+- Wait for successful authentication and main dashboard to load
+- "Click on 'Gesti\xF3n de Agentes' (Agent Management) in the sidebar navigation"
+- Wait for the Agent Management page to load completely
+- Click the 'Nueva Cuenta' (New Account) button
+- Enter full name in the Full Name field
+- Enter email address in the Email field
+- Click the 'Crear Cuenta' (Create Account) button
+- "Verify the success message '\xA1Agente creado exitosamente!' appears"
+- "Verify the redirect message 'Redirigiendo a la gesti\xF3n de agentes...' is displayed"
+- Verify automatic redirect to the agent management page occurs
+expected_result: New agent account is created successfully with confirmation message
+  and redirect to agent management page

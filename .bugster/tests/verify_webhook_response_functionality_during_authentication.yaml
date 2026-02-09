@@ -1,0 +1,18 @@
+name: Verify webhook response functionality during authentication
+page: login
+page_path: /
+task: Test webhook response functionality and verify webhook calls are made during
+  authentication attempts
+steps:
+- Navigate to the application home page
+- Enter email address in the email input field
+- Enter password in the password input field
+- Click the login button
+- Monitor network requests to verify webhook calls are made
+- Verify webhook call is made to /api/webhook/auth endpoint
+- Verify webhook response returns HTTP 200 OK status
+- Check webhook response timing and performance
+- Attempt login again to confirm consistent webhook behavior
+- Verify webhook calls are triggered on each authentication attempt
+expected_result: Webhook calls should be made to the authentication endpoint with
+  successful HTTP responses during login attempts

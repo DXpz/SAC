@@ -1,0 +1,32 @@
+name: Login and Create New Case and Agent
+page: supervisor_dashboard
+page_path: /
+task: Authenticate as supervisor and create a new case with complete client information
+  and attempt to create a new agent account
+steps:
+- Navigate to the application login page
+- Enter email credentials in the email field
+- Enter password in the password field
+- Click the 'Entrar al Sistema' (Enter System) button
+- Verify successful login and navigation to supervisor dashboard
+- Verify user is authenticated as supervisor with correct name displayed
+- Click the 'Nuevo Caso' (New Case) button
+- 'Fill in client information: company name, contact name, phone, and email'
+- Select contact medium as 'Email' from dropdown
+- Select notification channel as 'Email' from dropdown
+- Select case company as 'SV' from dropdown
+- Click the category selection button
+- "Select 'Soporte T\xE9cnico' (Technical Support) category"
+- Enter case subject and description
+- Click the 'Registrar Caso' (Register Case) button
+- Verify case creation success by navigation to case inbox
+- Verify case count has increased from previous count
+- "Navigate to 'Gesti\xF3n de Agentes' (Agent Management) section"
+- Click the 'Nueva Cuenta' (New Account) button
+- 'Fill in agent details: full name and email address'
+- Keep default country selection as 'El Salvador'
+- Click the 'Crear Cuenta' (Create Account) button
+- Verify agent creation form submission completes
+expected_result: Successfully login as supervisor, create a new case that appears
+  in the case list with incremented count, and access agent management to create new
+  agent account

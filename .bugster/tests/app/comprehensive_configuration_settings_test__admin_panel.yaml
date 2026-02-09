@@ -1,0 +1,55 @@
+name: Comprehensive Configuration Settings Test - Admin Panel
+page: admin_configuration
+page_path: /app/admin/settings
+task: Test all configuration sections and settings functionality to ensure complete
+  admin configuration management works properly
+steps:
+- Navigate to the application login page
+- Enter admin credentials in the email field
+- Enter admin password in the password field
+- Click the login button
+- Wait for successful login and dashboard to load
+- "Click on the 'Configuraci\xF3n' navigation button"
+- Verify the Configuration section loads with multiple tabs visible
+- Test SLA Parameters by clicking increase buttons for supervisor and manager alert
+  days
+- Save the SLA parameters and verify successful save
+- "Click on the 'Categor\xEDas' tab"
+- Enter 'Test Category' in the category name field
+- Enter description text in the category description field
+- Click the Add category button
+- Verify the new category appears in the categories table
+- Enter 'Test' in the search categories field to test filtering
+- Click the Edit button for the test category
+- Modify the category name to 'Modified Test Category'
+- Save the category changes
+- Clear the search field to show all categories
+- Click on the 'Estados y Flujo' tab
+- Enter 'Test Estado' in the new state name field
+- Click the Create state button
+- Verify the new state appears in the states list
+- Test transition matrix functionality by modifying checkboxes
+- Save the transitions and verify successful save
+- Click on the 'Usuarios' tab
+- Enter 'CARLOS' in the search user field to test search functionality
+- Click on the 'AGENTE' role filter button
+- Verify the user list filters correctly showing only agents
+- Return to Configuration section
+- Click on the 'Asuetos' tab
+- Click the 'Agregar Fecha' button to open calendar
+- Select a date from the calendar picker
+- Confirm adding the holiday when prompted
+- Verify the holiday count increases and new holiday appears
+- "Click on the 'Par\xE1metros Estados Finales' tab"
+- Enter 'Anexo' in the search parameter field to test search
+- "Click the 'Agregar Par\xE1metro' button"
+- Enter 'Test Parameter' in the parameter name field
+- Enter description in the parameter description field
+- Enter 'Test Field Label' in the parameter label field
+- Select 'Resuelto' from the final state dropdown
+- Click the Create parameter button
+- Verify the parameter is created successfully and appears in the list
+expected_result: "All configuration sections should be accessible and functional with\
+  \ proper CRUD operations, validation, and data persistence across Configuraci\xF3\
+  n, Categor\xEDas, Estados y Flujo, Usuarios, Asuetos, and Par\xE1metros Estados\
+  \ Finales tabs"

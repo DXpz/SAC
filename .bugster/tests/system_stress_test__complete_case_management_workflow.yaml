@@ -1,0 +1,43 @@
+name: System Stress Test - Complete Case Management Workflow
+page: case_management
+page_path: /
+task: Perform a comprehensive stress test of the case management system by testing
+  login, case creation, filtering, navigation, and case detail functionality
+steps:
+- Navigate to the application login page
+- Enter email address in the email field
+- Enter password in the password field
+- Verify the login button becomes enabled
+- Click the 'Entrar al Sistema' button
+- Verify successful login and dashboard loads with user information displayed
+- Click the 'Nuevo Caso' button to create a new case
+- Fill in the client search field with test data
+- Enter company name in the company field
+- Enter contact name in the contact field
+- Enter phone number in the phone field
+- Enter email address in the email field
+- Select 'Email' from the contact method dropdown
+- Select 'Email' from the notification channel dropdown
+- Select company code from the company dropdown
+- Click the category selector button
+- "Select 'Soporte T\xE9cnico' from the category options"
+- Enter a descriptive subject in the subject field
+- Enter detailed description in the description field
+- Click the 'Registrar Caso' button to submit the case
+- Verify case creation success message appears
+- Verify redirection to case inbox with updated case count
+- Enter search term in the search textbox to test filtering
+- Select 'Nuevo' from the status filter dropdown
+- "Select 'Soporte T\xE9cnico' from the category filter dropdown"
+- Verify filtered results display correctly
+- Click the 'Vista tarjetas' button to switch to card view
+- Verify the newly created case appears in card view
+- Click on the newly created case card to view details
+- Verify case detail page loads with complete information
+- Verify all case data displays correctly including SLA information
+- Click the 'Volver' button to return to case list
+- Verify successful navigation back to case inbox
+- Verify case list reloads with all cases displayed
+expected_result: All system components should respond correctly under load with successful
+  login, case creation, filtering operations, view switching, and navigation without
+  errors

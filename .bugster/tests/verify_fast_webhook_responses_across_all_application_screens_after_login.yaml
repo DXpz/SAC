@@ -1,0 +1,23 @@
+name: Verify Fast Webhook Responses Across All Application Screens After Login
+page: multi_screen
+page_path: /
+task: Login with provided credentials and verify that webhook responses are fast and
+  functional across all main application screens
+steps:
+- Navigate to the application home page
+- Enter email credentials in the email field
+- Enter password credentials in the password field
+- Click the login button
+- Wait for login webhook responses and verify successful authentication
+- Verify the main dashboard loads with agent and case data from webhooks
+- Navigate to the 'Bandeja Global' screen
+- Verify case processing and geographic filtering webhooks respond quickly
+- "Navigate to the 'Gesti\xF3n de Agentes' screen"
+- Verify agent data loads quickly from API webhooks
+- "Navigate to the 'Alertas Cr\xEDticas' screen"
+- Verify case filtering webhooks process efficiently
+- Navigate to the 'Panel Supervisor' screen
+- Verify all main webhook endpoints return 200 OK responses
+- Confirm webhook performance is fast across all screens tested
+expected_result: All webhook endpoints respond quickly with 200 OK status, user successfully
+  logs in, and all screens load with proper data from webhook responses

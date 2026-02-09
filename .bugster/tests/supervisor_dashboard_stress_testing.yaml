@@ -1,0 +1,33 @@
+name: Supervisor Dashboard Stress Testing
+page: supervisor_dashboard
+page_path: /
+task: Perform comprehensive stress testing of the supervisor dashboard by rapidly
+  executing multiple interactions across all modules to verify system stability and
+  performance
+steps:
+- Navigate to the application login page
+- Enter email credentials in the email field
+- Enter password in the password field
+- Click the login button
+- Wait for successful authentication and dashboard load
+- "Rapidly switch between case filter buttons (Cr\xEDticos, Vencidos, Todos)"
+- Rapidly switch between time period filters (Hoy, Semana, Mes)
+- Test agent dropdown by selecting different agents (Pablito, Carlos Rodriguez, javier)
+- Verify agent workload data updates correctly for each selection
+- Click on case action buttons (Reasignar caso) to test case management
+- Navigate back from case detail pages using Volver button
+- Test data refresh functionality using Actualizar datos button
+- Navigate to Bandeja Global module
+- Test search functionality in the global inbox
+- Navigate back to supervisor panel
+- "Click on dashboard cards (Casos Cr\xEDticos, Casos Vencidos) to expand them"
+- "Navigate to Gesti\xF3n de Agentes module"
+- Test agent filters (Activos) and search functionality
+- Test agent action buttons (Marcar en vacaciones)
+- Navigate between different modules rapidly
+- Click Ver todos button to test additional navigation
+- Verify all interactions complete without system crashes
+- Verify data consistency is maintained across all views
+- Verify loading states appear appropriately during operations
+expected_result: System handles all rapid interactions without crashes, maintains
+  data consistency, shows appropriate loading states, and all API calls complete successfully

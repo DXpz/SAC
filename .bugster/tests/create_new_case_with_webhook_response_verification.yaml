@@ -1,0 +1,31 @@
+name: Create New Case with Webhook Response Verification
+page: login
+page_path: /
+task: Login to the application and create a new case using the 'Nuevo Caso' button
+  while verifying webhook response performance
+steps:
+- Navigate to the application login page
+- Enter email address in the email textbox
+- Enter password in the password textbox
+- Click the login button
+- Wait for successful login and dashboard to load
+- Click the 'Nuevo Caso' button to access case creation form
+- Enter client name in the client search textbox
+- Enter company name in the company name textbox
+- Enter contact name in the contact name textbox
+- Enter email address in the email textbox
+- Select company from the company dropdown
+- Click the category dropdown to open options
+- "Select 'Soporte T\xE9cnico' from the category options"
+- Enter subject in the subject textbox
+- Enter description in the description textbox
+- Click the 'Registrar Caso' button to submit the case
+- Wait for case creation confirmation message
+- Verify the success message appears
+- Verify redirection to the case list page
+- Verify the new case appears in the case list
+- Verify the case count has incremented
+- Verify webhook responses return HTTP 200 OK status codes
+expected_result: User successfully logs in, creates a new case with all required fields,
+  case appears in the case list with incremented count, and webhook responses return
+  HTTP 200 OK status codes

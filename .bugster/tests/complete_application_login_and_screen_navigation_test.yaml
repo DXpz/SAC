@@ -1,0 +1,29 @@
+name: Complete Application Login and Screen Navigation Test
+page: login
+page_path: /
+task: Login with provided credentials and test all available screens and functionalities
+  in the application
+steps:
+- Navigate to the application login page
+- Enter email address in the email field
+- Enter password in the password field
+- Click the login button
+- Wait for login to complete and verify dashboard loads
+- "Navigate to 'Alertas Cr\xEDticas' (Critical Alerts) screen"
+- Verify critical alerts table displays with case information
+- Click 'Ver detalle' button on the first case to open case details
+- Wait for case detail screen to load completely
+- Click 'Editar Caso' (Edit Case) button to enter edit mode
+- Modify the subject field with test text
+- Click 'Guardar' (Save) button to save changes
+- Wait for save operation to complete
+- Click 'Volver' (Back) button to return to alerts screen
+- Navigate back to 'Panel Ejecutivo' (Executive Dashboard)
+- Test time filter functionality by clicking 'Semana' (Week) button
+- Verify filter changes dashboard data display
+- Expand 'Resumen Ejecutivo' (Executive Summary) section
+- Verify additional summary details are displayed
+- "Click 'Cerrar Sesi\xF3n' (Logout) button"
+- Verify successful logout and return to login page
+expected_result: Successfully login, navigate through all screens (Dashboard, Critical
+  Alerts, Case Details), interact with features, and logout properly

@@ -1,0 +1,26 @@
+name: Test all main screens navigation when logged in as admin
+page: admin_dashboard
+page_path: /
+task: Verify that all main screens in the admin interface are accessible and load
+  properly when logged in with admin credentials
+steps:
+- Navigate to the application home page
+- Enter admin credentials in the email field
+- Enter admin password in the password field
+- Click the login button
+- Wait for the dashboard to load and verify successful login
+- Click on 'Bandeja de Casos' in the navigation menu
+- Verify the Cases screen loads with correct URL and heading
+- "Click on 'Administraci\xF3n de Usuarios' in the navigation menu"
+- Verify the User Administration screen loads with correct URL and heading
+- "Click on 'Configuraci\xF3n' in the navigation menu"
+- Verify the Configuration screen loads with correct URL and heading
+- Click on 'Panel Admin' to return to the dashboard
+- Verify the dashboard loads correctly
+- Test the theme toggle button functionality
+- "Click the 'Cerrar Sesi\xF3n' logout button"
+- Verify successful logout and redirect to login page with email and password fields
+  visible
+expected_result: "All main screens (Panel Admin, Bandeja de Casos, Administraci\xF3\
+  n de Usuarios, Configuraci\xF3n) load correctly with proper headings and URLs, navigation\
+  \ works seamlessly, and logout functionality redirects to login page"

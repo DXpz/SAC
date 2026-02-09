@@ -1,0 +1,25 @@
+name: Admin Login and System Navigation Stress Test
+page: login
+page_path: /
+task: Verify system performance and stability under load by logging in as admin and
+  rapidly navigating through all major application sections
+steps:
+- Navigate to the application login page
+- Enter admin credentials in the email field
+- Enter admin password in the password field
+- Click the login button
+- Wait for the admin dashboard to fully load
+- Verify successful login and dashboard data loads (cases count, users count, analytics)
+- Navigate to the Cases Dashboard section
+- Wait for cases table to load and verify all cases are displayed
+- Navigate to the User Administration section
+- Wait for user list to load and verify all users are displayed
+- Navigate to the Configuration section
+- Wait for configuration settings to load
+- Navigate back to the Admin Panel
+- Perform rapid interactions with dashboard elements to stress test the system
+- Verify system remains stable throughout all navigation and interactions
+- Verify real-time API calls and data processing continue without errors
+expected_result: System maintains stability and performance while processing real-time
+  data, handling rapid navigation, and displaying all dashboard analytics without
+  crashes or blocking errors

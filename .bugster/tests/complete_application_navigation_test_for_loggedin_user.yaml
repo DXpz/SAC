@@ -1,0 +1,26 @@
+name: Complete Application Navigation Test for Logged-in User
+page: sac_application
+page_path: /
+task: Test all main screens and functionality when logged in as supervisor to verify
+  complete application navigation and core features
+steps:
+- Navigate to the application home page
+- Enter valid supervisor email in the email field
+- Enter valid password in the password field
+- Click the login button
+- Wait for successful authentication and verify Panel Supervisor dashboard loads
+- Verify dashboard displays statistics and critical cases table
+- Click on 'Bandeja Global' navigation button
+- Verify Bandeja Global screen loads with cases table view
+- "Navigate to 'Gesti\xF3n de Agentes' screen"
+- Verify Agent Management screen displays with agent information table
+- "Navigate to 'Alertas Cr\xEDticas' screen"
+- Verify Critical Alerts screen loads and displays current alert status
+- Navigate to cases screen and click 'Nuevo Caso' button
+- Verify New Case form loads with all required fields
+- Return to Bandeja Global and click 'Vista tarjetas' button
+- Verify card view displays cases in card format instead of table
+- Return to Panel Supervisor dashboard
+- Verify all navigation links work correctly and screens load without errors
+expected_result: All screens load correctly, navigation works properly, data displays
+  as expected, and core functionality is accessible without errors
