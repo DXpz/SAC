@@ -204,11 +204,9 @@ const Settings: React.FC = () => {
         const paisNormalizado = String(pais).trim().toUpperCase();
         
         if (paisNormalizado === 'SV' || paisNormalizado === 'EL_SALVADOR' || paisNormalizado === 'EL SALVADOR' || paisNormalizado.includes('SALVADOR')) {
-          console.log('[Settings] ✅ País del admin desde api.getUser(): SV');
           return 'SV';
         }
         if (paisNormalizado === 'GT' || paisNormalizado === 'GUATEMALA' || paisNormalizado.includes('GUATEMALA')) {
-          console.log('[Settings] ✅ País del admin desde api.getUser(): GT');
           return 'GT';
         }
       }
@@ -216,7 +214,6 @@ const Settings: React.FC = () => {
       // Fallback: leer desde localStorage directamente
       const userStr = localStorage.getItem('intelfon_user');
       if (!userStr) {
-        console.error('[Settings] No se encontró usuario en localStorage');
         return null;
       }
       
@@ -225,7 +222,6 @@ const Settings: React.FC = () => {
       
       // Si el país es string vacío, intentar obtenerlo desde la lista de usuarios
       if (!pais || String(pais).trim() === '') {
-        console.log('[Settings] 🔍 País no encontrado en localStorage, buscando en lista de usuarios...');
         try {
           const usuarios = await api.getUsuarios();
           const usuarioCompleto = usuarios.find((u: any) => 
@@ -238,30 +234,18 @@ const Settings: React.FC = () => {
           );
           
           if (usuarioCompleto) {
-            pais = usuarioCompleto.pais || usuarioCompleto.country || usuarioCompleto.país || '';
-            console.log('[Settings] ✅ País encontrado en lista de usuarios:', {
-              usuarioId: usuarioCompleto.id || usuarioCompleto.idAgente,
-              usuarioNombre: usuarioCompleto.nombre || usuarioCompleto.name,
-              pais: pais
-            });
-            
-            // Si encontramos el país, actualizar el usuario en localStorage
+            pais = usuarioCompleto.pais || usuarioCompleto.country || '';
             if (pais && String(pais).trim() !== '') {
               const updatedUser = { ...user, pais: pais };
               localStorage.setItem('intelfon_user', JSON.stringify(updatedUser));
-              console.log('[Settings] ✅ País actualizado en localStorage');
             }
-          } else {
-            console.warn('[Settings] ⚠️ Usuario no encontrado en lista de usuarios');
           }
         } catch (error) {
-          console.error('[Settings] Error obteniendo lista de usuarios:', error);
         }
       }
       
       // Validar que el país no sea string vacío
       if (!pais || String(pais).trim() === '') {
-        console.error('[Settings] ⚠️ Admin NO tiene país definido!', user);
         return null;
       }
       
@@ -273,22 +257,15 @@ const Settings: React.FC = () => {
           paisNormalizado === 'EL_SALVADOR' || 
           paisNormalizado === 'EL SALVADOR' ||
           paisNormalizado.includes('SALVADOR')) {
-        console.log('[Settings] ✅ País normalizado: SV');
         return 'SV';
       }
-      
-      // Guatemala: GT, Guatemala, etc.
       if (paisNormalizado === 'GT' || 
           paisNormalizado === 'GUATEMALA' ||
           paisNormalizado.includes('GUATEMALA')) {
-        console.log('[Settings] ✅ País normalizado: GT');
         return 'GT';
       }
-      
-      console.error('[Settings] ⚠️ País no reconocido:', paisNormalizado);
       return null;
     } catch (error) {
-      console.error('[Settings] ❌ Error obteniendo país del admin:', error);
       return null;
     }
   };
@@ -330,7 +307,6 @@ const Settings: React.FC = () => {
         if (!adminCountry) {
           const country = await getAdminCountry();
           setAdminCountry(country);
-          console.log('[Settings] País del admin cargado:', country);
         }
       }
       
@@ -406,14 +382,8 @@ const Settings: React.FC = () => {
         };
       });
       
-      // Admin ve todos los usuarios de ambos países (sin filtrar por país)
-      if (currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR') {
-        console.log('[Settings] Admin detectado, mostrando TODOS los usuarios de ambos países');
-      }
-      
       setSettingsUsers(usuariosMapeados);
     } catch (error) {
-      console.error('Error al cargar usuarios:', error);
       setSettingsUsers([]);
     } finally {
       setLoadingUsers(false);
@@ -447,25 +417,11 @@ const Settings: React.FC = () => {
   const loadCategories = async () => {
     try {
       const categoriesFromWebhook = await api.readCategories();
-      console.log('Categorías recibidas del webhook:', categoriesFromWebhook);
-      console.log('Tipo de respuesta:', typeof categoriesFromWebhook);
-      console.log('Es array?', Array.isArray(categoriesFromWebhook));
-      console.log('Longitud:', categoriesFromWebhook?.length);
-      
-      // Solo actualizar si el webhook retorna categorías válidas
       if (categoriesFromWebhook && Array.isArray(categoriesFromWebhook) && categoriesFromWebhook.length > 0) {
-        console.log('Actualizando categorías desde webhook:', categoriesFromWebhook);
         setCategories(categoriesFromWebhook);
         setFilteredCategories(categoriesFromWebhook);
-      } else {
-        console.log('No se recibieron categorías del webhook o el array está vacío. Manteniendo categorías por defecto.');
-        console.log('Categorías actuales:', categories);
-        // Si no hay categorías del webhook, mantener las categorías por defecto
-        // No actualizar el estado para mantener las categorías iniciales
       }
     } catch (error: any) {
-      console.error('Error al cargar categorías:', error);
-      console.error('Detalles del error:', error.message, error.stack);
       // Si falla, mantener las categorías por defecto
       // No actualizar el estado para mantener las categorías iniciales
     }
@@ -480,14 +436,10 @@ const Settings: React.FC = () => {
 
   // Cargar asuetos desde el webhook
   const loadHolidays = async () => {
-    console.log('[Settings.loadHolidays] Iniciando carga de asuetos...');
     try {
       const fechasFromWebhook = await api.readHolidays();
-      console.log('[Settings.loadHolidays] Fechas recibidas del webhook:', fechasFromWebhook);
       setHolidays(fechasFromWebhook);
     } catch (error: any) {
-      console.error('[Settings.loadHolidays] Error al cargar asuetos:', error);
-      // Si falla, mantener array vacío o las fechas actuales
     }
   };
 
@@ -504,48 +456,20 @@ const Settings: React.FC = () => {
 
   // Cargar estados desde el webhook
   const loadEstados = async () => {
-    console.log('[Settings.loadEstados] Iniciando carga de estados...');
-    console.log('[Settings.loadEstados] Estados actuales antes de cargar:', states.map(s => ({ id: s.id, name: s.name, order: s.order })));
-    console.log('[Settings.loadEstados] Cantidad de estados actuales:', states.length);
-    
     try {
-      console.log('[Settings.loadEstados] Llamando a api.readEstados()...');
       const estadosFromWebhook = await api.readEstados();
-      console.log('[Settings.loadEstados] Estados recibidos de api.readEstados():', estadosFromWebhook);
-      console.log('[Settings.loadEstados] Tipo de datos recibidos:', typeof estadosFromWebhook);
-      console.log('[Settings.loadEstados] Es array?', Array.isArray(estadosFromWebhook));
-      console.log('[Settings.loadEstados] Cantidad de estados recibidos:', estadosFromWebhook?.length || 0);
-      
-      // Solo actualizar si el webhook retorna estados válidos
       if (estadosFromWebhook && Array.isArray(estadosFromWebhook) && estadosFromWebhook.length > 0) {
-        console.log('[Settings.loadEstados] ✅ Estados válidos recibidos, actualizando...');
-        console.log('[Settings.loadEstados] Detalle de cada estado:', estadosFromWebhook.map(s => ({
-          id: s.id,
-          name: s.name,
-          order: s.order,
-          isFinal: s.isFinal
-        })));
-        
-        // Actualizar estados - usar EXACTAMENTE lo que viene del webhook sin modificar nada
-        console.log('[Settings.loadEstados] Llamando a setStates() con estados del webhook (sin modificar)...');
         setStates(() => {
-          console.log('[Settings.loadEstados] setStates callback ejecutado');
-          // Usar EXACTAMENTE los IDs y nombres que vienen del webhook
           const estadosDelWebhook = estadosFromWebhook.map((s: any) => ({
             id: String(s.id || ''), // Usar el ID tal como viene del webhook
             name: String(s.name || s.nombre || ''),
             order: Number(s.order || s.orden || 0),
             isFinal: s.isFinal === true || s.is_final === true || s.estado_final === true || false
           }));
-          console.log('[Settings.loadEstados] Estados del webhook (sin modificar):', estadosDelWebhook);
           return estadosDelWebhook;
         });
-        console.log('[Settings.loadEstados] setStates() llamado exitosamente');
-        
         // Inicializar transiciones para los nuevos estados si no existen
-        console.log('[Settings.loadEstados] Inicializando transiciones usando IDs del webhook...');
         setTransitions(prevTransitions => {
-          console.log('[Settings.loadEstados] Transiciones previas:', prevTransitions);
           const newTransitions: Record<string, Record<string, boolean>> = {};
 
           // Usar EXACTAMENTE los IDs que vienen del webhook (sin normalizar)
@@ -563,57 +487,25 @@ const Settings: React.FC = () => {
               }
             });
           });
-
-          console.log('[Settings.loadEstados] Nuevas transiciones generadas (IDs del webhook):', newTransitions);
           return newTransitions;
         });
-        console.log('[Settings.loadEstados] ✅ Estados y transiciones actualizados exitosamente (IDs normalizados)');
-      } else {
-        console.warn('[Settings.loadEstados] ⚠️ No se recibieron estados válidos del webhook');
-        console.warn('[Settings.loadEstados] estadosFromWebhook:', estadosFromWebhook);
-        console.warn('[Settings.loadEstados] Es array?', Array.isArray(estadosFromWebhook));
-        console.warn('[Settings.loadEstados] Longitud:', estadosFromWebhook?.length);
-        console.log('[Settings.loadEstados] Manteniendo estados actuales');
       }
     } catch (error: any) {
-      console.error('[Settings.loadEstados] ❌ Error al cargar estados:', error);
-      console.error('[Settings.loadEstados] Mensaje de error:', error.message);
-      console.error('[Settings.loadEstados] Stack trace:', error.stack);
-      console.log('[Settings.loadEstados] Manteniendo estados actuales debido al error');
-      // Si falla, mantener los estados actuales
     }
   };
 
   // Cargar transiciones desde el webhook
   // IMPORTANTE: NO usar estados locales, obtener estados directamente del webhook
   const loadTransiciones = async () => {
-    console.log('[Settings.loadTransiciones] ========================================');
-    console.log('[Settings.loadTransiciones] Iniciando carga de transiciones...');
-    console.log('[Settings.loadTransiciones] Obteniendo estados directamente del webhook (NO usar estados locales)...');
-    
     try {
-      // PRIMERO: Obtener estados directamente del webhook (NO usar states local)
-      console.log('[Settings.loadTransiciones] Llamando a api.readEstados() para obtener estados actuales...');
       const estadosFromWebhook = await api.readEstados();
-      console.log('[Settings.loadTransiciones] Estados recibidos del webhook:', estadosFromWebhook);
-      console.log('[Settings.loadTransiciones] Cantidad de estados:', estadosFromWebhook?.length || 0);
-      
       if (!estadosFromWebhook || !Array.isArray(estadosFromWebhook) || estadosFromWebhook.length === 0) {
-        console.error('[Settings.loadTransiciones] ❌ No se recibieron estados del webhook');
         return;
       }
       
       // SEGUNDO: Obtener transiciones del webhook
-      console.log('[Settings.loadTransiciones] Llamando a api.readTransiciones()...');
       const transicionesFromWebhook = await api.readTransiciones();
-      console.log('[Settings.loadTransiciones] Transiciones recibidas de api.readTransiciones():', transicionesFromWebhook);
-      console.log('[Settings.loadTransiciones] Tipo de datos recibidos:', typeof transicionesFromWebhook);
-      console.log('[Settings.loadTransiciones] Es objeto?', transicionesFromWebhook && typeof transicionesFromWebhook === 'object');
-      console.log('[Settings.loadTransiciones] Keys del objeto:', transicionesFromWebhook ? Object.keys(transicionesFromWebhook) : 'N/A');
-      
       if (transicionesFromWebhook && typeof transicionesFromWebhook === 'object' && Object.keys(transicionesFromWebhook).length > 0) {
-        console.log('[Settings.loadTransiciones] ✅ Transiciones válidas recibidas, actualizando...');
-        
         // Convertir el formato del webhook al formato local
         // El webhook retorna: { estado_origen: { transiciones: [estado_destino1, estado_destino2, ...] } }
         // Necesitamos convertir a: transitions[estado_origen][estado_destino] = true
@@ -643,26 +535,14 @@ const Settings: React.FC = () => {
               const estadoOrigenDelWebhook = estadosFromWebhook.find(s => String(s.id || '') === String(estadoOrigenIdFromWebhook));
               
               if (!estadoOrigenDelWebhook) {
-                console.warn(`[Settings.loadTransiciones] ⚠️ Estado ORIGEN "${estadoOrigenIdFromWebhook}" no encontrado en estados del webhook`);
-                console.warn(`[Settings.loadTransiciones] Estados disponibles del webhook:`, estadosFromWebhook.map(s => ({ id: s.id, name: s.name })));
                 return;
               }
-              
-              const origenKey = String(estadoOrigenDelWebhook.id || ''); // Usar ID tal como viene del webhook
-              console.log(`[Settings.loadTransiciones] Estado ORIGEN "${estadoOrigenIdFromWebhook}" -> "${origenKey}" (${estadoOrigenDelWebhook.name}) puede transicionar a:`, transicionesEstado.transiciones);
-
+              const origenKey = String(estadoOrigenDelWebhook.id || '');
               transicionesEstado.transiciones.forEach((estadoDestinoIdFromWebhook: string) => {
                 // Buscar el estado destino en los estados del webhook (NO estados locales)
                 const estadoDestinoDelWebhook = estadosFromWebhook.find(s => String(s.id || '') === String(estadoDestinoIdFromWebhook));
                 
                 if (!estadoDestinoDelWebhook) {
-                  console.error(`[Settings.loadTransiciones] ❌ Estado DESTINO "${estadoDestinoIdFromWebhook}" NO encontrado en estados del webhook`);
-                  console.error(`[Settings.loadTransiciones] Estados disponibles del webhook:`, estadosFromWebhook.map(s => ({ 
-                    id: s.id, 
-                    name: s.name
-                  })));
-                  console.error(`[Settings.loadTransiciones] ⚠️ Esta transición NO se marcará porque el estado destino no existe en el sistema`);
-                  // NO hacer return aquí - continuar con las demás transiciones
                   return;
                 }
                 
@@ -678,42 +558,24 @@ const Settings: React.FC = () => {
                 }
                 
                 newTransitions[origenKey][destinoKey] = true;
-                console.log(`[Settings.loadTransiciones] ✅ Marcando transición: ${origenKey} (${estadoOrigenDelWebhook.name}) -> ${destinoKey} (${estadoDestinoDelWebhook.name}) = true`);
               });
             }
           });
-
-          console.log('[Settings.loadTransiciones] Nuevas transiciones generadas (solo desde read, usando estados del webhook):', newTransitions);
           return newTransitions;
         });
-        console.log('[Settings.loadTransiciones] ✅ Transiciones actualizadas exitosamente');
       } else {
-        console.warn('[Settings.loadTransiciones] ⚠️ No se recibieron transiciones válidas del webhook');
-        console.warn('[Settings.loadTransiciones] transicionesFromWebhook:', transicionesFromWebhook);
-        console.log('[Settings.loadTransiciones] Manteniendo transiciones actuales');
         // Si no hay transiciones válidas, mantener las actuales
       }
     } catch (error: any) {
-      console.error('[Settings.loadTransiciones] ❌ Error al cargar transiciones:', error);
-      console.error('[Settings.loadTransiciones] Mensaje de error:', error.message);
-      console.error('[Settings.loadTransiciones] Stack trace:', error.stack);
-      console.log('[Settings.loadTransiciones] Manteniendo transiciones actuales debido al error');
       // Si falla, mantener las transiciones actuales
     }
   };
 
   // Función para cargar parámetros desde el webhook
   const loadParametros = async () => {
-    console.log('[Settings.loadParametros] Iniciando carga de parámetros...');
-    
     try {
-      console.log('[Settings.loadParametros] Llamando a api.readParametros()...');
       const parametrosFromWebhook = await api.readParametros();
-      console.log('[Settings.loadParametros] Parámetros recibidos del webhook:', parametrosFromWebhook);
-      
       if (parametrosFromWebhook && Array.isArray(parametrosFromWebhook) && parametrosFromWebhook.length > 0) {
-        console.log('[Settings.loadParametros] ✅ Parámetros válidos recibidos, actualizando...');
-        
         // Función para mapear tipos del webhook a tipos locales
         const mapTipo = (tipo: string): TipoParametro => {
           const tipoLower = String(tipo || '').toLowerCase().trim();
@@ -747,18 +609,12 @@ const Settings: React.FC = () => {
           opciones: param.opciones || [],
           estadoFinalId: param.id_estado_final || param.estadoFinalId || ''
         }));
-        
-        console.log('[Settings.loadParametros] Parámetros mapeados:', parametrosMapeados);
         setParametros(parametrosMapeados);
-        console.log('[Settings.loadParametros] ✅ Parámetros actualizados exitosamente');
       } else {
-        console.warn('[Settings.loadParametros] ⚠️ No se recibieron parámetros del webhook');
         // Mantener parámetros vacíos o los actuales
         setParametros([]);
       }
     } catch (error: any) {
-      console.error('[Settings.loadParametros] ❌ Error al cargar parámetros:', error);
-      console.error('[Settings.loadParametros] Mensaje de error:', error.message);
       // Mantener parámetros actuales en caso de error
     }
   };
@@ -766,7 +622,6 @@ const Settings: React.FC = () => {
   // Cargar estados y transiciones cuando se activa el tab de estados y flujos
   useEffect(() => {
     if (activeTab === 'estados-flujo') {
-      console.log('[Settings] Tab estados-flujo activado, cargando estados y transiciones...');
       loadEstados().then(() => {
         // Esperar un momento para que los estados se actualicen antes de cargar transiciones
         setTimeout(() => {
@@ -781,7 +636,6 @@ const Settings: React.FC = () => {
   // Cargar parámetros cuando se activa el tab de configuración
   useEffect(() => {
     if (activeTab === 'configuracion') {
-      console.log('[Settings] Tab configuracion activado, cargando parámetros...');
       loadParametros();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -790,7 +644,6 @@ const Settings: React.FC = () => {
   // También cargar transiciones cuando cambian los estados (por si se cargan después)
   useEffect(() => {
     if (activeTab === 'estados-flujo' && states.length > 0) {
-      console.log('[Settings] Estados disponibles, cargando transiciones...');
       // Solo cargar si no hay transiciones ya cargadas o si hay cambios
       const hasAnyTransition = Object.keys(transitions).length > 0;
       if (!hasAnyTransition) {
@@ -802,16 +655,10 @@ const Settings: React.FC = () => {
 
   // Inicializar filteredCategories con las categorías cuando cambian
   useEffect(() => {
-    console.log('useEffect categories cambió. categories.length:', categories.length);
-    console.log('categories:', categories);
-    console.log('filteredCategories actual:', filteredCategories);
-    
     // Siempre sincronizar filteredCategories con categories
     if (categories.length > 0) {
-      console.log('Actualizando filteredCategories con:', categories);
       setFilteredCategories([...categories]);
     } else {
-      console.log('categories está vacío, restaurando initialCategories');
       // Si categories está vacío, restaurar las categorías iniciales
       setCategories([...initialCategories]);
       setFilteredCategories([...initialCategories]);
@@ -828,7 +675,6 @@ const Settings: React.FC = () => {
 
   const handleSave = () => {
     // TODO: Implementar guardado de configuración
-    console.log('Guardando configuración SLA:', slaSettings);
     setHasChanges(false);
     // Aquí se podría mostrar un toast de éxito
   };
@@ -865,7 +711,6 @@ const Settings: React.FC = () => {
       setNewCategory({ name: '', slaDays: 3, description: '' });
       setHasChanges(true);
     } catch (error: any) {
-      console.error('Error al crear categoría:', error);
       alert(error.message || 'Error al crear la categoría. Por favor, intente nuevamente.');
     }
   };
@@ -929,7 +774,6 @@ const Settings: React.FC = () => {
       setEditingCategory(null);
       setHasChanges(true);
     } catch (error: any) {
-      console.error('Error al actualizar categoría:', error);
       alert(error.message || 'Error al actualizar la categoría. Por favor, intente nuevamente.');
     }
   };
@@ -950,7 +794,6 @@ const Settings: React.FC = () => {
       setHasChanges(true);
       setDeletingCategory(null);
     } catch (error: any) {
-      console.error('Error al eliminar categoría:', error);
       alert(error.message || 'Error al eliminar la categoría. Por favor, intente nuevamente.');
       setDeletingCategory(null);
     }
@@ -1030,7 +873,6 @@ const Settings: React.FC = () => {
         }
       } catch (error: any) {
         // Si falla el webhook, la búsqueda local ya mostró los resultados
-        console.log('Búsqueda en webhook no disponible');
       }
     }
   };
@@ -1133,8 +975,6 @@ const Settings: React.FC = () => {
         setParametroSuccessMessage('Parámetro actualizado exitosamente');
       } else {
         // Crear nuevo parámetro usando el webhook
-        console.log('[Settings.handleSaveParametro] Creando nuevo parámetro...');
-        
         const parametroData = {
           nombre_parametro: newParametro.name.trim(),
           descripcion: newParametro.description.trim(),
@@ -1144,13 +984,7 @@ const Settings: React.FC = () => {
           placeholder: newParametro.placeholder?.trim() || '',
           requerido: newParametro.requerido || false
         };
-
-        console.log('[Settings.handleSaveParametro] Datos a enviar:', parametroData);
-        
         await api.createParametro(parametroData);
-        
-        console.log('[Settings.handleSaveParametro] ✅ Parámetro creado exitosamente');
-        
         // Recargar parámetros después de crear
         await loadParametros();
         
@@ -1170,7 +1004,6 @@ const Settings: React.FC = () => {
         setShowParametroSuccess(false);
       }, 2000);
     } catch (error: any) {
-      console.error('Error al guardar parámetro:', error);
       setIsSavingParametro(false);
       
       // Mostrar animación de error
@@ -1219,13 +1052,8 @@ const Settings: React.FC = () => {
     setIsDeletingParametro(true);
 
     try {
-      console.log('[Settings.handleConfirmDeleteParametro] Eliminando parámetro:', deletingParametro);
-      
       // Eliminar usando el webhook
       await api.deleteParametro(deletingParametro.id);
-      
-      console.log('[Settings.handleConfirmDeleteParametro] ✅ Parámetro eliminado exitosamente');
-      
       // Recargar parámetros después de eliminar
       await loadParametros();
       
@@ -1242,7 +1070,6 @@ const Settings: React.FC = () => {
         setShowParametroSuccess(false);
       }, 2000);
     } catch (error: any) {
-      console.error('Error al eliminar parámetro:', error);
       setDeletingParametro(null);
       setIsDeletingParametro(false);
       
@@ -1332,23 +1159,10 @@ const Settings: React.FC = () => {
       alert('El nombre del estado es obligatorio');
       return;
     }
-    
-    console.log('[Settings.handleAddState] Iniciando creación de estado...');
-    console.log('[Settings.handleAddState] Datos del nuevo estado:', {
-      name: newState.name.trim(),
-      order: newState.order,
-      isFinal: newState.isFinal
-    });
-    
     // Generar ID basado en el nombre normalizado (ej: "En Proceso" -> "en_proceso")
     const newId = nombreToId(newState.name.trim());
     const maxOrder = Math.max(...states.map(s => s.order), 0);
     const newOrder = newState.order || maxOrder + 1;
-    
-    console.log('[Settings.handleAddState] ID generado desde nombre:', newId);
-    console.log('[Settings.handleAddState] Orden calculado:', newOrder);
-    console.log('[Settings.handleAddState] Estados actuales antes de crear:', states.map(s => ({ id: s.id, name: s.name, order: s.order })));
-    
     // Verificar si ya existe un estado con ese ID
     const estadoExistente = states.find(s => s.id === newId);
     if (estadoExistente) {
@@ -1358,7 +1172,6 @@ const Settings: React.FC = () => {
     
     // Enviar webhook para crear el estado
     try {
-      console.log('[Settings.handleAddState] Enviando estado.create al webhook...');
       await api.createState({
         id: newId,
         nombre: newState.name.trim(),
@@ -1366,35 +1179,23 @@ const Settings: React.FC = () => {
         orden: String(newOrder),
         orden_final: newState.isFinal ? 'true' : 'false'
       });
-      console.log('[Settings.handleAddState] ✅ estado.create exitoso');
-      
       // Limpiar el formulario antes de recargar
       const nombreEstadoCreado = newState.name.trim();
       setNewState({ name: '', order: 10, isFinal: false });
       
       // Esperar un momento para que el servidor procese el nuevo estado
-      console.log('[Settings.handleAddState] Esperando 500ms antes de recargar estados...');
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Después de crear el estado, recargar todos los estados desde el webhook
-      console.log('[Settings.handleAddState] Recargando estados con estado.read...');
       await loadEstados();
-      console.log('[Settings.handleAddState] ✅ Estados recargados');
-      
       // Esperar un momento más para que React actualice el estado
       await new Promise(resolve => setTimeout(resolve, 100));
       
       // Verificar que el nuevo estado esté en la lista usando un callback
       // Nota: No podemos verificar states directamente aquí porque setState es asíncrono
       // En su lugar, loadEstados() ya actualiza los estados, así que solo logueamos
-      console.log('[Settings.handleAddState] Buscando estado con nombre:', nombreEstadoCreado);
-      console.log('[Settings.handleAddState] Los estados se actualizarán en el próximo render');
-      
       setHasChanges(true);
     } catch (error: any) {
-      console.error('[Settings.handleAddState] ❌ Error al crear estado:', error);
-      console.error('[Settings.handleAddState] Mensaje de error:', error.message);
-      console.error('[Settings.handleAddState] Stack trace:', error.stack);
       alert(error.message || 'Error al crear el estado. Por favor, intenta nuevamente.');
     }
   };
@@ -1412,34 +1213,19 @@ const Settings: React.FC = () => {
 
   const handleConfirmDeleteState = async () => {
     if (!deletingState) return;
-
-    console.log('[Settings.handleConfirmDeleteState] Iniciando eliminación de estado...');
-    console.log('[Settings.handleConfirmDeleteState] Estado a eliminar:', deletingState);
-
     try {
       // Enviar webhook para eliminar el estado
-      console.log('[Settings.handleConfirmDeleteState] Enviando estado.delete al webhook...');
       await api.deleteState(deletingState.id);
-      console.log('[Settings.handleConfirmDeleteState] ✅ estado.delete exitoso');
-
       // Esperar un momento para que el servidor procese la eliminación
-      console.log('[Settings.handleConfirmDeleteState] Esperando 500ms antes de recargar estados...');
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // Después de eliminar, recargar todos los estados y transiciones desde el webhook
-      console.log('[Settings.handleConfirmDeleteState] Recargando estados con estado.read...');
       await loadEstados();
-      console.log('[Settings.handleConfirmDeleteState] ✅ Estados recargados');
-      
       // Recargar transiciones después de recargar estados
-      console.log('[Settings.handleConfirmDeleteState] Recargando transiciones con transicion.read...');
       await loadTransiciones();
-      console.log('[Settings.handleConfirmDeleteState] ✅ Transiciones recargadas');
-
       setDeletingState(null);
       setHasChanges(true);
     } catch (error: any) {
-      console.error('[Settings.handleConfirmDeleteState] ❌ Error al eliminar estado:', error);
       alert(error.message || 'Error al eliminar el estado. Por favor, intenta nuevamente.');
       setDeletingState(null);
     }
@@ -1453,7 +1239,6 @@ const Settings: React.FC = () => {
     
     // Guardar inmediatamente en el webhook para que persista
     try {
-      console.log('[Settings.handleToggleFinalState] Guardando cambio de isFinal para estado:', id);
       const estadosParaWebhook = updatedStates.map(state => ({
         id: state.id,
         nombre: state.name,
@@ -1463,12 +1248,9 @@ const Settings: React.FC = () => {
       }));
       
       await api.updateEstados(estadosParaWebhook);
-      console.log('[Settings.handleToggleFinalState] ✅ Estado final actualizado en webhook');
-      
       // Recargar estados para asegurar sincronización
       await loadEstados();
     } catch (error: any) {
-      console.error('[Settings.handleToggleFinalState] ❌ Error al guardar estado final:', error);
       // Revertir el cambio local si falla
       setStates(states);
       alert('Error al guardar el cambio. Por favor, intenta nuevamente.');
@@ -1519,15 +1301,7 @@ const Settings: React.FC = () => {
 
   const handleDrop = async (e: React.DragEvent, targetStateId: string) => {
     e.preventDefault();
-    
-    console.log('[Settings.handleDrop] Iniciando drop...', {
-      draggedStateId,
-      targetStateId,
-      currentStates: states.map(s => ({ id: s.id, name: s.name, order: s.order }))
-    });
-    
     if (!draggedStateId || draggedStateId === targetStateId) {
-      console.log('[Settings.handleDrop] No hay drag válido o es el mismo estado');
       setDraggedStateId(null);
       setDragOverStateId(null);
       return;
@@ -1537,7 +1311,6 @@ const Settings: React.FC = () => {
     const targetState = states.find(s => s.id === targetStateId);
     
     if (!draggedState || !targetState) {
-      console.warn('[Settings.handleDrop] No se encontraron los estados');
       setDraggedStateId(null);
       setDragOverStateId(null);
       return;
@@ -1550,9 +1323,6 @@ const Settings: React.FC = () => {
     const newStates = [...states];
     const draggedIndex = newStates.findIndex(s => s.id === draggedStateId);
     const targetIndex = newStates.findIndex(s => s.id === targetStateId);
-
-    console.log('[Settings.handleDrop] Índices:', { draggedIndex, targetIndex });
-
     // Reordenar
     newStates.splice(draggedIndex, 1);
     newStates.splice(targetIndex, 0, draggedState);
@@ -1563,14 +1333,11 @@ const Settings: React.FC = () => {
       order: index + 1
     }));
 
-    console.log('[Settings.handleDrop] Estados reordenados localmente:', reorderedStates.map(s => ({ id: s.id, name: s.name, order: s.order })));
-
     // Actualizar el estado local inmediatamente para feedback visual
     setStates(reorderedStates);
 
     // Enviar webhook con todos los estados y su nuevo orden
     try {
-      console.log('[Settings.handleDrop] Enviando estado.update con nuevo orden...');
       const estadosParaWebhook = reorderedStates.map(state => ({
         id: state.id,
         nombre: state.name,
@@ -1578,42 +1345,21 @@ const Settings: React.FC = () => {
         orden: state.order,
         es_final: state.isFinal
       }));
-
-      console.log('[Settings.handleDrop] Estados a enviar en update:', estadosParaWebhook);
       await api.updateEstados(estadosParaWebhook);
-      console.log('[Settings.handleDrop] ✅ estado.update exitoso');
-      
       // Después de actualizar, recargar los estados y transiciones desde el webhook para obtener el orden actualizado
-      console.log('[Settings.handleDrop] Recargando estados con estado.read...');
       await loadEstados();
-      console.log('[Settings.handleDrop] ✅ Estados recargados exitosamente');
-      
       // Recargar transiciones después de recargar estados
-      console.log('[Settings.handleDrop] Recargando transiciones con transicion.read...');
       await loadTransiciones();
-      console.log('[Settings.handleDrop] ✅ Transiciones recargadas exitosamente');
-      
       setHasChanges(true);
     } catch (error: any) {
-      console.error('[Settings.handleDrop] ❌ Error al actualizar orden de estados:', error);
       alert(error.message || 'Error al actualizar el orden de los estados. Por favor, intenta nuevamente.');
       // Si falla, recargar los estados originales desde el servidor
-      console.log('[Settings.handleDrop] Recargando estados originales debido al error...');
       await loadEstados();
     }
   };
 
   // ORIGEN = FILA (fromState), DESTINO = COLUMNA (toState)
   const handleTransitionChange = (fromId: string, toId: string, checked: boolean) => {
-    console.log('[Settings.handleTransitionChange] Cambiando transición:', {
-      fromId,
-      toId,
-      checked,
-      fromStateName: states.find(s => s.id === fromId)?.name,
-      toStateName: states.find(s => s.id === toId)?.name,
-      currentTransitions: transitions
-    });
-
     // IMPORTANTE: El mapeo en la tabla es:
     // - FILAS = fromState (estado ORIGEN/DESDE)
     // - COLUMNAS = toState (estado DESTINO/HACIA)
@@ -1624,7 +1370,6 @@ const Settings: React.FC = () => {
     const toState = states.find(s => s.id === toId);
 
     if (!fromState || !toState) {
-      console.warn('[Settings.handleTransitionChange] ⚠️ fromState o toState no encontrados', { fromId, toId });
       return;
     }
 
@@ -1645,8 +1390,6 @@ const Settings: React.FC = () => {
   };
 
   const handleSaveTransitions = async () => {
-    console.log('[Settings.handleSaveTransitions] Guardando transiciones mediante transicion.update...');
-
     // Construir el payload para el webhook usando el estado actual de `transitions`
     // El formato debe ser: { estado_origen_id: { transiciones: [estado_destino_id1, estado_destino_id2, ...] } }
     const transicionesData: Record<string, { transiciones: string[] }> = {};
@@ -1675,32 +1418,22 @@ const Settings: React.FC = () => {
       };
     });
 
-    console.log('[Settings.handleSaveTransitions] Payload completo a enviar:', JSON.stringify(transicionesData, null, 2));
-
     try {
       await api.updateTransiciones(transicionesData);
-      console.log('[Settings.handleSaveTransitions] ✅ transicion.update exitoso');
-
       // Después de actualizar, recargar transiciones desde el webhook
       try {
-        console.log('[Settings.handleSaveTransitions] Recargando transiciones con transicion.read...');
         await loadTransiciones();
-        console.log('[Settings.handleSaveTransitions] ✅ transicion.read exitoso');
       } catch (innerError: any) {
-        console.error('[Settings.handleSaveTransitions] ❌ Error al recargar transiciones después del update:', innerError);
       }
 
       setHasChanges(false);
     } catch (error: any) {
-      console.error('[Settings.handleSaveTransitions] ❌ Error al actualizar transiciones:', error);
       alert(error.message || 'Error al guardar las transiciones. Por favor, intenta nuevamente.');
     }
   };
 
   const handleSaveStates = async () => {
     try {
-      console.log('[Settings.handleSaveStates] Guardando todos los estados...');
-      
       // Enviar todos los estados con su isFinal al webhook
       const estadosParaWebhook = states.map(state => ({
         id: state.id,
@@ -1709,17 +1442,12 @@ const Settings: React.FC = () => {
         orden: state.order,
         es_final: state.isFinal
       }));
-      
-      console.log('[Settings.handleSaveStates] Estados a guardar:', estadosParaWebhook);
       await api.updateEstados(estadosParaWebhook);
-      console.log('[Settings.handleSaveStates] ✅ Estados guardados exitosamente');
-      
       // Recargar estados desde el webhook para asegurar sincronización
       await loadEstados();
       
       setHasChanges(false);
     } catch (error: any) {
-      console.error('[Settings.handleSaveStates] ❌ Error al guardar estados:', error);
       alert(error.message || 'Error al guardar los estados. Por favor, intenta nuevamente.');
     }
   };
@@ -1983,22 +1711,15 @@ const Settings: React.FC = () => {
     const date = new Date(year, month, day, 12, 0, 0);
     
     if (isNaN(date.getTime())) {
-      console.error('[handleDateClick] Fecha inválida:', { day, month, year });
       return;
     }
-
-    console.log('[handleDateClick] Fecha seleccionada:', date);
-
     // Verificar si la fecha ya existe
     const exists = isDateInHolidays(date);
     
     // Obtener el nombre de la festividad
     const holidayName = getHolidayName(date);
-    console.log('[handleDateClick] Festividad:', holidayName);
-    
     // Mostrar modal de confirmación animado
     setPendingHolidayDate({ date, holidayName });
-    console.log('[handleDateClick] Modal abierto con fecha:', date, 'festividad:', holidayName);
     setShowCalendar(false); // Cerrar el calendario
   };
 
@@ -2063,12 +1784,9 @@ const Settings: React.FC = () => {
     // Eliminar del webhook
     try {
       await api.deleteHoliday(date);
-      console.log('[handleDeleteHoliday] ✅ Asueto eliminado del webhook exitosamente');
-      
       // Después de eliminar, recargar las fechas desde el webhook
       await loadHolidays();
     } catch (error: any) {
-      console.error('[handleDeleteHoliday] ❌ Error al eliminar asueto del webhook:', error);
       alert(`Error al eliminar la fecha: ${error.message || 'Error desconocido'}`);
     }
   };
@@ -2096,15 +1814,11 @@ const Settings: React.FC = () => {
 
       // Eliminar del webhook
       await api.deleteHoliday(date);
-      console.log('[handleRemoveDuplicate] ✅ Fecha duplicada eliminada del webhook exitosamente');
-      
       // Recargar las fechas desde el webhook
       await loadHolidays();
       
       // Mostrar mensaje de éxito
-      console.log(`Fecha duplicada ${dateStr} eliminada exitosamente`);
     } catch (error: any) {
-      console.error('[handleRemoveDuplicate] ❌ Error al eliminar fecha duplicada:', error);
       alert(`Error al eliminar la fecha duplicada: ${error.message || 'Error desconocido'}`);
     }
   };
@@ -2117,20 +1831,8 @@ const Settings: React.FC = () => {
     
     // Verificar si la fecha ya existe
     const exists = isDateInHolidays(date);
-    console.log('[handleConfirmAddHoliday] Verificando fecha:', {
-      date: date.toISOString(),
-      dateOnly: getDateOnly(date),
-      exists: exists,
-      holidaysCount: holidays.length,
-      holidaysDates: holidays.map(h => ({
-        fecha: h.fecha,
-        fechaDate: h.fechaDate ? getDateOnly(h.fechaDate) : convertDateStrToISO(h.fecha)
-      }))
-    });
-    
     if (exists) {
       // Si ya existe, mostrar animación antes de eliminar
-      console.log('[handleConfirmAddHoliday] ✅ Fecha existe, eliminando...');
       setIsDeleting(true);
       
       // Esperar a que termine la animación antes de eliminar
@@ -2141,16 +1843,12 @@ const Settings: React.FC = () => {
       }, 500); // Duración de la animación (500ms para que se vea mejor)
     } else {
       // Agregar la fecha y enviar al webhook
-      console.log('[handleConfirmAddHoliday] ❌ Fecha NO existe, agregando...');
       const addHolidayToWebhook = async () => {
         try {
           await api.addHoliday(date, pendingHolidayDate.holidayName);
-          console.log('[handleConfirmAddHoliday] ✅ Asueto agregado al webhook exitosamente');
-          
           // Después de agregar, recargar las fechas desde el webhook
           await loadHolidays();
         } catch (error: any) {
-          console.error('[handleConfirmAddHoliday] ❌ Error al agregar asueto al webhook:', error);
           alert(`Error al guardar la fecha: ${error.message || 'Error desconocido'}`);
         }
       };
@@ -2241,8 +1939,6 @@ const Settings: React.FC = () => {
       
       // Enviar todas las fechas al webhook
       await api.addBulkHolidays(newDates, holidayNames);
-      console.log('[handleBulkImport] ✅ Asuetos agregados al webhook exitosamente');
-      
       // Limpiar el textarea
       setBulkDates('');
       
@@ -2254,7 +1950,6 @@ const Settings: React.FC = () => {
         setIsImporting(false);
       }, 500);
     } catch (error: any) {
-      console.error('[handleBulkImport] ❌ Error al agregar asuetos al webhook:', error);
       setIsImporting(false);
       alert(`Error al guardar las fechas: ${error.message || 'Error desconocido'}`);
     }
@@ -2860,8 +2555,6 @@ const Settings: React.FC = () => {
                 </thead>
                   <tbody>
                     {(() => {
-                      console.log('Renderizando tabla. filteredCategories.length:', filteredCategories.length);
-                      console.log('filteredCategories:', filteredCategories);
                       return filteredCategories.length === 0 ? (
                         <tr>
                           <td colSpan={3} className="px-4 py-8 text-center text-sm" style={{ color: styles.text.tertiary }}>
@@ -4145,12 +3838,15 @@ const Settings: React.FC = () => {
                       </div>
                       {(() => {
                         const today = new Date();
-                        today.setHours(0, 0, 0, 0);
+                        const todayYear = today.getFullYear();
+                        const todayMonth = today.getMonth();
+                        const todayDay = today.getDate();
+                        const todayAtMidnight = new Date(todayYear, todayMonth, todayDay, 0, 0, 0);
                         const upcomingHolidays = holidays
                           .filter(h => {
                             const hDate = h.fechaDate || parseDateFromDDMMYYYY(h.fecha);
                             hDate.setHours(0, 0, 0, 0);
-                            return hDate >= today;
+                            return hDate >= todayAtMidnight;
                           })
                           .sort((a, b) => {
                             const aDate = a.fechaDate || parseDateFromDDMMYYYY(a.fecha);
@@ -4162,7 +3858,11 @@ const Settings: React.FC = () => {
                         if (upcomingHolidays.length > 0) {
                           const nextHoliday = upcomingHolidays[0];
                           const nextHolidayDate = nextHoliday.fechaDate || parseDateFromDDMMYYYY(nextHoliday.fecha);
-                          const daysUntil = Math.ceil((nextHolidayDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                          const hY = nextHolidayDate.getFullYear();
+                          const hM = nextHolidayDate.getMonth();
+                          const hD = nextHolidayDate.getDate();
+                          const nextAtMidnight = new Date(hY, hM, hD, 0, 0, 0);
+                          const daysUntil = Math.round((nextAtMidnight.getTime() - todayAtMidnight.getTime()) / (1000 * 60 * 60 * 24));
                           
                           // Formatear fecha usando el string del webhook directamente para mostrar exactamente lo que viene
                           let nextHolidayDateText = '';
@@ -4829,19 +4529,47 @@ const Settings: React.FC = () => {
                           return a.fecha.localeCompare(b.fecha);
                         });
                         const today = new Date();
-                        today.setHours(0, 0, 0, 0);
+                        const todayYear = today.getFullYear();
+                        const todayMonth = today.getMonth();
+                        const todayDay = today.getDate();
+                        const todayAtMidnight = new Date(todayYear, todayMonth, todayDay, 0, 0, 0);
                         
                         let currentMonthYear = '';
                         return sortedHolidays.map((holiday, index) => {
-                          // PRIMERO: Obtener el objeto Date parseado correctamente (el mismo que se usa para mostrar la fecha)
-                          let holidayDate: Date;
-                          if (holiday.fechaDate) {
-                            holidayDate = new Date(holiday.fechaDate);
-                          } else {
-                            holidayDate = parseDateFromDDMMYYYY(holiday.fecha);
+                          // Parsear la fecha del asueto desde el string para evitar problemas de zona horaria
+                          // NUNCA usar new Date(string) con ISO: causa desfase (UTC midnight = día anterior en algunas zonas)
+                          let hDay = 0, hMonth = 0, hYear = 0;
+                          const fechaStr = (holiday.fecha || '').trim();
+                          if (fechaStr.includes('/')) {
+                            const parts = fechaStr.split('/').map(Number);
+                            if (parts.length >= 3) {
+                              hDay = parts[0];
+                              hMonth = parts[1] - 1; // 0-11
+                              hYear = parts[2];
+                            }
+                          } else if (fechaStr.includes('-')) {
+                            // Formato YYYY-MM-DD: parsear componentes directamente (sin new Date)
+                            const parts = fechaStr.split('-').map(p => parseInt(p.trim(), 10));
+                            if (parts.length >= 3 && !parts.some(isNaN)) {
+                              const [y, m, d] = parts;
+                              if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+                                hYear = y;
+                                hMonth = m - 1; // 0-11
+                                hDay = d;
+                              }
+                            }
                           }
-                          // Normalizar la fecha a mediodía para evitar problemas de zona horaria
-                          holidayDate.setHours(12, 0, 0, 0);
+                          if (hYear === 0 && holiday.fechaDate) {
+                            hYear = holiday.fechaDate.getFullYear();
+                            hMonth = holiday.fechaDate.getMonth();
+                            hDay = holiday.fechaDate.getDate();
+                          } else if (hYear === 0) {
+                            const fallback = parseDateFromDDMMYYYY(holiday.fecha || '');
+                            hYear = fallback.getFullYear();
+                            hMonth = fallback.getMonth();
+                            hDay = fallback.getDate();
+                          }
+                          const holidayDate = new Date(hYear, hMonth, hDay, 12, 0, 0);
                           
                           // Formatear fecha usando el mismo formato que "Próximo"
                           // Parsear la fecha del webhook para mostrar "10 de mayo del 2026"
@@ -4920,12 +4648,13 @@ const Settings: React.FC = () => {
                           if (showSeparator) currentMonthYear = monthYear;
                           
                           // Verificar si es fecha próxima (dentro de 30 días)
-                          holidayDate.setHours(0, 0, 0, 0);
-                          const daysUntil = Math.ceil((holidayDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                          // Validar que daysUntil sea un número válido, si no es válido, asumir que es pasado
+                          // Usar comparación por componentes de fecha para evitar errores de zona horaria/DST
+                          const holidayAtMidnight = new Date(hYear, hMonth, hDay, 0, 0, 0);
+                          const daysUntil = Math.round((holidayAtMidnight.getTime() - todayAtMidnight.getTime()) / (1000 * 60 * 60 * 24));
                           const isValidDaysUntil = !isNaN(daysUntil) && isFinite(daysUntil);
+                          // isToday: solo cuando año, mes y día coinciden exactamente (no un día antes)
+                          const isToday = (hYear === todayYear && hMonth === todayMonth && hDay === todayDay);
                           const isUpcoming = isValidDaysUntil && daysUntil >= 0 && daysUntil <= 30;
-                          const isToday = isValidDaysUntil && daysUntil === 0;
                           const isPast = !isValidDaysUntil || daysUntil < 0;
                           
                           return (
@@ -5153,7 +4882,7 @@ const Settings: React.FC = () => {
                       e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.08)';
                     }}
                   >
-                    🗑️ Limpiar
+                    ðŸ—‘ï¸ Limpiar
                   </button>
                 </div>
               )}
@@ -5211,7 +4940,7 @@ const Settings: React.FC = () => {
                           }}
                         >
                           <span className="text-xs font-bold" style={{ color: theme === 'dark' ? '#16a34a' : '#15803d' }}>
-                            ✓ {analysis.valid.length} válida{analysis.valid.length !== 1 ? 's' : ''}
+                            âœ“ {analysis.valid.length} válida{analysis.valid.length !== 1 ? 's' : ''}
                           </span>
                         </div>
                       )}
@@ -5225,7 +4954,7 @@ const Settings: React.FC = () => {
                           }}
                         >
                           <span className="text-xs font-bold" style={{ color: styles.text.secondary }}>
-                            ⚠️ {analysis.duplicates.length} duplicada{analysis.duplicates.length !== 1 ? 's' : ''}
+                            âš ï¸ {analysis.duplicates.length} duplicada{analysis.duplicates.length !== 1 ? 's' : ''}
                           </span>
                         </div>
                       )}
@@ -5239,7 +4968,7 @@ const Settings: React.FC = () => {
                           }}
                         >
                           <span className="text-xs font-bold" style={{ color: '#ef4444' }}>
-                            ✗ {analysis.errors.length} error{analysis.errors.length !== 1 ? 'es' : ''}
+                            âœ— {analysis.errors.length} error{analysis.errors.length !== 1 ? 'es' : ''}
                           </span>
                         </div>
                       )}
@@ -5280,10 +5009,10 @@ const Settings: React.FC = () => {
                                   {holiday && (
                                     <div className="text-[10px] mt-0.5 flex items-center gap-2" style={{ color: styles.text.secondary }}>
                                       {holiday.motivo && holiday.motivo !== 'Indefinido' && (
-                                        <span>🎉 {holiday.motivo}</span>
+                                        <span>ðŸŽ‰ {holiday.motivo}</span>
                                       )}
                                       {holiday.pais && holiday.pais !== 'Indefinido' && (
-                                        <span>📍 {holiday.pais}</span>
+                                        <span>ðŸ“ {holiday.pais}</span>
                                       )}
                                     </div>
                                   )}
@@ -5355,7 +5084,7 @@ const Settings: React.FC = () => {
                                   backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)',
                                   color: theme === 'dark' ? '#60a5fa' : '#2563eb'
                                 }}>
-                                  🎉 {item.holidayName}
+                                  ðŸŽ‰ {item.holidayName}
                                 </span>
                               )}
                             </div>
@@ -6534,7 +6263,7 @@ const Settings: React.FC = () => {
                     border: `1px solid ${theme === 'dark' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.4)'}`
                   }}>
                     <span className="text-xs font-semibold" style={{ color: theme === 'dark' ? '#60a5fa' : '#2563eb' }}>
-                      🎉 {pendingHolidayDate.holidayName}
+                      ðŸŽ‰ {pendingHolidayDate.holidayName}
                     </span>
                   </div>
                 )}

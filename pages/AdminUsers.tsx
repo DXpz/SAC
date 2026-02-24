@@ -99,11 +99,9 @@ const AdminUsers: React.FC = () => {
         const paisNormalizado = String(pais).trim().toUpperCase();
         
         if (paisNormalizado === 'SV' || paisNormalizado === 'EL_SALVADOR' || paisNormalizado === 'EL SALVADOR' || paisNormalizado.includes('SALVADOR')) {
-          console.log('[AdminUsers] ✅ País del admin desde api.getUser(): SV');
           return 'SV';
         }
         if (paisNormalizado === 'GT' || paisNormalizado === 'GUATEMALA' || paisNormalizado.includes('GUATEMALA')) {
-          console.log('[AdminUsers] ✅ País del admin desde api.getUser(): GT');
           return 'GT';
         }
       }
@@ -111,7 +109,6 @@ const AdminUsers: React.FC = () => {
       // Fallback: leer desde localStorage directamente
       const userStr = localStorage.getItem('intelfon_user');
       if (!userStr) {
-        console.error('[AdminUsers] No se encontró usuario en localStorage');
         return null;
       }
       
@@ -120,7 +117,6 @@ const AdminUsers: React.FC = () => {
       
       // Si el país es string vacío, intentar obtenerlo desde la lista de usuarios
       if (!pais || String(pais).trim() === '') {
-        console.log('[AdminUsers] 🔍 País no encontrado en localStorage, buscando en lista de usuarios...');
         try {
           const usuarios = await api.getUsuarios();
           const usuarioCompleto = usuarios.find((u: any) => 
@@ -134,29 +130,17 @@ const AdminUsers: React.FC = () => {
           
           if (usuarioCompleto) {
             pais = usuarioCompleto.pais || usuarioCompleto.country || usuarioCompleto.país || '';
-            console.log('[AdminUsers] ✅ País encontrado en lista de usuarios:', {
-              usuarioId: usuarioCompleto.id || usuarioCompleto.idAgente,
-              usuarioNombre: usuarioCompleto.nombre || usuarioCompleto.name,
-              pais: pais
-            });
-            
-            // Si encontramos el país, actualizar el usuario en localStorage
             if (pais && String(pais).trim() !== '') {
               const updatedUser = { ...user, pais: pais };
               localStorage.setItem('intelfon_user', JSON.stringify(updatedUser));
-              console.log('[AdminUsers] ✅ País actualizado en localStorage');
             }
-          } else {
-            console.warn('[AdminUsers] ⚠️ Usuario no encontrado en lista de usuarios');
           }
         } catch (error) {
-          console.error('[AdminUsers] Error obteniendo lista de usuarios:', error);
         }
       }
       
       // Validar que el país no sea string vacío
       if (!pais || String(pais).trim() === '') {
-        console.error('[AdminUsers] ⚠️ Admin NO tiene país definido!', user);
         return null;
       }
       
@@ -168,22 +152,15 @@ const AdminUsers: React.FC = () => {
           paisNormalizado === 'EL_SALVADOR' || 
           paisNormalizado === 'EL SALVADOR' ||
           paisNormalizado.includes('SALVADOR')) {
-        console.log('[AdminUsers] ✅ País normalizado: SV');
         return 'SV';
       }
-      
-      // Guatemala: GT, Guatemala, etc.
       if (paisNormalizado === 'GT' || 
           paisNormalizado === 'GUATEMALA' ||
           paisNormalizado.includes('GUATEMALA')) {
-        console.log('[AdminUsers] ✅ País normalizado: GT');
         return 'GT';
       }
-      
-      console.error('[AdminUsers] ⚠️ País no reconocido:', paisNormalizado);
       return null;
     } catch (error) {
-      console.error('[AdminUsers] ❌ Error obteniendo país del admin:', error);
       return null;
     }
   };
@@ -225,7 +202,6 @@ const AdminUsers: React.FC = () => {
         if (!adminCountry) {
           const country = await getAdminCountry();
           setAdminCountry(country);
-          console.log('[AdminUsers] País del admin cargado:', country);
         }
       }
       
@@ -306,17 +282,11 @@ const AdminUsers: React.FC = () => {
         };
       });
       
-      // Admin ve todos los usuarios de ambos países (sin filtrar por país)
-      if (currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR') {
-        console.log('[AdminUsers] Admin detectado, mostrando TODOS los usuarios de ambos países');
-      }
-      
       // Validar que todos los IDs sean únicos antes de establecer el estado
       const ids = usuariosMapeados.map(u => u.id);
       const uniqueIds = new Set(ids);
       
       if (ids.length !== uniqueIds.size) {
-        console.warn('[WARNING] Se detectaron IDs duplicados. Regenerando IDs únicos...');
         // Si hay IDs duplicados, regenerar usando índice
         const usuariosConIdsUnicos = usuariosMapeados.map((u, idx) => ({
           ...u,
@@ -612,7 +582,6 @@ const AdminUsers: React.FC = () => {
   const toggleUserStatus = (userId: string) => {
     // Validar que userId no esté vacío o undefined
     if (!userId || userId === 'undefined' || userId === 'null') {
-      console.error('[ERROR] toggleUserStatus recibió un userId inválido:', userId);
       return;
     }
     
@@ -626,21 +595,15 @@ const AdminUsers: React.FC = () => {
       });
       
       if (!userToUpdate) {
-        console.error('[ERROR] No se encontró usuario con ID:', userId);
-        console.log('[DEBUG] IDs disponibles:', prevUsers.map(u => ({ id: u.id, nombre: u.nombre })));
-        return prevUsers; // No hacer cambios si no se encuentra el usuario
+        return prevUsers;
       }
-      
-      // Actualizar solo el usuario encontrado
       return prevUsers.map(u => {
         const uId = String(u.id || '').trim();
         const targetId = String(userId || '').trim();
-        
-        // Comparación estricta: solo actualizar si el ID coincide exactamente
         if (uId === targetId && uId !== '') {
           return { ...u, activo: !u.activo, enVacaciones: false };
         }
-        return u; // Mantener sin cambios
+        return u;
       });
     });
     
@@ -654,7 +617,6 @@ const AdminUsers: React.FC = () => {
   const toggleVacaciones = (userId: string) => {
     // Validar que userId no esté vacío o undefined
     if (!userId || userId === 'undefined' || userId === 'null') {
-      console.error('[ERROR] toggleVacaciones recibió un userId inválido:', userId);
       return;
     }
     
@@ -668,20 +630,15 @@ const AdminUsers: React.FC = () => {
       });
       
       if (!userToUpdate) {
-        console.error('[ERROR] No se encontró usuario con ID:', userId);
-        return prevUsers; // No hacer cambios si no se encuentra el usuario
+        return prevUsers;
       }
-      
-      // Actualizar solo el usuario encontrado
       return prevUsers.map(u => {
         const uId = String(u.id || '').trim();
         const targetId = String(userId || '').trim();
-        
-        // Comparación estricta: solo actualizar si el ID coincide exactamente
         if (uId === targetId && uId !== '') {
           return { ...u, enVacaciones: !u.enVacaciones, activo: u.enVacaciones ? true : u.activo };
         }
-        return u; // Mantener sin cambios
+        return u;
       });
     });
     

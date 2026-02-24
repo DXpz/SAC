@@ -215,21 +215,10 @@ const callEstadosWebhook = async <T = any>(
 ): Promise<T> => {
   // URL del webhook de estados
   const ESTADOS_WEBHOOK_URL = 'https://n8n.red.com.sv/webhook/5009ec05-e3ce-44ef-bd68-ae7ef4e61f61';
-  console.log('[callEstadosWebhook] Llamando webhook:', {
-    url: ESTADOS_WEBHOOK_URL,
-    method: method,
-    body: body
-  });
-  console.log('[callEstadosWebhook] Body como JSON:', JSON.stringify(body, null, 2));
-  
   try {
     const response = await callWebhookGeneric<T>(ESTADOS_WEBHOOK_URL, method, body);
-    console.log('[callEstadosWebhook] Respuesta recibida:', response);
-    console.log('[callEstadosWebhook] Tipo de respuesta:', typeof response);
     return response;
   } catch (error: any) {
-    console.error('[callEstadosWebhook] Error en la llamada:', error);
-    console.error('[callEstadosWebhook] Mensaje de error:', error.message);
     throw error;
   }
 };
@@ -241,20 +230,10 @@ const callAsuetosWebhook = async <T = any>(
 ): Promise<T> => {
   // URL del webhook de asuetos
   const ASUETOS_WEBHOOK_URL = 'https://n8n.red.com.sv/webhook/d80b6b0a-b647-475e-8795-c8747a9b72d8';
-  console.log('[callAsuetosWebhook] Llamando webhook:', {
-    url: ASUETOS_WEBHOOK_URL,
-    method: method,
-    body: body
-  });
-  console.log('[callAsuetosWebhook] Body como JSON:', JSON.stringify(body, null, 2));
-  
   try {
     const response = await callWebhookGeneric<T>(ASUETOS_WEBHOOK_URL, method, body);
-    console.log('[callAsuetosWebhook] Respuesta recibida:', response);
     return response;
   } catch (error: any) {
-    console.error('[callAsuetosWebhook] Error en la llamada:', error);
-    console.error('[callAsuetosWebhook] Mensaje de error:', error.message);
     throw error;
   }
 };
@@ -366,19 +345,6 @@ const callWebhook = async (scenario: 'login' | 'reset_password' | 'new_account',
                              result.PAIS || result.COUNTRY || (result as any).pais_usuario || 
                              (result as any).country_user || (result as any).user_pais;
       
-      console.log('[API] 🔍 Respuesta del webhook de login (callWebhook):', {
-        result: result,
-        paisEncontrado: paisEncontrado,
-        resultPais: result.pais,
-        resultCountry: result.country,
-        resultPaís: result.país,
-        todosLosCampos: Object.keys(result),
-        valoresDeCampos: Object.keys(result).reduce((acc: any, key) => {
-          acc[key] = (result as any)[key];
-          return acc;
-        }, {})
-      });
-      
       return {
         token: `token-${result.id}-${Date.now()}`, // Generar token local basado en el ID
         user: {
@@ -484,32 +450,7 @@ const authenticateWithWebhook = async (email: string, password: string): Promise
     pais: paisDelUsuario
   };
   
-  console.log('[API] 📝 Usuario guardado después de login (authenticateWithWebhook):', {
-    id: user.id,
-    name: user.name,
-    role: user.role,
-    pais: user.pais,
-    paisDelUsuario: paisDelUsuario,
-    dataUser: data.user,
-    dataUserTodosLosCampos: Object.keys(data.user),
-    dataUserValores: Object.keys(data.user).reduce((acc: any, key) => {
-      acc[key] = (data.user as any)[key];
-      return acc;
-    }, {})
-  });
-
   localStorage.setItem('intelfon_user', JSON.stringify(user));
-  
-  // Verificar que se guardó correctamente
-  const savedUser = JSON.parse(localStorage.getItem('intelfon_user') || '{}');
-  console.log('[API] ✅ Usuario verificado después de guardar en localStorage:', {
-    id: savedUser.id,
-    name: savedUser.name,
-    role: savedUser.role,
-    pais: savedUser.pais,
-    usuarioCompleto: savedUser
-  });
-  
   return user;
 };
 
@@ -959,8 +900,6 @@ export const api = {
         
         
         if (Array.isArray(agents) && agents.length > 0) {
-          console.log('[API] Agentes recibidos del webhook:', agents.length, agents);
-          // Mapear los agentes al formato esperado por el frontend
           let mappedAgents = agents.map((agente: any) => {
             // Determinar el estado: el webhook puede retornar "ACTIVO", "INACTIVO", "VACACIONES"
             let estado: 'Activo' | 'Inactivo' | 'Vacaciones' = 'Inactivo';
@@ -986,15 +925,6 @@ export const api = {
             // Mapear país desde múltiples fuentes posibles
             const paisRaw = agente.pais || agente.country || agente.país || agente.Pais || agente.Country || 
                            (agente as any).pais_usuario || (agente as any).country_user || undefined;
-            
-            console.log('[API] Mapeando agente:', {
-              idAgente: agente.id_agente || agente.idAgente || agente.id,
-              nombre: agente.nombre || agente.name,
-              paisRaw: paisRaw,
-              agenteCompleto: agente
-            });
-            
-            // Mapear campos del webhook al formato Agente
             return {
               idAgente: agente.id_agente || agente.idAgente || agente.id || '',
               nombre: agente.nombre || agente.name || '',
@@ -1006,15 +936,9 @@ export const api = {
               pais: paisRaw || undefined
             };
           }).filter((agente: any) => {
-            // Filtrar agentes sin ID válido
             const tieneId = agente.idAgente || agente.id_agente || agente.id;
-            if (!tieneId) {
-              console.warn('[API] Agente sin ID válido filtrado:', agente);
-            }
-            return tieneId;
-          }); // Filtrar agentes sin ID
-          console.log('[API] Agentes mapeados después de filtrar:', mappedAgents.length, mappedAgents);
-          
+            return !!tieneId;
+          });
           // Calcular el orden Round Robin en el frontend
           // Lógica: 1. Menor cantidad de casos activos = mayor prioridad
           //         2. Si hay empate, el que tenga el caso más antiguo (fecha más antigua) = mayor prioridad
@@ -1353,7 +1277,6 @@ export const api = {
       const response = await callCategoriesWebhook('POST', payload);
       return response;
     } catch (error: any) {
-      console.error('Error al crear categoría:', error);
       throw new Error(error.message || 'Error al crear la categoría');
     }
   },
@@ -1401,7 +1324,6 @@ export const api = {
       const response = await callCategoriesWebhook('POST', payload);
       return response;
     } catch (error: any) {
-      console.error('Error al actualizar categoría:', error);
       throw new Error(error.message || 'Error al actualizar la categoría');
     }
   },
@@ -1441,7 +1363,6 @@ export const api = {
       const response = await callCategoriesWebhook('POST', payload);
       return response;
     } catch (error: any) {
-      console.error('Error al eliminar categoría:', error);
       throw new Error(error.message || 'Error al eliminar la categoría');
     }
   },
@@ -1480,10 +1401,6 @@ export const api = {
 
     try {
       const response = await callCategoriesWebhook('POST', payload);
-      console.log('Respuesta del webhook category.read:', response);
-      console.log('Tipo de respuesta:', typeof response);
-      console.log('Es array?', Array.isArray(response));
-      
       // El webhook retorna un formato específico:
       // [
       //   {
@@ -1506,11 +1423,8 @@ export const api = {
         const firstItem = response[0];
         if (firstItem && typeof firstItem === 'object' && firstItem.data) {
           categories = Array.isArray(firstItem.data) ? firstItem.data : [];
-          console.log('Categorías encontradas en response[0].data:', categories);
         } else if (Array.isArray(firstItem)) {
-          // Si el primer elemento es directamente un array
           categories = firstItem;
-          console.log('Categorías encontradas directamente en response[0]:', categories);
         } else {
           // Intentar otros formatos comunes
           categories = firstItem.categories || 
@@ -1535,12 +1449,7 @@ export const api = {
         if (!Array.isArray(categories)) categories = [];
       }
 
-      console.log('Categorías extraídas:', categories);
-      console.log('Número de categorías extraídas:', categories.length);
-
-      // Si no hay categorías, retornar array vacío (no null ni undefined)
       if (!categories || categories.length === 0) {
-        console.log('No se encontraron categorías en la respuesta del webhook');
         return [];
       }
 
@@ -1568,16 +1477,10 @@ export const api = {
                             cat.desc || 
                             '')
         };
-        console.log('Categoría mapeada:', mapped);
         return mapped;
       });
-
-      console.log('Total de categorías mapeadas:', mappedCategories.length);
       return mappedCategories;
     } catch (error: any) {
-      console.error('Error al leer categorías:', error);
-      console.error('Stack trace:', error.stack);
-      // No lanzar error, retornar array vacío para que use las categorías por defecto
       return [];
     }
   },
@@ -1617,7 +1520,6 @@ export const api = {
       const response = await callCategoriesWebhook('POST', payload);
       return response;
     } catch (error: any) {
-      console.error('Error al buscar categoría:', error);
       throw new Error(error.message || 'Error al buscar la categoría');
     }
   },
@@ -1635,14 +1537,7 @@ export const api = {
       throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
     }
 
-    console.log('[api.createState] Iniciando creación de estado...');
-    console.log('[api.createState] Datos del estado a crear:', stateData);
-
-    // Construir el actor con el formato esperado
     const actor = buildActorPayload(user);
-    console.log('[api.createState] Actor construido:', actor);
-    
-    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
     const roleMap: Record<string, string> = {
       'ADMIN': 'ADMINISTRADOR',
       'AGENTE': 'AGENTE',
@@ -1650,9 +1545,6 @@ export const api = {
       'GERENTE': 'GERENTE'
     };
     const mappedRole = roleMap[actor.role] || actor.role;
-    console.log('[api.createState] Role mapeado:', { original: actor.role, mapped: mappedRole });
-
-    // Construir el payload según el formato especificado
     const payload = {
       action: 'estado.create',
       actor: {
@@ -1668,19 +1560,10 @@ export const api = {
         orden_final: stateData.orden_final
       }
     };
-
-    console.log('[api.createState] Payload completo a enviar:', JSON.stringify(payload, null, 2));
-    console.log('[api.createState] URL del webhook: https://n8n.red.com.sv/webhook/5009ec05-e3ce-44ef-bd68-ae7ef4e61f61');
-
     try {
       const response = await callEstadosWebhook('POST', payload);
-      console.log('[api.createState] Respuesta del webhook:', response);
-      console.log('[api.createState] Respuesta como JSON:', JSON.stringify(response, null, 2));
       return response;
     } catch (error: any) {
-      console.error('[api.createState] ❌ Error al crear estado:', error);
-      console.error('[api.createState] Mensaje de error:', error.message);
-      console.error('[api.createState] Stack trace:', error.stack);
       throw new Error(error.message || 'Error al crear el estado');
     }
   },
@@ -1726,7 +1609,6 @@ export const api = {
       const response = await callEstadosWebhook('POST', payload);
       return response;
     } catch (error: any) {
-      console.error('Error al actualizar estados:', error);
       throw new Error(error.message || 'Error al actualizar el orden de los estados');
     }
   },
@@ -1738,13 +1620,7 @@ export const api = {
       throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
     }
 
-    console.log('[api.readTransiciones] Iniciando lectura de transiciones...');
-
-    // Construir el actor con el formato esperado
     const actor = buildActorPayload(user);
-    console.log('[api.readTransiciones] Actor construido:', actor);
-    
-    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
     const roleMap: Record<string, string> = {
       'ADMIN': 'ADMINISTRADOR',
       'AGENTE': 'AGENTE',
@@ -1752,9 +1628,6 @@ export const api = {
       'GERENTE': 'GERENTE'
     };
     const mappedRole = roleMap[actor.role] || actor.role;
-    console.log('[api.readTransiciones] Role mapeado:', { original: actor.role, mapped: mappedRole });
-
-    // Construir el payload según el formato especificado
     const payload = {
       action: 'transicion.read',
       actor: {
@@ -1764,38 +1637,16 @@ export const api = {
       },
       data: {}
     };
-
-    console.log('[api.readTransiciones] Payload completo a enviar:', JSON.stringify(payload, null, 2));
-    console.log('[api.readTransiciones] URL del webhook: https://n8n.red.com.sv/webhook/5009ec05-e3ce-44ef-bd68-ae7ef4e61f61');
-
     try {
       const response = await callEstadosWebhook('POST', payload);
-      console.log('[api.readTransiciones] Respuesta RAW del webhook:', response);
-      console.log('[api.readTransiciones] Respuesta como JSON:', JSON.stringify(response, null, 2));
-      console.log('[api.readTransiciones] Tipo de respuesta:', typeof response);
-      
-      // Procesar la respuesta del webhook
       // El formato esperado es: [{ "data": [{ "estado_origen": "nuevo", "estado_destino": "en_proceso", "permitido": true }, ...] }]
       let transicionesData: Record<string, { transiciones: string[] }> = {};
-      
-      console.log('[api.readTransiciones] Procesando respuesta del webhook...');
-      console.log('[api.readTransiciones] Respuesta es array?', Array.isArray(response));
-      console.log('[api.readTransiciones] Respuesta es objeto?', response && typeof response === 'object' && !Array.isArray(response));
       
       if (response && typeof response === 'object') {
         // Si es un array (formato esperado: [{ "data": [...] }])
         if (Array.isArray(response)) {
-          console.log('[api.readTransiciones] La respuesta es un array, longitud:', response.length);
-          
           if (response.length > 0 && response[0] && typeof response[0] === 'object') {
-            console.log('[api.readTransiciones] Primer elemento del array:', response[0]);
-            console.log('[api.readTransiciones] Keys del primer elemento:', Object.keys(response[0]));
-            
-            // Buscar la propiedad "data" en el primer elemento
             if (response[0].data && Array.isArray(response[0].data)) {
-              console.log('[api.readTransiciones] ✅ Encontrado response[0].data como array, longitud:', response[0].data.length);
-              
-              // El formato es: [{ "estado_origen": "nuevo", "estado_destino": "en_proceso", "permitido": true }, ...]
               const transicionesArray = response[0].data;
               
               // Agrupar por estado_origen y construir el formato esperado
@@ -1814,30 +1665,16 @@ export const api = {
                     transicionesData[estadoOrigen].transiciones.push(estadoDestino);
                   }
                   
-                  console.log(`[api.readTransiciones] Agregada transición: ${estadoOrigen} -> ${estadoDestino}`);
                 }
               });
-              
-              console.log('[api.readTransiciones] ✅ Transiciones procesadas desde array de objetos');
             } else if (response[0].data && typeof response[0].data === 'object' && !Array.isArray(response[0].data)) {
-              // Formato alternativo: { "data": { estado_id: { transiciones: [...] } } }
-              console.log('[api.readTransiciones] ✅ Encontrado response[0].data como objeto');
               transicionesData = response[0].data;
-            } else {
-              console.log('[api.readTransiciones] ⚠️ response[0].data no tiene el formato esperado');
             }
           }
         } 
-        // Si es un objeto directo
         else {
-          console.log('[api.readTransiciones] La respuesta es un objeto directo');
-          console.log('[api.readTransiciones] Keys del objeto:', Object.keys(response));
-          
-          // Si tiene una propiedad "data"
           if (response.data) {
             if (Array.isArray(response.data)) {
-              // Formato: { "data": [{ "estado_origen": "...", "estado_destino": "...", "permitido": true }, ...] }
-              console.log('[api.readTransiciones] ✅ Encontrado response.data como array');
               const transicionesArray = response.data;
               
               transicionesArray.forEach((transicion: any) => {
@@ -1855,29 +1692,15 @@ export const api = {
                 }
               });
             } else if (typeof response.data === 'object') {
-              console.log('[api.readTransiciones] ✅ Encontrado response.data como objeto');
               transicionesData = response.data;
             }
           } else {
-            // Si la respuesta es directamente el objeto de transiciones
-            console.log('[api.readTransiciones] La respuesta es directamente el objeto de transiciones');
             transicionesData = response as Record<string, { transiciones: string[] }>;
           }
         }
       }
-      
-      console.log('[api.readTransiciones] Transiciones procesadas:', transicionesData);
-      console.log('[api.readTransiciones] Cantidad de estados con transiciones:', Object.keys(transicionesData).length);
-      console.log('[api.readTransiciones] Detalle de cada estado:', Object.keys(transicionesData).map(estadoId => ({
-        estadoId,
-        transiciones: transicionesData[estadoId]?.transiciones || []
-      })));
-      
       return transicionesData;
     } catch (error: any) {
-      console.error('[api.readTransiciones] ❌ Error al leer transiciones:', error);
-      console.error('[api.readTransiciones] Mensaje de error:', error.message);
-      console.error('[api.readTransiciones] Stack trace:', error.stack);
       throw new Error(error.message || 'Error al leer las transiciones');
     }
   },
@@ -1889,14 +1712,7 @@ export const api = {
       throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
     }
 
-    console.log('[api.updateTransiciones] Iniciando actualización de transiciones...');
-    console.log('[api.updateTransiciones] Datos de transiciones:', transicionesData);
-
-    // Construir el actor con el formato esperado
     const actor = buildActorPayload(user);
-    console.log('[api.updateTransiciones] Actor construido:', actor);
-    
-    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
     const roleMap: Record<string, string> = {
       'ADMIN': 'ADMINISTRADOR',
       'AGENTE': 'AGENTE',
@@ -1904,9 +1720,6 @@ export const api = {
       'GERENTE': 'GERENTE'
     };
     const mappedRole = roleMap[actor.role] || actor.role;
-    console.log('[api.updateTransiciones] Role mapeado:', { original: actor.role, mapped: mappedRole });
-
-    // Construir el payload según el formato especificado
     const payload = {
       action: 'transicion.update',
       actor: {
@@ -1916,19 +1729,10 @@ export const api = {
       },
       data: transicionesData
     };
-
-    console.log('[api.updateTransiciones] Payload completo a enviar:', JSON.stringify(payload, null, 2));
-    console.log('[api.updateTransiciones] URL del webhook: https://n8n.red.com.sv/webhook/5009ec05-e3ce-44ef-bd68-ae7ef4e61f61');
-
     try {
       const response = await callEstadosWebhook('POST', payload);
-      console.log('[api.updateTransiciones] Respuesta del webhook:', response);
-      console.log('[api.updateTransiciones] Respuesta como JSON:', JSON.stringify(response, null, 2));
       return response;
     } catch (error: any) {
-      console.error('[api.updateTransiciones] ❌ Error al actualizar transiciones:', error);
-      console.error('[api.updateTransiciones] Mensaje de error:', error.message);
-      console.error('[api.updateTransiciones] Stack trace:', error.stack);
       throw new Error(error.message || 'Error al actualizar las transiciones');
     }
   },
@@ -1940,14 +1744,7 @@ export const api = {
       throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
     }
 
-    console.log('[api.deleteState] Iniciando eliminación de estado...');
-    console.log('[api.deleteState] ID del estado a eliminar:', stateId);
-
-    // Construir el actor con el formato esperado
     const actor = buildActorPayload(user);
-    console.log('[api.deleteState] Actor construido:', actor);
-    
-    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
     const roleMap: Record<string, string> = {
       'ADMIN': 'ADMINISTRADOR',
       'AGENTE': 'AGENTE',
@@ -1955,9 +1752,6 @@ export const api = {
       'GERENTE': 'GERENTE'
     };
     const mappedRole = roleMap[actor.role] || actor.role;
-    console.log('[api.deleteState] Role mapeado:', { original: actor.role, mapped: mappedRole });
-
-    // Construir el payload según el formato especificado
     const payload = {
       action: 'estado.delete',
       actor: {
@@ -1969,19 +1763,10 @@ export const api = {
         id: stateId
       }
     };
-
-    console.log('[api.deleteState] Payload completo a enviar:', JSON.stringify(payload, null, 2));
-    console.log('[api.deleteState] URL del webhook: https://n8n.red.com.sv/webhook/5009ec05-e3ce-44ef-bd68-ae7ef4e61f61');
-
     try {
       const response = await callEstadosWebhook('POST', payload);
-      console.log('[api.deleteState] Respuesta del webhook:', response);
-      console.log('[api.deleteState] Respuesta como JSON:', JSON.stringify(response, null, 2));
       return response;
     } catch (error: any) {
-      console.error('[api.deleteState] ❌ Error al eliminar estado:', error);
-      console.error('[api.deleteState] Mensaje de error:', error.message);
-      console.error('[api.deleteState] Stack trace:', error.stack);
       throw new Error(error.message || 'Error al eliminar el estado');
     }
   },
@@ -1998,17 +1783,7 @@ export const api = {
       throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
     }
 
-    console.log('[api.readEstados] Usuario obtenido:', {
-      id: user.id,
-      email: (user as any).email,
-      role: user.role
-    });
-
-    // Construir el actor con el formato esperado
     const actor = buildActorPayload(user);
-    console.log('[api.readEstados] Actor construido:', actor);
-    
-    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
     const roleMap: Record<string, string> = {
       'ADMIN': 'ADMINISTRADOR',
       'AGENTE': 'AGENTE',
@@ -2016,9 +1791,6 @@ export const api = {
       'GERENTE': 'GERENTE'
     };
     const mappedRole = roleMap[actor.role] || actor.role;
-    console.log('[api.readEstados] Role mapeado:', { original: actor.role, mapped: mappedRole });
-
-    // Construir el payload según el formato especificado
     const payload = {
       action: 'estado.read',
       actor: {
@@ -2030,80 +1802,35 @@ export const api = {
         id: 'all'
       }
     };
-
-    console.log('[api.readEstados] Payload completo a enviar:', JSON.stringify(payload, null, 2));
-    console.log('[api.readEstados] URL del webhook: https://n8n.red.com.sv/webhook/5009ec05-e3ce-44ef-bd68-ae7ef4e61f61');
-
     try {
       const response = await callEstadosWebhook('POST', payload);
-      console.log('[api.readEstados] Respuesta RAW del webhook:', response);
-      console.log('[api.readEstados] Respuesta RAW como JSON:', JSON.stringify(response, null, 2));
-      console.log('[api.readEstados] Tipo de respuesta:', typeof response);
-      console.log('[api.readEstados] Es array?', Array.isArray(response));
-      console.log('[api.readEstados] Es objeto?', response && typeof response === 'object' && !Array.isArray(response));
-      console.log('[api.readEstados] Es null o undefined?', response === null || response === undefined);
-      
-      if (response && typeof response === 'object') {
-        console.log('[api.readEstados] Keys del objeto respuesta:', Object.keys(response));
-        console.log('[api.readEstados] Valores de cada key:', Object.keys(response).reduce((acc, key) => {
-          acc[key] = response[key];
-          return acc;
-        }, {} as any));
-      }
-      
-      // Procesar la respuesta del webhook
       // El formato esperado es: [{ "data": [...] }]
       let estados: any[] = [];
       
-      // Si la respuesta es null o undefined
       if (response === null || response === undefined) {
-        console.warn('[api.readEstados] ⚠️ La respuesta es null o undefined');
         return [];
       }
-      
-      console.log('[api.readEstados] Procesando respuesta del webhook...');
-      
-      // Si es un array (formato esperado: [{ "data": [...] }])
       if (Array.isArray(response)) {
-        console.log('[api.readEstados] La respuesta es un array, longitud:', response.length);
-        
-        // Buscar la propiedad "data" en el primer elemento del array
         if (response.length > 0 && response[0] && typeof response[0] === 'object') {
-          console.log('[api.readEstados] Primer elemento del array:', response[0]);
-          console.log('[api.readEstados] Keys del primer elemento:', Object.keys(response[0]));
-          
-          // El formato es: [{ "data": [...] }]
           if (Array.isArray(response[0].data)) {
-            console.log('[api.readEstados] ✅ Encontrado response[0].data con', response[0].data.length, 'estados');
             estados = response[0].data;
           } else {
-            // Si no tiene data, puede ser que el array directamente contenga los estados
-            console.log('[api.readEstados] response[0] no tiene propiedad data, verificando si el array contiene estados directamente...');
-            // Verificar si los elementos del array son estados
             const tieneEstados = response.some(item => 
               item && typeof item === 'object' && (item.id !== undefined || item.nombre !== undefined || item.name !== undefined)
             );
             if (tieneEstados) {
-              console.log('[api.readEstados] ✅ El array contiene estados directamente');
               estados = response;
             }
           }
         } else {
-          // Si el array contiene directamente los estados
           const tieneEstados = response.some(item => 
             item && typeof item === 'object' && (item.id !== undefined || item.nombre !== undefined || item.name !== undefined)
           );
           if (tieneEstados) {
-            console.log('[api.readEstados] ✅ El array contiene estados directamente');
             estados = response;
           }
         }
-      } 
-      // Si es un objeto, buscar estados en diferentes propiedades
-      else if (response && typeof response === 'object') {
-        console.log('[api.readEstados] La respuesta es un objeto, buscando estados en diferentes propiedades...');
-        
-        // Intentar diferentes estructuras comunes
+      } else if (response && typeof response === 'object') {
         const posiblesEstados = [
           response.data,
           response.estados,
@@ -2111,24 +1838,14 @@ export const api = {
           response.results,
           response.items,
         ];
-        
-        // Buscar el primer array válido
         for (const posibleEstado of posiblesEstados) {
           if (Array.isArray(posibleEstado) && posibleEstado.length > 0) {
-            console.log('[api.readEstados] ✅ Encontrado array de estados en propiedad del objeto');
             estados = posibleEstado;
             break;
           }
         }
       }
-
-      console.log('[api.readEstados] Estados extraídos:', estados);
-      console.log('[api.readEstados] Cantidad de estados extraídos:', estados.length);
-      
-      // Si no hay estados, retornar array vacío
       if (!estados || estados.length === 0) {
-        console.warn('[api.readEstados] ⚠️ No se encontraron estados en la respuesta del webhook');
-        console.warn('[api.readEstados] Respuesta completa:', JSON.stringify(response, null, 2));
         return [];
       }
 
@@ -2154,45 +1871,21 @@ export const api = {
           // Siempre usar el ID normalizado basado en el nombre
           estadoId = nombreNormalizado;
           
-          if (estado.id && !isNaN(Number(estado.id))) {
-            console.log(`[api.readEstados] ID numérico detectado (${estado.id}), convirtiendo a formato normalizado: ${estadoId}`);
-          } else if (estado.id && estado.id !== nombreNormalizado) {
-            console.log(`[api.readEstados] ID no normalizado detectado (${estado.id}), usando formato normalizado: ${estadoId}`);
-          } else {
-            console.log(`[api.readEstados] ID generado desde nombre: ${estadoId}`);
-          }
         } else {
-          // Si no hay nombre, usar el ID original como string
           estadoId = String(estadoId || `estado_${index + 1}`);
-          console.warn(`[api.readEstados] ⚠️ Estado sin nombre, usando ID: ${estadoId}`);
         }
-        
-        const mapped = {
+        return {
           id: String(estadoId),
           name: estado.nombre || estado.name || 'Sin nombre',
           order: Number(estado.orden || estado.order || index + 1),
-          // El webhook usa "estado_final", no "es_final"
           isFinal: estado.estado_final === true || estado.estado_final === 'true' || 
                    estado.es_final === true || estado.es_final === 'true' || 
                    estado.isFinal === true || estado.is_final === true || false
         };
-        console.log(`[api.readEstados] Estado ${index} mapeado:`, {
-          original: estado,
-          mapped: mapped
-        });
-        return mapped;
       });
-
-      // Ordenar por orden
       mappedEstados.sort((a, b) => a.order - b.order);
-
-      console.log('[api.readEstados] Estados mapeados y ordenados:', mappedEstados);
-      console.log('[api.readEstados] Cantidad final de estados:', mappedEstados.length);
       return mappedEstados;
     } catch (error: any) {
-      console.error('[api.readEstados] Error al leer estados:', error);
-      console.error('[api.readEstados] Mensaje de error:', error.message);
-      console.error('[api.readEstados] Stack trace:', error.stack);
       throw new Error(error.message || 'Error al leer los estados');
     }
   },
@@ -2437,7 +2130,6 @@ export const api = {
     };
     
     // Log para debugging
-    console.log('Payload user.create:', JSON.stringify(payload, null, 2));
     
     const webhookUrl = API_CONFIG.WEBHOOK_CREAR_USUARIO_URL;
 
@@ -2611,10 +2303,6 @@ export const api = {
       throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
     }
 
-    console.log('[api.addHoliday] Iniciando agregado de asueto...');
-    console.log('[api.addHoliday] Fecha:', date);
-    console.log('[api.addHoliday] Festividad:', holidayName);
-
     // Construir el actor con el formato esperado
     const actor = buildActorPayload(user);
     // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
@@ -2634,16 +2322,6 @@ export const api = {
     const month = String(dateAtNoon.getMonth() + 1).padStart(2, '0');
     const year = dateAtNoon.getFullYear();
     const dateStr = `${day}/${month}/${year}`;
-    
-    console.log('[api.addHoliday] Fecha formateada:', {
-      originalDate: date.toISOString(),
-      dateAtNoon: dateAtNoon.toISOString(),
-      day,
-      month,
-      year,
-      dateStr
-    });
-
     // Construir el payload según el formato esperado
     const payload = {
       action: 'asueto.create',
@@ -2659,15 +2337,10 @@ export const api = {
         pais: 'El Salvador'
       }
     };
-
-    console.log('[api.addHoliday] Payload completo a enviar:', JSON.stringify(payload, null, 2));
-
     try {
       const response = await callAsuetosWebhook('POST', payload);
-      console.log('[api.addHoliday] Respuesta del webhook:', response);
       return response;
     } catch (error: any) {
-      console.error('[api.addHoliday] ❌ Error al agregar asueto:', error);
       throw new Error(error.message || 'Error al agregar la fecha de asueto');
     }
   },
@@ -2679,10 +2352,6 @@ export const api = {
       throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
     }
 
-    console.log('[api.deleteHoliday] Iniciando eliminación de asueto...');
-    console.log('[api.deleteHoliday] Fecha:', date);
-
-    // Construir el actor con el formato esperado
     const actor = buildActorPayload(user);
     // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
     const roleMap: Record<string, string> = {
@@ -2712,14 +2381,10 @@ export const api = {
       }
     };
 
-    console.log('[api.deleteHoliday] Payload completo a enviar:', JSON.stringify(payload, null, 2));
-
     try {
       const response = await callAsuetosWebhook('POST', payload);
-      console.log('[api.deleteHoliday] Respuesta del webhook:', response);
       return response;
     } catch (error: any) {
-      console.error('[api.deleteHoliday] ❌ Error al eliminar asueto:', error);
       throw new Error(error.message || 'Error al eliminar la fecha de asueto');
     }
   },
@@ -2730,9 +2395,6 @@ export const api = {
     if (!user) {
       throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
     }
-
-    console.log('[api.addBulkHolidays] Iniciando carga masiva de asuetos...');
-    console.log('[api.addBulkHolidays] Cantidad de fechas:', dates.length);
 
     // Construir el actor con el formato esperado
     const actor = buildActorPayload(user);
@@ -2766,15 +2428,10 @@ export const api = {
         fecha: fechasArray
       }
     };
-
-    console.log('[api.addBulkHolidays] Payload completo a enviar:', JSON.stringify(payload, null, 2));
-
     try {
       const response = await callAsuetosWebhook('POST', payload);
-      console.log('[api.addBulkHolidays] Respuesta del webhook:', response);
       return response;
     } catch (error: any) {
-      console.error('[api.addBulkHolidays] ❌ Error al agregar asuetos en masa:', error);
       throw new Error(error.message || 'Error al agregar las fechas de asuetos');
     }
   },
@@ -2785,8 +2442,6 @@ export const api = {
     if (!user) {
       throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
     }
-
-    console.log('[api.readHolidays] Iniciando lectura de asuetos...');
 
     // Construir el actor con el formato esperado
     const actor = buildActorPayload(user);
@@ -2810,11 +2465,8 @@ export const api = {
       data: {}
     };
 
-    console.log('[api.readHolidays] Payload completo a enviar:', JSON.stringify(payload, null, 2));
-
     try {
       const response = await callAsuetosWebhook('POST', payload);
-      console.log('[api.readHolidays] Respuesta del webhook:', response);
       
       // Parsear la nueva estructura: [{ data: [...] }]
       let asuetos: Array<{ fecha: string; motivo: string; pais: string; row_number: number; fechaDate?: Date }> = [];
@@ -2837,7 +2489,6 @@ export const api = {
                   // Crear fecha en zona horaria local a mediodía para evitar problemas de zona horaria
                   fechaDate = new Date(year, month - 1, day, 12, 0, 0);
                 } catch (error) {
-                  console.error('[api.readHolidays] Error parseando fecha:', fechaStr, error);
                 }
               }
               
@@ -2869,7 +2520,6 @@ export const api = {
                 // Crear fecha en zona horaria local a mediodía para evitar problemas de zona horaria
                 fechaDate = new Date(year, month - 1, day, 12, 0, 0);
               } catch (error) {
-                console.error('[api.readHolidays] Error parseando fecha:', fechaStr, error);
               }
             }
             
@@ -2893,10 +2543,8 @@ export const api = {
         return a.fecha.localeCompare(b.fecha);
       });
       
-      console.log('[api.readHolidays] Asuetos parseados:', asuetos.length);
       return asuetos;
     } catch (error: any) {
-      console.error('[api.readHolidays] ❌ Error al leer asuetos:', error);
       throw new Error(error.message || 'Error al leer las fechas de asuetos');
     }
   },
@@ -2936,34 +2584,22 @@ export const api = {
         id: ''  // Vacío para leer todos
       }
     };
-
-    console.log('[api.readParametros] Payload:', JSON.stringify(payload, null, 2));
-
     try {
       const response = await callEstadosWebhook('POST', payload);
-      console.log('[api.readParametros] Respuesta del webhook:', response);
-
-      // Procesar la respuesta - el formato puede variar
       let parametros: any[] = [];
-      
       if (Array.isArray(response)) {
-        // Si es un array directo
         if (response.length > 0 && response[0]?.data && Array.isArray(response[0].data)) {
           parametros = response[0].data;
         } else {
           parametros = response;
         }
       } else if (response && typeof response === 'object') {
-        // Si es un objeto con propiedad data
         if (Array.isArray(response.data)) {
           parametros = response.data;
         }
       }
-
-      console.log('[api.readParametros] Parámetros procesados:', parametros);
       return parametros;
     } catch (error: any) {
-      console.error('[api.readParametros] Error:', error);
       throw new Error(error.message || 'Error al leer los parámetros');
     }
   },
@@ -3007,15 +2643,10 @@ export const api = {
       },
       data: parametroData
     };
-
-    console.log('[api.createParametro] Payload:', JSON.stringify(payload, null, 2));
-
     try {
       const response = await callEstadosWebhook('POST', payload);
-      console.log('[api.createParametro] Respuesta del webhook:', response);
       return response;
     } catch (error: any) {
-      console.error('[api.createParametro] Error:', error);
       throw new Error(error.message || 'Error al crear el parámetro');
     }
   },
@@ -3053,15 +2684,10 @@ export const api = {
         id: id
       }
     };
-
-    console.log('[api.deleteParametro] Payload:', JSON.stringify(payload, null, 2));
-
     try {
       const response = await callEstadosWebhook('POST', payload);
-      console.log('[api.deleteParametro] Respuesta del webhook:', response);
       return response;
     } catch (error: any) {
-      console.error('[api.deleteParametro] Error:', error);
       throw new Error(error.message || 'Error al eliminar el parámetro');
     }
   }

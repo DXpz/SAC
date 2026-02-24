@@ -61,7 +61,6 @@ const AdminBandejaCasos: React.FC = () => {
         await Promise.all([loadClientes(), loadCategorias(), loadAgentes()]);
         await loadCasos();
       } catch (err) {
-        console.error('Error inicializando datos:', err);
       }
     };
     initializeData();

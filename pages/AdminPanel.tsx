@@ -87,13 +87,8 @@ const AdminPanel: React.FC = () => {
       
       // Cargar categorías del webhook
       if (categoriasList.status === 'fulfilled' && categoriasList.value) {
-        console.log('[AdminPanel.loadData] Categorías recibidas del webhook:', categoriasList.value);
-        console.log('[AdminPanel.loadData] Tipo:', typeof categoriasList.value);
-        console.log('[AdminPanel.loadData] Es array?', Array.isArray(categoriasList.value));
-        console.log('[AdminPanel.loadData] Cantidad:', categoriasList.value?.length || 0);
         setCategorias(categoriasList.value);
       } else {
-        console.log('[AdminPanel.loadData] No se pudieron cargar categorías:', categoriasList.status, categoriasList.reason);
         setCategorias([]);
       }
       
@@ -116,7 +111,6 @@ const AdminPanel: React.FC = () => {
       const enriched = enrichCasesWithClients(casosData, clientesData);
       setAllCasos(enriched);
     } catch (error) {
-      console.error('Error cargando datos:', error);
       // Asegurar que al menos tenemos arrays vacíos
       setClientes([]);
       setAgentes([]);
@@ -403,12 +397,7 @@ const AdminPanel: React.FC = () => {
 
   const casosPorCategoriaChart = useMemo(() => {
     try {
-      console.log('[AdminPanel] casosPorCategoriaChart - categorias:', categorias);
-      console.log('[AdminPanel] casosPorCategoriaChart - casosSeguros count:', casosSeguros.length);
-      
-      // Si no hay categorías del webhook, usar las categorías de los casos como fallback
       if (!categorias || categorias.length === 0) {
-        console.log('[AdminPanel] No hay categorías del webhook, usando categorías de casos');
         const categoriaCounts: Record<string, number> = {};
         casosSeguros.forEach(caso => {
           if (!caso) return;
@@ -442,8 +431,7 @@ const AdminPanel: React.FC = () => {
       // Inicializar contadores con las categorías del webhook
       categorias.forEach((cat: any) => {
         const categoriaNombre = cat.name || cat.nombre || cat.category_name || cat.caegoria || 'Sin nombre';
-        categoriaCounts[categoriaNombre] = 0; // Inicializar en 0
-        console.log('[AdminPanel] Inicializando categoría del webhook:', categoriaNombre);
+        categoriaCounts[categoriaNombre] = 0;
       });
       
       // Contar casos por cada categoría del webhook
@@ -463,30 +451,11 @@ const AdminPanel: React.FC = () => {
         // Los casos tienen category como string (nombre de la categoría)
         const casoCategoriaNombre = String(caso.category || caso.categoria?.nombre || (caso as any).categoriaNombre || '').trim();
         
-        // Log específico para casos con "consulta" o "comercial" en la categoría
-        if (casoCategoriaNombre && (casoCategoriaNombre.toLowerCase().includes('consulta') || casoCategoriaNombre.toLowerCase().includes('comercial'))) {
-          console.log(`[AdminPanel] 🔍 CASO CON CONSULTA/COMERCIAL encontrado:`, {
-            casoId: caso.id || caso.ticketNumber,
-            categoria: casoCategoriaNombre,
-            category: caso.category,
-            categoriaObj: caso.categoria,
-            casoCompleto: caso
-          });
-        }
-        
         if (casoCategoriaNombre && !casosCategorias.includes(casoCategoriaNombre)) {
           casosCategorias.push(casoCategoriaNombre);
         }
         
         if (!casoCategoriaNombre || casoCategoriaNombre === 'Sin categoría') {
-          // Log si el caso no tiene categoría
-          if (index < 5) { // Solo log los primeros 5 para no saturar
-            console.log(`[AdminPanel] ⚠️ Caso sin categoría:`, {
-              casoId: caso.id || caso.ticketNumber,
-              category: caso.category,
-              categoria: caso.categoria
-            });
-          }
           return;
         }
         
@@ -506,7 +475,6 @@ const AdminPanel: React.FC = () => {
               catNombreNormalized.includes(casoCategoriaNormalized) ||
               casoCategoriaNormalized.includes(catNombreNormalized)) {
             categoriaCounts[catNombre] = (categoriaCounts[catNombre] || 0) + 1;
-            console.log(`[AdminPanel] ✅ Caso asignado a categoría "${catNombre}":`, casoCategoriaNombre, '->', catNombre);
             encontrada = true;
             break;
           }
@@ -515,34 +483,13 @@ const AdminPanel: React.FC = () => {
         // Si no se encontró en el webhook, agregarla igual para que aparezca en el gráfico
         if (!encontrada) {
           categoriasNoEncontradas[casoCategoriaNombre] = (categoriasNoEncontradas[casoCategoriaNombre] || 0) + 1;
-          console.log(`[AdminPanel] ⚠️ Categoría del caso no encontrada en webhook: "${casoCategoriaNombre}"`);
-          console.log(`[AdminPanel] Categorías disponibles en webhook:`, categorias.map((c: any) => c.name || c.nombre || c.category_name || c.caegoria || 'Sin nombre'));
         }
       });
       
       // Agregar categorías de casos que no están en el webhook al gráfico
       Object.entries(categoriasNoEncontradas).forEach(([nombre, count]) => {
         categoriaCounts[nombre] = count;
-        console.log(`[AdminPanel] ➕ Agregando categoría de caso al gráfico: "${nombre}" con ${count} casos`);
       });
-      
-      console.log('[AdminPanel] Categorías únicas en casos:', casosCategorias);
-      console.log('[AdminPanel] Categorías de casos no encontradas en webhook:', Object.keys(categoriasNoEncontradas));
-      console.log('[AdminPanel] categoriaCounts ANTES de crear result:', categoriaCounts);
-      
-      // Verificar específicamente "consulta comercial"
-      if (categoriaCounts['Consulta Comercial'] || categoriaCounts['consulta comercial'] || categoriaCounts['Consulta comercial']) {
-        console.log('[AdminPanel] ✅ CONSULTA COMERCIAL encontrada en categoriaCounts!');
-      } else {
-        console.log('[AdminPanel] ❌ CONSULTA COMERCIAL NO encontrada en categoriaCounts');
-        console.log('[AdminPanel] Buscando variaciones...');
-        Object.keys(categoriaCounts).forEach(key => {
-          if (key.toLowerCase().includes('consulta') || key.toLowerCase().includes('comercial')) {
-            console.log(`[AdminPanel] 🔍 Categoría relacionada encontrada: "${key}" con ${categoriaCounts[key]} casos`);
-          }
-        });
-      }
-      
       const colors = ['#3b82f6', '#8b5cf6', '#22c55e', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#6366f1'];
       const result = Object.entries(categoriaCounts)
         .map(([name, value], index) => ({
@@ -557,27 +504,9 @@ const AdminPanel: React.FC = () => {
           }
           // Si tienen la misma cantidad, ordenar alfabéticamente
           return a.name.localeCompare(b.name);
-        }); // Ordenar por cantidad, pero mostrar todas
-      
-      console.log('[AdminPanel] casosPorCategoriaChart result:', result);
-      console.log('[AdminPanel] Total categorías en gráfico:', result.length);
-      console.log('[AdminPanel] Categorías con casos:', result.filter(r => r.value > 0).length);
-      console.log('[AdminPanel] Categorías sin casos:', result.filter(r => r.value === 0).length);
-      
-      // Verificar si "consulta comercial" está en el result final
-      const consultaComercialEnResult = result.find(r => 
-        r.name.toLowerCase().includes('consulta') && r.name.toLowerCase().includes('comercial')
-      );
-      if (consultaComercialEnResult) {
-        console.log('[AdminPanel] ✅ CONSULTA COMERCIAL EN RESULT FINAL:', consultaComercialEnResult);
-      } else {
-        console.log('[AdminPanel] ❌ CONSULTA COMERCIAL NO EN RESULT FINAL');
-        console.log('[AdminPanel] Nombres en result:', result.map(r => r.name));
-      }
-      
+        });
       return result;
     } catch (error) {
-      console.error('Error calculando casos por categoría:', error);
       return [];
     }
   }, [casosSeguros, categorias]);

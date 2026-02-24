@@ -88,7 +88,6 @@ const NuevoCaso: React.FC = () => {
             }
           }
         } catch (error) {
-          console.error('[NuevoCaso] Error obteniendo lista de usuarios:', error);
         }
       }
       
@@ -115,7 +114,6 @@ const NuevoCaso: React.FC = () => {
       
       return null;
     } catch (error) {
-      console.error('[NuevoCaso] Error obteniendo país del usuario:', error);
       return null;
     }
   };
@@ -199,17 +197,7 @@ const NuevoCaso: React.FC = () => {
         const clientePais = normalizeClienteCountry(cliente.pais);
         return clientePais === userCountry;
       });
-      
-      console.log('[NuevoCaso] Filtrando clientes por país del usuario:', {
-        userCountry,
-        totalClientes: clientes.length,
-        clientesFiltrados: clientesFiltrados.length
-      });
-    } else {
-      // Admin ve todos los clientes
-      console.log('[NuevoCaso] Admin detectado, mostrando todos los clientes');
     }
-    
     // Aplicar filtro de búsqueda si hay término
     if (clienteSearchTerm.trim()) {
       const term = clienteSearchTerm.toLowerCase();

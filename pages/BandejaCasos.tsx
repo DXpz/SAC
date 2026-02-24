@@ -20,6 +20,8 @@ const BandejaCasos: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  // Estados de workflow cargados desde el webhook (incluye flag isFinal)
+  const [estados, setEstados] = useState<Array<{ id: string; name: string; order?: number; isFinal?: boolean }>>([]);
   const { theme } = useTheme();
 
   const navigate = useNavigate();
@@ -37,6 +39,74 @@ const BandejaCasos: React.FC = () => {
     });
     return (matchedStatus as CaseStatus) || CaseStatus.NUEVO;
   };
+
+  // Determina si un caso está en un estado final.
+  // 1) Usa primero los estados finales específicos del caso (estadosFinales del webhook).
+  // 2) Si no hay estadosFinales, usa los estados dinámicos globales del webhook (estados con isFinal).
+  // 3) Como último fallback, considera finales RESUELTO y CERRADO del enum CaseStatus.
+  const isEstadoFinal = React.useCallback(
+    (caso: Case | any): boolean => {
+      if (!caso) return false;
+      const raw = String(((caso as any).status || (caso as any).estado) ?? '').trim();
+      if (!raw) return false;
+
+      // 1) Revisar estadosFinales que vienen en el propio caso desde el webhook
+      const estadosFinales = ((caso as any).estadosFinales || []) as any[];
+      if (Array.isArray(estadosFinales) && estadosFinales.length > 0) {
+        const normalizedRaw = raw.toLowerCase().replace(/\s+/g, '_');
+
+        const estadoFinalEncontrado = estadosFinales.find((ef: any) => {
+          if (!ef || ef.estado_final !== true) return false;
+
+          const id = String(ef.id ?? '').trim();
+          const nombre = String(ef.nombre ?? ef.name ?? '').trim();
+
+          const idNorm = id.toLowerCase().replace(/\s+/g, '_');
+          const nombreNorm = nombre.toLowerCase().replace(/\s+/g, '_');
+
+          return (
+            id === raw ||
+            nombre === raw ||
+            idNorm === normalizedRaw ||
+            nombreNorm === normalizedRaw
+          );
+        });
+
+        if (estadoFinalEncontrado) {
+          return true;
+        }
+      }
+
+      // 2) Si tenemos estados globales del webhook, utilizar su flag isFinal
+      if (estados && estados.length > 0) {
+        const normalizedRaw = raw.toLowerCase().replace(/\s+/g, '_');
+
+        const estadoDelCaso = estados.find((e) => {
+          const idNorm = String(e.id ?? '')
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, '_');
+          const nameNorm = String(e.name ?? '')
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, '_');
+          return idNorm === normalizedRaw || nameNorm === normalizedRaw;
+        });
+
+        if (estadoDelCaso) {
+          return estadoDelCaso.isFinal === true;
+        }
+      }
+
+      // Fallback: usar los estados finales del enum
+      const normalizedStatus = normalizeStatus(raw);
+      return (
+        normalizedStatus === CaseStatus.RESUELTO ||
+        normalizedStatus === CaseStatus.CERRADO
+      );
+    },
+    [estados]
+  );
 
   const formatCountry = (value?: string) => {
     if (!value) return 'N/A';
@@ -65,11 +135,9 @@ const BandejaCasos: React.FC = () => {
         const paisNormalizado = String(pais).trim().toUpperCase();
         
         if (paisNormalizado === 'SV' || paisNormalizado === 'EL_SALVADOR' || paisNormalizado === 'EL SALVADOR' || paisNormalizado.includes('SALVADOR')) {
-          console.log('[BandejaCasos] ✅ País del agente desde api.getUser(): SV');
           return 'SV';
         }
         if (paisNormalizado === 'GT' || paisNormalizado === 'GUATEMALA' || paisNormalizado.includes('GUATEMALA')) {
-          console.log('[BandejaCasos] ✅ País del agente desde api.getUser(): GT');
           return 'GT';
         }
       }
@@ -77,7 +145,6 @@ const BandejaCasos: React.FC = () => {
       // Fallback: leer desde localStorage directamente
       const userStr = localStorage.getItem('intelfon_user');
       if (!userStr) {
-        console.error('[BandejaCasos] No se encontró usuario en localStorage');
         return null;
       }
       
@@ -86,7 +153,6 @@ const BandejaCasos: React.FC = () => {
       
       // Si el país es string vacío, intentar obtenerlo desde la lista de usuarios
       if (!pais || String(pais).trim() === '') {
-        console.log('[BandejaCasos] 🔍 País no encontrado en localStorage, buscando en lista de usuarios...');
         try {
           const usuarios = await api.getUsuarios();
           const usuarioCompleto = usuarios.find((u: any) => 
@@ -100,29 +166,17 @@ const BandejaCasos: React.FC = () => {
           
           if (usuarioCompleto) {
             pais = usuarioCompleto.pais || usuarioCompleto.country || usuarioCompleto.país || '';
-            console.log('[BandejaCasos] ✅ País encontrado en lista de usuarios:', {
-              usuarioId: usuarioCompleto.id || usuarioCompleto.idAgente,
-              usuarioNombre: usuarioCompleto.nombre || usuarioCompleto.name,
-              pais: pais
-            });
-            
-            // Si encontramos el país, actualizar el usuario en localStorage
             if (pais && String(pais).trim() !== '') {
               const updatedUser = { ...user, pais: pais };
               localStorage.setItem('intelfon_user', JSON.stringify(updatedUser));
-              console.log('[BandejaCasos] ✅ País actualizado en localStorage');
             }
-          } else {
-            console.warn('[BandejaCasos] ⚠️ Usuario no encontrado en lista de usuarios');
           }
         } catch (error) {
-          console.error('[BandejaCasos] Error obteniendo lista de usuarios:', error);
         }
       }
       
       // Validar que el país no sea string vacío
       if (!pais || String(pais).trim() === '') {
-        console.error('[BandejaCasos] ⚠️ Agente NO tiene país definido!', user);
         return null;
       }
       
@@ -134,22 +188,15 @@ const BandejaCasos: React.FC = () => {
           paisNormalizado === 'EL_SALVADOR' || 
           paisNormalizado === 'EL SALVADOR' ||
           paisNormalizado.includes('SALVADOR')) {
-        console.log('[BandejaCasos] ✅ País normalizado: SV');
         return 'SV';
       }
-      
-      // Guatemala: GT, Guatemala, etc.
       if (paisNormalizado === 'GT' || 
           paisNormalizado === 'GUATEMALA' ||
           paisNormalizado.includes('GUATEMALA')) {
-        console.log('[BandejaCasos] ✅ País normalizado: GT');
         return 'GT';
       }
-      
-      console.error('[BandejaCasos] ⚠️ País no reconocido:', paisNormalizado);
       return null;
     } catch (error) {
-      console.error('[BandejaCasos] ❌ Error obteniendo país del agente:', error);
       return null;
     }
   };
@@ -214,6 +261,31 @@ const BandejaCasos: React.FC = () => {
   const getCategoriaBadgeStyle = (): { bg: string; text: string; border: string } => {
     return theme === 'dark' ? { bg: 'rgba(100, 116, 139, 0.15)', text: '#94a3b8', border: 'rgba(148, 163, 184, 0.3)' } : { bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' };
   };
+
+  // Cargar estados de workflow (incluidos los estados finales) desde el webhook
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadEstados = async () => {
+      if (typeof (api as any).readEstados !== 'function') {
+        return;
+      }
+      try {
+        const estadosResponse = await (api as any).readEstados();
+        if (isMounted && Array.isArray(estadosResponse)) {
+          setEstados(estadosResponse as Array<{ id: string; name: string; order?: number; isFinal?: boolean }>);
+        }
+      } catch (e) {
+        // Si falla, simplemente usaremos el fallback basado en CaseStatus
+      }
+    };
+
+    loadEstados();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Cargar datos iniciales en secuencia
   useEffect(() => {
@@ -413,18 +485,6 @@ const BandejaCasos: React.FC = () => {
     setError(null);
     try {
       const data = await api.getCases();
-      
-      console.log('[BandejaCasos] Casos recibidos de getCases():', {
-        total: data.length,
-        casos: data.slice(0, 3).map(c => ({
-          id: c.id,
-          ticketNumber: c.ticketNumber,
-          agente_user_id: (c as any).agente_user_id,
-          agentId: c.agentId,
-          agenteAsignado: c.agenteAsignado?.idAgente
-        }))
-      });
-      
       // Guardar casos directamente, el useEffect de enriquecimiento se ejecutará automáticamente
       setCasos(data);
       
@@ -453,110 +513,27 @@ const BandejaCasos: React.FC = () => {
       // El webhook case.agent filtra automáticamente por agente_user_id
       // PERO ahora también necesitamos filtrar por país del agente
       let casosParaFiltrar = casos;
-      
-      console.log('[BandejaCasos] Procesando casos:', {
-        isAgente: isAgente,
-        totalCasos: casos.length,
-        userId: currentUser?.id,
-        userEmail: currentUser?.email,
-        primerosCasos: casos.slice(0, 3).map(c => ({
-          id: c.id,
-          ticketNumber: c.ticketNumber,
-          agente_user_id: (c as any).agente_user_id,
-          agentId: c.agentId
-        }))
-      });
-      
-      // Si es AGENTE, filtrar casos por país del agente (OBLIGATORIO)
       if (isAgente) {
         const agentCountry = await getAgentCountry();
-        
-        console.log('[BandejaCasos] Agente detectado, país del agente:', agentCountry);
-        
         if (agentCountry) {
-          console.log('[BandejaCasos] Filtrando casos por país del agente:', agentCountry);
-          
           casosParaFiltrar = casos.filter(caso => {
-            // Obtener el país del caso desde diferentes fuentes posibles
             const casoPais = (caso as any).pais || 
                             caso.cliente?.pais || 
                             (caso as any).country ||
                             '';
-            
-            console.log('[BandejaCasos] 🔍 Verificando caso:', {
-              casoId: caso.id,
-              casoTicket: caso.ticketNumber,
-              casoPaisRaw: casoPais,
-              casoCompleto: caso
-            });
-            
             const casoPaisNormalizado = normalizeCaseCountry(casoPais);
-            
-            console.log('[BandejaCasos] 🔍 País normalizado del caso:', {
-              casoId: caso.id,
-              casoTicket: caso.ticketNumber,
-              casoPaisRaw: casoPais,
-              casoPaisNormalizado: casoPaisNormalizado,
-              agentCountry: agentCountry
-            });
-            
-            // Si el caso no tiene país definido, NO mostrarlo al agente
             if (!casoPaisNormalizado) {
-              console.log('[BandejaCasos] ❌ Caso SIN país definido, FILTRANDO:', {
-                casoId: caso.id,
-                casoTicket: caso.ticketNumber,
-                casoPais: casoPais
-              });
               return false;
             }
-            
-            // Solo mostrar casos del mismo país que el agente
-            const matches = casoPaisNormalizado === agentCountry;
-            
-            if (!matches) {
-              console.log('[BandejaCasos] ❌ Caso filtrado por país (NO coincide):', {
-                casoId: caso.id,
-                casoTicket: caso.ticketNumber,
-                casoPais: casoPais,
-                casoPaisNormalizado: casoPaisNormalizado,
-                agentCountry: agentCountry,
-                matches: false
-              });
-              return false;
-            }
-            
-            console.log('[BandejaCasos] ✅ Caso ACEPTADO (país coincide):', {
-              casoId: caso.id,
-              casoTicket: caso.ticketNumber,
-              casoPais: casoPais,
-              casoPaisNormalizado: casoPaisNormalizado,
-              agentCountry: agentCountry,
-              matches: true
-            });
-            
-            return true;
-          });
-          
-          console.log('[BandejaCasos] 📊 RESUMEN - Casos después de filtrar por país:', {
-            totalAntes: casos.length,
-            totalDespues: casosParaFiltrar.length,
-            agentCountry: agentCountry,
-            casosFiltrados: casosParaFiltrar.map(c => ({ 
-              id: c.id, 
-              ticket: c.ticketNumber, 
-              pais: (c as any).pais || c.cliente?.pais || 'SIN PAÍS' 
-            }))
+            return casoPaisNormalizado === agentCountry;
           });
         } else {
-          console.error('[BandejaCasos] ⚠️ ERROR: Agente sin país definido!', {
-            user: currentUser,
-            userPais: currentUser?.pais
-          });
-          // Si el agente no tiene país, NO mostrar ningún caso (más seguro)
           casosParaFiltrar = [];
         }
       }
-      
+      // Filtrar fuera los casos que están en un estado final (dinámico)
+      casosParaFiltrar = casosParaFiltrar.filter((caso) => !isEstadoFinal(caso as any));
+
       // Aplicar filtros de búsqueda, estado y categoría
       const term = searchTerm.toLowerCase();
       let result = casosParaFiltrar.filter(c => {
@@ -586,7 +563,7 @@ const BandejaCasos: React.FC = () => {
     };
     
     processCases();
-  }, [searchTerm, statusFilter, categoriaFilter, casos]);
+  }, [searchTerm, statusFilter, categoriaFilter, casos, isEstadoFinal]);
 
   // Estilos dinámicos basados en el tema
   const styles = {

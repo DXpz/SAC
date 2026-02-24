@@ -15,8 +15,8 @@ const GerenteDashboard: React.FC = () => {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('hoy');
   const [loading, setLoading] = useState(true);
   const [hoveredKPI, setHoveredKPI] = useState<string | null>(null);
-  const [showInsights, setShowInsights] = useState(false);
   const [gerenteCountry, setGerenteCountry] = useState<'SV' | 'GT' | null>(null);
+  const [showInsights, setShowInsights] = useState(true);
   const { theme } = useTheme();
   const location = useLocation();
 
@@ -45,11 +45,9 @@ const GerenteDashboard: React.FC = () => {
         const paisNormalizado = String(pais).trim().toUpperCase();
         
         if (paisNormalizado === 'SV' || paisNormalizado === 'EL_SALVADOR' || paisNormalizado === 'EL SALVADOR' || paisNormalizado.includes('SALVADOR')) {
-          console.log('[GerenteDashboard] ✅ País del gerente desde api.getUser(): SV');
           return 'SV';
         }
         if (paisNormalizado === 'GT' || paisNormalizado === 'GUATEMALA' || paisNormalizado.includes('GUATEMALA')) {
-          console.log('[GerenteDashboard] ✅ País del gerente desde api.getUser(): GT');
           return 'GT';
         }
       }
@@ -57,7 +55,6 @@ const GerenteDashboard: React.FC = () => {
       // Fallback: leer desde localStorage directamente
       const userStr = localStorage.getItem('intelfon_user');
       if (!userStr) {
-        console.error('[GerenteDashboard] No se encontró usuario en localStorage');
         return null;
       }
       
@@ -66,7 +63,6 @@ const GerenteDashboard: React.FC = () => {
       
       // Si el país es string vacío, intentar obtenerlo desde la lista de usuarios
       if (!pais || String(pais).trim() === '') {
-        console.log('[GerenteDashboard] 🔍 País no encontrado en localStorage, buscando en lista de usuarios...');
         try {
           const usuarios = await api.getUsuarios();
           const usuarioCompleto = usuarios.find((u: any) => 
@@ -80,29 +76,17 @@ const GerenteDashboard: React.FC = () => {
           
           if (usuarioCompleto) {
             pais = usuarioCompleto.pais || usuarioCompleto.country || usuarioCompleto.país || '';
-            console.log('[GerenteDashboard] ✅ País encontrado en lista de usuarios:', {
-              usuarioId: usuarioCompleto.id || usuarioCompleto.idAgente,
-              usuarioNombre: usuarioCompleto.nombre || usuarioCompleto.name,
-              pais: pais
-            });
-            
-            // Si encontramos el país, actualizar el usuario en localStorage
             if (pais && String(pais).trim() !== '') {
               const updatedUser = { ...user, pais: pais };
               localStorage.setItem('intelfon_user', JSON.stringify(updatedUser));
-              console.log('[GerenteDashboard] ✅ País actualizado en localStorage');
             }
-          } else {
-            console.warn('[GerenteDashboard] ⚠️ Usuario no encontrado en lista de usuarios');
           }
         } catch (error) {
-          console.error('[GerenteDashboard] Error obteniendo lista de usuarios:', error);
         }
       }
       
       // Validar que el país no sea string vacío
       if (!pais || String(pais).trim() === '') {
-        console.error('[GerenteDashboard] ⚠️ Gerente NO tiene país definido!', user);
         return null;
       }
       
@@ -114,22 +98,15 @@ const GerenteDashboard: React.FC = () => {
           paisNormalizado === 'EL_SALVADOR' || 
           paisNormalizado === 'EL SALVADOR' ||
           paisNormalizado.includes('SALVADOR')) {
-        console.log('[GerenteDashboard] ✅ País normalizado: SV');
         return 'SV';
       }
-      
-      // Guatemala: GT, Guatemala, etc.
       if (paisNormalizado === 'GT' || 
           paisNormalizado === 'GUATEMALA' ||
           paisNormalizado.includes('GUATEMALA')) {
-        console.log('[GerenteDashboard] ✅ País normalizado: GT');
         return 'GT';
       }
-      
-      console.error('[GerenteDashboard] ⚠️ País no reconocido:', paisNormalizado);
       return null;
     } catch (error) {
-      console.error('[GerenteDashboard] ❌ Error obteniendo país del gerente:', error);
       return null;
     }
   };
@@ -168,7 +145,6 @@ const GerenteDashboard: React.FC = () => {
       if (currentUser?.role === 'GERENTE') {
         const country = await getGerenteCountry();
         setGerenteCountry(country);
-        console.log('[GerenteDashboard] País del gerente cargado:', country);
       }
     };
     
@@ -294,8 +270,6 @@ const GerenteDashboard: React.FC = () => {
     
     // Si es GERENTE, filtrar casos por país del gerente (OBLIGATORIO)
     if (isGerente && gerenteCountry) {
-      console.log('[GerenteDashboard] Gerente detectado, filtrando casos por país:', gerenteCountry);
-      
       casosFiltrados = casos.filter(caso => {
         // Obtener el país del caso desde diferentes fuentes posibles
         const casoPais = (caso as any).pais || 
@@ -307,56 +281,11 @@ const GerenteDashboard: React.FC = () => {
         
         // Si el caso no tiene país definido, NO mostrarlo al gerente
         if (!casoPaisNormalizado) {
-          console.log('[GerenteDashboard] ❌ Caso SIN país definido, FILTRANDO:', {
-            casoId: caso.id,
-            casoTicket: caso.ticketNumber,
-            casoPais: casoPais
-          });
           return false;
         }
-        
-        // Solo mostrar casos del mismo país que el gerente
-        const matches = casoPaisNormalizado === gerenteCountry;
-        
-        if (!matches) {
-          console.log('[GerenteDashboard] ❌ Caso filtrado por país (NO coincide):', {
-            casoId: caso.id,
-            casoTicket: caso.ticketNumber,
-            casoPais: casoPais,
-            casoPaisNormalizado: casoPaisNormalizado,
-            gerenteCountry: gerenteCountry,
-            matches: false
-          });
-          return false;
-        }
-        
-        console.log('[GerenteDashboard] ✅ Caso ACEPTADO (país coincide):', {
-          casoId: caso.id,
-          casoTicket: caso.ticketNumber,
-          casoPais: casoPais,
-          casoPaisNormalizado: casoPaisNormalizado,
-          gerenteCountry: gerenteCountry,
-          matches: true
-        });
-        
-        return true;
-      });
-      
-      console.log('[GerenteDashboard] 📊 RESUMEN - Casos después de filtrar por país:', {
-        totalAntes: casos.length,
-        totalDespues: casosFiltrados.length,
-        gerenteCountry: gerenteCountry,
-        casosFiltrados: casosFiltrados.map(c => ({ 
-          id: c.id, 
-          ticket: c.ticketNumber, 
-          pais: (c as any).pais || c.cliente?.pais || 'SIN PAÍS' 
-        }))
+        return casoPaisNormalizado === gerenteCountry;
       });
     } else if (isGerente && !gerenteCountry) {
-      console.error('[GerenteDashboard] ⚠️ ERROR: Gerente sin país definido!', {
-        user: currentUser,
-        userPais: currentUser?.pais
-      });
       // Si el gerente no tiene país, NO mostrar ningún caso (más seguro)
       casosFiltrados = [];
     }

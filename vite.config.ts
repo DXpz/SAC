@@ -53,6 +53,13 @@ export default defineConfig(({ mode }) => {
             secure: true,
             rewrite: () => '/webhook-test/case-create-round-robin',
           },
+          // Cierre de caso con anexos - webhook para cerrar casos
+          '/api/case-close': {
+            target: 'https://n8n.red.com.sv',
+            changeOrigin: true,
+            secure: true,
+            rewrite: () => '/webhook/d967cdf7-aa21-4d63-95e8-918dff18cf2b',
+          },
         },
       },
       plugins: [react()],

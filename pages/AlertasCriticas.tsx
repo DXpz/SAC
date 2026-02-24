@@ -52,6 +52,8 @@ const AlertasCriticas: React.FC = () => {
   const [filterPriority, setFilterPriority] = useState<'all' | 'Critica' | 'Alta' | 'Media'>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  // Estados de workflow cargados desde el webhook (incluye flag isFinal)
+  const [estados, setEstados] = useState<Array<{ id: string; name: string; order?: number; isFinal?: boolean }>>([]);
   const navigate = useNavigate();
   const { theme } = useTheme();
   const location = useLocation();
@@ -77,6 +79,105 @@ const AlertasCriticas: React.FC = () => {
     });
   };
 
+  // Determina si un caso está en un estado final.
+  // 1) Usa primero los estados finales específicos del caso (estadosFinales del webhook).
+  // 2) Si no hay estadosFinales, usa los estados dinámicos globales del webhook (estados con isFinal).
+  // 3) Como último fallback, considera finales RESUELTO y CERRADO del enum CaseStatus.
+  const isEstadoFinal = React.useCallback(
+    (caso: Caso | any): boolean => {
+      if (!caso) return false;
+      const raw = String(((caso as any).status || (caso as any).estado) ?? '').trim();
+      if (!raw) return false;
+
+      // 1) Revisar estadosFinales que vienen en el propio caso desde el webhook
+      const estadosFinales = ((caso as any).estadosFinales || []) as any[];
+      if (Array.isArray(estadosFinales) && estadosFinales.length > 0) {
+        const normalizedRaw = raw.toLowerCase().replace(/\s+/g, '_');
+
+        const estadoFinalEncontrado = estadosFinales.find((ef: any) => {
+          if (!ef || ef.estado_final !== true) return false;
+
+          const id = String(ef.id ?? '').trim();
+          const nombre = String(ef.nombre ?? ef.name ?? '').trim();
+
+          const idNorm = id.toLowerCase().replace(/\s+/g, '_');
+          const nombreNorm = nombre.toLowerCase().replace(/\s+/g, '_');
+
+          return (
+            id === raw ||
+            nombre === raw ||
+            idNorm === normalizedRaw ||
+            nombreNorm === normalizedRaw
+          );
+        });
+
+        if (estadoFinalEncontrado) {
+          return true;
+        }
+      }
+
+      // 2) Si tenemos estados globales del webhook, utilizar su flag isFinal
+      if (estados && estados.length > 0) {
+        const normalizedRaw = raw.toLowerCase().replace(/\s+/g, '_');
+
+        const estadoDelCaso = estados.find((e) => {
+          const idNorm = String(e.id ?? '')
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, '_');
+          const nameNorm = String(e.name ?? '')
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, '_');
+          return idNorm === normalizedRaw || nameNorm === normalizedRaw;
+        });
+
+        if (estadoDelCaso) {
+          return estadoDelCaso.isFinal === true;
+        }
+      }
+
+      const normalizedStatus = normalizeStatus(raw);
+      return (
+        normalizedStatus === CaseStatus.RESUELTO ||
+        normalizedStatus === CaseStatus.CERRADO
+      );
+    },
+    [estados]
+  );
+
+  // Cargar estados de workflow (incluidos los estados finales) desde el webhook
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadEstados = async () => {
+      if (typeof (api as any).readEstados !== 'function') {
+        return;
+      }
+      try {
+        const estadosResponse = await (api as any).readEstados();
+        if (isMounted && Array.isArray(estadosResponse)) {
+          setEstados(
+            estadosResponse as Array<{
+              id: string;
+              name: string;
+              order?: number;
+              isFinal?: boolean;
+            }>
+          );
+        }
+      } catch {
+        // Si falla, simplemente usaremos el fallback basado en CaseStatus
+      }
+    };
+
+    loadEstados();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -84,13 +185,12 @@ const AlertasCriticas: React.FC = () => {
       const list = await api.getCases();
       const enriched = enrichCasesWithClients(list, clientesList);
       const filtered = enriched.filter(c => {
-        // Excluir casos resueltos o cerrados (a menos que estén escalados)
-        const normalizedStatus = normalizeStatus(c.status);
-        if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
-          // Solo incluir si está escalado
-          return normalizedStatus === CaseStatus.ESCALADO;
+        // Excluir siempre los casos en estados finales dinámicos
+        if (isEstadoFinal(c as any)) {
+          return false;
         }
-        
+
+        const normalizedStatus = normalizeStatus(c.status);
         const slaDias = c.categoria?.slaDias || 5;
         const diasAbierto = c.diasAbierto || 0;
         
@@ -101,20 +201,6 @@ const AlertasCriticas: React.FC = () => {
         const isVencido = diasAbierto >= slaDias;
         const isEscalado = normalizedStatus === CaseStatus.ESCALADO;
         const isEnRiesgo = (slaDias - diasAbierto <= 1) && diasAbierto > 0 && diasAbierto < slaDias;
-        
-        console.log('[AlertasCriticas] Evaluando caso:', {
-          id: c.id,
-          ticketNumber: c.ticketNumber,
-          diasAbierto: diasAbierto,
-          slaDias: slaDias,
-          status: c.status,
-          normalizedStatus: normalizedStatus,
-          isVencido: isVencido,
-          isEscalado: isEscalado,
-          isEnRiesgo: isEnRiesgo,
-          esCritico: isVencido || isEscalado || isEnRiesgo
-        });
-        
         return isVencido || isEscalado || isEnRiesgo;
       });
       

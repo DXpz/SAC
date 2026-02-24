@@ -122,11 +122,9 @@ const getUserCountry = async (): Promise<'SV' | 'GT' | null> => {
       const paisNormalizado = String(pais).trim().toUpperCase();
       
       if (paisNormalizado === 'SV' || paisNormalizado === 'EL_SALVADOR' || paisNormalizado === 'EL SALVADOR' || paisNormalizado.includes('SALVADOR')) {
-        console.log('[caseService] ✅ País del supervisor desde api.getUser(): SV');
         return 'SV';
       }
       if (paisNormalizado === 'GT' || paisNormalizado === 'GUATEMALA' || paisNormalizado.includes('GUATEMALA')) {
-        console.log('[caseService] ✅ País del supervisor desde api.getUser(): GT');
         return 'GT';
       }
     }
@@ -134,7 +132,6 @@ const getUserCountry = async (): Promise<'SV' | 'GT' | null> => {
     // Fallback: leer desde localStorage directamente
     const userStr = localStorage.getItem('intelfon_user');
     if (!userStr) {
-      console.error('[caseService] No se encontró usuario en localStorage');
       return null;
     }
     
@@ -143,7 +140,6 @@ const getUserCountry = async (): Promise<'SV' | 'GT' | null> => {
     
     // Si el país es string vacío, intentar obtenerlo desde la lista de usuarios
     if (!pais || String(pais).trim() === '') {
-      console.log('[caseService] 🔍 País no encontrado en localStorage, buscando en lista de usuarios...');
       try {
         const usuarios = await api.getUsuarios();
         const usuarioCompleto = usuarios.find((u: any) => 
@@ -157,29 +153,17 @@ const getUserCountry = async (): Promise<'SV' | 'GT' | null> => {
         
         if (usuarioCompleto) {
           pais = usuarioCompleto.pais || usuarioCompleto.country || usuarioCompleto.país || '';
-          console.log('[caseService] ✅ País encontrado en lista de usuarios:', {
-            usuarioId: usuarioCompleto.id || usuarioCompleto.idAgente,
-            usuarioNombre: usuarioCompleto.nombre || usuarioCompleto.name,
-            pais: pais
-          });
-          
-          // Si encontramos el país, actualizar el usuario en localStorage
           if (pais && String(pais).trim() !== '') {
             const updatedUser = { ...user, pais: pais };
             localStorage.setItem('intelfon_user', JSON.stringify(updatedUser));
-            console.log('[caseService] ✅ País actualizado en localStorage');
           }
-        } else {
-          console.warn('[caseService] ⚠️ Usuario no encontrado en lista de usuarios');
         }
       } catch (error) {
-        console.error('[caseService] Error obteniendo lista de usuarios:', error);
       }
     }
     
     // Validar que el país no sea string vacío
     if (!pais || String(pais).trim() === '') {
-      console.error('[caseService] ⚠️ Usuario NO tiene país definido!', user);
       return null;
     }
     
@@ -191,22 +175,15 @@ const getUserCountry = async (): Promise<'SV' | 'GT' | null> => {
         paisNormalizado === 'EL_SALVADOR' || 
         paisNormalizado === 'EL SALVADOR' ||
         paisNormalizado.includes('SALVADOR')) {
-      console.log('[caseService] ✅ País normalizado: SV');
       return 'SV';
     }
-    
-    // Guatemala: GT, Guatemala, etc.
     if (paisNormalizado === 'GT' || 
         paisNormalizado === 'GUATEMALA' ||
         paisNormalizado.includes('GUATEMALA')) {
-      console.log('[caseService] ✅ País normalizado: GT');
       return 'GT';
     }
-    
-    console.error('[caseService] ⚠️ País no reconocido:', paisNormalizado);
     return null;
   } catch (error) {
-    console.error('[caseService] ❌ Error obteniendo país del supervisor:', error);
     return null;
   }
 };
@@ -526,7 +503,6 @@ const mapWebhookResponseToCases = (webhookData: any): Case[] => {
         // Filtrar solo objetos que parezcan casos (tienen case_id, id, o ticketNumber)
         return item && typeof item === 'object' && (item.case_id || item.id || item.ticketNumber);
       });
-      console.log('[caseService] mapWebhookResponseToCases - Array directo, casos válidos:', cases.length);
     } else if (webhookData.cases && Array.isArray(webhookData.cases)) {
       // Si tiene propiedad "cases"
       cases = webhookData.cases;
@@ -598,7 +574,6 @@ const callCaseWebhook = async (payload: CaseWebhookPayload): Promise<CaseWebhook
       try {
         result = JSON.parse(responseText);
       } catch (parseError) {
-        console.error('[caseService] Respuesta del webhook no es JSON válido:', responseText?.slice(0, 200));
         throw new Error('La respuesta del servidor no es JSON válido. Verifica que el webhook retorne JSON.');
       }
     }
@@ -784,29 +759,8 @@ export const getCases = async (): Promise<Case[]> => {
       }
     };
     
-    console.log('[caseService] Enviando case.agent para agente:', {
-      actor: actor,
-      payload: payload
-    });
-    
     const response = await callCaseWebhook(payload);
-    
-    console.log('[caseService] Respuesta de case.agent:', response);
-    
-    // Procesar la respuesta de la misma manera que case.read
     const casos = processWebhookResponse(response);
-    
-    console.log('[caseService] Casos procesados para agente:', {
-      total: casos.length,
-      casos: casos.map(c => ({
-        id: c.id,
-        ticketNumber: c.ticketNumber,
-        agente_user_id: (c as any).agente_user_id,
-        agentId: c.agentId,
-        agenteAsignado: c.agenteAsignado?.idAgente
-      }))
-    });
-    
     return casos;
   }
   
@@ -826,43 +780,17 @@ export const getCases = async (): Promise<Case[]> => {
     const supervisorCountry = await getUserCountry();
     
     if (supervisorCountry) {
-      console.log('[caseService] Filtrando casos por país del supervisor:', supervisorCountry);
-      
       casos = casos.filter(caso => {
-        // Obtener el país del caso desde diferentes fuentes posibles
         const casoPais = (caso as any).pais || 
                         caso.cliente?.pais || 
                         (caso as any).country ||
                         '';
-        
         const casoPaisNormalizado = normalizeCaseCountry(casoPais);
-        
-        // Si el caso no tiene país definido, no mostrarlo al supervisor
         if (!casoPaisNormalizado) {
           return false;
         }
-        
-        // Solo mostrar casos del mismo país que el supervisor
-        const matches = casoPaisNormalizado === supervisorCountry;
-        
-        if (!matches) {
-          console.log('[caseService] Caso filtrado por país:', {
-            casoId: caso.id,
-            casoPais: casoPais,
-            casoPaisNormalizado: casoPaisNormalizado,
-            supervisorCountry: supervisorCountry
-          });
-        }
-        
-        return matches;
+        return casoPaisNormalizado === supervisorCountry;
       });
-      
-      console.log('[caseService] Casos después de filtrar por país:', {
-        total: casos.length,
-        supervisorCountry: supervisorCountry
-      });
-    } else {
-      console.warn('[caseService] Supervisor sin país definido, mostrando todos los casos');
     }
   }
   
@@ -873,19 +801,7 @@ export const getCases = async (): Promise<Case[]> => {
  * Procesa la respuesta del webhook y retorna un array de casos mapeados
  */
 const processWebhookResponse = (response: CaseWebhookResponse): Case[] => {
-  console.log('[caseService] processWebhookResponse - Formato de respuesta:', {
-    isArray: Array.isArray(response),
-    type: typeof response,
-    hasData: response && typeof response === 'object' && 'data' in response,
-    response: response
-  });
-  
-  // Intentar diferentes formatos de respuesta
-  // Formato 1: Array directo (formato que retorna case.agent)
-  // Ejemplo: [{ case_id: "CASO-0002", agente_user_id: "AG-0002", ... }, ...]
   if (Array.isArray(response)) {
-    console.log('[caseService] Respuesta es array directo, longitud:', response.length);
-    
     // Si el array contiene objetos con propiedad "data" que es un array, extraerlos
     const allCases: any[] = [];
     for (const item of response) {
@@ -905,17 +821,10 @@ const processWebhookResponse = (response: CaseWebhookResponse): Case[] => {
         }
       }
     }
-    
-    console.log('[caseService] Casos extraídos del array:', allCases.length);
     if (allCases.length > 0) {
-      const mapped = mapWebhookResponseToCases(allCases);
-      console.log('[caseService] Casos mapeados:', mapped.length);
-      return mapped;
-    } else {
-      // Si no se pudo extraer, intentar mapear el array directamente
-      console.log('[caseService] Mapeando array directamente');
-      return mapWebhookResponseToCases(response);
+      return mapWebhookResponseToCases(allCases);
     }
+    return mapWebhookResponseToCases(response);
   }
   
   // Formato 2: { cases: [...] } o { casos: [...] }
@@ -1013,7 +922,6 @@ export const getCaseById = async (caseId: string): Promise<Case | null> => {
         try {
           transicionesArray = JSON.parse(firstItem.transiciones);
         } catch (error) {
-          console.error('[caseService] Error parseando transiciones:', error);
           transicionesArray = [];
         }
       } else if (Array.isArray(firstItem.transiciones)) {
@@ -1026,15 +934,11 @@ export const getCaseById = async (caseId: string): Promise<Case | null> => {
         try {
           estadosFinalesArray = JSON.parse(firstItem.estados_finales);
         } catch (error) {
-          console.error('[caseService] Error parseando estados_finales:', error);
           estadosFinalesArray = [];
         }
       } else if (Array.isArray(firstItem.estados_finales)) {
         estadosFinalesArray = firstItem.estados_finales;
       }
-      
-      console.log('[caseService] Transiciones parseadas:', transicionesArray);
-      console.log('[caseService] Estados finales parseados:', estadosFinalesArray);
       
       // Mapear el historial
       const historialMapeado = historialArray.length > 0 
@@ -1278,15 +1182,9 @@ export const updateCaseStatus = async (
   const esComentarioInvalido = esValorFalse(validValue);
   
   // DEBUG: Log temporal para verificar la detección (remover después)
-  if (validValue !== undefined) {
-    console.log('[DEBUG] Valid value detected:', validValue, 'Type:', typeof validValue, 'Is invalid:', esComentarioInvalido);
-  }
-  
   // VALIDACIÓN CRÍTICA: Si es inválido, lanzar error INMEDIATAMENTE y DETENER ejecución
   // ESTO DEBE SER LO PRIMERO - ANTES de cualquier otro código
   if (esComentarioInvalido) {
-    console.log('[DEBUG] Lanzando error de comentario inválido');
-    
     // Extraer mensaje de error del campo "comentario" o "message" o "error"
     let mensajeError = 'El comentario no cumple con los requisitos necesarios.';
     
@@ -1378,7 +1276,6 @@ export const updateCaseStatus = async (
         try {
           transicionesArray = JSON.parse(firstItem.transiciones);
         } catch (error) {
-          console.error('[updateCaseStatus] Error parseando transiciones:', error);
           transicionesArray = [];
         }
       } else if (Array.isArray(firstItem.transiciones)) {
@@ -1391,15 +1288,11 @@ export const updateCaseStatus = async (
         try {
           estadosFinalesArray = JSON.parse(firstItem.estados_finales);
         } catch (error) {
-          console.error('[updateCaseStatus] Error parseando estados_finales:', error);
           estadosFinalesArray = [];
         }
       } else if (Array.isArray(firstItem.estados_finales)) {
         estadosFinalesArray = firstItem.estados_finales;
       }
-      
-      console.log('[updateCaseStatus] Transiciones parseadas:', transicionesArray);
-      console.log('[updateCaseStatus] Estados finales parseados:', estadosFinalesArray);
       
       // Mapear el historial
       const historialMapeado = historialArray.length > 0 
@@ -1690,6 +1583,125 @@ export const deleteCase = async (caseId: string): Promise<boolean> => {
  * Actualiza los datos del caso (cliente, asunto, descripción, etc.)
  * Según documentación: action: "case.edit" con cliente_id, cliente_nombre, email_cliente, telefono_cliente, asunto, descripcion
  */
+/**
+ * Respuesta del webhook de cierre de caso
+ */
+interface CaseCloseWebhookResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+/**
+ * Envía el webhook de cierre de caso con anexos
+ * Webhook específico para cerrar casos con el formato requerido
+ * Retorna un objeto con success y message para manejar errores
+ */
+export const sendCaseCloseWebhook = async (
+  caseId: string,
+  clienteId: string,
+  anexos: string
+): Promise<CaseCloseWebhookResponse> => {
+  // Usar el proxy de Vite para evitar problemas de CORS
+  // En desarrollo: /api/case-close -> proxy a n8n
+  // La URL completa es: https://n8n.red.com.sv/webhook/d967cdf7-aa21-4d63-95e8-918dff18cf2b
+  const CASE_CLOSE_WEBHOOK_URL = '/api/case-close';
+  
+  try {
+    const userStr = localStorage.getItem('intelfon_user');
+    if (!userStr) {
+      return { success: false, message: 'Usuario no autenticado' };
+    }
+    
+    const user = JSON.parse(userStr);
+    const userEmail = sessionStorage.getItem('intelfon_user_email') || user.email || `${user.role?.toLowerCase()}@red.com.sv`;
+    
+    const payload = {
+      action: 'case.close',
+      actor: {
+        user_id: user.id || user.user_id || '',
+        email: userEmail,
+        role: user.role || 'AGENTE'
+      },
+      data: {
+        case_id: caseId,
+        cliente: {
+          cliente_id: clienteId
+        },
+        anexos: anexos
+      }
+    };
+    
+    const response = await fetch(CASE_CLOSE_WEBHOOK_URL, {
+      method: 'POST',
+      mode: 'cors',
+      credentials: 'omit',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    const responseText = await response.text();
+
+    // Intentar parsear JSON para extraer message en cualquier caso (éxito o error)
+    let parsed: any = null;
+    let messageFromBody: string | null = null;
+    if (responseText && !responseText.includes('<!DOCTYPE') && !responseText.includes('<html')) {
+      try {
+        parsed = JSON.parse(responseText);
+        if (parsed && typeof parsed === 'object' && typeof parsed.message === 'string') {
+          messageFromBody = parsed.message;
+        }
+      } catch {
+        // cuerpo no JSON, ignorar
+      }
+    }
+    
+    if (!response.ok) {
+      // Error HTTP: usar mensaje del cuerpo si está disponible
+      let errorMessage = 'Error al procesar la solicitud. Verifique los anexos e intente nuevamente.';
+      if (messageFromBody) {
+        errorMessage = messageFromBody;
+      }
+      return { success: false, message: errorMessage };
+    }
+
+    // HTTP 200 OK: el webhook puede devolver un mensaje indicando si los anexos son válidos o no.
+    if (messageFromBody) {
+      const lower = messageFromBody.toLowerCase();
+
+      // Considerar "éxito" solo cuando el mensaje indica explícitamente que
+      // todos los anexos corresponden al cliente y están activos.
+      const isValidAnexos =
+        lower.includes('todos los anexos corresponden') ||
+        lower.includes('todos los anexos') && lower.includes('corresponden al cliente');
+
+      if (!isValidAnexos) {
+        // El webhook está devolviendo una alerta, por ejemplo:
+        // "Alerta: Los siguientes anexos NO corresponden al cliente (inactivos): ..."
+        // Tratarlo como rechazo y mostrar ese mensaje al usuario.
+        return {
+          success: false,
+          message: messageFromBody,
+        };
+      }
+
+      // Mensaje de éxito del webhook: anexos correctos
+      return {
+        success: true,
+        message: messageFromBody,
+      };
+    }
+    
+    // Si no hay mensaje en el cuerpo pero el status es 200, asumir éxito genérico
+    return { success: true, message: 'Caso cerrado correctamente' };
+  } catch (error) {
+    return { success: false, message: 'Error de conexión con el servidor' };
+  }
+};
+
 export const updateCaseData = async (
   caseId: string,
   updates: {
@@ -1753,9 +1765,6 @@ export const updateCaseData = async (
     const updatedCase = await getCaseById(caseId);
     return updatedCase;
   } catch (error) {
-    // Si no se puede obtener el caso actualizado, no es crítico
-    // El webhook ya procesó el cambio, el frontend recargará el caso
-    console.warn('No se pudo obtener el caso actualizado inmediatamente, pero el webhook procesó el cambio:', error);
-    return null; // Retornar null en lugar de lanzar error
+    return null;
   }
 };

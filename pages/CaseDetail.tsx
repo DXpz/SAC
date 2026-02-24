@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { Case, CaseStatus, Cliente, AutorRol, HistorialEntry } from '../types';
 import { getStateBadgeColor } from '../constants';
-import { updateCaseStatus, updateCaseData } from '../services/caseService';
+import { updateCaseStatus, updateCaseData, sendCaseCloseWebhook } from '../services/caseService';
 import { ArrowLeft, MessageSquare, User, Building2, Phone, Mail, CheckCircle2, Clock, X, AlertTriangle, Lock, History, Users, TrendingUp, AlertCircle, Edit, Save, Search, Folder } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import LoadingScreen from '../components/LoadingScreen';
@@ -30,6 +30,7 @@ const CaseDetail: React.FC = () => {
   const [estadoFinalParams, setEstadoFinalParams] = useState<any>(null); // Parámetros del estado final
   const [parametrosEstadoFinal, setParametrosEstadoFinal] = useState<any[]>([]); // Parámetros dinámicos del formulario
   const [formValues, setFormValues] = useState<Record<string, any>>({}); // Valores del formulario dinámico
+  const [anexosEstadoFinal, setAnexosEstadoFinal] = useState(''); // Campo de anexos para estado final
   
   // Estados para modo de edición
   const [isEditing, setIsEditing] = useState(false);
@@ -72,7 +73,6 @@ const CaseDetail: React.FC = () => {
         setCategorias(categoriasFromWebhook);
       }
     } catch (error) {
-      console.error('Error al cargar categorías:', error);
     }
   };
   
@@ -149,6 +149,7 @@ const CaseDetail: React.FC = () => {
       if (!showJustificationModal) {
         setParametrosEstadoFinal([]);
         setFormValues({});
+        setAnexosEstadoFinal('');
         return;
       }
       
@@ -156,34 +157,25 @@ const CaseDetail: React.FC = () => {
         // Si NO es estado final, limpiar parámetros
         setParametrosEstadoFinal([]);
         setFormValues({});
+        setAnexosEstadoFinal('');
         return;
       }
       
       if (showJustificationModal && isEstadoFinal && estadoFinalParams) {
         try {
-          console.log('[CaseDetail] Cargando parámetros para estado final:', estadoFinalParams);
-          
-          // Leer todos los parámetros
           const todosParametros = await api.readParametros();
-          console.log('[CaseDetail] Todos los parámetros:', todosParametros);
           
-          // Normalizar el id del estado final para comparación
           const normalizeId = (id: string) => {
             if (!id) return '';
             return id.toLowerCase().trim().replace(/\s+/g, '_').replace(/-/g, '_');
           };
           
           const estadoFinalId = normalizeId(estadoFinalParams.id || estadoFinalParams.nombre || '');
-          console.log('[CaseDetail] Estado final ID normalizado:', estadoFinalId);
           
-          // Filtrar parámetros por id_estado_final
           const parametrosFiltrados = todosParametros.filter((param: any) => {
             const paramEstadoFinalId = normalizeId(param.id_estado_final || '');
-            console.log('[CaseDetail] Comparando:', paramEstadoFinalId, 'con', estadoFinalId);
             return paramEstadoFinalId === estadoFinalId;
           });
-          
-          console.log('[CaseDetail] Parámetros filtrados (con duplicados):', parametrosFiltrados);
           
           // Eliminar duplicados basándose en nombre_parametro
           // Mantener solo el primer registro de cada nombre_parametro
@@ -198,19 +190,6 @@ const CaseDetail: React.FC = () => {
             }
           });
           
-          // Advertir si hay duplicados
-          if (parametrosFiltrados.length > parametrosSinDuplicados.length) {
-            const duplicadosCount = parametrosFiltrados.length - parametrosSinDuplicados.length;
-            console.warn(`[CaseDetail] ⚠️ Se encontraron ${duplicadosCount} parámetro(s) duplicado(s) en la base de datos para el estado "${estadoFinalParams.nombre}". Se mostrarán solo los únicos.`);
-          }
-          
-          console.log('[CaseDetail] Parámetros sin duplicados:', parametrosSinDuplicados);
-          console.log('[CaseDetail] Campos requeridos:', parametrosSinDuplicados.map((p: any) => ({
-            nombre: p.nombre_parametro,
-            requerido: p.requerido,
-            tipo: typeof p.requerido
-          })));
-          
           setParametrosEstadoFinal(parametrosSinDuplicados);
           
           // Inicializar valores del formulario con parámetros sin duplicados
@@ -220,7 +199,6 @@ const CaseDetail: React.FC = () => {
           });
           setFormValues(initialValues);
         } catch (error) {
-          console.error('[CaseDetail] Error al cargar parámetros:', error);
         }
       }
     };
@@ -694,14 +672,15 @@ const CaseDetail: React.FC = () => {
         clienteId
       );
       
-      // Si llegamos aquí, el webhook ACEPTÓ el cambio (NO hubo error)
-      // IMPORTANTE: Asegurar que las animaciones de error estén desactivadas
       setShowInvalidCommentAnimation(false);
       setShowErrorAnimation(false);
       setErrorMessage('');
       
-      // Recargar el caso desde el servidor para asegurar que tenemos los datos más actualizados
-      await loadCaso(id);
+      if (resultado) {
+        setCaso(resultado);
+      } else if (id) {
+        await loadCaso(id);
+      }
       
       // Cerrar modal
       setShowJustificationModal(false);
@@ -711,6 +690,7 @@ const CaseDetail: React.FC = () => {
       setEstadoFinalParams(null);
       setParametrosEstadoFinal([]);
       setFormValues({});
+      setAnexosEstadoFinal('');
       
       // Mostrar animación de éxito SOLO si llegamos aquí (webhook aceptó y NO hubo error)
       // IMPORTANTE: Solo mostrar si NO hubo error (esto se verifica porque estamos en el try)
@@ -728,12 +708,7 @@ const CaseDetail: React.FC = () => {
       }, 2000);
       
     } catch (err: any) {
-      // CRÍTICO: Asegurar que la animación de éxito NO se muestre cuando hay cualquier error
-      // Esto debe ser LO PRIMERO en el catch
       setShowSuccessAnimation(false);
-      
-      // DEBUG: Log temporal para verificar que el error se captura (remover después)
-      console.log('[DEBUG] Error capturado en handleStateChange:', err?.message || err?.toString());
       
       // Pequeño delay para asegurar que el estado se actualice antes de mostrar otras animaciones
       await new Promise(resolve => setTimeout(resolve, 10));
@@ -796,6 +771,7 @@ const CaseDetail: React.FC = () => {
         setEstadoFinalParams(null);
         setParametrosEstadoFinal([]);
         setFormValues({});
+        setAnexosEstadoFinal('');
         
         // Evitar mostrar alert si el error es de extensiones del navegador
         if (!errorMsg.includes('message channel') && !errorMsg.includes('listener')) {
@@ -895,13 +871,6 @@ const CaseDetail: React.FC = () => {
     });
     
     const esEstadoFinal = !!estadoFinalEncontrado;
-    
-    console.log('[CaseDetail] Verificando si es estado final:', {
-      newState,
-      estadosFinales,
-      estadoFinalEncontrado,
-      esEstadoFinal
-    });
 
     // Abrir modal de justificación (o formulario de cierre si es estado final)
     setPendingNewState(newState);
@@ -913,43 +882,52 @@ const CaseDetail: React.FC = () => {
   };
 
   // Confirmar cambio de estado desde el modal
-  const confirmStateChange = () => {
+  const confirmStateChange = async () => {
     if (!pendingNewState) {
       return;
     }
     
-    // Si es estado final, validar los campos requeridos del formulario dinámico
-    if (isEstadoFinal && parametrosEstadoFinal.length > 0) {
-      const camposRequeridos = parametrosEstadoFinal.filter((param: any) => {
-        return param.requerido === true || param.requerido === 'true' || param.requerido === 1;
-      });
-      const camposVacios = camposRequeridos.filter((param: any) => {
-        const fieldName = param.nombre_parametro || param.id;
-        const value = formValues[fieldName];
-        return !value || (typeof value === 'string' && !value.trim());
-      });
-      
-      if (camposVacios.length > 0) {
-        const nombresVacios = camposVacios.map((p: any) => p.etiqueta || p.nombre_parametro).join(', ');
-        setErrorMessage(`Por favor, complete los siguientes campos requeridos: ${nombresVacios}`);
+    // Si es estado final, solo pedir anexos y enviar al webhook de cierre
+    if (isEstadoFinal) {
+      // Validar que se hayan ingresado anexos (campo requerido)
+      if (!anexosEstadoFinal.trim()) {
+        setErrorMessage('Por favor, ingrese los anexos');
         return;
       }
       
       // Limpiar error si todo está bien
       setErrorMessage('');
       
-      // Construir la justificación con los valores del formulario
-      let justificacionFinal = '=== FORMULARIO DE ESTADO FINAL ===\n';
+      // Obtener el cliente_id del caso
+      const clienteId = caso?.clientId || caso?.clienteId || caso?.cliente?.idCliente || '';
+      const caseId = caso?.id || caso?.ticketNumber || id || '';
       
-      // Agregar los valores del formulario de manera legible
-      parametrosEstadoFinal.forEach((param: any) => {
-        const fieldName = param.nombre_parametro || param.id;
-        const fieldValue = formValues[fieldName] || 'N/A';
-        const fieldLabel = param.etiqueta || param.nombre_parametro;
-        justificacionFinal += `${fieldLabel}: ${fieldValue}\n`;
-      });
+      // Enviar webhook de cierre con anexos
+      setTransitionLoading(true);
+      setErrorMessage('');
       
-      handleStateChange(pendingNewState, justificacionFinal);
+      let webhookResponse;
+      try {
+        webhookResponse = await sendCaseCloseWebhook(caseId, clienteId, anexosEstadoFinal.trim());
+      } catch (error) {
+        setErrorMessage('Error de conexión. Intente nuevamente.');
+        setTransitionLoading(false);
+        return;
+      }
+      
+      if (!webhookResponse.success) {
+        setErrorMessage(webhookResponse.message || 'Los anexos ingresados no son válidos');
+        setTransitionLoading(false);
+        return;
+      }
+      
+      const justificacionCierre = `Cierre de caso. Anexos registrados y validados: ${anexosEstadoFinal.trim()}. Resolución completada, acciones realizadas y confirmación con el cliente.`;
+      try {
+        await handleStateChange(pendingNewState, justificacionCierre);
+      } catch (err) {
+        setTransitionLoading(false);
+      }
+      return;
     } else {
       // Si NO es estado final, la justificación es obligatoria
       if (!justification.trim()) {
@@ -1266,13 +1244,6 @@ const CaseDetail: React.FC = () => {
     
     // Extraer los estados destino únicos y mantener su formato original
     validTransitions = [...new Set(transicionesDelEstadoActual.map(t => t.estado_destino))].filter(Boolean);
-    
-    console.log('[CaseDetail] Transiciones de n8n:', {
-      estadoActual,
-      estadoActualNormalizado,
-      transicionesEncontradas: transicionesDelEstadoActual.length,
-      validTransitions
-    });
   }
   // Si no hay transiciones del webhook, no mostrar botones (no usar fallback)
 
@@ -2346,6 +2317,7 @@ const CaseDetail: React.FC = () => {
                   setEstadoFinalParams(null);
                   setParametrosEstadoFinal([]);
                   setFormValues({});
+                  setAnexosEstadoFinal('');
                 }}
                 className="p-1.5 rounded-lg transition-colors"
                 style={{color: '#64748b'}}
@@ -2384,90 +2356,31 @@ const CaseDetail: React.FC = () => {
                     </div>
                   </div>
                   
-                  {/* Formulario dinámico con parámetros del estado final */}
-                  {parametrosEstadoFinal.length === 0 ? (
-                    <div className="p-4 rounded-lg text-center" style={{
-                      backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.05)' : 'rgba(248, 250, 252, 1)',
-                      border: `1px dashed ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(203, 213, 225, 1)'}`
-                    }}>
-                      <p className="text-xs font-medium" style={{color: styles.text.tertiary}}>
-                        No hay parámetros configurados para este estado final
+                  {/* Formulario de anexos para estado final */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold mb-2" style={{color: styles.text.secondary}}>
+                        Anexos <span className="text-red-500">*</span>
+                      </label>
+                      <p className="text-xs mb-2" style={{color: styles.text.tertiary}}>
+                        Ingrese los anexos separados por comas (ej: 111111, 222222, 333333)
                       </p>
+                      <textarea
+                        value={anexosEstadoFinal}
+                        onChange={(e) => setAnexosEstadoFinal(e.target.value)}
+                        placeholder="111111, 222222, 333333"
+                        required
+                        className="w-full h-24 p-3 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs resize-none"
+                        style={{
+                          backgroundColor: styles.input.backgroundColor,
+                          borderColor: anexosEstadoFinal.trim() 
+                            ? styles.input.borderColor 
+                            : 'rgba(220, 38, 38, 0.3)',
+                          color: styles.text.primary
+                        }}
+                      />
                     </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {parametrosEstadoFinal.map((param: any, index: number) => {
-                        const fieldName = param.nombre_parametro || param.id;
-                        const fieldType = param.tipo || 'text';
-                        const isRequired = param.requerido === true || param.requerido === 'true' || param.requerido === 1;
-                        const uniqueKey = param.id || `${param.nombre_parametro}_${index}`;
-                        
-                        return (
-                          <div key={uniqueKey}>
-                            <label className="block text-xs font-bold mb-2" style={{color: styles.text.secondary}}>
-                              {param.etiqueta || param.nombre_parametro}
-                              {isRequired && <span className="text-red-500 ml-1">*</span>}
-                            </label>
-                            
-                            {param.descripcion && (
-                              <p className="text-xs mb-2" style={{color: styles.text.tertiary}}>
-                                {param.descripcion}
-                              </p>
-                            )}
-                            
-                            {fieldType === 'textarea' ? (
-                              <textarea
-                                value={formValues[fieldName] || ''}
-                                onChange={(e) => setFormValues({...formValues, [fieldName]: e.target.value})}
-                                placeholder={param.placeholder || `Ingrese ${param.etiqueta || param.nombre_parametro}`}
-                                required={isRequired}
-                                className="w-full h-24 p-3 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs resize-none"
-                                style={{
-                                  backgroundColor: styles.input.backgroundColor,
-                                  borderColor: formValues[fieldName]?.trim() || !isRequired 
-                                    ? styles.input.borderColor 
-                                    : 'rgba(220, 38, 38, 0.3)',
-                                  color: styles.text.primary
-                                }}
-                              />
-                            ) : fieldType === 'number' ? (
-                              <input
-                                type="number"
-                                value={formValues[fieldName] || ''}
-                                onChange={(e) => setFormValues({...formValues, [fieldName]: e.target.value})}
-                                placeholder={param.placeholder || `Ingrese ${param.etiqueta || param.nombre_parametro}`}
-                                required={isRequired}
-                                className="w-full p-3 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs"
-                                style={{
-                                  backgroundColor: styles.input.backgroundColor,
-                                  borderColor: formValues[fieldName] || !isRequired 
-                                    ? styles.input.borderColor 
-                                    : 'rgba(220, 38, 38, 0.3)',
-                                  color: styles.text.primary
-                                }}
-                              />
-                            ) : (
-                              <input
-                                type={fieldType}
-                                value={formValues[fieldName] || ''}
-                                onChange={(e) => setFormValues({...formValues, [fieldName]: e.target.value})}
-                                placeholder={param.placeholder || `Ingrese ${param.etiqueta || param.nombre_parametro}`}
-                                required={isRequired}
-                                className="w-full p-3 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs"
-                                style={{
-                                  backgroundColor: styles.input.backgroundColor,
-                                  borderColor: formValues[fieldName]?.trim() || !isRequired 
-                                    ? styles.input.borderColor 
-                                    : 'rgba(220, 38, 38, 0.3)',
-                                  color: styles.text.primary
-                                }}
-                              />
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                  </div>
                   
                   {/* Mensaje de error si hay campos requeridos vacíos */}
                   {errorMessage && (
@@ -2546,6 +2459,7 @@ const CaseDetail: React.FC = () => {
                     setEstadoFinalParams(null);
                     setParametrosEstadoFinal([]);
                     setFormValues({});
+                    setAnexosEstadoFinal('');
                   }}
                   className="flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all border"
                   style={{
