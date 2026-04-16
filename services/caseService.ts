@@ -1600,7 +1600,8 @@ interface CaseCloseWebhookResponse {
 export const sendCaseCloseWebhook = async (
   caseId: string,
   clienteId: string,
-  anexos: string
+  anexos: string,
+  parametros?: Record<string, any>
 ): Promise<CaseCloseWebhookResponse> => {
   // Usar el proxy de Vite para evitar problemas de CORS
   // En desarrollo: /api/case-close -> proxy a n8n
@@ -1628,7 +1629,8 @@ export const sendCaseCloseWebhook = async (
         cliente: {
           cliente_id: clienteId
         },
-        anexos: anexos
+        anexos: anexos,
+        ...(parametros && Object.keys(parametros).length > 0 ? { parametros } : {})
       }
     };
     

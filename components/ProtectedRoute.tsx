@@ -34,14 +34,17 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
     return <Navigate to="/login" replace />;
   }
 
+  // Normalizar el rol a mayúsculas para comparación uniforme
+  const normalizedRole = (user.role || '').toUpperCase() as Role;
+
   // Validar que el rol sea válido
-  if (!['AGENTE', 'SUPERVISOR', 'GERENTE', 'ADMIN', 'ADMINISTRADOR'].includes(user.role)) {
+  if (!['AGENTE', 'SUPERVISOR', 'GERENTE', 'ADMIN', 'ADMINISTRADOR'].includes(normalizedRole)) {
     api.logout();
     return <Navigate to="/login" replace />;
   }
 
-  // Verificar roles específicos si se requieren
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  // Verificar roles específicos si se requieren (comparar en mayúsculas)
+  if (allowedRoles && !allowedRoles.map(r => r.toUpperCase()).includes(normalizedRole)) {
     return <Navigate to="/unauthorized" replace />;
   }
 

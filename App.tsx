@@ -74,7 +74,7 @@ const App: React.FC = () => {
     if (user && token) {
       if (!user.id || !user.name || !user.role) {
         api.logout();
-      } else if (!['AGENTE', 'SUPERVISOR', 'GERENTE', 'ADMIN', 'ADMINISTRADOR'].includes(user.role)) {
+      } else if (!['AGENTE', 'SUPERVISOR', 'GERENTE', 'ADMIN', 'ADMINISTRADOR'].includes(user.role?.toUpperCase() ?? '')) {
         api.logout();
       }
     }
@@ -130,22 +130,30 @@ const App: React.FC = () => {
                 
                 {/* Panel Admin - Dashboard completo */}
                 <Route path="admin" element={
-                  <AdminPanel />
+                  <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.ADMINISTRADOR]}>
+                    <AdminPanel />
+                  </ProtectedRoute>
                 } />
                 
                 {/* Bandeja de Casos Admin - Vista completa con filtros avanzados */}
                 <Route path="admin/casos" element={
-                  <AdminBandejaCasos />
+                  <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.ADMINISTRADOR]}>
+                    <AdminBandejaCasos />
+                  </ProtectedRoute>
                 } />
                 
                 {/* Administración de Usuarios - Solo para ADMIN */}
                 <Route path="admin/usuarios" element={
-                  <AdminUsers />
+                  <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.ADMINISTRADOR]}>
+                    <AdminUsers />
+                  </ProtectedRoute>
                 } />
                 
                 {/* Configuración - Solo para ADMIN */}
                 <Route path="admin/settings" element={
-                  <Settings />
+                  <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.ADMINISTRADOR]}>
+                    <Settings />
+                  </ProtectedRoute>
                 } />
                 
                 {/* Crear nueva cuenta - Solo para supervisores */}

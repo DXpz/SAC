@@ -43,12 +43,7 @@ const Settings: React.FC = () => {
     managerAlertDays: 3
   });
 
-  const initialCategories = [
-    { id: '1', name: 'Soporte Técnico', slaDays: 5, description: 'Casos relacionados con problemas técnicos, configuración de equipos y soporte de sistemas.' },
-    { id: '2', name: 'Facturación', slaDays: 5, description: 'Consultas y problemas relacionados con facturas, pagos y estados de cuenta.' },
-    { id: '3', name: 'Reclamos', slaDays: 3, description: 'Reclamos de clientes sobre servicios, productos o atención recibida.' },
-    { id: '4', name: 'Consultas Comerciales', slaDays: 2, description: 'Consultas sobre productos, servicios, precios y ofertas comerciales.' }
-  ];
+  const initialCategories: Array<{ id: string; name: string; slaDays: number; description: string }> = [];
 
   const [categories, setCategories] = useState(initialCategories);
 
@@ -59,7 +54,7 @@ const Settings: React.FC = () => {
   });
 
   const [categorySearchTerm, setCategorySearchTerm] = useState('');
-  const [filteredCategories, setFilteredCategories] = useState<typeof categories>(initialCategories);
+  const [filteredCategories, setFilteredCategories] = useState<typeof categories>([]);
 
   const [editingCategory, setEditingCategory] = useState<{
     id: string;
@@ -656,13 +651,7 @@ const Settings: React.FC = () => {
   // Inicializar filteredCategories con las categorías cuando cambian
   useEffect(() => {
     // Siempre sincronizar filteredCategories con categories
-    if (categories.length > 0) {
-      setFilteredCategories([...categories]);
-    } else {
-      // Si categories está vacío, restaurar las categorías iniciales
-      setCategories([...initialCategories]);
-      setFilteredCategories([...initialCategories]);
-    }
+    setFilteredCategories([...categories]);
   }, [categories]);
 
   const handleSlaChange = (key: string, value: number) => {
@@ -811,9 +800,11 @@ const Settings: React.FC = () => {
       .replace(/[\u0300-\u036f]/g, '');
   };
 
-  // Inicializar categorías filtradas con todas las categorías
+  // sincronizar filteredCategories con categories al montar
   useEffect(() => {
-    setFilteredCategories(categories);
+    if (activeTab === 'categorias') {
+      loadCategories();
+    }
   }, []);
 
   // Filtrar categorías por término de búsqueda (búsqueda por frases que coincidan, sin tildes y sin mayúsculas)
@@ -944,10 +935,6 @@ const Settings: React.FC = () => {
       return;
     }
 
-    if (!newParametro.estadoFinalId) {
-      alert('Debe seleccionar un estado final para este parámetro');
-      return;
-    }
 
     setIsSavingParametro(true);
 

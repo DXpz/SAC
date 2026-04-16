@@ -22,6 +22,9 @@ const BandejaCasos: React.FC = () => {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   // Estados de workflow cargados desde el webhook (incluye flag isFinal)
   const [estados, setEstados] = useState<Array<{ id: string; name: string; order?: number; isFinal?: boolean }>>([]);
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 20;
   const { theme } = useTheme();
 
   const navigate = useNavigate();
@@ -560,6 +563,7 @@ const BandejaCasos: React.FC = () => {
       }
 
       setFiltered(result);
+      setCurrentPage(1); // Resetear a primera página cuando cambien los filtros
     };
     
     processCases();
@@ -587,6 +591,9 @@ const BandejaCasos: React.FC = () => {
       color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
     }
   };
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginatedCasos = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <div className="space-y-6" style={styles.container}>
@@ -878,7 +885,7 @@ const BandejaCasos: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((caso, idx) => (
+                {paginatedCasos.map((caso, idx) => (
                   <tr 
                     key={caso.id} 
                     className="hover:opacity-90 transition-opacity cursor-pointer"
@@ -886,7 +893,7 @@ const BandejaCasos: React.FC = () => {
                       backgroundColor: idx % 2 === 0 
                         ? (theme === 'dark' ? '#020617' : '#ffffff')
                         : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
-                      borderBottom: idx < filtered.length - 1 ? '1px solid rgba(148, 163, 184, 0.1)' : 'none',
+                      borderBottom: idx < paginatedCasos.length - 1 ? '1px solid rgba(148, 163, 184, 0.1)' : 'none',
                       animation: `fadeInSlide 0.3s ease-out ${idx * 0.03}s both`,
                       transform: 'translateY(0)'
                     }}
@@ -1074,7 +1081,7 @@ const BandejaCasos: React.FC = () => {
             animation: 'fadeInSlide 0.4s ease-out 0.1s both'
           }}
         >
-          {filtered.map((caso, idx) => {
+          {paginatedCasos.map((caso, idx) => {
             const rawStatus = caso.status || (caso as any).estado;
             const normalizedStatus = normalizeStatus(rawStatus);
             const statusColor = (() => {
@@ -1229,6 +1236,68 @@ const BandejaCasos: React.FC = () => {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Controles de paginación */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-2 py-3 rounded-xl border" style={{...styles.card}}>
+          <p className="text-xs font-medium" style={{color: styles.text.tertiary}}>
+            Mostrando {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} de {filtered.length} casos
+          </p>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed border"
+              style={{
+                borderColor: 'rgba(148,163,184,0.3)',
+                color: styles.text.secondary,
+                backgroundColor: 'transparent'
+              }}
+              onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f8fafc'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+            >
+              ← Anterior
+            </button>
+            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+              const page = totalPages <= 7
+                ? i + 1
+                : currentPage <= 4
+                  ? i + 1
+                  : currentPage >= totalPages - 3
+                    ? totalPages - 6 + i
+                    : currentPage - 3 + i;
+              return (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className="w-8 h-8 rounded-lg text-xs font-bold transition-all"
+                  style={{
+                    backgroundColor: currentPage === page ? '#c8151b' : 'transparent',
+                    color: currentPage === page ? '#ffffff' : styles.text.secondary,
+                    border: currentPage === page ? 'none' : '1px solid rgba(148,163,184,0.2)'
+                  }}
+                >
+                  {page}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed border"
+              style={{
+                borderColor: 'rgba(148,163,184,0.3)',
+                color: styles.text.secondary,
+                backgroundColor: 'transparent'
+              }}
+              onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f8fafc'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+            >
+              Siguiente →
+            </button>
+          </div>
         </div>
       )}
     </div>

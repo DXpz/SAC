@@ -752,12 +752,8 @@ const CaseDetail: React.FC = () => {
         // Asegurar que la animación de éxito esté desactivada
         setShowSuccessAnimation(false);
         
-        // Mostrar animación de comentario no válido
+        // Mostrar animación de comentario no válido (el usuario debe cerrarla manualmente)
         setShowInvalidCommentAnimation(true);
-        setTimeout(() => {
-          setShowInvalidCommentAnimation(false);
-          // NO limpiar errorMessage aquí para que permanezca visible
-        }, 5000);
         
         // IMPORTANTE: Salir temprano para evitar ejecutar el código de otros errores
         setTransitionLoading(false);
@@ -847,7 +843,8 @@ const CaseDetail: React.FC = () => {
     }
 
     // VALIDACIÓN: Si se intenta cambiar a "En Proceso" y no hay cliente asignado
-    if (newState === CaseStatus.EN_PROCESO || newState === 'En Proceso') {
+    const newStateNormForClient = normalizeEstadoName(newState);
+    if (newStateNormForClient === 'en_proceso' || newStateNormForClient.includes('en_proceso') || newState === CaseStatus.EN_PROCESO || newState === 'En Proceso') {
       const clienteId = caso?.clientId || caso?.clienteId;
       const clienteName = caso?.clientName || caso?.cliente?.nombreEmpresa;
       
@@ -887,28 +884,53 @@ const CaseDetail: React.FC = () => {
       return;
     }
     
-    // Si es estado final, solo pedir anexos y enviar al webhook de cierre
+    // Si es estado final, pedir anexos/parámetros dinámicos y enviar al webhook de cierre
     if (isEstadoFinal) {
-      // Validar que se hayan ingresado anexos (campo requerido)
-      if (!anexosEstadoFinal.trim()) {
+      // Verificar si hay parámetros dinámicos con tipo "anexo" que reemplacen el campo fijo
+      const tieneAnexosDinamico = parametrosEstadoFinal.some((p: any) => {
+        const nombre = (p.nombre_parametro || p.name || '').toLowerCase();
+        return nombre.includes('anexo');
+      });
+
+      // Obtener el valor de anexos: desde el campo dinámico si existe, o del campo fijo
+      let anexosValor = anexosEstadoFinal.trim();
+      if (tieneAnexosDinamico) {
+        const paramAnexo = parametrosEstadoFinal.find((p: any) =>
+          (p.nombre_parametro || p.name || '').toLowerCase().includes('anexo')
+        );
+        if (paramAnexo) {
+          const key = paramAnexo.nombre_parametro || paramAnexo.id || '';
+          anexosValor = String(formValues[key] || '').trim();
+        }
+      }
+
+      // Validar parámetros requeridos
+      for (const param of parametrosEstadoFinal) {
+        if (param.requerido === true) {
+          const key = param.nombre_parametro || param.id || '';
+          if (!formValues[key] && formValues[key] !== false) {
+            setErrorMessage(`El campo "${param.etiqueta || param.nombre_parametro}" es obligatorio`);
+            return;
+          }
+        }
+      }
+
+      if (!tieneAnexosDinamico && !anexosValor) {
         setErrorMessage('Por favor, ingrese los anexos');
         return;
       }
       
-      // Limpiar error si todo está bien
       setErrorMessage('');
       
-      // Obtener el cliente_id del caso
       const clienteId = caso?.clientId || caso?.clienteId || caso?.cliente?.idCliente || '';
       const caseId = caso?.id || caso?.ticketNumber || id || '';
       
-      // Enviar webhook de cierre con anexos
       setTransitionLoading(true);
       setErrorMessage('');
       
       let webhookResponse;
       try {
-        webhookResponse = await sendCaseCloseWebhook(caseId, clienteId, anexosEstadoFinal.trim());
+        webhookResponse = await sendCaseCloseWebhook(caseId, clienteId, anexosValor, formValues);
       } catch (error) {
         setErrorMessage('Error de conexión. Intente nuevamente.');
         setTransitionLoading(false);
@@ -916,12 +938,16 @@ const CaseDetail: React.FC = () => {
       }
       
       if (!webhookResponse.success) {
-        setErrorMessage(webhookResponse.message || 'Los anexos ingresados no son válidos');
+        setErrorMessage(webhookResponse.message || 'Los datos ingresados no son válidos');
         setTransitionLoading(false);
         return;
       }
       
-      const justificacionCierre = `Cierre de caso. Anexos registrados y validados: ${anexosEstadoFinal.trim()}. Resolución completada, acciones realizadas y confirmación con el cliente.`;
+      const paramsResumen = Object.entries(formValues)
+        .filter(([, v]) => v !== '' && v !== undefined)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join(', ');
+      const justificacionCierre = `Cierre de caso. Anexos: ${anexosValor}${paramsResumen ? `. Parámetros adicionales: ${paramsResumen}` : ''}. Resolución completada.`;
       try {
         await handleStateChange(pendingNewState, justificacionCierre);
       } catch (err) {
@@ -1739,6 +1765,33 @@ const CaseDetail: React.FC = () => {
                  </div>
                ) : validTransitions.length > 0 ? (
                 <div className="flex flex-wrap gap-2.5">
+                   {/* Botón deshabilitado que muestra el estado actual */}
+                   {(() => {
+                     const estadoActualFormateado = formatEstadoName(caso?.estado || caso?.status || '');
+                     return estadoActualFormateado ? (
+                       <div className="relative group">
+                         <button
+                           disabled
+                           className="px-4 py-2.5 rounded-lg text-xs font-semibold transition-all opacity-50 cursor-not-allowed border-2"
+                           style={{
+                             backgroundColor: 'transparent',
+                             borderColor: theme === 'dark' ? 'rgba(148,163,184,0.4)' : 'rgba(100,116,139,0.3)',
+                             color: theme === 'dark' ? '#94a3b8' : '#64748b',
+                           }}
+                         >
+                           {estadoActualFormateado} (actual)
+                         </button>
+                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none"
+                           style={{
+                             backgroundColor: theme === 'dark' ? '#0f172a' : '#1e293b',
+                             color: '#f1f5f9',
+                             border: '1px solid rgba(148,163,184,0.3)'
+                           }}>
+                           El caso ya se encuentra en este estado
+                         </div>
+                       </div>
+                     ) : null;
+                   })()}
                    {validTransitions.map((estadoDestino: string) => {
                      const estadoFormateado = formatEstadoName(estadoDestino);
                      
@@ -1824,11 +1877,28 @@ const CaseDetail: React.FC = () => {
                 // Filtrar entradas de tipo CREADO para no mostrarlas
                 const historialFiltrado = historialSinDuplicados.filter(entry => entry.tipo_evento !== 'CREADO');
                 
+                const parseFecha = (entry: any): number => {
+                  const raw = entry.fecha || entry.fechaHora || entry.createdAt || entry.date || '';
+                  if (!raw) return 0;
+                  // Intentar parsear ISO y formatos comunes
+                  const d = new Date(raw);
+                  if (!isNaN(d.getTime())) return d.getTime();
+                  // Intentar DD/MM/YYYY o DD-MM-YYYY
+                  const parts = String(raw).match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+                  if (parts) {
+                    const d2 = new Date(`${parts[3]}-${parts[2].padStart(2,'0')}-${parts[1].padStart(2,'0')}`);
+                    if (!isNaN(d2.getTime())) return d2.getTime();
+                  }
+                  return 0;
+                };
                 const historialOrdenado = [...historialFiltrado].sort((a, b) => {
-                  // Ordenar por fecha ascendente
-                  const fechaA = new Date(a.fecha || a.fechaHora || 0).getTime();
-                  const fechaB = new Date(b.fecha || b.fechaHora || 0).getTime();
-                  return fechaA - fechaB; // Orden ascendente
+                  const tA = parseFecha(a);
+                  const tB = parseFecha(b);
+                  // Entradas sin fecha van al final
+                  if (tA === 0 && tB === 0) return 0;
+                  if (tA === 0) return 1;
+                  if (tB === 0) return -1;
+                  return tA - tB; // Ascendente (más antiguo primero)
                 });
 
                 return historialOrdenado.length > 0 ? (
@@ -2356,33 +2426,149 @@ const CaseDetail: React.FC = () => {
                     </div>
                   </div>
                   
-                  {/* Formulario de anexos para estado final */}
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-bold mb-2" style={{color: styles.text.secondary}}>
-                        Anexos <span className="text-red-500">*</span>
-                      </label>
-                      <p className="text-xs mb-2" style={{color: styles.text.tertiary}}>
-                        Ingrese los anexos separados por comas (ej: 111111, 222222, 333333)
-                      </p>
-                      <textarea
-                        value={anexosEstadoFinal}
-                        onChange={(e) => setAnexosEstadoFinal(e.target.value)}
-                        placeholder="111111, 222222, 333333"
-                        required
-                        className="w-full h-24 p-3 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs resize-none"
-                        style={{
-                          backgroundColor: styles.input.backgroundColor,
-                          borderColor: anexosEstadoFinal.trim() 
-                            ? styles.input.borderColor 
-                            : 'rgba(220, 38, 38, 0.3)',
-                          color: styles.text.primary
-                        }}
-                      />
-                    </div>
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                    {/* Campo fijo de Anexos */}
+                    {(() => {
+                      const tieneAnexosDinamico = parametrosEstadoFinal.some((p: any) => {
+                        const nombre = (p.nombre_parametro || p.name || '').toLowerCase();
+                        return nombre.includes('anexo');
+                      });
+                      if (tieneAnexosDinamico) return null;
+                      return (
+                        <div>
+                          <label className="block text-xs font-bold mb-1.5" style={{color: styles.text.secondary}}>
+                            Anexos <span className="text-red-500">*</span>
+                          </label>
+                          <p className="text-xs mb-1.5" style={{color: styles.text.tertiary}}>
+                            Ingrese los anexos separados por comas (ej: 111111, 222222)
+                          </p>
+                          <textarea
+                            value={anexosEstadoFinal}
+                            onChange={(e) => setAnexosEstadoFinal(e.target.value)}
+                            placeholder="111111, 222222, 333333"
+                            className="w-full h-20 p-3 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs resize-none"
+                            style={{
+                              backgroundColor: styles.input.backgroundColor,
+                              borderColor: styles.input.borderColor,
+                              color: styles.text.primary
+                            }}
+                          />
+                        </div>
+                      );
+                    })()}
+
+                    {/* Parámetros dinámicos del webhook, renderizados según tipo */}
+                    {parametrosEstadoFinal.map((param: any) => {
+                      const key = param.nombre_parametro || param.id || '';
+                      const label = param.etiqueta || param.label || param.nombre_parametro || key;
+                      const tipo = (param.tipo || param.type || 'texto').toLowerCase();
+                      const requerido = param.requerido === true;
+                      const placeholder = param.placeholder || '';
+                      const valor = formValues[key] ?? '';
+
+                      const inputBase = {
+                        backgroundColor: styles.input.backgroundColor,
+                        borderColor: styles.input.borderColor,
+                        color: styles.text.primary,
+                      };
+
+                      const handleChange = (val: any) =>
+                        setFormValues((prev) => ({ ...prev, [key]: val }));
+
+                      let inputEl: React.ReactNode;
+
+                      if (tipo === 'adjuntar_archivo' || tipo === 'file') {
+                        inputEl = (
+                          <textarea
+                            value={valor}
+                            onChange={(e) => handleChange(e.target.value)}
+                            placeholder={placeholder || 'Ingrese los anexos separados por comas'}
+                            className="w-full h-20 p-3 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs resize-none"
+                            style={inputBase}
+                          />
+                        );
+                      } else if (tipo === 'fecha' || tipo === 'date') {
+                        inputEl = (
+                          <input
+                            type="date"
+                            value={valor}
+                            onChange={(e) => handleChange(e.target.value)}
+                            className="w-full p-2.5 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs"
+                            style={inputBase}
+                          />
+                        );
+                      } else if (tipo === 'correo' || tipo === 'email') {
+                        inputEl = (
+                          <input
+                            type="email"
+                            value={valor}
+                            onChange={(e) => handleChange(e.target.value)}
+                            placeholder={placeholder || 'correo@ejemplo.com'}
+                            className="w-full p-2.5 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs"
+                            style={inputBase}
+                          />
+                        );
+                      } else if (tipo === 'telefono' || tipo === 'phone') {
+                        inputEl = (
+                          <input
+                            type="tel"
+                            value={valor}
+                            onChange={(e) => handleChange(e.target.value)}
+                            placeholder={placeholder || '+503 0000-0000'}
+                            className="w-full p-2.5 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs"
+                            style={inputBase}
+                          />
+                        );
+                      } else if (tipo === 'numero' || tipo === 'number') {
+                        inputEl = (
+                          <input
+                            type="number"
+                            value={valor}
+                            onChange={(e) => handleChange(e.target.value)}
+                            placeholder={placeholder || '0'}
+                            className="w-full p-2.5 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs"
+                            style={inputBase}
+                          />
+                        );
+                      } else if (tipo === 'checkbox') {
+                        inputEl = (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={!!valor}
+                              onChange={(e) => handleChange(e.target.checked)}
+                              className="w-4 h-4 rounded"
+                            />
+                            <span className="text-xs" style={{color: styles.text.secondary}}>{label}</span>
+                          </div>
+                        );
+                      } else {
+                        inputEl = (
+                          <input
+                            type="text"
+                            value={valor}
+                            onChange={(e) => handleChange(e.target.value)}
+                            placeholder={placeholder}
+                            className="w-full p-2.5 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs"
+                            style={inputBase}
+                          />
+                        );
+                      }
+
+                      return (
+                        <div key={key}>
+                          {tipo !== 'checkbox' && (
+                            <label className="block text-xs font-bold mb-1.5" style={{color: styles.text.secondary}}>
+                              {label} {requerido && <span className="text-red-500">*</span>}
+                            </label>
+                          )}
+                          {inputEl}
+                        </div>
+                      );
+                    })}
                   </div>
                   
-                  {/* Mensaje de error si hay campos requeridos vacíos */}
+                  {/* Mensaje de error */}
                   {errorMessage && (
                     <div className="p-3 rounded-lg border-2 border-red-500" style={{backgroundColor: 'rgba(220, 38, 38, 0.1)'}}>
                       <div className="flex items-start gap-2">

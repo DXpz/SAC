@@ -159,8 +159,25 @@ const NuevoCaso: React.FC = () => {
   };
 
   const loadCategorias = async () => {
-    const data = await api.getCategorias();
-    setCategorias(data);
+    try {
+      const data = await api.readCategories();
+      if (data && Array.isArray(data) && data.length > 0) {
+        const mapped = data.map((cat: any) => ({
+          idCategoria: String(cat.id || cat.idCategoria || cat.category_id || ''),
+          nombre: cat.name || cat.nombre || cat.category_name || cat.caegoria || 'Sin nombre',
+          slaDias: Number(cat.sla || cat.slaDays || cat.sla_dias || 3),
+          descripcion: cat.description || cat.descripcion || '',
+          activa: true,
+        }));
+        setCategorias(mapped);
+      } else {
+        const fallback = await api.getCategorias();
+        setCategorias(fallback);
+      }
+    } catch {
+      const fallback = await api.getCategorias();
+      setCategorias(fallback);
+    }
   };
 
   // Normalizar país del cliente para comparación
@@ -271,6 +288,11 @@ const NuevoCaso: React.FC = () => {
       return;
     }
 
+    if (!newCase.contactChannel) {
+      setToast({ message: 'Por favor, selecciona el Medio de Contacto (Primer Contacto)', type: 'warning' });
+      return;
+    }
+
     // Validar formato de email solo si se proporcionó
     if (newCase.email) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -289,7 +311,10 @@ const NuevoCaso: React.FC = () => {
         clienteId: newCase.clienteId,
         categoriaId: newCase.categoriaId,
         contactChannel: newCase.contactChannel,
+        medio_contacto: newCase.contactChannel,
+        canal_contacto: newCase.contactChannel,
         notificationChannel: newCase.notificationChannel,
+        canal_notificacion: newCase.notificationChannel,
         subject: newCase.subject,
         description: newCase.description,
         clientName: newCase.clientName,
