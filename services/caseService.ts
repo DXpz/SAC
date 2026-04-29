@@ -617,7 +617,7 @@ const callCaseWebhook = async (payload: CaseWebhookPayload): Promise<CaseWebhook
 };
 
 /**
- * Crea un nuevo caso
+ * Crea un nuevo caso según la documentación del API
  */
 export const createCase = async (caseData: {
   clienteId: string;
@@ -626,46 +626,50 @@ export const createCase = async (caseData: {
   subject: string;
   description: string;
   clientEmail?: string;
+  pais?: string;
+  phone?: string;
+  clientPhone?: string;
   [key: string]: any;
 }): Promise<Case> => {
   const actor = getActor();
-  
+
   if (!actor) {
     throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
   }
-  
-  // Validar campos requeridos (cliente puede ser opcional, se enviará "N/A" y "Por definir")
+
+  // Validar campos requeridos
   if (!caseData.categoriaId || !caseData.subject || !caseData.description) {
     throw new Error('Faltan campos requeridos: categoría, asunto y descripción son obligatorios.');
   }
-  
-  // Mapear datos al formato del webhook
-  const webhookData = mapCaseToWebhookData(caseData);
-  
-  // Asegurar que cliente siempre esté presente (aunque sea con valores por defecto)
-  if (!webhookData.cliente) {
-    webhookData.cliente = {
-      cliente_id: caseData.clienteId || 'N/A',
-      nombre_empresa: caseData.clientName || 'Por definir',
-      contacto_principal: caseData.contactName || caseData.clientName || 'Por definir',
-      email: caseData.clientEmail || '',
-      telefono: caseData.phone || caseData.clientPhone || '',
-      pais: caseData.pais || caseData.country || caseData.cliente?.pais || undefined
-    };
-  }
-  
-  // Asegurar que categoría siempre tenga nombre si está disponible
-  if (webhookData.categoria && !webhookData.categoria.nombre && caseData.categoriaNombre) {
-    webhookData.categoria.nombre = caseData.categoriaNombre;
-  }
-  
-  const payload: CaseWebhookPayload = {
+
+  // Obtener país del usuario o usar default
+  const userCountry = await getUserCountry();
+  const pais = caseData.pais || caseData.country || (userCountry === 'SV' ? 'El Salvador' : 'Guatemala');
+
+  // Construir payload según documentación de case.create
+  // actor solo debe tener email según la API docs
+  const payload = {
     action: 'case.create',
-    actor,
-    data: webhookData
+    pais: pais,
+    actor: {
+      email: actor.email
+    },
+    data: {
+      cliente: {
+        cliente_id: caseData.clienteId || 'N/A',
+        email: caseData.clientEmail || '',
+        telefono: caseData.phone || caseData.clientPhone || ''
+      },
+      categoria: {
+        id: parseInt(caseData.categoriaId) || 1
+      }
+    },
+    canal_origen: mapChannel(caseData.contactChannel),
+    canal_notificacion: mapChannel(caseData.contactChannel) || 'Email',
+    asunto: caseData.subject,
+    descripcion: caseData.description,
   };
-  
-  
+
   const response = await callCaseWebhook(payload);
   
   if (response && typeof response === 'object' && !Array.isArray(response)) {
@@ -1097,24 +1101,29 @@ export const updateCaseStatus = async (
   clienteId?: string
 ): Promise<Case> => {
   const actor = getActor();
-  
+
   if (!actor) {
     throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
   }
-  
+
   if (!caseId || !newStatus) {
     throw new Error('ID de caso y nuevo estado son requeridos.');
   }
-  
-  const payload: CaseWebhookPayload = {
+
+  // Obtener país para el payload
+  const pais = await getUserCountry();
+  const paisValue = pais === 'SV' ? 'El Salvador' : 'Guatemala';
+
+  const payload = {
     action: 'case.update',
-    actor,
+    pais: paisValue,
+    actor: {
+      email: actor.email
+    },
     data: {
-      update_type: 'update',
       case_id: caseId,
       estado: newStatus,
-      comentario: detail || `Cambio de estado a ${newStatus}`,
-      cliente_id: clienteId || undefined
+      comentario: detail || `Cambio de estado a ${newStatus}`
     }
   };
   
@@ -1613,16 +1622,19 @@ export const sendCaseCloseWebhook = async (
     if (!userStr) {
       return { success: false, message: 'Usuario no autenticado' };
     }
-    
+
     const user = JSON.parse(userStr);
     const userEmail = sessionStorage.getItem('intelfon_user_email') || user.email || `${user.role?.toLowerCase()}@red.com.sv`;
-    
+
+    // Obtener país para el payload
+    const pais = await getUserCountry();
+    const paisValue = pais === 'SV' ? 'El Salvador' : 'Guatemala';
+
     const payload = {
       action: 'case.close',
+      pais: paisValue,
       actor: {
-        user_id: user.id || user.user_id || '',
-        email: userEmail,
-        role: user.role || 'AGENTE'
+        email: userEmail
       },
       data: {
         case_id: caseId,
@@ -1723,7 +1735,7 @@ export const updateCaseData = async (
 
   // Obtener el caso actual para usar sus valores como base si no se proporcionan en updates
   const currentCase = await getCaseById(caseId);
-  
+
   // Mapear los campos según la documentación de case.edit
   // Usar valores de updates si están presentes, sino usar valores del caso actual
   // Asegurar que todos los campos sean strings (incluso si están vacíos, enviar "")
@@ -1732,18 +1744,25 @@ export const updateCaseData = async (
   const currentClientName = currentCase?.clientName || currentCase?.cliente?.nombreEmpresa || '';
   const currentClientEmail = currentCase?.clientEmail || currentCase?.cliente?.email || '';
   const currentClientPhone = currentCase?.clientPhone || currentCase?.cliente?.telefono || '';
-  
-  const payload: CaseWebhookPayload = {
+
+  // Obtener país para el payload
+  const pais = await getUserCountry();
+  const paisValue = pais === 'SV' ? 'El Salvador' : 'Guatemala';
+
+  const payload = {
     action: 'case.edit',
-    actor,
+    pais: paisValue,
+    actor: {
+      email: actor.email
+    },
     data: {
       case_id: caseId,
       asunto: (updates.asunto !== undefined ? updates.asunto : (currentCase?.subject || '')) || '',
       descripcion: (updates.descripcion !== undefined ? updates.descripcion : (currentCase?.description || '')) || '',
       cliente_id: (updates.cliente_id !== undefined ? updates.cliente_id : (currentCase?.clientId || '')) || '',
       // Para cliente_nombre: si está en updates, usar ese valor; si no, usar el del caso actual
-      cliente_nombre: updates.client_name !== undefined 
-        ? (updates.client_name || '') 
+      cliente_nombre: updates.client_name !== undefined
+        ? (updates.client_name || '')
         : (currentClientName || ''),
       email_cliente: (updates.client_email !== undefined ? String(updates.client_email || '') : String(currentClientEmail || '')) || '',
       telefono_cliente: (updates.client_phone !== undefined ? String(updates.client_phone || '') : String(currentClientPhone || '')) || ''

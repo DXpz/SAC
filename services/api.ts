@@ -213,8 +213,8 @@ const callEstadosWebhook = async <T = any>(
   method: 'GET' | 'POST',
   body?: unknown
 ): Promise<T> => {
-  // URL del webhook de estados
-  const ESTADOS_WEBHOOK_URL = 'https://n8n.red.com.sv/webhook/5009ec05-e3ce-44ef-bd68-ae7ef4e61f61';
+  // URL del webhook de estados según documentación
+  const ESTADOS_WEBHOOK_URL = 'https://n8n.red.com.sv/webhook/837e1ddf-3677-411d-9aca-9b5095a42ecd';
   try {
     const response = await callWebhookGeneric<T>(ESTADOS_WEBHOOK_URL, method, body);
     return response;
@@ -228,8 +228,8 @@ const callAsuetosWebhook = async <T = any>(
   method: 'GET' | 'POST',
   body?: unknown
 ): Promise<T> => {
-  // URL del webhook de asuetos
-  const ASUETOS_WEBHOOK_URL = 'https://n8n.red.com.sv/webhook/d80b6b0a-b647-475e-8795-c8747a9b72d8';
+  // URL del webhook de asuetos según documentación
+  const ASUETOS_WEBHOOK_URL = 'https://n8n.red.com.sv/webhook/asuetos-workflow';
   try {
     const response = await callWebhookGeneric<T>(ASUETOS_WEBHOOK_URL, method, body);
     return response;
@@ -264,21 +264,22 @@ const DEFAULT_CATEGORY = {
 };
 
 
-// Función auxiliar para llamar al webhook de Make.com
+// Función auxiliar para llamar al webhook de n8n
 // Solo permite operaciones si el webhook responde correctamente
-// type: 'login' | 'forgot_password' | 'register'
-const callWebhook = async (scenario: 'login' | 'reset_password' | 'new_account', data: any) => {
+// scenario: 'login' | 'forgot_password' | 'reset_password' | 'register'
+const callWebhook = async (scenario: 'login' | 'forgot_password' | 'reset_password' | 'new_account', data: any) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
 
-  // Mapear scenario a type para Make.com
-  const typeMap: Record<'login' | 'reset_password' | 'new_account', string> = {
-    'login': 'login',
-    'reset_password': 'forgot_password',
-    'new_account': 'register'
+  // Mapear scenario a event para n8n
+  const eventMap: Record<'login' | 'forgot_password' | 'reset_password' | 'new_account', string> = {
+    'login': 'auth.login',
+    'forgot_password': 'auth.forgot_password',
+    'reset_password': 'auth.reset_password',
+    'new_account': 'auth.register'
   };
 
-  const type = typeMap[scenario];
+  const event = eventMap[scenario];
 
   try {
     // Intentar la petición con CORS
@@ -293,8 +294,8 @@ const callWebhook = async (scenario: 'login' | 'reset_password' | 'new_account',
           'Accept': 'application/json',
         },
         body: JSON.stringify({
-          type,
-          ...data,
+          event,
+          body: data,
         }),
         signal: controller.signal,
       });
@@ -625,37 +626,28 @@ export const api = {
     }
     
 
-    // Construir el payload completo para n8n
-    const actorPayload = buildActorPayload(user);
-    
-    // Construir objeto cliente solo si hay clienteId, sino enviar valores por defecto
-    const clienteData = {
-      cliente_id: caseData.clienteId || 'N/A', // No generar ID aleatorio
-      nombre_empresa: caseData.clientName || 'Por definir',
-      contacto_principal: caseData.contactName || caseData.clientName || 'Por definir',
-      email: caseData.clientEmail || '',
-      telefono: caseData.phone || '',
-    };
-    
+    // Construir el payload completo para n8n según documentación
+    // actor solo debe tener email según la API docs
     const n8nPayload = {
       action: 'case.create',
-      actor: actorPayload,
-      data: {
-        cliente: clienteData,
-        categoria: {
-          categoria_id: categoriaId,
-          nombre: categoriaNombre,
-        },
-        canal_origen: caseData.contactChannel || caseData.canalOrigen || 'Web',
-        canal_notificacion: caseData.notificationChannel || caseData.contactChannel || 'Email',
-        asunto: caseData.subject,
-        descripcion: caseData.description,
-        // El backend procesa el correo del agente para asignar, usar email si está disponible
-        // Si el actor es un AGENTE, el webhook automáticamente asignará el caso a ese agente (sin round robin)
-        // Si el actor es SUPERVISOR o GERENTE, el webhook hará Round Robin automáticamente
-        agente_email: caseData.agentEmail || caseData.agenteEmail || actorPayload.email || '',
-        agente_id: agenteAsignado?.idAgente || agenteAsignado?.id || '',
+      pais: caseData.pais || caseData.country || 'Guatemala',
+      actor: {
+        email: actorPayload.email
       },
+      data: {
+        cliente: {
+          cliente_id: caseData.clienteId || 'N/A',
+          email: caseData.clientEmail || '',
+          telefono: caseData.phone || caseData.clientPhone || ''
+        },
+        categoria: {
+          id: parseInt(categoriaId) || 1
+        }
+      },
+      canal_origen: caseData.contactChannel || caseData.canalOrigen || 'Web',
+      canal_notificacion: caseData.notificationChannel || caseData.contactChannel || 'Email',
+      asunto: caseData.subject,
+      descripcion: caseData.description,
     };
 
 

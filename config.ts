@@ -26,13 +26,24 @@ export const API_CONFIG = {
   
   // URLs completas de n8n (para referencia y uso en producción)
   // Estas URLs se usan cuando VITE_WEBHOOK_*_URL está definido o en producción
-  WEBHOOK_URL_FULL: 'https://n8n.red.com.sv/webhook/6f27bb4b-bfcd-4776-b554-5194569be2a7',
+  // Authentication Workflow
+  WEBHOOK_URL_FULL: 'https://n8n.red.com.sv/webhook-test/auth-workflow',
+  // Agentes Workflow
   WEBHOOK_AGENTES_URL_FULL: 'https://n8n.red.com.sv/webhook/d804c804-9841-41f7-bc4b-66d2edeed53b',
-  WEBHOOK_CREAR_USUARIO_URL_FULL: 'https://n8n.red.com.sv/webhook/8679122d-c982-4cc8-92a9-7591ef887d61',
-  WEBHOOK_CASOS_URL_FULL: 'https://n8n.red.com.sv/webhook-test/97a6c0f7-ea50-4542-b99e-710b96b58652',
+  // Usuarios Workflow
+  WEBHOOK_CREAR_USUARIO_URL_FULL: 'https://n8n.red.com.sv/webhook/usuarios-workflow',
+  // Casos Workflow
+  WEBHOOK_CASOS_URL_FULL: 'https://n8n.red.com.sv/webhook/97a6c0f7-ea50-4542-b99e-710b96b58652',
+  // Round Robin
   WEBHOOK_ROUND_ROBIN_URL_FULL: 'https://n8n.red.com.sv/webhook-test/case-create-round-robin',
-  WEBHOOK_CLIENTES_URL_FULL: 'https://n8n.red.com.sv/webhook/b30aeff4-1d3a-4b40-b8da-141b4e1fc5b6',
-  WEBHOOK_CATEGORIAS_URL_FULL: 'https://n8n.red.com.sv/webhook/8c0719d8-1d51-47ce-a8df-73dbfeffc757',
+  // Clientes Workflow
+  WEBHOOK_CLIENTES_URL_FULL: 'https://n8n.red.com.sv/webhook/clientes-workflow',
+  // Categorias Workflow
+  WEBHOOK_CATEGORIAS_URL_FULL: 'https://n8n.red.com.sv/webhook/3064d26b-a4b3-40ac-9f65-0835bcaf99f5',
+  // Estados Workflow
+  WEBHOOK_ESTADOS_URL_FULL: 'https://n8n.red.com.sv/webhook/837e1ddf-3677-411d-9aca-9b5095a42ecd',
+  // Asuetos Workflow
+  WEBHOOK_ASUETOS_URL_FULL: 'https://n8n.red.com.sv/webhook/asuetos-workflow',
   
   // Timeout para las peticiones (en milisegundos)
   TIMEOUT: 30000, // Aumentado a 30 segundos para dar más tiempo
