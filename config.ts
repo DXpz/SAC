@@ -27,7 +27,7 @@ export const API_CONFIG = {
   // URLs completas de n8n (para referencia y uso en producción)
   // Estas URLs se usan cuando VITE_WEBHOOK_*_URL está definido o en producción
   // Authentication Workflow
-  WEBHOOK_URL_FULL: 'https://n8n.red.com.sv/webhook/auth-workflow999',
+  WEBHOOK_URL_FULL: 'https://n8n.red.com.sv/webhook/6f27bb4b-bfcd-4776-b554-5194569be2a7',
   // Agentes Workflow
   WEBHOOK_AGENTES_URL_FULL: 'https://n8n.red.com.sv/webhook/d804c804-9841-41f7-bc4b-66d2edeed53b',
   // Usuarios Workflow
