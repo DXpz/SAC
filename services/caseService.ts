@@ -32,6 +32,7 @@ interface CategoriaData {
 
 interface CaseWebhookPayload {
   action: CaseAction;
+  pais?: string;
   actor: Actor;
   data: {
     update_type?: string;
@@ -755,22 +756,28 @@ export const getCases = async (): Promise<Case[]> => {
   
   // Si es AGENTE, usar case.agent para obtener solo sus casos asignados
   if (userRole === 'AGENTE') {
+    const pais = await getUserCountry();
+    const paisValue = pais === 'SV' ? 'El Salvador' : 'Guatemala';
     const payload: CaseWebhookPayload = {
       action: 'case.agent',
+      pais: paisValue,
       actor,
       data: {
-        case_id: '' // Vacío para obtener todos los casos del agente
+        agent_id: actor.email
       }
     };
-    
+
     const response = await callCaseWebhook(payload);
     const casos = processWebhookResponse(response);
     return casos;
   }
-  
+
   // Si es SUPERVISOR o GERENTE, usar case.read para obtener todos los casos
+  const pais = await getUserCountry();
+  const paisValue = pais === 'SV' ? 'El Salvador' : 'Guatemala';
   const payload: CaseWebhookPayload = {
     action: 'case.read',
+    pais: paisValue,
     actor,
     data: {}
   };
@@ -899,8 +906,11 @@ export const getCaseById = async (caseId: string): Promise<Case | null> => {
   }
   
   // Usar case.query para obtener el caso con historial completo
+  const pais = await getUserCountry();
+  const paisValue = pais === 'SV' ? 'El Salvador' : 'Guatemala';
   const payload: CaseWebhookPayload = {
     action: 'case.query',
+    pais: paisValue,
     actor,
     data: {
       case_id: caseId
