@@ -341,7 +341,7 @@ const NuevoCaso: React.FC = () => {
         setShowSuccessAnimation(true);
         setTimeout(() => {
           setShowSuccessAnimation(false);
-          navigate('/app/casos');
+          api.getUser()?.role === 'ADMIN' || api.getUser()?.role === 'ADMINISTRADOR' ? navigate('/app/admin/casos') : navigate('/app/casos');
         }, 2000);
       } else {
         setToast({ message: 'Error al crear el caso. Por favor, intenta nuevamente.', type: 'error' });
