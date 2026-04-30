@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
             target: 'https://n8n.red.com.sv',
             changeOrigin: true,
             secure: true,
-            rewrite: () => '/webhook/6f27bb4b-bfcd-4776-b554-5194569be2a7',
+            rewrite: () => '/webhook/auth-workflow999',
           },
           // Casos (lista / creación) - usa el webhook de casos que compartiste
           '/api/casos': {
