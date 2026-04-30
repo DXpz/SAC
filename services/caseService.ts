@@ -772,11 +772,11 @@ export const getCases = async (): Promise<Case[]> => {
     return casos;
   }
 
-  // Si es SUPERVISOR o GERENTE, usar case.read para obtener todos los casos
+  // Si es SUPERVISOR o GERENTE, usar case.query para obtener todos los casos
   const pais = await getUserCountry();
   const paisValue = pais || 'SV';
   const payload: CaseWebhookPayload = {
-    action: 'case.read',
+    action: 'case.query',
     pais: paisValue,
     actor,
     data: {}
