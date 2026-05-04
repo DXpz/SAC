@@ -548,11 +548,17 @@ export const api = {
     // Actualizar usando caseService (conecta con n8n)
     // NO usar fallback local, si falla debe lanzar error
     await caseService.updateCaseStatus(id, status, detail || `Cambio de estado a ${status}`, clienteId || undefined);
-    
+
     // Limpiar caché de casos para forzar actualización
     clearCache('cases');
-    
+
     return true;
+  },
+
+  async reassignCase(caseId: string, newAgentId: string, motivo?: string): Promise<{ success: boolean; message: string }> {
+    const result = await caseService.reassignCase(caseId, newAgentId, motivo);
+    clearCache('cases');
+    return result;
   },
 
   async createCase(caseData: any): Promise<boolean> {
@@ -2227,24 +2233,6 @@ export const api = {
       
       throw new Error('Error de conexión con el servidor.');
     }
-  },
-
-  async reassignCase(caseId: string, newAgentId: string, justification: string): Promise<boolean> {
-    // Usar caseService.reassignCase según la documentación
-    // Formato: update_type: "reassign", case_id, agent_id
-    await caseService.reassignCase(caseId, newAgentId);
-    
-    // Limpiar caché de casos y agentes para forzar actualización
-    // Los agentes necesitan actualizarse porque el número de casos activos cambió
-    clearCache('cases');
-    clearCache('agentes');
-    
-    // Disparar evento para que GestionAgentes recargue los agentes
-    window.dispatchEvent(new CustomEvent('caso-reasignado', {
-      detail: { caseId, newAgentId }
-    }));
-    
-    return true;
   },
 
   async addCaseComment(caseId: string, comment: string): Promise<boolean> {

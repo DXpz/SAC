@@ -65,6 +65,91 @@ interface CaseWebhookResponse {
   [key: string]: any;
 }
 
+// Caché de agentes para resolver nombres de agentes por ID
+interface AgenteInfo {
+  id_agente: string;
+  nombre: string;
+  email: string;
+  estado: string;
+}
+
+let agentesCache: AgenteInfo[] | null = null;
+let agentesCacheTime: number = 0;
+const AGENTES_CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
+/**
+ * Obtiene la lista de agentes del webhook y la.cache
+ */
+const getAgentesInfo = async (): Promise<AgenteInfo[]> => {
+  const now = Date.now();
+  if (agentesCache && (now - agentesCacheTime) < AGENTES_CACHE_DURATION) {
+    return agentesCache;
+  }
+
+  try {
+    const actor = getActor();
+    if (!actor) return [];
+
+    const payload = {
+      action: 'agent.read',
+      actor,
+      data: { agent_id: 'all' }
+    };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    const response = await fetch(WEBHOOK_CASOS_URL, {
+      method: 'POST',
+      mode: 'cors',
+      credentials: 'omit',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) return [];
+
+    const result = await response.json();
+    let agents: AgenteInfo[] = [];
+
+    if (Array.isArray(result.agents)) {
+      agents = result.agents;
+    } else if (Array.isArray(result.agentes)) {
+      agents = result.agentes;
+    } else if (result.data && Array.isArray(result.data)) {
+      agents = result.data;
+    } else if (Array.isArray(result)) {
+      agents = result;
+    }
+
+    agentesCache = agents.map(a => ({
+      id_agente: a.id_agente || a.idAgente || a.id || '',
+      nombre: a.nombre || a.name || '',
+      email: a.email || '',
+      estado: a.estado || a.state || 'ACTIVO'
+    })).filter(a => a.id_agente);
+
+    agentesCacheTime = now;
+    return agentesCache;
+  } catch {
+    return agentesCache || [];
+  }
+};
+
+/**
+ * Busca el nombre de un agente por su ID de usuario
+ */
+const getAgenteNombreByUserId = (agenteUserId: string, agentesList?: AgenteInfo[]): string => {
+  if (!agenteUserId) return '';
+
+  const agentes = agentesList || agentesCache || [];
+  const agente = agentes.find(a => String(a.id_agente) === String(agenteUserId));
+  return agente?.nombre || '';
+};
+
 /**
  * Obtiene la información del actor (usuario autenticado)
  */
@@ -400,7 +485,11 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
     // Si no hay objeto agente pero hay agente_id y agente_name, crear objeto básico
     // El webhook puede enviar agentename (todo junto) desde n8n con round robin
     const agenteId = caseData.agente_user_id || caseData.agente_id || caseData.agentId || '';
-    const agenteName = caseData.agentename || caseData.agente_name || caseData.agente_nombre || caseData.agentName || caseData.nombre_agente || '';
+    let agenteName = caseData.agentename || caseData.agente_name || caseData.agente_nombre || caseData.agentName || caseData.nombre_agente || '';
+    // Si no hay nombre directo, buscar en cache de agentes usando agente_user_id
+    if (!agenteName && agenteId && agentesCache) {
+      agenteName = getAgenteNombreByUserId(agenteId, agentesCache);
+    }
     
     const agenteMapped = agente ? {
       idAgente: agente.id_agente || agente.agente_id || agente.idAgente || agente.id || '',
@@ -462,7 +551,7 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
       status: caseData.estado || caseData.status || CaseStatus.NUEVO,
       priority: caseData.prioridad || caseData.priority || 'Media',
       agentId: agenteMapped?.idAgente || String(agenteUserIdFromWebhook || caseData.agente_id || caseData.agentId || ''),
-      agentName: agenteMapped?.nombre || caseData.agentename || caseData.agente_name || caseData.agente_nombre || caseData.agentName || caseData.nombre_agente || '',
+      agentName: agenteMapped?.nombre || agenteName || getAgenteNombreByUserId(agenteUserIdFromWebhook, agentesCache || undefined),
       createdAt: createdAt,
       pais: caseData.pais || caseData.country || clienteMapped?.pais || '',
       slaDeadline: slaDeadlineFromWebhook || undefined, // Fecha final del SLA del webhook
@@ -749,11 +838,14 @@ export const createCase = async (caseData: {
 export const getCases = async (): Promise<Case[]> => {
   const actor = getActor();
   const userRole = getUserRole();
-  
+
   if (!actor) {
     throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
   }
-  
+
+  // Cargar cache de agentes para poder resolver nombres de agentes
+  await getAgentesInfo();
+
   // Si es AGENTE, usar case.agent para obtener solo sus casos asignados
   if (userRole === 'AGENTE') {
     const pais = await getUserCountry();
@@ -781,11 +873,11 @@ export const getCases = async (): Promise<Case[]> => {
     actor,
     data: {}
   };
-  
+
   const response = await callCaseWebhook(payload);
-  
+
   let casos = processWebhookResponse(response);
-  
+
   // Si es SUPERVISOR, filtrar casos por país del supervisor
   if (userRole === 'SUPERVISOR') {
     const supervisorCountry = await getUserCountry();
@@ -896,15 +988,18 @@ const processWebhookResponse = (response: CaseWebhookResponse): Case[] => {
  */
 export const getCaseById = async (caseId: string): Promise<Case | null> => {
   const actor = getActor();
-  
+
   if (!actor) {
     throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
   }
-  
+
   if (!caseId) {
     throw new Error('ID de caso requerido.');
   }
-  
+
+  // Cargar cache de agentes para poder resolver nombres de agentes
+  await getAgentesInfo();
+
   // Usar case.query para obtener el caso con historial completo
   const pais = await getUserCountry();
   const paisValue = pais === 'GT' ? 'Guatemala' : 'El Salvador';
@@ -916,9 +1011,9 @@ export const getCaseById = async (caseId: string): Promise<Case | null> => {
       case_id: caseId
     }
   };
-  
+
   const response = await callCaseWebhook(payload);
-  
+
   // Procesar respuesta del case.query (que viene con historial_caso y detalle_caso)
   if (Array.isArray(response) && response.length > 0) {
     const firstItem = response[0];
@@ -1529,46 +1624,61 @@ export const updateCaseStatus = async (
 };
 
 /**
- * Reasigna un agente a un caso
- * Según documentación: update_type: "reassign", case_id, agent_id
- * Retorna void - el frontend debe recargar el caso después de la reasignación
+ * Reasigna un caso a otro agente (manual)
+ * @param caseId ID del caso
+ * @param agentId ID del nuevo agente (user_id del agente)
+ * @param motivo Motivo de la reasignación (opcional)
  */
 export const reassignCase = async (
   caseId: string,
-  agentId: string
-): Promise<void> => {
+  agentId: string,
+  motivo?: string
+): Promise<{ success: boolean; message: string }> => {
   const actor = getActor();
-  
+
   if (!actor) {
     throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
   }
-  
+
   if (!caseId || !agentId) {
     throw new Error('ID de caso y ID de agente son requeridos.');
   }
-  
+
+  const pais = await getUserCountry();
+  const paisValue = pais === 'GT' ? 'Guatemala' : 'El Salvador';
+
   const payload: CaseWebhookPayload = {
     action: 'case.update',
-    actor,
+    pais: paisValue,
+    actor: {
+      email: actor.email
+    },
     data: {
       update_type: 'reassign',
       case_id: caseId,
-      agent_id: agentId
+      agent_id: agentId,
+      comentario: motivo || `Reasignación manual de caso`
     }
   };
-  
-  // Enviar reasignación al webhook de casos
-  const response = await callCaseWebhook(payload);
-  
-  // Verificar respuesta exitosa
-  if (response && typeof response === 'object' && response.success === false) {
-    const errorMsg = typeof response.error === 'string' ? response.error : 'Error al reasignar el caso';
-    throw new Error(errorMsg);
+
+  try {
+    // Enviar reasignación al webhook de casos
+    const response = await callCaseWebhook(payload);
+
+    // Verificar respuesta exitosa
+    if (response && typeof response === 'object' && response.success === false) {
+      const errorMsg = typeof response.error === 'string' ? response.error : 'Error al reasignar el caso';
+      return { success: false, message: errorMsg };
+    }
+
+    // Invalidar cache de agentes para forzar recarga
+    agentesCache = null;
+    agentesCacheTime = 0;
+
+    return { success: true, message: 'Caso reasignado correctamente' };
+  } catch (error: any) {
+    return { success: false, message: error.message || 'Error al reasignar el caso' };
   }
-  
-  // Si el webhook no retornó error, la reasignación fue exitosa
-  // El frontend se encargará de recargar el caso para mostrar los cambios
-  return;
 };
 
 /**

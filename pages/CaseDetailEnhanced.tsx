@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import { Case, CaseStatus, Cliente } from '../types';
+import { Case, CaseStatus, Cliente, Agente } from '../types';
 import { STATE_COLORS } from '../constants';
 import { ArrowLeft, MessageSquare, User, Building2, Phone, Mail, CheckCircle2, Clock, X, AlertTriangle, Lock, History, Send, Users, TrendingUp } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
@@ -12,20 +12,37 @@ const CaseDetail: React.FC = () => {
   const navigate = useNavigate();
   const [caso, setCaso] = useState<Case | null>(null);
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [agentes, setAgentes] = useState<Agente[]>([]);
   const [transitionLoading, setTransitionLoading] = useState(false);
   const { theme } = useTheme();
-  
+
   const [showResueltoModal, setShowResueltoModal] = useState(false);
   const [showPendienteModal, setShowPendienteModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showReassignModal, setShowReassignModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<{ state: CaseStatus; label: string } | null>(null);
   const [formDetail, setFormDetail] = useState('');
   const [comment, setComment] = useState('');
+  const [selectedAgentId, setSelectedAgentId] = useState<string>('');
+  const [reassignLoading, setReassignLoading] = useState(false);
+
+  // Obtener usuario actual para verificar rol
+  const currentUser = api.getUser();
+  const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR';
 
   useEffect(() => {
     loadClientes();
+    loadAgentes();
     if (id) loadCaso(id);
   }, [id]);
+
+  const loadAgentes = async () => {
+    try {
+      const ags = await api.getAgentes();
+      setAgentes(ags.filter(a => a.estado === 'Activo'));
+    } catch (err) {
+    }
+  };
 
   // Enriquecer caso con datos del cliente cuando se carguen los clientes
   useEffect(() => {
@@ -629,28 +646,31 @@ const CaseDetail: React.FC = () => {
               </div>
             )}
 
-            {/* Botón Reasignar */}
-            <button 
-              className="w-full mt-4 py-2.5 rounded-lg text-xs font-semibold transition-all border"
-              style={{
-                backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : '#ffffff',
-                borderColor: 'rgba(59, 130, 246, 0.4)',
-                color: '#3b82f6'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.05)';
-                e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.6)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : '#ffffff';
-                e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
-              }}
-            >
-              <div className="flex items-center justify-center gap-2">
-                <Users className="w-4 h-4" />
-                Reasignar
-              </div>
-            </button>
+            {/* Botón Reasignar - Solo visible para ADMIN/ADMINISTRADOR */}
+            {isAdmin && (
+              <button
+                className="w-full mt-4 py-2.5 rounded-lg text-xs font-semibold transition-all border"
+                style={{
+                  backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : '#ffffff',
+                  borderColor: 'rgba(59, 130, 246, 0.4)',
+                  color: '#3b82f6'
+                }}
+                onClick={() => setShowReassignModal(true)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.05)';
+                  e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.6)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : '#ffffff';
+                  e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+                }}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <Users className="w-4 h-4" />
+                  Reasignar
+                </div>
+              </button>
+            )}
           </section>
         </div>
       </div>
@@ -929,6 +949,130 @@ const CaseDetail: React.FC = () => {
                     </div>
                 </div>
             </div>
+        </div>
+      )}
+
+      {/* Modal Reasignar Agente */}
+      {showReassignModal && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4 z-50" style={{backgroundColor: styles.modal.overlay}}>
+          <div className="rounded-xl w-full max-w-sm overflow-hidden shadow-2xl border transform animate-in fade-in zoom-in" style={{...styles.modal, borderColor: styles.card.borderColor}}>
+            <div className="p-4 border-b flex justify-between items-center" style={{borderColor: styles.cardHeader.borderColor}}>
+              <h3 className="font-bold text-sm" style={{color: styles.text.primary}}>
+                Reasignar Caso
+              </h3>
+              <button
+                onClick={() => {
+                  setShowReassignModal(false);
+                  setSelectedAgentId('');
+                }}
+                className="p-1.5 rounded-lg transition-colors"
+                style={{color: '#64748b'}}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f1f5f9';
+                  e.currentTarget.style.color = '#475569';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = '#64748b';
+                }}
+              >
+                <X className="w-4 h-4"/>
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <p className="text-xs font-medium leading-relaxed" style={{color: '#64748b'}}>
+                Selecciona el nuevo agente para este caso. El caso será reasignado de <strong>{caso?.agentName || 'Robin'}</strong>.
+              </p>
+
+              {/* Selector de agente */}
+              <div>
+                <label className="block text-xs font-bold mb-2" style={{color: '#475569'}}>
+                  Nuevo Agente
+                </label>
+                <select
+                  value={selectedAgentId}
+                  onChange={(e) => setSelectedAgentId(e.target.value)}
+                  className="w-full p-3 rounded-lg border outline-none focus:ring-2 transition-all text-xs"
+                  style={{
+                    backgroundColor: '#f8fafc',
+                    borderColor: 'rgba(148, 163, 184, 0.3)',
+                    color: '#0f172a'
+                  }}
+                >
+                  <option value="">Seleccionar agente...</option>
+                  {agentes
+                    .filter(a => String(a.idAgente) !== String(caso?.agentId))
+                    .map(agente => (
+                      <option key={agente.idAgente} value={agente.idAgente}>
+                        {agente.nombre} ({agente.casosActivos} casos activos)
+                      </option>
+                    ))
+                  }
+                </select>
+              </div>
+
+              <div className="flex gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowReassignModal(false);
+                    setSelectedAgentId('');
+                  }}
+                  className="flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all border"
+                  style={{
+                    color: '#475569',
+                    borderColor: 'rgba(148, 163, 184, 0.3)',
+                    backgroundColor: 'transparent'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f1f5f9';
+                    e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!selectedAgentId || !caso) return;
+                    setReassignLoading(true);
+                    try {
+                      const result = await api.reassignCase(caso.ticketNumber, selectedAgentId, 'Reasignación manual');
+                      if (result.success) {
+                        setShowReassignModal(false);
+                        setSelectedAgentId('');
+                        await loadCaso(caso.ticketNumber);
+                      } else {
+                        alert(result.message || 'Error al reasignar');
+                      }
+                    } catch (err: any) {
+                      alert(err.message || 'Error al reasignar el caso');
+                    } finally {
+                      setReassignLoading(false);
+                    }
+                  }}
+                  disabled={!selectedAgentId || reassignLoading}
+                  className="flex-1 py-2.5 text-xs font-semibold text-white rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{backgroundColor: '#c8151b'}}
+                  onMouseEnter={(e) => {
+                    if (!e.currentTarget.disabled) {
+                      e.currentTarget.style.backgroundColor = '#dc2626';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#c8151b';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  {reassignLoading ? 'Reasignando...' : 'Reasignar'}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
