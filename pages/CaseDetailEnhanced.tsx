@@ -6,6 +6,7 @@ import { STATE_COLORS } from '../constants';
 import { ArrowLeft, MessageSquare, User, Building2, Phone, Mail, CheckCircle2, Clock, X, AlertTriangle, Lock, History, Send, Users, TrendingUp } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import LoadingScreen from '../components/LoadingScreen';
+import { usePermissions } from '../hooks/usePermissions';
 
 const CaseDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -26,10 +27,8 @@ const CaseDetail: React.FC = () => {
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
   const [reassignLoading, setReassignLoading] = useState(false);
 
-  // Obtener usuario actual para verificar rol
-  const currentUser = api.getUser();
-  const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR';
-  console.log('[DEBUG] currentUser:', currentUser, '| isAdmin:', isAdmin);
+// Sistema de permisos
+  const { checkCanReassignCase, checkCanCloseCase, checkCanModifyCase, currentUser } = usePermissions();
 
   useEffect(() => {
     loadClientes();
@@ -178,10 +177,6 @@ const CaseDetail: React.FC = () => {
   
   // Obtener transiciones permitidas ÚNICAMENTE desde n8n (sin fallback a estados demo)
   let validTransitions: CaseStatus[] = [];
-  
-  // DEBUG
-  console.log('[DEBUG] caso.transiciones:', caso.transiciones);
-  console.log('[DEBUG] caso.estado:', caso.estado, '| caso.status:', caso.status);
   
   if (caso.transiciones && caso.transiciones.length > 0) {
     // Filtrar transiciones que parten del estado actual
@@ -677,8 +672,8 @@ const CaseDetail: React.FC = () => {
               </div>
             )}
 
-            {/* Botón Reasignar - Solo visible para ADMIN/ADMINISTRADOR */}
-            {isAdmin && (
+            {/* Botón Reasignar - Solo visible si tiene permiso de reasignar */}
+            {checkCanReassignCase() && (
               <button
                 className="w-full mt-4 py-2.5 rounded-lg text-xs font-semibold transition-all border"
                 style={{
