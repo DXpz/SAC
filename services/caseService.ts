@@ -757,7 +757,7 @@ export const getCases = async (): Promise<Case[]> => {
   // Si es AGENTE, usar case.agent para obtener solo sus casos asignados
   if (userRole === 'AGENTE') {
     const pais = await getUserCountry();
-    const paisValue = pais || 'SV';
+    const paisValue = pais === 'GT' ? 'Guatemala' : 'El Salvador';
     const payload: CaseWebhookPayload = {
       action: 'case.agent',
       pais: paisValue,
@@ -774,7 +774,7 @@ export const getCases = async (): Promise<Case[]> => {
 
   // Si es SUPERVISOR o GERENTE, usar case.query para obtener todos los casos
   const pais = await getUserCountry();
-  const paisValue = pais || 'SV';
+  const paisValue = pais === 'GT' ? 'Guatemala' : 'El Salvador';
   const payload: CaseWebhookPayload = {
     action: 'case.query',
     pais: paisValue,
@@ -907,7 +907,7 @@ export const getCaseById = async (caseId: string): Promise<Case | null> => {
   
   // Usar case.query para obtener el caso con historial completo
   const pais = await getUserCountry();
-  const paisValue = pais || 'SV';
+  const paisValue = pais === 'GT' ? 'Guatemala' : 'El Salvador';
   const payload: CaseWebhookPayload = {
     action: 'case.query',
     pais: paisValue,
@@ -1122,7 +1122,7 @@ export const updateCaseStatus = async (
 
   // Obtener país para el payload
   const pais = await getUserCountry();
-  const paisValue = pais || 'SV';
+  const paisValue = pais === 'GT' ? 'Guatemala' : 'El Salvador';
 
   const payload = {
     action: 'case.update',
@@ -1638,7 +1638,7 @@ export const sendCaseCloseWebhook = async (
 
     // Obtener país para el payload
     const pais = await getUserCountry();
-    const paisValue = pais || 'SV';
+    const paisValue = pais === 'GT' ? 'Guatemala' : 'El Salvador';
 
     const payload = {
       action: 'case.close',
@@ -1757,7 +1757,7 @@ export const updateCaseData = async (
 
   // Obtener país para el payload
   const pais = await getUserCountry();
-  const paisValue = pais || 'SV';
+  const paisValue = pais === 'GT' ? 'Guatemala' : 'El Salvador';
 
   const payload = {
     action: 'case.edit',
