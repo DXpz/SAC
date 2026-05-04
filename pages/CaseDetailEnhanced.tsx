@@ -29,6 +29,7 @@ const CaseDetail: React.FC = () => {
   // Obtener usuario actual para verificar rol
   const currentUser = api.getUser();
   const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR';
+  console.log('[DEBUG] currentUser:', currentUser, '| isAdmin:', isAdmin);
 
   useEffect(() => {
     loadClientes();
@@ -177,6 +178,10 @@ const CaseDetail: React.FC = () => {
   
   // Obtener transiciones permitidas ÚNICAMENTE desde n8n (sin fallback a estados demo)
   let validTransitions: CaseStatus[] = [];
+  
+  // DEBUG
+  console.log('[DEBUG] caso.transiciones:', caso.transiciones);
+  console.log('[DEBUG] caso.estado:', caso.estado, '| caso.status:', caso.status);
   
   if (caso.transiciones && caso.transiciones.length > 0) {
     // Filtrar transiciones que parten del estado actual
@@ -371,6 +376,32 @@ const CaseDetail: React.FC = () => {
                 )}
               </div>
 
+              {/* Barra de progreso del caso (estado) */}
+              {caso.progreso !== undefined && (
+                <div className="mb-4 p-4 rounded-lg border" style={{...styles.input, borderColor: '#3b82f6'}}>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-semibold" style={{color: '#3b82f6'}}>Progreso del Caso</p>
+                    <p className="text-sm font-bold" style={{color: '#3b82f6'}}>{caso.progreso}%</p>
+                  </div>
+                  <div className="w-full h-4 rounded-full overflow-hidden" style={{backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.15)'}}>
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{
+                        width: `${caso.progreso}%`,
+                        backgroundColor: '#3b82f6'
+                      }}
+                    />
+                  </div>
+                  <div className="flex justify-between mt-1">
+                    {Object.entries({
+                      'Nuevo': 0, 'En Proceso': 20, 'Pendiente': 50, 'Escalado': 70, 'Resuelto': 90, 'Cerrado': 100
+                    }).map(([label, pct]) => (
+                      <span key={label} className="text-[10px]" style={{color: styles.text.tertiary}}>{label}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Barra de progreso SLA */}
               <div>
                 <div className="flex justify-between items-center mb-2">
@@ -479,7 +510,7 @@ const CaseDetail: React.FC = () => {
           </section>
 
           {/* Historial del Caso */}
-          {caso.history && caso.history.length > 0 && (
+          {(caso.history || caso.historial) && (caso.history?.length > 0 || caso.historial?.length > 0) && (
             <section className="rounded-xl border overflow-hidden shadow-sm" style={{...styles.card}}>
               <div className="p-6">
                 <div className="flex items-center gap-2 mb-6">
@@ -491,7 +522,7 @@ const CaseDetail: React.FC = () => {
                 <div className="space-y-4 relative before:absolute before:left-[15px] before:top-3 before:bottom-3 before:w-0.5 before:rounded-full" style={{
                   '--before-bg': theme === 'dark' ? 'linear-gradient(to bottom, rgba(148, 163, 184, 0.4), rgba(148, 163, 184, 0.2))' : 'linear-gradient(to bottom, rgba(148, 163, 184, 0.4), rgba(148, 163, 184, 0.2))'
                 } as React.CSSProperties}>
-                  {caso.history.map((entry, idx) => (
+                  {(caso.history || caso.historial || []).map((entry: any, idx: number) => (
                     <div key={idx} className="relative pl-10">
                       <div 
                         className="absolute left-0 top-1 w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-sm"
@@ -507,9 +538,9 @@ const CaseDetail: React.FC = () => {
                         }}
                       >
                         <p className="text-xs font-medium mb-2" style={{color: styles.text.tertiary}}>
-                          {new Date(entry.fechaHora).toLocaleString('es-ES', { 
-                            dateStyle: 'short', 
-                            timeStyle: 'short' 
+                          {new Date(entry.fecha || entry.fechaHora || entry.fechayhora).toLocaleString('es-ES', {
+                            dateStyle: 'short',
+                            timeStyle: 'short'
                           })}
                         </p>
                         <p className="text-sm font-semibold leading-relaxed mb-1" style={{color: styles.text.primary}}>

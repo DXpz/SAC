@@ -1075,7 +1075,61 @@ export const getCaseById = async (caseId: string): Promise<Case | null> => {
   if (Array.isArray(response) && response.length > 0) {
     const firstItem = response[0];
     
-    // Verificar si es el formato con historial_caso y detalle_caso
+    // NUEVO FORMATO V4: El caso viene directamente con historial y transiciones
+    // { case_id, estado, historial: [...], transiciones: [...] }
+    if (firstItem && typeof firstItem === 'object' && 'case_id' in firstItem && !('historial_caso' in firstItem)) {
+      // Formato nuevo V4: viene directo del Code READ Response
+      const casoData = { ...firstItem };
+      
+      // El historial viene como array en firstItem.historial
+      const historialArray = Array.isArray(firstItem.historial) ? firstItem.historial : [];
+      
+      // Las transiciones vienen como array en firstItem.transiciones
+      let transicionesArray: any[] = [];
+      if (typeof firstItem.transiciones === 'string') {
+        try {
+          transicionesArray = JSON.parse(firstItem.transiciones);
+        } catch (error) {
+          transicionesArray = [];
+        }
+      } else if (Array.isArray(firstItem.transiciones)) {
+        transicionesArray = firstItem.transiciones;
+      }
+      
+      // Mapear el historial
+      const historialMapeado = historialArray.length > 0 
+        ? historialArray.map((h: any) => ({
+            id: h.id || h.fechayhora || Date.now().toString(),
+            fecha: h.fechayhora || h.fecha || new Date().toISOString(),
+            estadoAnterior: h.estado_anterior || '',
+            estadoNuevo: h.estado_nuevo || h.estado || '',
+            usuario: h.usuario || 'Sistema',
+            detalle: h.detalle || '',
+            pais: h.pais || ''
+          }))
+        : [];
+      
+      // Mapear las transiciones permitidas
+      const transicionesMapeadas = transicionesArray.map((transicion: any) => ({
+        row_number: transicion.row_number,
+        estado_origen: transicion.estado_origen || transicion.estadoOrigen || '',
+        estado_destino: transicion.estado_destino || transicion.estadoDestino || '',
+        descripcion_transicion: transicion.descripcion_transicion || '',
+        permitido: transicion.permitido !== undefined ? transicion.permitido : true,
+        ...transicion
+      }));
+      
+      const casoActualizado = mapWebhookResponseToCase(casoData);
+      
+      if (casoActualizado) {
+        casoActualizado.transiciones = transicionesMapeadas;
+        casoActualizado.historial = historialMapeado;
+        casoActualizado.history = historialMapeado;
+        return casoActualizado;
+      }
+    }
+    
+    // Formato antiguo con historial_caso y detalle_caso
     if (firstItem && typeof firstItem === 'object' && 'historial_caso' in firstItem && 'detalle_caso' in firstItem) {
       
       const historialArray = Array.isArray(firstItem.historial_caso) ? firstItem.historial_caso : [];
