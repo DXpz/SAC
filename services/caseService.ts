@@ -67,6 +67,7 @@ interface CaseWebhookResponse {
 
 // Caché de agentes para resolver nombres de agentes por ID
 interface AgenteInfo {
+  id: string; // ID numérico que viene de agentes table (id колонка)
   id_agente: string;
   nombre: string;
   email: string;
@@ -78,7 +79,7 @@ let agentesCacheTime: number = 0;
 const AGENTES_CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
 /**
- * Obtiene la lista de agentes del webhook y la.cache
+ * Obtiene la lista de agentes usando el webhook de agentes o el de usuarios
  */
 const getAgentesInfo = async (): Promise<AgenteInfo[]> => {
   const now = Date.now();
@@ -90,21 +91,23 @@ const getAgentesInfo = async (): Promise<AgenteInfo[]> => {
     const actor = getActor();
     if (!actor) return [];
 
-    const payload = {
-      action: 'agent.read',
+    // Intentar primero con el webhook de usuarios ya que tiene los datos
+    const usuariosPayload = {
+      action: 'user.read',
       actor,
-      data: { agent_id: 'all' }
+      data: { id: 'all' }
     };
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-    const response = await fetch(WEBHOOK_CASOS_URL, {
+    // Usar el webhook de usuarios (que tiene id_agente/nombre para agentes)
+    const response = await fetch('https://n8n.red.com.sv/webhook/usuarios-workflow', {
       method: 'POST',
       mode: 'cors',
       credentials: 'omit',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(usuariosPayload),
       signal: controller.signal,
     });
 
@@ -113,41 +116,95 @@ const getAgentesInfo = async (): Promise<AgenteInfo[]> => {
     if (!response.ok) return [];
 
     const result = await response.json();
-    let agents: AgenteInfo[] = [];
+    let agents: any[] = [];
 
-    if (Array.isArray(result.agents)) {
-      agents = result.agents;
-    } else if (Array.isArray(result.agentes)) {
-      agents = result.agentes;
+    if (Array.isArray(result)) {
+      agents = result;
     } else if (result.data && Array.isArray(result.data)) {
       agents = result.data;
-    } else if (Array.isArray(result)) {
-      agents = result;
     }
 
-    agentesCache = agents.map(a => ({
-      id_agente: a.id_agente || a.idAgente || a.id || '',
-      nombre: a.nombre || a.name || '',
-      email: a.email || '',
-      estado: a.estado || a.state || 'ACTIVO'
-    })).filter(a => a.id_agente);
+    // Filtrar solo usuarios con rol AGENTE y mapear
+    agentesCache = agents
+      .filter(a => a.role === 'AGENTE' || a.role === 'agente')
+      .map(a => ({
+        id: a.id_agente || a.idAgente || a.id || '',
+        id_agente: a.id_agente || a.idAgente || a.id || '',
+        nombre: a.nombre || a.name || '',
+        email: a.email || '',
+        estado: a.estado || a.state || 'ACTIVO'
+      }))
+      .filter(a => a.nombre);
+
+    // Si no hay agentes del webhook de usuarios, intentar con agentes-workflow
+    if (agentesCache.length === 0) {
+      const agentesPayload = {
+        action: 'agent.read',
+        actor,
+        data: { agent_id: 'all' }
+      };
+
+      const controller2 = new AbortController();
+      const timeoutId2 = setTimeout(() => controller2.abort(), 15000);
+
+      const response2 = await fetch('https://n8n.red.com.sv/webhook/d804c804-9841-41f7-bc4b-66d2edeed53b', {
+        method: 'POST',
+        mode: 'cors',
+        credentials: 'omit',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(agentesPayload),
+        signal: controller2.signal,
+      });
+
+      clearTimeout(timeoutId2);
+
+      if (response2.ok) {
+        const result2 = await response2.json();
+        let agents2: any[] = [];
+
+        if (Array.isArray(result2.agents)) {
+          agents2 = result2.agents;
+        } else if (Array.isArray(result2.agentes)) {
+          agents2 = result2.agentes;
+        } else if (result2.data && Array.isArray(result2.data)) {
+          agents2 = result2.data;
+        } else if (Array.isArray(result2)) {
+          agents2 = result2;
+        }
+
+        agentesCache = agents2.map(a => ({
+          id: a.id || a.id_agente || '',
+          id_agente: a.id_agente || a.idAgente || a.id || '',
+          nombre: a.nombre || a.name || '',
+          email: a.email || '',
+          estado: a.estado || a.state || 'ACTIVO'
+        })).filter(a => a.nombre);
+      }
+    }
 
     agentesCacheTime = now;
-    return agentesCache;
+    return agentesCache || [];
   } catch {
     return agentesCache || [];
   }
 };
 
 /**
- * Busca el nombre de un agente por su ID de usuario
+ * Busca el nombre de un agente por su ID (agente_user_id de casos)
+ * El agente_user_id corresponde a la columna 'id' en la tabla agentes
+ * Si no encuentra el nombre, retorna "Agente #ID"
  */
 const getAgenteNombreByUserId = (agenteUserId: string, agentesList?: AgenteInfo[]): string => {
   if (!agenteUserId) return '';
 
   const agentes = agentesList || agentesCache || [];
-  const agente = agentes.find(a => String(a.id_agente) === String(agenteUserId));
-  return agente?.nombre || '';
+  // Buscar por 'id' que es el ID numérico de la tabla agentes
+  const agente = agentes.find(a => String(a.id) === String(agenteUserId));
+  if (agente?.nombre) {
+    return agente.nombre;
+  }
+  // Fallback: mostrar "Agente #ID" si no se encontró el nombre
+  return `Agente #${agenteUserId}`;
 };
 
 /**
