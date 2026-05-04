@@ -966,8 +966,12 @@ const processWebhookResponse = (response: CaseWebhookResponse): Case[] => {
     const allCases: any[] = [];
     for (const item of response) {
       if (item && typeof item === 'object') {
+        // V4 FORMAT: { casos: [...], transiciones: [...] }
+        if (item.casos && Array.isArray(item.casos)) {
+          allCases.push(...item.casos);
+        }
         // Si el item tiene case_id o id, es un caso directo
-        if (item.case_id || item.id || item.ticketNumber) {
+        else if (item.case_id || item.id || item.ticketNumber) {
           allCases.push(item);
         } else if (item.data && Array.isArray(item.data)) {
           // Si tiene data como array, extraer los casos
@@ -1077,7 +1081,10 @@ export const getCaseById = async (caseId: string): Promise<Case | null> => {
     
     // NUEVO FORMATO V4: El caso viene directamente con historial y transiciones
     // { case_id, estado, historial: [...], transiciones: [...] }
-    if (firstItem && typeof firstItem === 'object' && 'case_id' in firstItem && !('historial_caso' in firstItem)) {
+    // Solo aplicar si tiene case_id Y tiene historial O transiciones (no es una lista de casos)
+    if (firstItem && typeof firstItem === 'object' && 
+        'case_id' in firstItem && !('historial_caso' in firstItem) &&
+        (Array.isArray(firstItem.historial) || Array.isArray(firstItem.transiciones))) {
       // Formato nuevo V4: viene directo del Code READ Response
       const casoData = { ...firstItem };
       
