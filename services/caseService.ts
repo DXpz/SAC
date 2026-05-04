@@ -1061,11 +1061,11 @@ export const getCaseById = async (caseId: string): Promise<Case | null> => {
   // Cargar cache de agentes para poder resolver nombres de agentes
   await getAgentesInfo();
 
-  // Usar case.query para obtener el caso con historial completo
+  // Usar case.read para obtener un caso específico con historial y transiciones
   const pais = await getUserCountry();
   const paisValue = pais === 'GT' ? 'Guatemala' : 'El Salvador';
   const payload: CaseWebhookPayload = {
-    action: 'case.query',
+    action: 'case.read',
     pais: paisValue,
     actor,
     data: {
@@ -1075,7 +1075,7 @@ export const getCaseById = async (caseId: string): Promise<Case | null> => {
 
   const response = await callCaseWebhook(payload);
 
-  // Procesar respuesta del case.query (que viene con historial_caso y detalle_caso)
+  // Procesar respuesta del case.read (que viene con historial y transiciones)
   if (Array.isArray(response) && response.length > 0) {
     const firstItem = response[0];
     
