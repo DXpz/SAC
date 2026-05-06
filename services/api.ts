@@ -1,6 +1,5 @@
 
 import { Case, CaseStatus, KPI, User, Role, Cliente, Categoria } from '../types';
-import { MOCK_CASOS, MOCK_AGENTES, MOCK_USERS, MOCK_CLIENTES, MOCK_CATEGORIAS } from './mockData';
 import { API_CONFIG, CASES_WEBHOOK_URL, CLIENTS_WEBHOOK_URL } from '../config';
 import { emailService } from './emailService';
 import * as caseService from './caseService';
@@ -69,16 +68,6 @@ const clearCache = (key?: 'cases' | 'clientes' | 'agentes' | 'usuarios') => {
     delete cache[key];
   } else {
     Object.keys(cache).forEach(k => delete cache[k as keyof typeof cache]);
-  }
-};
-
-// Inicializar datos en localStorage si no existen
-const initStorage = () => {
-  if (!localStorage.getItem('intelfon_cases')) {
-    localStorage.setItem('intelfon_cases', JSON.stringify(MOCK_CASOS));
-  }
-  if (!localStorage.getItem('intelfon_agents')) {
-    localStorage.setItem('intelfon_agents', JSON.stringify(MOCK_AGENTES));
   }
 };
 
@@ -592,127 +581,11 @@ export const api = {
       // Limpiar caché de casos para forzar actualización
       clearCache('cases');
       return true;
-    } catch (err: any) {
-      
-      // Fallback: Método legacy
-    // Buscar la categoría seleccionada
-    const categoriaSeleccionada = caseData.categoriaId 
-      ? MOCK_CATEGORIAS.find(cat => cat.idCategoria === caseData.categoriaId)
-      : null;
-
-
-    // Determinar categoria_id y nombre para el JSON
-    const categoriaId = categoriaSeleccionada 
-      ? (typeof categoriaSeleccionada.idCategoria === 'string' ? parseInt(categoriaSeleccionada.idCategoria) || 1 : categoriaSeleccionada.idCategoria)
-      : DEFAULT_CATEGORY.categoria_id;
-    const categoriaNombre = categoriaSeleccionada?.nombre || DEFAULT_CATEGORY.nombre;
-
-
-    // Obtener agentes para la asignación
-    
-    const agentes = await this.getAgentes();
-    
-    // Determinar agente asignado según el rol del usuario que crea el caso
-    if (user?.role === 'AGENTE') {
-      // Si es un agente, asignar el caso a él mismo
-      
-      agenteAsignado = agentes.find(a => 
-        a.email?.toLowerCase() === user.email?.toLowerCase() || 
-        a.idAgente === user.id
-      );
-      
-      if (!agenteAsignado) {
-        agenteAsignado = agentes.find(a => a.estado === 'Activo') || agentes[0];
-      } else {
-      }
-    } else {
-      // Si es supervisor o gerente, usar round robin (primer agente activo con menos casos)
-      const agentesActivos = agentes.filter(a => a.estado === 'Activo');
-      agenteAsignado = agentesActivos.length > 0 ? agentesActivos[0] : agentes[0];
+} catch (err: any) {
+      // Sin fallback a mock - lanzar error si caseService falla
+      console.error('Error creating case via caseService:', err);
+      throw new Error('No se pudo crear el caso. Por favor intenta de nuevo.');
     }
-    
-
-    // Construir el payload completo para n8n según documentación
-    // actor solo debe tener email según la API docs
-    const n8nPayload = {
-      action: 'case.create',
-      pais: caseData.pais || caseData.country || 'Guatemala',
-      actor: {
-        email: actorPayload.email
-      },
-      data: {
-        cliente: {
-          cliente_id: caseData.clienteId || 'N/A',
-          email: caseData.clientEmail || '',
-          telefono: caseData.phone || caseData.clientPhone || ''
-        },
-        categoria: {
-          id: parseInt(categoriaId) || 1
-        }
-      },
-      canal_origen: caseData.contactChannel || caseData.canalOrigen || 'Web',
-      canal_notificacion: caseData.notificationChannel || caseData.contactChannel || 'Email',
-      asunto: caseData.subject,
-      descripcion: caseData.description,
-    };
-
-
-      // Intentar crear el caso en el backend n8n usando el contrato CRUD.CREATE (no bloquea la creación local)
-    try {
-      const startTime = Date.now();
-      
-      const response = await callCasesWebhook('POST', n8nPayload);
-      
-      const duration = Date.now() - startTime;
-      
-      if (response && typeof response === 'object') {
-      }
-      
-      } catch (err2: any) {
-        if (err2?.response) {
-      }
-      }
-    }
-
-    // 2) Crear siempre el caso en local (modo demo / sin backend disponible)
-    const cases = await this.getCases();
-    const newId = `CASO-${Math.floor(1000 + Math.random() * 9000)}`;
-    const newEntry = {
-      ...caseData,
-      idCaso: newId,
-      id: newId,
-      ticketNumber: newId,
-      // NO asignar agente localmente - el Round Robin de n8n lo asignará
-      agentId: '',
-      agentName: 'Sin asignar',
-      categoria: { nombre: 'General', slaDias: 2 },
-      category: 'General',
-      canalOrigen: caseData.contactChannel || caseData.canalOrigen || 'Web',
-      origin: caseData.contactChannel || caseData.canalOrigen || 'Web',
-      diasAbierto: 0,
-      createdAt: new Date().toISOString(),
-      historial: [{
-        tipo_evento: "CREADO",
-        justificacion: "Caso creado",
-        autor_nombre: "Sistema",
-        autor_rol: "sistema",
-        fecha: new Date().toISOString()
-      }],
-      history: [{
-        tipo_evento: "CREADO",
-        justificacion: "Caso creado",
-        autor_nombre: "Sistema",
-        autor_rol: "sistema",
-        fecha: new Date().toISOString()
-      }]
-    };
-    cases.unshift(newEntry);
-    localStorage.setItem('intelfon_cases', JSON.stringify(cases));
-    
-    // Limpiar caché para que el dashboard actualice
-    clearCache('cases');
-    
-    return true;
   },
 
   async getKPIs(): Promise<KPI> {
@@ -790,10 +663,7 @@ export const api = {
       const currentUser = this.getUser();
       
       if (!currentUser) {
-        // Si no hay usuario, usar datos locales
-    initStorage();
-    const data = localStorage.getItem('intelfon_agents');
-    return data ? JSON.parse(data) : MOCK_AGENTES;
+        return [];
       }
 
       const actor = buildActorPayload(currentUser);
@@ -1012,15 +882,11 @@ export const api = {
           return mappedAgents;
         }
 
-        // Si no hay agentes, usar fallback local
-        initStorage();
-        const data = localStorage.getItem('intelfon_agents');
-        return data ? JSON.parse(data) : MOCK_AGENTES;
+        // Si no hay agentes, devolver array vacío
+        return [];
       } catch (err: any) {
-        // Fallback: usar datos locales
-        initStorage();
-        const data = localStorage.getItem('intelfon_agents');
-        return data ? JSON.parse(data) : MOCK_AGENTES;
+        console.error('Error fetching agentes:', err);
+        return [];
       }
     });
   },
@@ -1211,26 +1077,88 @@ export const api = {
           return mapped;
       }
 
-      // Si la respuesta no tiene el formato esperado, usar fallback
-      return MOCK_CLIENTES;
+      return [];
     } catch (err) {
-      return MOCK_CLIENTES;
+      console.error('Error fetching clientes:', err);
+      return [];
     }
     });
   },
 
-  // Obtener cliente por ID (para autocompletar campos)
+  // Obtener cliente por ID
   async getClienteById(clienteId: string): Promise<Cliente | undefined> {
-    // TODO: Cuando esté listo el flujo de n8n, aquí se hará POST al webhook con action: "client.read" y cliente_id
-    // Por ahora buscamos en mock
-    return MOCK_CLIENTES.find(c => c.idCliente === clienteId);
+    try {
+      const user = this.getUser();
+      if (!user) return undefined;
+
+      const actor = buildActorPayload(user);
+      const payload = {
+        action: 'case.list_client',
+        actor,
+        data: { client: clienteId }
+      };
+
+      const response = await callClientsWebhook<any>('POST', payload);
+
+      let clientesArray: any[] = [];
+      if (Array.isArray(response)) {
+        clientesArray = response;
+      } else if (response && typeof response === 'object') {
+        clientesArray = response.clientes ?? response.clients ?? response.data ?? [];
+      }
+
+      if (clientesArray.length > 0) {
+        const mapped = clientesArray.map(mapCliente);
+        return mapped.find(c => c.idCliente === clienteId);
+      }
+      return undefined;
+    } catch (err) {
+      return undefined;
+    }
   },
 
-  // Obtener lista de categorías (por ahora mock, luego se conectará con n8n)
+  // Obtener lista de categorías desde la API real
   async getCategorias(): Promise<Categoria[]> {
-    // TODO: Cuando esté listo el flujo de n8n, aquí se hará POST al webhook con action: "category.list"
-    // Por ahora retornamos datos mock
-    return MOCK_CATEGORIAS.filter(cat => cat.activa);
+    try {
+      const user = this.getUser();
+      if (!user) return [];
+
+      const actor = buildActorPayload(user);
+      const payload = {
+        action: 'category.query',
+        actor: {
+          user_id: actor.user_id,
+          email: actor.email,
+          role: actor.role
+        },
+        data: {}
+      };
+
+      const response = await callCategoriesWebhook<any>('POST', payload);
+
+      let categoriasArray: any[] = [];
+      if (Array.isArray(response)) {
+        categoriasArray = response;
+      } else if (response && typeof response === 'object') {
+        categoriasArray = response.categorias ?? response.categories ?? response.data ?? [];
+      }
+
+      if (!Array.isArray(categoriasArray)) return [];
+
+      return categoriasArray
+        .filter((c: any) => c.activa !== false)
+        .map((c: any): Categoria => ({
+          idCategoria: String(c.id ?? c.categoria_id ?? ''),
+          nombre: c.nombre ?? c.name ?? c.category_name ?? '',
+          slaDias: Number(c.sla ?? c.sla_dias ?? 5),
+          diasAlertaSupervisor: Number(c.dias_alerta_supervisor ?? c.diasAlertaSupervisor ?? 3),
+          diasAlertaGerente: Number(c.dias_alerta_gerente ?? c.diasAlertaGerente ?? 4),
+          activa: c.activa !== false
+        }));
+    } catch (err) {
+      console.error('Error fetching categorias:', err);
+      return [];
+    }
   },
 
   // Crear nueva categoría mediante webhook

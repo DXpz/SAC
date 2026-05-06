@@ -7,6 +7,7 @@ import { ArrowLeft, MessageSquare, User, Building2, Phone, Mail, CheckCircle2, C
 import { useTheme } from '../contexts/ThemeContext';
 import LoadingScreen from '../components/LoadingScreen';
 import { usePermissions } from '../hooks/usePermissions';
+import { getAvailableStatusChanges } from '../services/permissions';
 
 const CaseDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -27,8 +28,8 @@ const CaseDetail: React.FC = () => {
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
   const [reassignLoading, setReassignLoading] = useState(false);
 
-// Sistema de permisos
-  const { checkCanReassignCase, checkCanCloseCase, checkCanModifyCase, currentUser } = usePermissions();
+  // Sistema de permisos
+  const { checkCanReassignCase, checkCanCloseCase, checkCanModifyCase, currentUser, currentRole } = usePermissions();
 
   useEffect(() => {
     loadClientes();
@@ -175,24 +176,24 @@ const CaseDetail: React.FC = () => {
       .trim();
   };
   
-  // Obtener transiciones permitidas ÚNICAMENTE desde n8n (sin fallback a estados demo)
+  // Obtener transiciones permitidas filtradas por permisos del rol
   let validTransitions: CaseStatus[] = [];
   
-  if (caso.transiciones && caso.transiciones.length > 0) {
-    // Filtrar transiciones que parten del estado actual
+  if (currentRole && currentUser && caso.transiciones && caso.transiciones.length > 0) {
     const estadoActual = caso.estado || caso.status || '';
-    const estadoActualNormalizado = normalizeEstadoName(estadoActual);
+    const casoAgentId = caso.agentId || (caso as any).agente_user_id || '';
+    const casoCountry = (caso as any).pais || currentUser.pais || '';
     
-    const transicionesDelEstadoActual = caso.transiciones.filter((t) => {
-      const origenNormalizado = normalizeEstadoName(t.estado_origen || '');
-      return origenNormalizado === estadoActualNormalizado;
-    });
-    
-    // Extraer los estados destino y convertirlos a CaseStatus
-    const estadosDestino = transicionesDelEstadoActual.map(t => t.estado_destino).filter(Boolean);
-    validTransitions = estadosDestino.map(estado => normalizeStatus(estado)) as CaseStatus[];
+    validTransitions = getAvailableStatusChanges(
+      currentRole,
+      estadoActual,
+      caso.transiciones,
+      currentUser.id,
+      casoAgentId,
+      currentUser.pais || '',
+      casoCountry
+    );
   }
-  // Si no hay transiciones del webhook, no mostrar botones (no usar fallback)
 
   // Calcular información SLA
   const createdDate = new Date(caso.createdAt);

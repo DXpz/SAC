@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import { Case, CaseStatus, Cliente, Categoria } from '../types';
+import { Case, CaseStatus, Cliente, Categoria, Agente } from '../types';
 import { STATE_COLORS } from '../constants';
 import { Search, Plus, Filter, ChevronRight, RefreshCw, X, Grid3x3, List, User, Eye, Clock } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
@@ -14,9 +14,11 @@ const BandejaCasos: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoriaFilter, setCategoriaFilter] = useState<string>('all');
+  const [agenteFilter, setAgenteFilter] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [agentes, setAgentes] = useState<Agente[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -295,7 +297,7 @@ const BandejaCasos: React.FC = () => {
     const initializeData = async () => {
       try {
         // Primero cargar clientes y categorías
-        await Promise.all([loadClientes(), loadCategorias()]);
+        await Promise.all([loadClientes(), loadCategorias(), loadAgentes()]);
         // Luego cargar casos
         await loadCasos();
       } catch (err) {
@@ -483,6 +485,16 @@ const BandejaCasos: React.FC = () => {
     }
   };
 
+  const loadAgentes = async () => {
+    try {
+      const data = await api.getAgentes();
+      setAgentes(data);
+      return data;
+    } catch (err) {
+      return [];
+    }
+  };
+
   const loadCasos = async () => {
     setLoading(true);
     setError(null);
@@ -562,12 +574,48 @@ const BandejaCasos: React.FC = () => {
         });
       }
 
+      if (agenteFilter !== 'all') {
+        result = result.filter(c => {
+          const agentObject = (c as any).agent || c.agenteAsignado || null;
+          const agenteIdFromAgent = agentObject?.idAgente || agentObject?.id || agentObject?.id_agente || agentObject?.agente_id || agentObject?.user_id || '';
+          const agenteIdFromObject = c.agenteAsignado?.idAgente || c.agenteAsignado?.id || (c.agenteAsignado as any)?.id_agente || (c.agenteAsignado as any)?.agente_id;
+          const agenteIdFromCase = c.agentId || (c as any).agente_id || (c as any).agente_user_id;
+          const agenteId = agenteIdFromAgent || agenteIdFromObject || agenteIdFromCase;
+
+          const extractIdNumber = (id: string): string => {
+            const match = id.match(/(\d+)$/);
+            return match ? match[1] : id;
+          };
+
+          const normalizeId = (id: string): string => {
+            const numStr = extractIdNumber(id);
+            if (/^\d+$/.test(numStr)) {
+              return String(Number(numStr));
+            }
+            return numStr;
+          };
+
+          const agenteIdStr = agenteId ? String(agenteId).trim() : '';
+          const filterIdStr = String(agenteFilter).trim();
+
+          if (agenteIdStr === filterIdStr) return true;
+          if (agenteIdStr.toLowerCase() === filterIdStr.toLowerCase()) return true;
+          const agenteIdNormalized = normalizeId(agenteIdStr);
+          const filterIdNormalized = normalizeId(filterIdStr);
+          if (agenteIdNormalized === filterIdNormalized) return true;
+          const agenteIdNum = Number(agenteIdStr.replace(/[^\d]/g, ''));
+          const filterIdNum = Number(filterIdStr.replace(/[^\d]/g, ''));
+          if (!isNaN(agenteIdNum) && !isNaN(filterIdNum) && agenteIdNum > 0 && filterIdNum > 0 && agenteIdNum === filterIdNum) return true;
+          return false;
+        });
+      }
+
       setFiltered(result);
       setCurrentPage(1); // Resetear a primera página cuando cambien los filtros
     };
     
     processCases();
-  }, [searchTerm, statusFilter, categoriaFilter, casos, isEstadoFinal]);
+  }, [searchTerm, statusFilter, categoriaFilter, agenteFilter, casos, isEstadoFinal]);
 
   // Estilos dinámicos basados en el tema
   const styles = {
@@ -775,7 +823,75 @@ const BandejaCasos: React.FC = () => {
             </select>
             <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-all duration-200" style={{color: categoriaFilter === 'all' ? styles.text.tertiary : '#107ab4', transform: 'rotate(90deg)'}} />
           </div>
-          
+
+          <div className="relative group" style={{ animation: 'fadeInSlide 0.3s ease-out 0.1s both' }}>
+            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-colors z-10" style={{color: agenteFilter === 'all' ? '#64748b' : '#107ab4'}} />
+            <select
+              value={agenteFilter}
+              onChange={(e) => setAgenteFilter(e.target.value)}
+              className="pl-10 pr-10 py-2.5 border rounded-xl focus:outline-none transition-all text-xs font-semibold appearance-none cursor-pointer"
+              style={{
+                backgroundColor: agenteFilter === 'all'
+                  ? (theme === 'dark' ? '#020617' : '#ffffff')
+                  : '#e0f2fe',
+                borderColor: agenteFilter === 'all'
+                  ? (theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : '#cbd5e1')
+                  : '#107ab4',
+                color: agenteFilter === 'all'
+                  ? styles.text.secondary
+                  : '#0c4a6e',
+                minWidth: '150px',
+                boxShadow: agenteFilter === 'all' ? '0 1px 2px rgba(0, 0, 0, 0.05)' : '0 2px 4px rgba(16, 122, 180, 0.15)',
+                transform: 'scale(1)',
+                transition: 'all 0.2s ease-in-out'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.02)';
+                if (agenteFilter === 'all') {
+                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f8fafc';
+                  e.currentTarget.style.borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.4)' : '#94a8b8';
+                } else {
+                  e.currentTarget.style.backgroundColor = '#bae6fd';
+                  e.currentTarget.style.borderColor = '#107ab4';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+                if (agenteFilter === 'all') {
+                  e.currentTarget.style.backgroundColor = theme === 'dark' ? '#020617' : '#ffffff';
+                  e.currentTarget.style.borderColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : '#cbd5e1';
+                } else {
+                  e.currentTarget.style.backgroundColor = '#e0f2fe';
+                  e.currentTarget.style.borderColor = '#107ab4';
+                }
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#107ab4';
+                e.target.style.boxShadow = '0 0 0 3px rgba(16, 122, 180, 0.15), 0 2px 4px rgba(16, 122, 180, 0.2)';
+                e.target.style.backgroundColor = agenteFilter === 'all'
+                  ? (theme === 'dark' ? '#0f172a' : '#f8fafc')
+                  : '#bae6fd';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = agenteFilter === 'all'
+                  ? (theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : '#cbd5e1')
+                  : '#107ab4';
+                e.target.style.boxShadow = agenteFilter === 'all' ? '0 1px 2px rgba(0, 0, 0, 0.05)' : '0 2px 4px rgba(16, 122, 180, 0.15)';
+                e.target.style.backgroundColor = agenteFilter === 'all'
+                  ? (theme === 'dark' ? '#020617' : '#ffffff')
+                  : '#e0f2fe';
+              }}
+            >
+              <option value="all">Todos los Agentes</option>
+              {agentes.map(ag => (
+                <option key={ag.idAgente} value={ag.idAgente}>
+                  {ag.nombre || ag.email || ag.idAgente}
+                </option>
+              ))}
+            </select>
+            <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-all duration-200" style={{color: agenteFilter === 'all' ? styles.text.tertiary : '#107ab4', transform: 'rotate(90deg)'}} />
+          </div>
+
           <div className="flex items-center gap-3">
             {/* Controles de vista */}
             <div className="flex items-center gap-1 p-1 rounded-lg border" style={{borderColor: 'rgba(148, 163, 184, 0.2)'}}>

@@ -1,10 +1,11 @@
 import { Role } from '../types';
+import { CaseStatus } from '../types';
 
 export type Permission =
   | 'case:read'
   | 'case:create'
-  | 'case:update:any'
   | 'case:update:own'
+  | 'case:update:any'
   | 'case:delete'
   | 'case:reassign'
   | 'case:close'
@@ -33,23 +34,23 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'case:read',
     'case:create',
     'case:update:any',
+    'case:reassign',
     'case:close',
     'agent:read',
+    'agent:manage',
   ],
   GERENTE: [
     'case:read',
-    'case:create',
     'case:update:any',
+    'case:reassign',
     'case:close',
     'agent:read',
     'report:view',
   ],
   ADMIN: [
     'case:read',
-    'case:create',
     'case:update:any',
     'case:delete',
-    'case:reassign',
     'case:close',
     'agent:read',
     'agent:manage',
@@ -110,4 +111,80 @@ export function canModifyCase(
     return userCountry === caseCountry;
   }
   return false;
+}
+
+export interface Transition {
+  estado_origen: string;
+  estado_destino: string;
+  descripcion_transicion?: string;
+  [key: string]: any;
+}
+
+const STATE_TO_STATUS: Record<string, CaseStatus> = {
+  'Nuevo': CaseStatus.NUEVO,
+  'En Proceso': CaseStatus.EN_PROCESO,
+  'Pendiente Cliente': CaseStatus.PENDIENTE_CLIENTE,
+  'Escalado': CaseStatus.ESCALADO,
+  'Resuelto': CaseStatus.RESUELTO,
+  'Cerrado': CaseStatus.CERRADO,
+};
+
+export function filterTransitionsByPermission(
+  role: Role,
+  transitions: Transition[],
+  userId: string,
+  caseAgentId: string,
+  userCountry: string,
+  caseCountry: string
+): Transition[] {
+  const canUpdateAny = hasPermission(role, 'case:update:any');
+  const canUpdateOwn = hasPermission(role, 'case:update:own');
+  const canClose = hasPermission(role, 'case:close');
+
+  return transitions.filter(t => {
+    const destino = t.estado_destino as string;
+    const isCloseAction = destino === 'Cerrado' || destino === 'Resuelto';
+
+    if (isCloseAction && !canClose) {
+      return false;
+    }
+
+    if (canUpdateAny) {
+      return canAccessCountry(role, userCountry, caseCountry);
+    }
+
+    if (canUpdateOwn && userId === caseAgentId) {
+      return userCountry === caseCountry;
+    }
+
+    return false;
+  });
+}
+
+export function getAvailableStatusChanges(
+  role: Role,
+  currentStatus: string,
+  transitions: Transition[],
+  userId: string,
+  caseAgentId: string,
+  userCountry: string,
+  caseCountry: string
+): CaseStatus[] {
+  const filtered = filterTransitionsByPermission(
+    role,
+    transitions,
+    userId,
+    caseAgentId,
+    userCountry,
+    caseCountry
+  );
+
+  return filtered
+    .filter(t => {
+      const origenNormalizado = (t.estado_origen || '').toLowerCase().replace(/\s+/g, '');
+      const estadoNormalizado = (currentStatus || '').toLowerCase().replace(/\s+/g, '');
+      return origenNormalizado === estadoNormalizado;
+    })
+    .map(t => STATE_TO_STATUS[t.estado_destino])
+    .filter(Boolean) as CaseStatus[];
 }
