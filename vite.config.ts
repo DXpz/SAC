@@ -30,7 +30,7 @@ export default defineConfig(({ mode }) => {
             target: 'https://n8n.red.com.sv',
             changeOrigin: true,
             secure: true,
-            rewrite: () => '/webhook/b30aeff4-1d3a-4b40-b8da-141b4e1fc5b6',
+            rewrite: () => '/webhook/clientes-workflow',
           },
           // Agentes (gestión de agentes) - webhook para almacenar/actualizar agentes
           '/api/agentes': {
