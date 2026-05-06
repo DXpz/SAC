@@ -198,35 +198,31 @@ const AdminPanel: React.FC = () => {
   // Calcular casos críticos usando la misma lógica que AlertasCriticas
   const casosCriticos = casosSeguros.filter(c => {
     if (!c) return false;
-    // Excluir casos resueltos o cerrados (a menos que estén escalados)
     const normalizedStatus = normalizeStatus(c.status);
     if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
-      // Solo incluir si está escalado
       return normalizedStatus === CaseStatus.ESCALADO;
     }
-    
-    const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-    const diasAbierto = c.diasAbierto || 0;
-    
-    // Caso crítico si:
-    // 1. Los días abiertos son >= al SLA (vencido)
-    // 2. Está escalado
-    // 3. Le queda 1 día o menos para vencer (en riesgo)
+
+    const slaDias = c.categoria?.slaDias || (c as any).categoria_id || 5;
+    const createdAt = c.createdAt ? new Date(c.createdAt) : new Date();
+    const diasAbierto = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
     const isVencido = diasAbierto >= slaDias;
     const isEscalado = normalizedStatus === CaseStatus.ESCALADO;
     const isEnRiesgo = (slaDias - diasAbierto <= 1) && diasAbierto > 0 && diasAbierto < slaDias;
-    
+
     return isVencido || isEscalado || isEnRiesgo;
   }).length;
-  
+
   const casosVencidos = casosSeguros.filter(c => {
     if (!c) return false;
     const normalizedStatus = normalizeStatus(c.status);
     if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
       return false;
     }
-    const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-    return (c.diasAbierto || 0) > slaDias;
+    const slaDias = c.categoria?.slaDias || (c as any).categoria_id || 5;
+    const createdAt = c.createdAt ? new Date(c.createdAt) : new Date();
+    const diasAbierto = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+    return diasAbierto > slaDias;
   }).length;
   
   // Calcular casos por estado usando los estados dinámicos del webhook
