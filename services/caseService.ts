@@ -607,7 +607,9 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
       description: caseData.descripcion || caseData.description || '',
       status: caseData.estado || caseData.status || CaseStatus.NUEVO,
       priority: caseData.prioridad || caseData.priority || 'Media',
-      agentId: agenteMapped?.idAgente || String(agenteUserIdFromWebhook || caseData.agente_id || caseData.agentId || ''),
+      agentId: agenteUserIdFromWebhook
+        ? String(agenteUserIdFromWebhook)
+        : (agenteMapped?.idAgente || String(caseData.agente_id || caseData.agentId || '')),
       agentName: agenteMapped?.nombre || agenteName || getAgenteNombreByUserId(agenteUserIdFromWebhook, agentesCache || undefined),
       createdAt: createdAt,
       pais: caseData.pais || caseData.country || clienteMapped?.pais || '',

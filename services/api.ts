@@ -794,7 +794,7 @@ export const api = {
             const paisRaw = agente.pais || agente.country || agente.país || agente.Pais || agente.Country || 
                            (agente as any).pais_usuario || (agente as any).country_user || undefined;
             return {
-              idAgente: agente.id_agente || agente.idAgente || agente.id || '',
+              idAgente: String(agente.id || agente.id_agente || agente.idAgente || ''),
               nombre: agente.nombre || agente.name || '',
               email: agente.email || '',
               estado: estado,
