@@ -120,6 +120,20 @@ const AdminBandejaCasos: React.FC = () => {
 
           const casoClientIdNormalized = normalizeId(caso.clientId);
           const cliIdNormalized = normalizeId(c.CardCode);
+
+          // DEBUG only for first few cases
+          if (caso.clientId === 'CL000005' || caso.clientId === 'CL000001') {
+            console.log('DEBUG enrich:', {
+              casoClientId: caso.clientId,
+              casoClientIdNormalized,
+              cardCode: c.CardCode,
+              cliIdNormalized,
+              match1: casoClientIdNormalized === cliIdNormalized,
+              match2: c.CardCode === caso.clientId,
+              match3: caso.clientId.replace(/\D/g, '') === c.CardCode.replace(/\D/g, '')
+            });
+          }
+
           if (casoClientIdNormalized === cliIdNormalized) return true;
           if (c.CardCode === caso.clientId) return true;
           const casoNum = caso.clientId.replace(/\D/g, '');
