@@ -1,5 +1,3 @@
-import { API_CONFIG } from '../config';
-
 const API_BASE = import.meta.env.DEV
   ? '/api/clientes'
   : (import.meta.env.VITE_API_URL || '/api/clientes');
@@ -56,25 +54,9 @@ export interface ClienteDetalle {
   GestorCobro: string;
 }
 
-interface CacheEntry {
-  data: any;
-  timestamp: number;
-}
-
-const cache: Record<string, CacheEntry> = {};
-const CACHE_DURATION = 15 * 60 * 1000;
-
 export const sapService = {
   async getClientesListado(pais: 'SV' | 'GT' = 'SV'): Promise<ClienteListado[]> {
     const url = `${API_BASE}/listado?pais=${pais}`;
-
-    const now = Date.now();
-    const cacheKey = `clientes_listado_${pais}`;
-    if (cache[cacheKey] && (now - cache[cacheKey].timestamp) < CACHE_DURATION) {
-      console.log('[sapService] Returning cached clientes listado');
-      return cache[cacheKey].data;
-    }
-
     console.log('[sapService] Fetching clientes from:', url);
 
     try {
@@ -101,7 +83,6 @@ export const sapService = {
       }
 
       console.log('[sapService] Clientes result count:', result.length);
-      cache[cacheKey] = { data: result, timestamp: now };
       return result;
     } catch (err) {
       console.error('[sapService] Error fetching clientes:', err);
@@ -111,35 +92,33 @@ export const sapService = {
 
   async getClienteDetalle(codigo: string, pais: 'SV' | 'GT' = 'SV'): Promise<ClienteDetalle | null> {
     const url = `${API_BASE}/detalle?criterio=${encodeURIComponent(codigo)}&pais=${pais}`;
+    console.log('[sapService] Fetching cliente detalle from:', url);
 
-    const now = Date.now();
-    const cacheKey = `cliente_detalle_${codigo}_${pais}`;
-    const shortCache = 5 * 60 * 1000;
-    if (cache[cacheKey] && (now - cache[cacheKey].timestamp) < shortCache) {
-      return cache[cacheKey].data;
+    try {
+      const response = await fetch(url);
+      console.log('[sapService] Detalle response status:', response.status);
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('[sapService] Detalle response data:', JSON.stringify(data).substring(0, 500));
+
+      let result: ClienteDetalle | null = null;
+
+      if (Array.isArray(data) && data.length > 0) {
+        result = data[0];
+      } else if (data?.cliente) {
+        result = data.cliente;
+      } else if (data?.data) {
+        result = data.data;
+      }
+
+      return result;
+    } catch (err) {
+      console.error('[sapService] Error fetching cliente detalle:', err);
+      throw err;
     }
-
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    let result: ClienteDetalle | null = null;
-
-    if (Array.isArray(data) && data.length > 0) {
-      result = data[0];
-    } else if (data?.cliente) {
-      result = data.cliente;
-    } else if (data?.data) {
-      result = data.data;
-    }
-
-    cache[cacheKey] = { data: result, timestamp: now };
-    return result;
-  },
-
-  clearCache() {
-    Object.keys(cache).forEach(key => delete cache[key]);
   }
 };
