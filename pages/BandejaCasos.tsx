@@ -927,6 +927,7 @@ const BandejaCasos: React.FC = () => {
               </button>
             </div>
             
+            {!isAdmin && (
             <button 
               onClick={() => navigate('/app/casos/nuevo')}
               className="text-white px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all shadow-lg"
@@ -947,6 +948,7 @@ const BandejaCasos: React.FC = () => {
             >
               <Plus className="w-5 h-5" /> Nuevo Caso
             </button>
+            )}
           </div>
         </div>
       </div>
@@ -1289,7 +1291,7 @@ const BandejaCasos: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>Cliente:</span>
                     <span className="text-xs font-bold flex-1 truncate" style={{color: styles.text.primary}}>
-                      {caso.clientName || caso.cliente?.nombreEmpresa || 'Por definir'}
+                      {caso.clientName || caso.cliente?.CardName || 'Por definir'}
                     </span>
                   </div>
                   
