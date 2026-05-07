@@ -271,10 +271,17 @@ const CaseDetail: React.FC = () => {
         const clientIdBuscar = casoActualizado.clientId || casoActualizado.clienteId || '';
         
         
-        // Función para normalizar IDs
+        // Función para normalizar IDs (misma lógica que BandejaCasos)
         const normalizeId = (id: string) => {
           if (!id) return '';
-          const normalized = id.toString().trim().toLowerCase();
+          let normalized = id.toString().trim().toUpperCase();
+          if (!normalized.startsWith('CL')) {
+            normalized = 'CL' + normalized.replace(/^CL/i, '');
+          }
+          const match = normalized.match(/^CL0*(\d+)$/);
+          if (match) {
+            normalized = 'CL' + match[1].padStart(6, '0');
+          }
           return normalized;
         };
         
