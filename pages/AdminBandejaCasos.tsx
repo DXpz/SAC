@@ -717,15 +717,6 @@ const AdminBandejaCasos: React.FC = () => {
               transform: 'rotate(90deg)'
             }} />
           </div>
-
-          {/* Botón Nuevo Caso */}
-          <button 
-            onClick={() => navigate('/app/casos/nuevo')}
-            className="text-white px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1"
-            style={{background: 'linear-gradient(135deg, var(--color-brand-red), var(--color-accent-red))'}}
-          >
-            <Plus className="w-5 h-5" /> Nuevo
-          </button>
         </div>
       </div>
 
