@@ -23,7 +23,11 @@ export const API_CONFIG = {
   // URL del webhook de n8n para gestión de categorías
   // En desarrollo usa el proxy de Vite (/api/categorias), en producción usa la URL completa
   WEBHOOK_CATEGORIAS_URL: (import.meta.env as any).VITE_WEBHOOK_CATEGORIAS_URL || '/api/categorias',
-  
+
+  // URL del webhook de n8n para gestión de estados
+  // En desarrollo usa el proxy de Vite (/api/estados), en producción usa la URL completa
+  WEBHOOK_ESTADOS_URL: (import.meta.env as any).VITE_WEBHOOK_ESTADOS_URL || '/api/estados',
+
   // URLs completas de n8n (para referencia y uso en producción)
   // Estas URLs se usan cuando VITE_WEBHOOK_*_URL está definido o en producción
   // Authentication Workflow

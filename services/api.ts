@@ -202,8 +202,10 @@ const callEstadosWebhook = async <T = any>(
   method: 'GET' | 'POST',
   body?: unknown
 ): Promise<T> => {
-  // URL del webhook de estados según documentación
-  const ESTADOS_WEBHOOK_URL = 'https://n8n.red.com.sv/webhook/837e1ddf-3677-411d-9aca-9b5095a42ecd';
+  const ESTADOS_WEBHOOK_URL = (import.meta.env as any).VITE_WEBHOOK_ESTADOS_URL
+    || API_CONFIG.WEBHOOK_ESTADOS_URL_FULL
+    || API_CONFIG.WEBHOOK_ESTADOS_URL
+    || '/api/estados';
   try {
     const response = await callWebhookGeneric<T>(ESTADOS_WEBHOOK_URL, method, body);
     return response;
@@ -1782,15 +1784,15 @@ export const api = {
       }
 
       // Mapear los estados del webhook al formato local
-      // El webhook retorna: { id, nombre, descripcion, orden, estado_final }
+      // El webhook/BD retorna: { id, nombre_estado, descripcion, orden, estado_final }
       // IMPORTANTE: El ID siempre debe ser texto normalizado (ej: "en_proceso"), no números
       const mappedEstados = estados.map((estado: any, index: number) => {
         // El ID puede venir como número o string, pero SIEMPRE debe convertirse a formato normalizado
         let estadoId = estado.id || estado.id_estado || estado.estado_id;
-        
+
         // Si el ID es un número o no está en formato normalizado, generar el ID desde el nombre
-        if (estado.nombre || estado.name) {
-          const nombreEstado = estado.nombre || estado.name;
+        if (estado.nombre_estado || estado.nombre || estado.name) {
+          const nombreEstado = estado.nombre_estado || estado.nombre || estado.name;
           // Convertir nombre a ID normalizado (ej: "En Proceso" -> "en_proceso")
           const nombreNormalizado = nombreEstado
             .trim()
@@ -1799,19 +1801,19 @@ export const api = {
             .replace(/[\u0300-\u036f]/g, '') // Remover tildes
             .replace(/\s+/g, '_') // Reemplazar espacios con guiones bajos
             .replace(/[^a-z0-9_]/g, ''); // Remover caracteres especiales
-          
+
           // Siempre usar el ID normalizado basado en el nombre
           estadoId = nombreNormalizado;
-          
+
         } else {
           estadoId = String(estadoId || `estado_${index + 1}`);
         }
         return {
           id: String(estadoId),
-          name: estado.nombre || estado.name || 'Sin nombre',
+          name: estado.nombre_estado || estado.nombre || estado.name || 'Sin nombre',
           order: Number(estado.orden || estado.order || index + 1),
-          isFinal: estado.estado_final === true || estado.estado_final === 'true' || 
-                   estado.es_final === true || estado.es_final === 'true' || 
+          isFinal: estado.estado_final === true || estado.estado_final === 'true' ||
+                   estado.es_final === true || estado.es_final === 'true' ||
                    estado.isFinal === true || estado.is_final === true || false
         };
       });

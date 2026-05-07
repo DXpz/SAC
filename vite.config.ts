@@ -67,6 +67,13 @@ export default defineConfig(({ mode }) => {
             secure: true,
             rewrite: () => '/webhook/3064d26b-a4b3-40ac-9f65-0835bcaf99f5',
           },
+          // Estados - proxy para desarrollo local
+          '/api/estados': {
+            target: 'https://n8n.red.com.sv',
+            changeOrigin: true,
+            secure: true,
+            rewrite: () => '/webhook/837e1ddf-3677-411d-9aca-9b5095a42ecd',
+          },
         },
       },
       plugins: [react()],
