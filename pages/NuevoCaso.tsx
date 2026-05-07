@@ -134,18 +134,24 @@ const NuevoCaso: React.FC = () => {
 
   useEffect(() => {
     const initializeData = async () => {
-      // Cargar país del usuario primero
       const country = await getUserCountry();
       setUserCountry(country);
-      
+      if (!newCase.pais && country) {
+        setNewCase(prev => ({ ...prev, pais: country }));
+      }
       await loadClientes();
       await loadCategorias();
-      // Guardar hora de actualización para mostrar en el header
       const updateTime = new Date();
       localStorage.setItem('bandeja_last_update', updateTime.toISOString());
     };
     initializeData();
   }, []);
+
+  useEffect(() => {
+    if (newCase.pais) {
+      loadClientes();
+    }
+  }, [newCase.pais]);
 
   // Cerrar dropdown al hacer clic fuera
   useEffect(() => {
@@ -169,8 +175,9 @@ const NuevoCaso: React.FC = () => {
 
   const loadClientes = async () => {
     try {
-      console.log('[NuevoCaso] Loading clientes for country:', userCountry || 'SV');
-      const data = await sapService.getClientesListado(userCountry || 'SV');
+      const pais = (newCase.pais as 'SV' | 'GT') || 'SV';
+      console.log('[NuevoCaso] Loading clientes for country:', pais);
+      const data = await sapService.getClientesListado(pais);
       console.log('[NuevoCaso] Loaded clientes:', data.length);
       setClientes(data);
     } catch (err) {
@@ -712,7 +719,7 @@ const NuevoCaso: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>
-                    Empresa del Caso <span className="text-red-500">*</span>
+                    País del Caso <span className="text-red-500">*</span>
                   </label>
                   <select
                     required
@@ -730,9 +737,9 @@ const NuevoCaso: React.FC = () => {
                       e.currentTarget.style.backgroundColor = styles.input.backgroundColor;
                     }}
                   >
-                    <option value="" disabled>Seleccionar empresa</option>
-                    <option value="SV">SV</option>
-                    <option value="GT">GT</option>
+                    <option value="" disabled>Seleccionar país</option>
+                    <option value="SV">El Salvador (SV)</option>
+                    <option value="GT">Guatemala (GT)</option>
                   </select>
                 </div>
 
