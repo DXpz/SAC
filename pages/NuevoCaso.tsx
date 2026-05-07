@@ -583,6 +583,7 @@ const NuevoCaso: React.FC = () => {
                       placeholder="Nombre contacto"
                       value={newCase.contactName}
                       onChange={e => setNewCase({...newCase, contactName: e.target.value})}
+                      required
                     />
                   </div>
                   <div>

@@ -536,6 +536,7 @@ const BandejaCasos: React.FC = () => {
       // Obtener usuario autenticado
       const currentUser = api.getUser();
       const isAgente = currentUser?.role === 'AGENTE';
+      const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR';
       
       // IMPORTANTE: Si es agente, getCases() usa case.agent que YA retorna solo los casos del agente
       // El webhook case.agent filtra automáticamente por agente_user_id
@@ -1345,9 +1346,32 @@ const BandejaCasos: React.FC = () => {
                           {diasAbierto}d
                         </span>
                       </div>
-                    )}
-                  </div>
-                </div>
+)}
+            </div>
+            
+            {!isAdmin && (
+            <button 
+              onClick={() => navigate('/app/casos/nuevo')}
+              className="text-white px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all shadow-lg"
+              style={{
+                background: 'linear-gradient(135deg, var(--color-brand-red), var(--color-accent-red))',
+                transform: 'scale(1)',
+                transition: 'all 0.2s ease-in-out',
+                animation: 'fadeInSlide 0.3s ease-out 0.2s both'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.05) translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 8px 16px rgba(200, 21, 27, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1) translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(200, 21, 27, 0.2)';
+              }}
+            >
+              <Plus className="w-5 h-5" /> Nuevo Caso
+            </button>
+            )}
+          </div>
                 
                 {/* Footer con acción */}
                 <div className="p-3 border-t flex items-center justify-end" style={{
