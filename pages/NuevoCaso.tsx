@@ -156,8 +156,14 @@ const NuevoCaso: React.FC = () => {
   }, [showClienteDropdown, showCategoriaDropdown]);
 
   const loadClientes = async () => {
-    const data = await sapService.getClientesListado(userCountry || 'SV');
-    setClientes(data);
+    try {
+      console.log('[NuevoCaso] Loading clientes for country:', userCountry || 'SV');
+      const data = await sapService.getClientesListado(userCountry || 'SV');
+      console.log('[NuevoCaso] Loaded clientes:', data.length);
+      setClientes(data);
+    } catch (err) {
+      console.error('[NuevoCaso] Error loading clientes:', err);
+    }
   };
 
   const loadCategorias = async () => {

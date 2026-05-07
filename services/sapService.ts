@@ -71,27 +71,42 @@ export const sapService = {
     const now = Date.now();
     const cacheKey = `clientes_listado_${pais}`;
     if (cache[cacheKey] && (now - cache[cacheKey].timestamp) < CACHE_DURATION) {
+      console.log('[sapService] Returning cached clientes listado');
       return cache[cacheKey].data;
     }
 
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status}`);
+    console.log('[sapService] Fetching clientes from:', url);
+
+    try {
+      const response = await fetch(url);
+      console.log('[sapService] Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[sapService] API Error:', response.status, errorText);
+        throw new Error(`API Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('[sapService] Response data:', JSON.stringify(data).substring(0, 500));
+
+      let result: ClienteListado[] = [];
+
+      if (Array.isArray(data)) {
+        result = data;
+      } else if (data?.clientes && Array.isArray(data.clientes)) {
+        result = data.clientes;
+      } else if (data?.data && Array.isArray(data.data)) {
+        result = data.data;
+      }
+
+      console.log('[sapService] Clientes result count:', result.length);
+      cache[cacheKey] = { data: result, timestamp: now };
+      return result;
+    } catch (err) {
+      console.error('[sapService] Error fetching clientes:', err);
+      throw err;
     }
-
-    const data = await response.json();
-    let result: ClienteListado[] = [];
-
-    if (Array.isArray(data)) {
-      result = data;
-    } else if (data?.clientes && Array.isArray(data.clientes)) {
-      result = data.clientes;
-    } else if (data?.data && Array.isArray(data.data)) {
-      result = data.data;
-    }
-
-    cache[cacheKey] = { data: result, timestamp: now };
-    return result;
   },
 
   async getClienteDetalle(codigo: string, pais: 'SV' | 'GT' = 'SV'): Promise<ClienteDetalle | null> {
