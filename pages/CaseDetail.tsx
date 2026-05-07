@@ -837,33 +837,16 @@ const CaseDetail: React.FC = () => {
 
     // Normalizar nombres de estados para comparación
     const estadoActualNormalizado = normalizeEstadoName(estadoActual);
-    const newStateNormalizado = normalizeEstadoName(newState);
-    
+const newStateNormalizado = normalizeEstadoName(newState);
+
     const transicionesPermitidasNormalizadas = transicionesPermitidas.map(normalizeEstadoName);
-    
+
     if (!transicionesPermitidasNormalizadas.includes(newStateNormalizado)) {
       const estadoActualFormateado = formatEstadoName(estadoActual);
       const newStateFormateado = formatEstadoName(newState);
       const transicionesFormateadas = transicionesPermitidas.map(formatEstadoName).join(', ');
       alert(`No se puede cambiar de "${estadoActualFormateado}" a "${newStateFormateado}". Transiciones permitidas: ${transicionesFormateadas}`);
       return;
-    }
-
-    // VALIDACIÓN: Si se intenta cambiar a "En Proceso" y no hay cliente asignado
-    const newStateNormForClient = normalizeEstadoName(newState);
-    if (newStateNormForClient === 'en_proceso' || newStateNormForClient.includes('en_proceso') || newState === CaseStatus.EN_PROCESO || newState === 'En Proceso') {
-      const clienteId = caso?.clientId || caso?.clienteId;
-      const clienteName = caso?.clientName || caso?.cliente?.CardName;
-      
-      // Si no hay cliente o el cliente es "N/A" o "Por definir"
-      if (!clienteId || clienteId === 'N/A' || clienteId === '' || 
-          !clienteName || clienteName === 'Por definir' || clienteName === 'Sin cliente' || clienteName.trim() === '') {
-        // Abrir modal de selección rápida de cliente
-        setPendingStateAfterClientSelect(newState);
-        setClienteQuickSearchTerm('');
-        setShowClienteQuickSelectModal(true);
-        return;
-      }
     }
 
     // Verificar si el estado destino es un estado final
@@ -962,12 +945,24 @@ const CaseDetail: React.FC = () => {
       }
       return;
     } else {
-      // Si NO es estado final, la justificación es obligatoria
-      if (!justification.trim()) {
+      // Validar justificación
+      const justificacionTrim = justification.trim();
+      if (!justificacionTrim) {
         setErrorMessage('La justificación es obligatoria');
         return;
       }
-      handleStateChange(pendingNewState, justification);
+      // Validar que no contenga símbolos peligrosos
+      const simbolosPeligrosos = /[<>{}[\]\\|]/;
+      if (simbolosPeligrosos.test(justificacionTrim)) {
+        setErrorMessage('La justificación no puede contener símbolos como < > { } [ ] \\ |');
+        return;
+      }
+      // Validar longitud máxima (texto corto)
+      if (justificacionTrim.length > 500) {
+        setErrorMessage('La justificación no puede exceder 500 caracteres');
+        return;
+      }
+      handleStateChange(pendingNewState, justificacionTrim);
     }
   };
 

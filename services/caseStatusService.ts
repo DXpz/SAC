@@ -54,7 +54,18 @@ export function changeCaseStatus(
     throw new Error('La justificación es obligatoria');
   }
 
-  // 3. Guardar el estado anterior
+  // 3. Validar que la justificación no contenga símbolos peligrosos
+  const simbolosPeligrosos = /[<>{}[\]\\|]/;
+  if (simbolosPeligrosos.test(justificacion.trim())) {
+    throw new Error('La justificación no puede contener símbolos como < > { } [ ] \\ |');
+  }
+
+  // 4. Validar longitud máxima (texto corto)
+  if (justificacion.trim().length > 500) {
+    throw new Error('La justificación no puede exceder 500 caracteres');
+  }
+
+  // 5. Guardar el estado anterior
   const estadoAnterior = estadoActual;
 
   // 4. Crear copia del caso para actualizar
