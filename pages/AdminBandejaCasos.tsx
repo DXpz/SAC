@@ -56,11 +56,16 @@ const AdminBandejaCasos: React.FC = () => {
 
   // Cargar datos iniciales y cuando cambia la vista
   useEffect(() => {
+    console.log('ADMIN init effect running');
     const initializeData = async () => {
       try {
+        console.log('ADMIN init: starting data load');
         await Promise.all([loadClientes(), loadCategorias(), loadAgentes()]);
+        console.log('ADMIN init: clients/cats/agents loaded, now loading cases');
         await loadCasos();
+        console.log('ADMIN init: cases loaded');
       } catch (err) {
+        console.log('ADMIN init error:', err);
       }
     };
     initializeData();
@@ -230,9 +235,11 @@ const AdminBandejaCasos: React.FC = () => {
   const loadClientes = async () => {
     try {
       const data = await api.getClientes();
+      console.log('ADMIN loadClientes returned:', data.length, 'clients');
       setClientes(data);
       return data;
     } catch (err) {
+      console.log('ADMIN loadClientes error:', err);
       return [];
     }
   };
