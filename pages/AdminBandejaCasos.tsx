@@ -82,9 +82,12 @@ const AdminBandejaCasos: React.FC = () => {
 
   // Enriquecer casos con clientes y categorías
   useEffect(() => {
+    console.log('ADMIN ENRICHMENT EFFECT FIRED', { casosLen: casos.length, clientesLen: clientes.length, catsLen: categorias.length });
     if (casos.length === 0 || (clientes.length === 0 && categorias.length === 0)) {
+      console.log('ADMIN ENRICHMENT: early return due to empty data');
       return;
     }
+    console.log('ADMIN ENRICHMENT: proceeding with enrichment');
 
     // No hay clientes o casos, no procesar
     if (clientes.length === 0 && categorias.length === 0) {
