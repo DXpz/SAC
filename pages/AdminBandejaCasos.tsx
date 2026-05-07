@@ -57,16 +57,11 @@ const AdminBandejaCasos: React.FC = () => {
 
   // Cargar datos iniciales y cuando cambia la vista
   useEffect(() => {
-    console.log('ADMIN init effect running');
     const initializeData = async () => {
       try {
-        console.log('ADMIN init: starting data load');
         await Promise.all([loadClientes(), loadCategorias(), loadAgentes()]);
-        console.log('ADMIN init: clients/cats/agents loaded, now loading cases');
         await loadCasos();
-        console.log('ADMIN init: cases loaded');
       } catch (err) {
-        console.log('ADMIN init error:', err);
       }
     };
     initializeData();
@@ -88,15 +83,7 @@ const AdminBandejaCasos: React.FC = () => {
 
   // Enriquecer casos con clientes y categorías
   useEffect(() => {
-    console.log('ADMIN ENRICHMENT EFFECT FIRED', { casosLen: casos.length, clientesLen: clientes.length, catsLen: categorias.length });
     if (casos.length === 0 || (clientes.length === 0 && categorias.length === 0)) {
-      console.log('ADMIN ENRICHMENT: early return due to empty data');
-      return;
-    }
-    console.log('ADMIN ENRICHMENT: proceeding with enrichment');
-
-    // No hay clientes o casos, no procesar
-    if (clientes.length === 0 && categorias.length === 0) {
       return;
     }
 
@@ -122,9 +109,6 @@ const AdminBandejaCasos: React.FC = () => {
 
           const casoClientIdNormalized = normalizeId(caso.clientId);
           const cliIdNormalized = normalizeId(c.CardCode);
-
-          // DEBUG log every combination
-          console.log('DEBUG:', caso.clientId, 'vs', c.CardCode, '| normalized:', casoClientIdNormalized, 'vs', cliIdNormalized);
 
           if (casoClientIdNormalized === cliIdNormalized) return true;
           if (c.CardCode === caso.clientId) return true;
@@ -236,11 +220,9 @@ const AdminBandejaCasos: React.FC = () => {
   const loadClientes = async () => {
     try {
       const data = await sapService.getClientesListado('SV');
-      console.log('ADMIN loadClientes returned:', data.length, 'clients');
       setClientes(data);
       return data;
     } catch (err) {
-      console.log('ADMIN loadClientes error:', err);
       return [];
     }
   };
