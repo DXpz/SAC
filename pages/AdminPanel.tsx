@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
+import { sapService } from '../services/sapService';
 import { Caso, CaseStatus, Agente, Cliente, Categoria, KPI } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
@@ -37,7 +38,7 @@ const AdminPanel: React.FC = () => {
 
   const loadClientes = async () => {
     try {
-      const clientesList = await api.getClientes();
+      const clientesList = await sapService.getClientesListado('SV');
       setClientes(clientesList);
       return clientesList;
     } catch (error) {

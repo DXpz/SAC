@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { api } from '../services/api';
+import { sapService } from '../services/sapService';
 import { Case, CaseStatus, KPI } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { TrendingUp, Users, Clock, ThumbsUp, ArrowUp, ArrowDown, Info, AlertTriangle, CheckCircle2, Filter, Zap, Target, TrendingDown, Shield, Activity } from 'lucide-react';
@@ -155,7 +156,7 @@ const GerenteDashboard: React.FC = () => {
 
   const loadClientes = async () => {
     try {
-      const clientesList = await api.getClientes();
+      const clientesList = await sapService.getClientesListado('SV');
       return clientesList;
     } catch (error) {
       return [];

@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
+import { sapService } from '../services/sapService';
 import { Case, CaseStatus, Cliente, Categoria, Agente } from '../types';
 import { STATE_COLORS } from '../constants';
 import { Search, Plus, Filter, ChevronRight, RefreshCw, X, Grid3x3, List, User, Eye, Clock } from 'lucide-react';
@@ -467,7 +468,7 @@ const BandejaCasos: React.FC = () => {
 
   const loadClientes = async () => {
     try {
-    const data = await api.getClientes();
+    const data = await sapService.getClientesListado('SV');
     setClientes(data);
       return data;
     } catch (err) {

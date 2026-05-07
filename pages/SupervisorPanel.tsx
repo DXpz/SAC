@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
+import { sapService } from '../services/sapService';
 import { Caso, CaseStatus, Agente, Cliente } from '../types';
 import { STATE_COLORS } from '../constants';
 import { AlertCircle, Clock, Users, ArrowUpRight, ChevronRight, Activity, Info, Filter, UserPlus, Bell, ArrowRightLeft, TrendingUp, TrendingDown, X, User, CheckCircle2, Eye, RefreshCw, Zap, FileText } from 'lucide-react';
@@ -30,7 +31,7 @@ const SupervisorPanel: React.FC = () => {
 
   const loadClientes = async () => {
     try {
-      const clientesList = await api.getClientes();
+      const clientesList = await sapService.getClientesListado('SV');
       setClientes(clientesList);
       return clientesList;
     } catch (error) {
