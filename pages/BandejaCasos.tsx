@@ -33,7 +33,6 @@ const BandejaCasos: React.FC = () => {
   const { theme } = useTheme();
   const currentUser = api.getUser();
   const isAdmin = currentUser?.role?.toUpperCase() === 'ADMIN' || currentUser?.role?.toUpperCase() === 'ADMINISTRADOR';
-  console.log('[DEBUG] currentUser:', currentUser, 'isAdmin:', isAdmin);
 
   const navigate = useNavigate();
 
@@ -325,7 +324,6 @@ const BandejaCasos: React.FC = () => {
 
   // Enriquecer casos cuando se cargan clientes, categorías o casos
   useEffect(() => {
-    console.log('[DEBUG enrichment] casos:', casos.length, 'clientes:', clientes.length, 'categorias:', categorias.length);
     if (casos.length === 0) {
       return; // No hay casos que enriquecer
     }
@@ -477,10 +475,7 @@ const BandejaCasos: React.FC = () => {
     });
     
     if (hasChanges) {
-      console.log('[DEBUG enrichment] updating casos, first caso before:', casos[0]?.clientName, 'after:', casosEnriquecidos[0]?.clientName);
       setCasos(casosEnriquecidos);
-    } else {
-      console.log('[DEBUG enrichment] no changes detected, skipping update');
     }
   }, [casos, clientes, categorias]); // Incluir casos para que se ejecute cuando se cargan nuevos casos
 
@@ -488,11 +483,9 @@ const BandejaCasos: React.FC = () => {
     try {
       const pais = userCountry || 'SV';
       const data = await sapService.getClientesListado(pais);
-      console.log('[DEBUG loadClientes] pais:', pais, 'count:', data.length, 'first:', data[0]);
       setClientes(data);
       return data;
     } catch (err) {
-      console.error('[DEBUG loadClientes] error:', err);
       return [];
     }
   };
@@ -634,7 +627,6 @@ const BandejaCasos: React.FC = () => {
 
       setFiltered(result);
       setCurrentPage(1); // Resetear a primera página cuando cambien los filtros
-      console.log('[DEBUG processCases] casos count:', result.length, 'first clientName:', result[0]?.clientName);
     };
     
     processCases();

@@ -57,11 +57,9 @@ export interface ClienteDetalle {
 export const sapService = {
   async getClientesListado(pais: 'SV' | 'GT' = 'SV'): Promise<ClienteListado[]> {
     const url = `${API_BASE}/listado?pais=${pais}`;
-    console.log('[sapService] Fetching clientes from:', url);
 
     try {
       const response = await fetch(url);
-      console.log('[sapService] Response status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -70,7 +68,6 @@ export const sapService = {
       }
 
       const data = await response.json();
-      console.log('[sapService] Response data:', JSON.stringify(data).substring(0, 500));
 
       let result: ClienteListado[] = [];
 
@@ -82,7 +79,6 @@ export const sapService = {
         result = data.data;
       }
 
-      console.log('[sapService] Clientes result count:', result.length);
       return result;
     } catch (err) {
       console.error('[sapService] Error fetching clientes:', err);
@@ -92,18 +88,15 @@ export const sapService = {
 
   async getClienteDetalle(codigo: string, pais: 'SV' | 'GT' = 'SV'): Promise<ClienteDetalle | null> {
     const url = `${API_BASE}/detalle?criterio=${encodeURIComponent(codigo)}&pais=${pais}`;
-    console.log('[sapService] Fetching cliente detalle from:', url);
 
     try {
       const response = await fetch(url);
-      console.log('[sapService] Detalle response status:', response.status);
 
       if (!response.ok) {
         throw new Error(`API Error: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('[sapService] Detalle response data:', JSON.stringify(data).substring(0, 500));
 
       let result: ClienteDetalle | null = null;
 
