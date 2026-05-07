@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
+import { sapService } from '../services/sapService';
+import { getUserCountry } from '../services/caseService';
 import { Case, CaseStatus, Cliente, AutorRol, HistorialEntry } from '../types';
 import { getStateBadgeColor } from '../constants';
 import { updateCaseStatus, updateCaseData, sendCaseCloseWebhook } from '../services/caseService';
@@ -16,6 +18,7 @@ const CaseDetail: React.FC = () => {
   const [agentes, setAgentes] = useState<any[]>([]);
   const [categorias, setCategorias] = useState<any[]>([]);
   const [transitionLoading, setTransitionLoading] = useState(false);
+  const [userCountry, setUserCountry] = useState<'SV' | 'GT' | null>(null);
   const { theme } = useTheme();
   
   // Modal unificado de justificación
@@ -50,6 +53,15 @@ const CaseDetail: React.FC = () => {
   const [pendingClienteForStateChange, setPendingClienteForStateChange] = useState<Cliente | null>(null);
 
   useEffect(() => {
+    const init = async () => {
+      const country = await getUserCountry();
+      setUserCountry(country);
+    };
+    init();
+  }, []);
+
+  useEffect(() => {
+    if (userCountry === null) return;
     const initializeData = async () => {
       try {
         await Promise.all([loadClientes(), loadAgentes(), loadCategorias()]);
@@ -58,12 +70,11 @@ const CaseDetail: React.FC = () => {
       }
     };
     initializeData().catch((error) => {
-      // Capturar errores no manejados de extensiones del navegador
       if (error?.message?.includes('message channel') || error?.message?.includes('listener')) {
         return;
       }
     });
-  }, [id]);
+  }, [id, userCountry]);
   
   // Cargar categorías del webhook (las creadas en Settings)
   const loadCategorias = async () => {
@@ -232,7 +243,8 @@ const CaseDetail: React.FC = () => {
 
   const loadClientes = async () => {
     try {
-      const data = await api.getClientes();
+      const pais = userCountry || 'SV';
+      const data = await sapService.getClientesListado(pais);
       setClientes(data);
     } catch (err) {
     }
