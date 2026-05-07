@@ -1,13 +1,15 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
+import { sapService, ClienteListado, ClienteDetalle } from '../services/sapService';
 import { CaseStatus, Cliente, Categoria, Channel } from '../types';
 import { Search, X, Building2, ArrowLeft, CheckCircle2, HelpCircle, ChevronDown } from 'lucide-react';
 import Toast, { ToastType } from '../components/Toast';
 import { useTheme } from '../contexts/ThemeContext';
 
 const NuevoCaso: React.FC = () => {
-  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [clientes, setClientes] = useState<ClienteListado[]>([]);
+  const [clienteDetalle, setClienteDetalle] = useState<ClienteDetalle | null>(null);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [clienteSearchTerm, setClienteSearchTerm] = useState('');
   const [showClienteDropdown, setShowClienteDropdown] = useState(false);
@@ -154,7 +156,7 @@ const NuevoCaso: React.FC = () => {
   }, [showClienteDropdown, showCategoriaDropdown]);
 
   const loadClientes = async () => {
-    const data = await api.getClientes();
+    const data = await sapService.getClientesListado(userCountry || 'SV');
     setClientes(data);
   };
 
@@ -218,15 +220,12 @@ const NuevoCaso: React.FC = () => {
     // Aplicar filtro de búsqueda si hay término
     if (clienteSearchTerm.trim()) {
       const term = clienteSearchTerm.toLowerCase();
-      clientesFiltrados = clientesFiltrados.filter(cliente => 
-        cliente.idCliente.toLowerCase().includes(term) ||
-        cliente.nombreEmpresa.toLowerCase().includes(term) ||
-        cliente.contactoPrincipal.toLowerCase().includes(term) ||
-        cliente.email.toLowerCase().includes(term) ||
-        cliente.telefono.includes(term)
+      clientesFiltrados = clientesFiltrados.filter(cliente =>
+        cliente.CardCode.toLowerCase().includes(term) ||
+        cliente.CardName.toLowerCase().includes(term)
       );
     }
-    
+
     return clientesFiltrados.slice(0, 50);
   }, [clientes, clienteSearchTerm, userCountry]);
 
@@ -239,20 +238,39 @@ const NuevoCaso: React.FC = () => {
     return normalized;
   };
 
-  const handleClienteSelect = async (cliente: Cliente) => {
-    // Solo autocompletar empresa/cliente, NO los datos de contacto
-    setNewCase({
-      ...newCase,
-      clienteId: cliente.idCliente,
-      clientName: cliente.nombreEmpresa,
-      pais: normalizeCountryCode(cliente.pais) || newCase.pais,
-      // Dejar vacíos para que el usuario los ingrese manualmente
-      contactName: '',
-      phone: '',
-      email: '',
-    });
-    setClienteSearchTerm(`${cliente.idCliente} - ${cliente.nombreEmpresa}`);
+  const handleClienteSelect = async (cliente: ClienteListado) => {
+    setClienteSearchTerm(`${cliente.CardCode} - ${cliente.CardName}`);
     setShowClienteDropdown(false);
+
+    try {
+      const detalle = await sapService.getClienteDetalle(cliente.CardCode, userCountry || 'SV');
+      setClienteDetalle(detalle);
+
+      if (detalle) {
+        setNewCase({
+          ...newCase,
+          clienteId: cliente.CardCode,
+          clientName: detalle.Nombre || cliente.CardName,
+          email: detalle.Correo || '',
+          phone: detalle.Telefono1 || detalle.TelefonoMovil || '',
+          pais: userCountry || newCase.pais,
+        });
+      } else {
+        setNewCase({
+          ...newCase,
+          clienteId: cliente.CardCode,
+          clientName: cliente.CardName,
+          pais: userCountry || newCase.pais,
+        });
+      }
+    } catch (err) {
+      setNewCase({
+        ...newCase,
+        clienteId: cliente.CardCode,
+        clientName: cliente.CardName,
+        pais: userCountry || newCase.pais,
+      });
+    }
   };
 
   const handleClienteClear = () => {
@@ -473,7 +491,7 @@ const NuevoCaso: React.FC = () => {
                       </div>
                       {filteredClientes.map((cliente) => (
                         <div
-                          key={cliente.idCliente}
+                          key={cliente.CardCode}
                           onClick={() => handleClienteSelect(cliente)}
                           className="p-4 cursor-pointer border-b last:border-b-0 transition-all group"
                           style={{
@@ -496,13 +514,13 @@ const NuevoCaso: React.FC = () => {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-sm font-bold transition-colors" style={{color: styles.text.primary}}>
-                                  {cliente.nombreEmpresa}
+                                  {cliente.CardName}
                                 </span>
                                 <span className="text-xs font-bold px-2 py-1 rounded-md shadow-sm" style={{
                                   backgroundColor: theme === 'dark' ? '#0f172a' : '#e2e8f0',
                                   color: styles.text.secondary
                                 }}>
-                                  {cliente.idCliente}
+                                  {cliente.CardCode}
                                 </span>
                               </div>
                             </div>

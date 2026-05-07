@@ -25,12 +25,12 @@ export default defineConfig(({ mode }) => {
             secure: true,
             rewrite: () => '/webhook/97a6c0f7-ea50-4542-b99e-710b96b58652',
           },
-          // Clientes (lista) - webhook para obtener lista de clientes
+          // Clientes SAP - proxy para desarrollo local
           '/api/clientes': {
-            target: 'https://n8n.red.com.sv',
+            target: 'https://sapapi.red.com.sv/api',
             changeOrigin: true,
             secure: true,
-            rewrite: () => '/webhook/clientes-workflow',
+            rewrite: (path) => path.replace(/^\/api\/clientes/, '/cliente'),
           },
           // Agentes (gestión de agentes) - webhook para almacenar/actualizar agentes
           '/api/agentes': {
