@@ -86,6 +86,18 @@ const AdminBandejaCasos: React.FC = () => {
       return;
     }
 
+    // Verificar si hay casos que necesitan enriquecimiento
+    const casosNecesitanEnriquecimiento = casos.some(caso => {
+      const needsClient = caso.clientId && (!caso.clientName || (typeof caso.clientName === 'string' && caso.clientName.trim() === '') || !caso.cliente);
+      const needsCategory = caso.categoria?.idCategoria && (!caso.category || caso.category === 'General');
+      const needsAgent = caso.agentId && (!caso.agentName || !caso.agenteAsignado);
+      return needsClient || needsCategory || needsAgent;
+    });
+
+    if (!casosNecesitanEnriquecimiento) {
+      return; // Todos los casos ya están enriquecidos
+    }
+
     const casosEnriquecidos = casos.map(caso => {
       let casoActualizado = { ...caso };
 
