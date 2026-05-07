@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
+import { sapService, ClienteListado } from '../services/sapService';
 import { Case, CaseStatus, Cliente, Categoria, Agente } from '../types';
 import { Search, Plus, Filter, ChevronRight, X, Calendar, User, Clock, AlertTriangle, Timer, HelpCircle } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
@@ -17,7 +18,7 @@ const AdminBandejaCasos: React.FC = () => {
   const [agenteFilter, setAgenteFilter] = useState<string>('all');
   const [slaFilter, setSlaFilter] = useState<string>('all'); // all, vencido, en-riesgo, dentro-sla
   const [fechaFilter, setFechaFilter] = useState<string>('all'); // all, hoy, semana, mes
-  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [clientes, setClientes] = useState<ClienteListado[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [agentes, setAgentes] = useState<Agente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -234,7 +235,7 @@ const AdminBandejaCasos: React.FC = () => {
 
   const loadClientes = async () => {
     try {
-      const data = await api.getClientes();
+      const data = await sapService.getClientesListado('SV');
       console.log('ADMIN loadClientes returned:', data.length, 'clients');
       setClientes(data);
       return data;
