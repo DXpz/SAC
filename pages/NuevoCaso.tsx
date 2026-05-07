@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { sapService, ClienteListado, ClienteDetalle } from '../services/sapService';
@@ -6,6 +6,15 @@ import { CaseStatus, Cliente, Categoria, Channel } from '../types';
 import { Search, X, Building2, ArrowLeft, CheckCircle2, HelpCircle, ChevronDown } from 'lucide-react';
 import Toast, { ToastType } from '../components/Toast';
 import { useTheme } from '../contexts/ThemeContext';
+
+const useDebounce = <T,>(value: T, delay: number): T => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+};
 
 const NuevoCaso: React.FC = () => {
   const [clientes, setClientes] = useState<ClienteListado[]>([]);
@@ -18,7 +27,10 @@ const NuevoCaso: React.FC = () => {
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [loading, setLoading] = useState(false);
   const [userCountry, setUserCountry] = useState<'SV' | 'GT' | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
   const { theme } = useTheme();
+
+  const debouncedSearchTerm = useDebounce(clienteSearchTerm, 300);
   
   const [newCase, setNewCase] = useState({
     clienteId: '',
@@ -214,26 +226,16 @@ const NuevoCaso: React.FC = () => {
 
   // Filtrar clientes según el término de búsqueda y el país del usuario
   const filteredClientes = useMemo(() => {
-    let clientesFiltrados = clientes;
-    
-    // Si el usuario tiene país definido (no es admin), filtrar clientes por país
-    if (userCountry) {
-      clientesFiltrados = clientes.filter(cliente => {
-        const clientePais = normalizeClienteCountry(cliente.pais);
-        return clientePais === userCountry;
-      });
-    }
-    // Aplicar filtro de búsqueda si hay término
-    if (clienteSearchTerm.trim()) {
-      const term = clienteSearchTerm.toLowerCase();
-      clientesFiltrados = clientesFiltrados.filter(cliente =>
-        cliente.CardCode.toLowerCase().includes(term) ||
-        cliente.CardName.toLowerCase().includes(term)
-      );
+    if (!clienteSearchTerm.trim()) {
+      return clientes.slice(0, 100);
     }
 
-    return clientesFiltrados.slice(0, 50);
-  }, [clientes, clienteSearchTerm, userCountry]);
+    const term = clienteSearchTerm.toLowerCase();
+    return clientes.filter(cliente =>
+      cliente.CardCode.toLowerCase().includes(term) ||
+      cliente.CardName.toLowerCase().includes(term)
+    ).slice(0, 100);
+  }, [clientes, clienteSearchTerm]);
 
   const normalizeCountryCode = (value?: string) => {
     if (!value) return '';
@@ -492,7 +494,7 @@ const NuevoCaso: React.FC = () => {
                         borderColor: 'rgba(148, 163, 184, 0.2)'
                       }}>
                         <p className="text-xs font-semibold" style={{color: styles.text.secondary}}>
-                          {filteredClientes.length} {filteredClientes.length === 1 ? 'cliente encontrado' : 'clientes encontrados'}
+                          {filteredClientes.length} {filteredClientes.length === 1 ? 'resultado' : 'resultados'}
                         </p>
                       </div>
                       {filteredClientes.map((cliente) => (
@@ -505,7 +507,7 @@ const NuevoCaso: React.FC = () => {
                             backgroundColor: 'transparent'
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(248, 250, 252, 0.1)';
+                            e.currentTarget.style.backgroundColor = 'rgba(16, 122, 180, 0.1)';
                           }}
                           onMouseLeave={(e) => {
                             e.currentTarget.style.backgroundColor = 'transparent';
@@ -527,6 +529,11 @@ const NuevoCaso: React.FC = () => {
                                   color: styles.text.secondary
                                 }}>
                                   {cliente.CardCode}
+                                </span>
+                                <span className={`text-xs font-bold px-2 py-1 rounded-md shadow-sm ${
+                                  cliente.estado === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                }`}>
+                                  {cliente.estado}
                                 </span>
                               </div>
                             </div>
