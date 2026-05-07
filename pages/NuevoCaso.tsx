@@ -175,7 +175,7 @@ const NuevoCaso: React.FC = () => {
 
   const loadClientes = async () => {
     try {
-      const pais = (newCase.pais as 'SV' | 'GT') || 'SV';
+      const pais = (userCountry as 'SV' | 'GT') || 'SV';
       console.log('[NuevoCaso] Loading clientes for country:', pais);
       const data = await sapService.getClientesListado(pais);
       console.log('[NuevoCaso] Loaded clientes:', data.length);
@@ -316,7 +316,7 @@ const NuevoCaso: React.FC = () => {
     e.preventDefault();
     
     // Validaciones básicas - Solo campos de "Detalles del Caso" son obligatorios
-    if (!newCase.subject || !newCase.description || !newCase.categoriaId || !newCase.pais) {
+    if (!newCase.subject || !newCase.description || !newCase.categoriaId) {
       setToast({ message: 'Por favor, completa todos los campos requeridos de Detalles del Caso (marcados con *)', type: 'warning' });
       return;
     }
@@ -560,30 +560,6 @@ const NuevoCaso: React.FC = () => {
                     </div>
                   )}
                 </div>
-                
-                <div>
-                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>Empresa / Cliente</label>
-                  <input 
-                    type="text" 
-                    className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
-                    style={{
-                      ...styles.input
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = 'var(--color-accent-blue)';
-                      e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                      e.target.style.backgroundColor = theme === 'dark' ? '#020617' : '#f1f5f9';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = styles.input.borderColor;
-                      e.target.style.boxShadow = '';
-                      e.target.style.backgroundColor = styles.input.backgroundColor;
-                    }}
-                    placeholder="Nombre de la empresa"
-                    value={newCase.clientName}
-                    onChange={e => setNewCase({...newCase, clientName: e.target.value})}
-                  />
-                </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -716,32 +692,6 @@ const NuevoCaso: React.FC = () => {
                 <h2 className="text-sm font-semibold mb-3 pb-2 border-b" style={{color: styles.text.primary, borderColor: 'rgba(148, 163, 184, 0.2)'}}>
                   Detalles del Caso
                 </h2>
-
-                <div>
-                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>
-                    País del Caso <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    required
-                    value={newCase.pais}
-                    onChange={(e) => setNewCase({...newCase, pais: e.target.value})}
-                    className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs appearance-none cursor-pointer shadow-sm hover:shadow-md"
-                    style={{
-                      ...styles.input,
-                      color: newCase.pais ? styles.text.secondary : styles.text.tertiary
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#020617' : '#ffffff';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = styles.input.backgroundColor;
-                    }}
-                  >
-                    <option value="" disabled>Seleccionar país</option>
-                    <option value="SV">El Salvador (SV)</option>
-                    <option value="GT">Guatemala (GT)</option>
-                  </select>
-                </div>
 
                 <div>
                   <div className="flex items-center gap-2 mb-1.5">
