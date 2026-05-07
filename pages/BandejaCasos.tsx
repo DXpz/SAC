@@ -33,6 +33,7 @@ const BandejaCasos: React.FC = () => {
   const { theme } = useTheme();
   const currentUser = api.getUser();
   const isAdmin = currentUser?.role?.toUpperCase() === 'ADMIN' || currentUser?.role?.toUpperCase() === 'ADMINISTRADOR';
+  console.log('[DEBUG] currentUser:', currentUser, 'isAdmin:', isAdmin);
 
   const navigate = useNavigate();
 
