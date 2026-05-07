@@ -1,0 +1,31 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+
+const N8N_CATEGORIES_URL = 'https://n8n.red.com.sv/webhook/3064d26b-a4b3-40ac-9f65-0835bcaf99f5';
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const { method, body } = req;
+
+  if (method === 'POST') {
+    try {
+      const response = await fetch(N8N_CATEGORIES_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: 'Failed to fetch categories' });
+      }
+
+      const data = await response.json();
+      return res.status(200).json(data);
+    } catch (error) {
+      return res.status(500).json({ error: 'Proxy error', message: (error as Error).message });
+    }
+  }
+
+  return res.status(405).json({ error: 'Method not allowed' });
+}

@@ -60,6 +60,13 @@ export default defineConfig(({ mode }) => {
             secure: true,
             rewrite: () => '/webhook/d967cdf7-aa21-4d63-95e8-918dff18cf2b',
           },
+          // Categorías - proxy para desarrollo local
+          '/api/categorias': {
+            target: 'https://n8n.red.com.sv',
+            changeOrigin: true,
+            secure: true,
+            rewrite: () => '/webhook/3064d26b-a4b3-40ac-9f65-0835bcaf99f5',
+          },
         },
       },
       plugins: [react()],

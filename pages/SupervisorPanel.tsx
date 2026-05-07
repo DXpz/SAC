@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { sapService } from '../services/sapService';
+import { getUserCountry } from '../services/caseService';
 import { Caso, CaseStatus, Agente, Cliente } from '../types';
 import { STATE_COLORS } from '../constants';
 import { AlertCircle, Clock, Users, ArrowUpRight, ChevronRight, Activity, Info, Filter, UserPlus, Bell, ArrowRightLeft, TrendingUp, TrendingDown, X, User, CheckCircle2, Eye, RefreshCw, Zap, FileText } from 'lucide-react';
@@ -20,18 +21,29 @@ const SupervisorPanel: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<FilterType>('todos');
   const [agentFilter, setAgentFilter] = useState<string>('todos');
   const [showTooltip, setShowTooltip] = useState<string | null>(null);
+  const [supervisorCountry, setSupervisorCountry] = useState<'SV' | 'GT' | null>(null);
   const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    loadData();
-    // Ya no usamos setInterval, solo actualizamos cuando cambia la vista
-  }, [location.pathname]);
+    const init = async () => {
+      const country = await getUserCountry();
+      setSupervisorCountry(country);
+    };
+    init();
+  }, []);
+
+  useEffect(() => {
+    if (supervisorCountry !== null) {
+      loadData();
+    }
+  }, [location.pathname, supervisorCountry]);
 
   const loadClientes = async () => {
     try {
-      const clientesList = await sapService.getClientesListado('SV');
+      const pais = supervisorCountry || 'SV';
+      const clientesList = await sapService.getClientesListado(pais);
       setClientes(clientesList);
       return clientesList;
     } catch (error) {

@@ -140,23 +140,27 @@ const GerenteDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    // Cargar el país del gerente al montar el componente
-    const loadGerenteCountry = async () => {
+    const init = async () => {
       const currentUser = api.getUser();
       if (currentUser?.role === 'GERENTE') {
         const country = await getGerenteCountry();
         setGerenteCountry(country);
       }
     };
-    
-    loadGerenteCountry();
-    loadData();
-    // Ya no usamos setInterval, solo actualizamos cuando cambia la vista
-  }, [location.pathname]);
+
+    init();
+  }, []);
+
+  useEffect(() => {
+    if (gerenteCountry !== null) {
+      loadData();
+    }
+  }, [location.pathname, gerenteCountry]);
 
   const loadClientes = async () => {
     try {
-      const clientesList = await sapService.getClientesListado('SV');
+      const pais = gerenteCountry || 'SV';
+      const clientesList = await sapService.getClientesListado(pais);
       return clientesList;
     } catch (error) {
       return [];

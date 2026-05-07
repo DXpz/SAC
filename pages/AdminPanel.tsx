@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { sapService } from '../services/sapService';
+import { getUserCountry } from '../services/caseService';
 import { Caso, CaseStatus, Agente, Cliente, Categoria, KPI } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
@@ -32,13 +33,15 @@ const AdminPanel: React.FC = () => {
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [kpis, setKpis] = useState<KPI | null>(null);
   const [estados, setEstados] = useState<Array<{ id: string; name: string; order: number; isFinal: boolean }>>([]);
+  const [userCountry, setUserCountry] = useState<'SV' | 'GT' | null>(null);
   const navigate = useNavigate();
   const { theme } = useTheme();
   const location = useLocation();
 
   const loadClientes = async () => {
     try {
-      const clientesList = await sapService.getClientesListado('SV');
+      const pais = userCountry || 'SV';
+      const clientesList = await sapService.getClientesListado(pais);
       setClientes(clientesList);
       return clientesList;
     } catch (error) {
@@ -126,8 +129,18 @@ const AdminPanel: React.FC = () => {
   };
 
   useEffect(() => {
-    loadData();
-  }, [location.pathname]);
+    const init = async () => {
+      const country = await getUserCountry();
+      setUserCountry(country);
+    };
+    init();
+  }, []);
+
+  useEffect(() => {
+    if (userCountry !== null) {
+      loadData();
+    }
+  }, [location.pathname, userCountry]);
 
   // Métricas adicionales desde los endpoints (con validaciones y normalización)
   const casosSeguros = Array.isArray(allCasos) ? allCasos : [];

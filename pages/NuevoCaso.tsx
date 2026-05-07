@@ -191,9 +191,9 @@ const NuevoCaso: React.FC = () => {
       if (data && Array.isArray(data) && data.length > 0) {
         const mapped = data.map((cat: any) => ({
           idCategoria: String(cat.id || cat.idCategoria || cat.category_id || ''),
-          nombre: cat.name || cat.nombre || cat.category_name || cat.caegoria || 'Sin nombre',
-          slaDias: Number(cat.sla || cat.slaDays || cat.sla_dias || 3),
-          descripcion: cat.description || cat.descripcion || '',
+          nombre: cat.categoria || cat.name || cat.nombre || cat.category_name || cat.caegoria || 'Sin nombre',
+          slaDias: Number(cat.valor_sla || cat.sla || cat.slaDays || cat.sla_dias || 3),
+          descripcion: cat.descripcion || cat.description || '',
           activa: true,
         }));
         setCategorias(mapped);

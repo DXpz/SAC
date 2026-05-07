@@ -1149,8 +1149,8 @@ export const api = {
         .filter((c: any) => c.activa !== false)
         .map((c: any): Categoria => ({
           idCategoria: String(c.id ?? c.categoria_id ?? ''),
-          nombre: c.nombre ?? c.name ?? c.category_name ?? '',
-          slaDias: Number(c.sla ?? c.sla_dias ?? 5),
+          nombre: c.categoria ?? c.nombre ?? c.name ?? c.category_name ?? '',
+          slaDias: Number(c.valor_sla ?? c.sla ?? c.sla_dias ?? 5),
           diasAlertaSupervisor: Number(c.dias_alerta_supervisor ?? c.diasAlertaSupervisor ?? 3),
           diasAlertaGerente: Number(c.dias_alerta_gerente ?? c.diasAlertaGerente ?? 4),
           activa: c.activa !== false
@@ -1183,7 +1183,7 @@ export const api = {
     };
     const mappedRole = roleMap[actor.role] || actor.role;
 
-    // Construir el payload según el formato especificado
+    // Construir el payload según el formato que espera n8n (campos de la BD)
     const payload = {
       action: 'category.create',
       actor: {
@@ -1192,10 +1192,10 @@ export const api = {
         role: mappedRole
       },
       data: {
-        id: '', // Vacío según el formato especificado
-        category_name: categoryData.category_name,
-        description: categoryData.description,
-        sla: String(categoryData.sla) // Convertir a string según el formato
+        id: '',
+        categoria: categoryData.category_name, // Campo BD: categoria
+        descripcion: categoryData.description,   // Campo BD: descripcion
+        valor_sla: String(categoryData.sla)     // Campo BD: valor_sla
       }
     };
 
@@ -1230,7 +1230,7 @@ export const api = {
     };
     const mappedRole = roleMap[actor.role] || actor.role;
 
-    // Construir el payload según el formato especificado
+    // Construir el payload según el formato que espera n8n (campos de la BD)
     const payload = {
       action: 'category.update',
       actor: {
@@ -1240,9 +1240,9 @@ export const api = {
       },
       data: {
         id: categoryData.id,
-        category_name: categoryData.category_name || '',
-        description: categoryData.description || '',
-        sla: String(categoryData.sla) // Convertir a string según el formato
+        categoria: categoryData.category_name || '',  // Campo BD: categoria
+        descripcion: categoryData.description || '',   // Campo BD: descripcion
+        valor_sla: String(categoryData.sla)            // Campo BD: valor_sla
       }
     };
 
@@ -1380,27 +1380,28 @@ export const api = {
       }
 
       // Mapear las categorías del webhook al formato local
-      // El webhook usa: "caegoria" (typo), "descripcion", "valor SLA"
+      // El webhook usa: "caegoria" (typo), "descripcion", "valor_sla"
       const mappedCategories = categories.map((cat: any, index: number) => {
         const mapped = {
           id: String(cat.id || cat.idCategoria || cat.category_id || cat.id_categoria || String(index + 1)),
-          name: cat.name || 
-                cat.nombre || 
-                cat.category_name || 
-                cat.categoryName || 
-                cat.caegoria ||  // Manejar el typo del webhook
-                cat.categoria ||
+          name: cat.categoria || // Base de datos tiene columna "categoria"
+                cat.name ||
+                cat.nombre ||
+                cat.category_name ||
+                cat.categoryName ||
+                cat.caegoria || // Manejar el typo del webhook
                 'Sin nombre',
-          slaDays: Number(cat.slaDays || 
-                         cat.slaDias || 
-                         cat.sla || 
-                         cat.sla_dias || 
-                         cat['valor SLA'] ||  // Manejar "valor SLA" con espacio
+          slaDays: Number(cat.valor_sla || // Base de datos tiene columna "valor_sla"
+                         cat.slaDays ||
+                         cat.slaDias ||
+                         cat.sla ||
+                         cat.sla_dias ||
+                         cat['valor SLA'] ||
                          cat.valorSLA ||
                          3),
-          description: String(cat.description || 
-                            cat.descripcion || 
-                            cat.desc || 
+          description: String(cat.descripcion ||
+                            cat.description ||
+                            cat.desc ||
                             '')
         };
         return mapped;

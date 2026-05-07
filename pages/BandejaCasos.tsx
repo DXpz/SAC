@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { sapService } from '../services/sapService';
+import { getUserCountry } from '../services/caseService';
 import { Case, CaseStatus, Cliente, Categoria, Agente } from '../types';
 import { STATE_COLORS } from '../constants';
 import { Search, Plus, Filter, ChevronRight, RefreshCw, X, Grid3x3, List, User, Eye, Clock } from 'lucide-react';
@@ -28,6 +29,7 @@ const BandejaCasos: React.FC = () => {
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 20;
+  const [userCountry, setUserCountry] = useState<'SV' | 'GT' | null>(null);
   const { theme } = useTheme();
 
   const navigate = useNavigate();
@@ -293,8 +295,17 @@ const BandejaCasos: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const init = async () => {
+      const country = await getUserCountry();
+      setUserCountry(country);
+    };
+    init();
+  }, []);
+
   // Cargar datos iniciales en secuencia
   useEffect(() => {
+    if (userCountry === null) return;
     const initializeData = async () => {
       try {
         // Primero cargar clientes y categorías
@@ -306,7 +317,7 @@ const BandejaCasos: React.FC = () => {
     };
     initializeData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [userCountry]);
 
 
   // Enriquecer casos cuando se cargan clientes, categorías o casos
@@ -468,8 +479,9 @@ const BandejaCasos: React.FC = () => {
 
   const loadClientes = async () => {
     try {
-    const data = await sapService.getClientesListado('SV');
-    setClientes(data);
+      const pais = userCountry || 'SV';
+      const data = await sapService.getClientesListado(pais);
+      setClientes(data);
       return data;
     } catch (err) {
       return [];

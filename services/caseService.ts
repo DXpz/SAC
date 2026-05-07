@@ -254,7 +254,7 @@ const getUserRole = (): 'AGENTE' | 'SUPERVISOR' | 'GERENTE' | null => {
  * Obtiene y normaliza el país del usuario autenticado
  * Retorna 'SV' para El Salvador, 'GT' para Guatemala, o null si no está definido
  */
-const getUserCountry = async (): Promise<'SV' | 'GT' | null> => {
+export const getUserCountry = async (): Promise<'SV' | 'GT' | null> => {
   try {
     // Primero intentar desde api.getUser() que puede tener datos más actualizados
     const currentUser = api.getUser();
