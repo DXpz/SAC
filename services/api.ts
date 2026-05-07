@@ -1342,22 +1342,27 @@ export const api = {
       //   }
       // ]
       let categories: any[] = [];
-      
+
       // Manejar el formato específico del webhook
-      if (Array.isArray(response) && response.length > 0) {
-        // Si es un array, buscar el objeto que contiene "data"
+      // El n8n devuelve un array directo: [{id, categoria, descripcion, valor_sla}, ...]
+      if (Array.isArray(response)) {
+        // Si el primer elemento tiene la propiedad 'data', usar data; si no, usar el array directo
         const firstItem = response[0];
-        if (firstItem && typeof firstItem === 'object' && firstItem.data) {
-          categories = Array.isArray(firstItem.data) ? firstItem.data : [];
+        if (firstItem && typeof firstItem === 'object' && 'data' in firstItem && Array.isArray(firstItem.data)) {
+          // Formato: [{data: [...]}]
+          categories = firstItem.data;
+        } else if (firstItem && typeof firstItem === 'object' && 'id' in firstItem) {
+          // Formato directo de n8n: [{id, categoria, descripcion, valor_sla}, ...]
+          categories = response;
         } else if (Array.isArray(firstItem)) {
           categories = firstItem;
         } else {
-          // Intentar otros formatos comunes
-          categories = firstItem.categories || 
-                       firstItem.categorias || 
-                       firstItem.result ||
-                       firstItem.results ||
-                       (Array.isArray(firstItem.items) ? firstItem.items : []);
+          // Intentar otros formatos
+          categories = firstItem?.categories ||
+                       firstItem?.categorias ||
+                       firstItem?.result ||
+                       firstItem?.results ||
+                       (Array.isArray(firstItem?.items) ? firstItem.items : []);
         }
       } else if (response && typeof response === 'object') {
         // Si no es array, buscar propiedades comunes (incl. data anidado)
