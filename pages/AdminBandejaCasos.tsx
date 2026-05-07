@@ -105,13 +105,13 @@ const AdminBandejaCasos: React.FC = () => {
             }
             return normalized;
           };
-          
+
           const casoClientIdNormalized = normalizeId(caso.clientId);
-          const cliIdNormalized = normalizeId(c.idCliente);
+          const cliIdNormalized = normalizeId(c.CardCode);
           if (casoClientIdNormalized === cliIdNormalized) return true;
-          if (c.idCliente === caso.clientId) return true;
+          if (c.CardCode === caso.clientId) return true;
           const casoNum = caso.clientId.replace(/\D/g, '');
-          const cliNum = c.idCliente.replace(/\D/g, '');
+          const cliNum = c.CardCode.replace(/\D/g, '');
           if (casoNum && cliNum && casoNum === cliNum) return true;
           return false;
         });
@@ -119,13 +119,13 @@ const AdminBandejaCasos: React.FC = () => {
         if (clienteCompleto) {
           casoActualizado = {
             ...casoActualizado,
-            clientName: caso.clientName && caso.clientName.trim() !== '' && caso.clientName !== 'Por definir' 
-              ? caso.clientName 
-              : clienteCompleto.nombreEmpresa,
-            clientId: clienteCompleto.idCliente || caso.clientId,
+            clientName: caso.clientName && caso.clientName.trim() !== '' && caso.clientName !== 'Por definir'
+              ? caso.clientName
+              : clienteCompleto.CardName,
+            clientId: clienteCompleto.CardCode || caso.clientId,
             cliente: clienteCompleto,
-            clientEmail: caso.clientEmail || clienteCompleto.email,
-            clientPhone: caso.clientPhone || clienteCompleto.telefono,
+            clientEmail: caso.clientEmail || clienteCompleto.Email,
+            clientPhone: caso.clientPhone || clienteCompleto.Telefono,
           };
         }
       }
@@ -202,7 +202,7 @@ const AdminBandejaCasos: React.FC = () => {
       return (
         caso.clientName !== original.clientName ||
         caso.clientId !== original.clientId ||
-        caso.cliente?.idCliente !== original.cliente?.idCliente ||
+        caso.cliente?.CardCode !== original.cliente?.CardCode ||
         caso.category !== original.category ||
         caso.categoria?.idCategoria !== original.categoria?.idCategoria ||
         caso.agentName !== original.agentName ||
@@ -295,7 +295,7 @@ const AdminBandejaCasos: React.FC = () => {
     // Filtro por cliente
     if (clienteFilter !== 'all') {
       result = result.filter(c => {
-        const clienteId = c.clientId || c.cliente?.idCliente;
+        const clienteId = c.clientId || c.cliente?.CardCode;
         return String(clienteId) === String(clienteFilter);
       });
     }
@@ -612,8 +612,8 @@ const AdminBandejaCasos: React.FC = () => {
             >
               <option value="all">Todos los Clientes</option>
               {clientes.map(cli => (
-                <option key={cli.idCliente} value={cli.idCliente}>
-                  {cli.nombreEmpresa}
+                <option key={cli.CardCode} value={cli.CardCode}>
+                  {cli.CardName}
                 </option>
               ))}
             </select>
@@ -824,10 +824,10 @@ const AdminBandejaCasos: React.FC = () => {
                             color: theme === 'dark' ? '#60a5fa' : '#1d4ed8',
                             borderColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.3)' : '#93c5fd'
                           }}>
-                            {caso.clientId || caso.cliente?.idCliente || 'N/A'}
+                            {caso.clientId || caso.cliente?.CardCode || 'N/A'}
                           </span>
                           <span className="text-xs font-semibold max-w-[150px] truncate" style={{color: styles.text.primary}}>
-                            {caso.clientName || caso.cliente?.nombreEmpresa || 'Por definir'}
+                            {caso.clientName || caso.cliente?.CardName || 'Por definir'}
                           </span>
                         </div>
                       </td>

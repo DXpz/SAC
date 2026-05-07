@@ -212,12 +212,9 @@ const CaseDetail: React.FC = () => {
       return clientes.slice(0, 50);
     }
     const term = clienteSearchTerm.toLowerCase();
-    return clientes.filter(cliente => 
-      cliente.idCliente.toLowerCase().includes(term) ||
-      cliente.nombreEmpresa.toLowerCase().includes(term) ||
-      cliente.contactoPrincipal.toLowerCase().includes(term) ||
-      cliente.email.toLowerCase().includes(term) ||
-      cliente.telefono.includes(term)
+    return clientes.filter(cliente =>
+      cliente.CardCode.toLowerCase().includes(term) ||
+      cliente.CardName.toLowerCase().includes(term)
     );
   }, [clientes, clienteSearchTerm]);
   
@@ -227,12 +224,9 @@ const CaseDetail: React.FC = () => {
       return clientes.slice(0, 50);
     }
     const term = clienteQuickSearchTerm.toLowerCase();
-    return clientes.filter(cliente => 
-      cliente.idCliente.toLowerCase().includes(term) ||
-      cliente.nombreEmpresa.toLowerCase().includes(term) ||
-      cliente.contactoPrincipal.toLowerCase().includes(term) ||
-      cliente.email.toLowerCase().includes(term) ||
-      cliente.telefono.includes(term)
+    return clientes.filter(cliente =>
+      cliente.CardCode.toLowerCase().includes(term) ||
+      cliente.CardName.toLowerCase().includes(term)
     );
   }, [clientes, clienteQuickSearchTerm]);
 
@@ -276,17 +270,17 @@ const CaseDetail: React.FC = () => {
         
         // Buscar cliente con múltiples estrategias
         const cliente = clientes.find(c => {
-          const cliIdNormalized = normalizeId(c.idCliente);
+          const cliIdNormalized = normalizeId(c.CardCode);
           
           // Comparación normalizada
           if (clientIdNormalized === cliIdNormalized) return true;
           
           // Comparación directa
-          if (c.idCliente === clientIdBuscar) return true;
+          if (c.CardCode === clientIdBuscar) return true;
           
           // Comparación numérica (solo números)
           const casoNum = clientIdBuscar.replace(/\D/g, '');
-          const cliNum = c.idCliente.replace(/\D/g, '');
+          const cliNum = c.CardCode.replace(/\D/g, '');
           if (casoNum && cliNum && casoNum === cliNum) return true;
           
           return false;
@@ -296,19 +290,19 @@ const CaseDetail: React.FC = () => {
           
           // Enriquecer con datos del cliente
           if (!casoActualizado.clientName || casoActualizado.clientName === 'Sin cliente' || casoActualizado.clientName.trim() === '') {
-            casoActualizado.clientName = cliente.nombreEmpresa;
+            casoActualizado.clientName = cliente.CardName;
             updated = true;
           }
           if (!casoActualizado.cliente) {
             casoActualizado.cliente = cliente;
             updated = true;
           }
-          if (!casoActualizado.clientEmail && cliente.email) {
-            casoActualizado.clientEmail = cliente.email;
+          if (!casoActualizado.clientEmail && cliente.Email) {
+            casoActualizado.clientEmail = cliente.Email;
             updated = true;
           }
-          if (!casoActualizado.clientPhone && cliente.telefono) {
-            casoActualizado.clientPhone = cliente.telefono;
+          if (!casoActualizado.clientPhone && cliente.Telefono) {
+            casoActualizado.clientPhone = cliente.Telefono;
             updated = true;
           }
         }
@@ -426,8 +420,8 @@ const CaseDetail: React.FC = () => {
       
       
       // ENRIQUECER CON DATOS DEL CLIENTE SI FALTA EL NOMBRE
-      const clientIdDelCaso = data.clientId || data.clienteId || data.cliente?.idCliente;
-      const clientNameDelCaso = data.clientName || data.cliente?.nombreEmpresa || '';
+      const clientIdDelCaso = data.clientId || data.clienteId || data.cliente?.CardCode;
+      const clientNameDelCaso = data.clientName || data.cliente?.CardName || '';
       
       // Verificar si necesita enriquecimiento: si hay clientId pero no hay nombre válido
       const necesitaEnriquecimiento = clientIdDelCaso && 
@@ -440,22 +434,21 @@ const CaseDetail: React.FC = () => {
         
         // Si ya tenemos clientes cargados, buscar ahí primero
         if (clientes.length > 0) {
-          const clienteEncontrado = clientes.find(c => 
-            c.idCliente === clientIdDelCaso || 
-            c.idCliente.toLowerCase() === clientIdDelCaso.toLowerCase() ||
-            c.idCliente.replace(/\D/g, '') === clientIdDelCaso.replace(/\D/g, '')
+          const clienteEncontrado = clientes.find(c =>
+            c.CardCode === clientIdDelCaso ||
+            c.CardCode.toLowerCase() === clientIdDelCaso.toLowerCase() ||
+            c.CardCode.replace(/\D/g, '') === clientIdDelCaso.replace(/\D/g, '')
           );
-          
+
           if (clienteEncontrado) {
-            data.clientName = clienteEncontrado.nombreEmpresa;
+            data.clientName = clienteEncontrado.CardName;
             data.cliente = clienteEncontrado;
             if (!data.clientEmail || (typeof data.clientEmail === 'string' && data.clientEmail.trim() === '') || data.clientEmail === null || data.clientEmail === undefined) {
-              data.clientEmail = clienteEncontrado.email || '';
+              data.clientEmail = clienteEncontrado.Email || '';
             }
-            // Asegurar que clientPhone sea string antes de verificar
             const clientPhoneStr = data.clientPhone ? String(data.clientPhone) : '';
             if (!data.clientPhone || clientPhoneStr.trim() === '' || data.clientPhone === null || data.clientPhone === undefined) {
-              data.clientPhone = clienteEncontrado.telefono || '';
+              data.clientPhone = clienteEncontrado.Telefono || '';
             }
           }
         } else {
@@ -464,22 +457,21 @@ const CaseDetail: React.FC = () => {
             const clientesDesdeAPI = await api.getClientes();
             setClientes(clientesDesdeAPI);
             
-            const clienteEncontrado = clientesDesdeAPI.find(c => 
-              c.idCliente === clientIdDelCaso || 
-              c.idCliente.toLowerCase() === clientIdDelCaso.toLowerCase() ||
-              c.idCliente.replace(/\D/g, '') === clientIdDelCaso.replace(/\D/g, '')
+            const clienteEncontrado = clientesDesdeAPI.find(c =>
+              c.CardCode === clientIdDelCaso ||
+              c.CardCode.toLowerCase() === clientIdDelCaso.toLowerCase() ||
+              c.CardCode.replace(/\D/g, '') === clientIdDelCaso.replace(/\D/g, '')
             );
-            
+
             if (clienteEncontrado) {
-              data.clientName = clienteEncontrado.nombreEmpresa;
+              data.clientName = clienteEncontrado.CardName;
               data.cliente = clienteEncontrado;
               if (!data.clientEmail || (typeof data.clientEmail === 'string' && data.clientEmail.trim() === '') || data.clientEmail === null || data.clientEmail === undefined) {
-                data.clientEmail = clienteEncontrado.email || '';
+                data.clientEmail = clienteEncontrado.Email || '';
               }
-              // Asegurar que clientPhone sea string antes de verificar
               const clientPhoneStr = data.clientPhone ? String(data.clientPhone) : '';
               if (!data.clientPhone || clientPhoneStr.trim() === '' || data.clientPhone === null || data.clientPhone === undefined) {
-                data.clientPhone = clienteEncontrado.telefono || '';
+                data.clientPhone = clienteEncontrado.Telefono || '';
               }
             }
           } catch (error) {
@@ -489,10 +481,10 @@ const CaseDetail: React.FC = () => {
       } else if (clientIdDelCaso && clientNameDelCaso && clientNameDelCaso.trim() !== '') {
         // Si ya tiene nombre pero no tiene el objeto cliente completo, intentar enriquecerlo
         if (!data.cliente && clientes.length > 0) {
-          const clienteEncontrado = clientes.find(c => 
-            c.idCliente === clientIdDelCaso || 
-            c.idCliente.toLowerCase() === clientIdDelCaso.toLowerCase() ||
-            c.idCliente.replace(/\D/g, '') === clientIdDelCaso.replace(/\D/g, '')
+          const clienteEncontrado = clientes.find(c =>
+            c.CardCode === clientIdDelCaso ||
+            c.CardCode.toLowerCase() === clientIdDelCaso.toLowerCase() ||
+            c.CardCode.replace(/\D/g, '') === clientIdDelCaso.replace(/\D/g, '')
           );
           
           if (clienteEncontrado) {
@@ -638,25 +630,21 @@ const CaseDetail: React.FC = () => {
       // Obtener cliente_id: primero del cliente pendiente (si hay uno seleccionado), sino del caso actual
       let clienteId = '';
       let clienteToUpdate: Cliente | null = null;
-      
+
       if (pendingClienteForStateChange) {
-        // Si hay un cliente pendiente de la selección rápida, usarlo
-        clienteId = pendingClienteForStateChange.idCliente;
+        clienteId = pendingClienteForStateChange.CardCode;
         clienteToUpdate = pendingClienteForStateChange;
-        // Limpiar el cliente pendiente después de usarlo
         setPendingClienteForStateChange(null);
       } else {
-        // Si no hay cliente pendiente, usar el del caso actual
-        clienteId = caso?.clientId || caso?.clienteId || caso?.cliente?.idCliente || '';
+        clienteId = caso?.clientId || caso?.clienteId || caso?.cliente?.CardCode || '';
       }
-      
-      // Si hay un cliente pendiente, actualizar el caso primero con el cliente
+
       if (clienteToUpdate && id) {
         await updateCaseData(id, {
-          cliente_id: clienteToUpdate.idCliente,
-          client_name: clienteToUpdate.nombreEmpresa,
-          client_email: caso?.clientEmail || clienteToUpdate.email,
-          client_phone: caso?.clientPhone || clienteToUpdate.telefono
+          cliente_id: clienteToUpdate.CardCode,
+          client_name: clienteToUpdate.CardName,
+          client_email: caso?.clientEmail || clienteToUpdate.Email,
+          client_phone: caso?.clientPhone || clienteToUpdate.Telefono
         });
       }
       
@@ -846,7 +834,7 @@ const CaseDetail: React.FC = () => {
     const newStateNormForClient = normalizeEstadoName(newState);
     if (newStateNormForClient === 'en_proceso' || newStateNormForClient.includes('en_proceso') || newState === CaseStatus.EN_PROCESO || newState === 'En Proceso') {
       const clienteId = caso?.clientId || caso?.clienteId;
-      const clienteName = caso?.clientName || caso?.cliente?.nombreEmpresa;
+      const clienteName = caso?.clientName || caso?.cliente?.CardName;
       
       // Si no hay cliente o el cliente es "N/A" o "Por definir"
       if (!clienteId || clienteId === 'N/A' || clienteId === '' || 
@@ -922,7 +910,7 @@ const CaseDetail: React.FC = () => {
       
       setErrorMessage('');
       
-      const clienteId = caso?.clientId || caso?.clienteId || caso?.cliente?.idCliente || '';
+      const clienteId = caso?.clientId || caso?.clienteId || caso?.cliente?.CardCode || '';
       const caseId = caso?.id || caso?.ticketNumber || id || '';
       
       setTransitionLoading(true);
@@ -970,7 +958,7 @@ const CaseDetail: React.FC = () => {
   const handleEditClick = () => {
     setIsEditing(true);
     // Obtener el nombre del cliente desde diferentes fuentes posibles
-    const clientName = caso?.clientName || caso?.cliente?.nombreEmpresa || '';
+    const clientName = caso?.clientName || caso?.cliente?.CardName || '';
     const clientEmail = caso?.clientEmail || caso?.cliente?.email || '';
     const clientPhone = caso?.clientPhone || caso?.cliente?.telefono || '';
     
@@ -984,9 +972,9 @@ const CaseDetail: React.FC = () => {
       clientPhone: clientPhone
     });
     // Inicializar el término de búsqueda con el ID y nombre del cliente actual
-    const clienteActual = clientes.find(c => c.idCliente === (caso?.clienteId || caso?.clientId));
+    const clienteActual = clientes.find(c => c.CardCode === (caso?.clienteId || caso?.clientId));
     if (clienteActual) {
-      setClienteSearchTerm(`${clienteActual.idCliente} - ${clienteActual.nombreEmpresa}`);
+      setClienteSearchTerm(`${clienteActual.CardCode} - ${clienteActual.CardName}`);
     } else if (clientName) {
       setClienteSearchTerm(clientName);
     }
@@ -1002,11 +990,10 @@ const CaseDetail: React.FC = () => {
   const handleClienteSelect = (cliente: Cliente) => {
     setEditedCase({
       ...editedCase,
-      clienteId: cliente.idCliente,
-      clientName: cliente.nombreEmpresa,
-      // NO sobrescribir email y teléfono, mantener los del caso
+      clienteId: cliente.CardCode,
+      clientName: cliente.CardName,
     });
-    setClienteSearchTerm(`${cliente.idCliente} - ${cliente.nombreEmpresa}`);
+    setClienteSearchTerm(`${cliente.CardCode} - ${cliente.CardName}`);
     setShowClienteDropdown(false);
   };
   
@@ -1131,7 +1118,7 @@ const CaseDetail: React.FC = () => {
         : (caso.clienteId || caso.clientId || '');
       
       // Obtener el nombre del cliente original desde diferentes fuentes
-      const originalClientName = caso?.clientName || caso?.cliente?.nombreEmpresa || '';
+      const originalClientName = caso?.clientName || caso?.cliente?.CardName || '';
       const originalClientEmail = caso?.clientEmail || caso?.cliente?.email || '';
       const originalClientPhone = caso?.clientPhone || caso?.cliente?.telefono || '';
       
@@ -2120,7 +2107,7 @@ const CaseDetail: React.FC = () => {
                       </div>
                       {filteredClientes.map((cliente) => (
                         <div
-                          key={cliente.idCliente}
+                          key={cliente.CardCode}
                           onClick={() => handleClienteSelect(cliente)}
                           className="p-3 cursor-pointer border-b last:border-b-0 transition-all"
                           style={{
@@ -2139,17 +2126,17 @@ const CaseDetail: React.FC = () => {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-xs font-bold" style={{color: styles.text.primary}}>
-                                  {cliente.nombreEmpresa}
+                                  {cliente.CardName}
                                 </span>
                                 <span className="text-xs font-semibold px-2 py-0.5 rounded" style={{
                                   backgroundColor: theme === 'dark' ? '#0f172a' : '#e2e8f0',
                                   color: styles.text.secondary
                                 }}>
-                                  {cliente.idCliente}
+                                  {cliente.CardCode}
                                 </span>
                               </div>
                               <p className="text-xs mt-1" style={{color: styles.text.tertiary}}>
-                                {cliente.email}
+                                {cliente.Email}
                               </p>
                             </div>
                           </div>
@@ -2249,7 +2236,7 @@ const CaseDetail: React.FC = () => {
                 >
                   <p className="text-xs font-semibold mb-1" style={{color: styles.text.secondary}}>Cliente</p>
                   <p className="text-sm font-bold" style={{color: styles.text.primary}}>
-                    {caso.clientName || caso.cliente?.nombreEmpresa || 'Sin cliente'}
+                    {caso.clientName || caso.cliente?.CardName || 'Sin cliente'}
                   </p>
                   {(caso.clienteId || caso.clientId) && (
                     <p className="text-xs mt-1" style={{color: styles.text.tertiary}}>
@@ -2780,7 +2767,7 @@ const CaseDetail: React.FC = () => {
                   ) : (
                     filteredClientesQuick.map((cliente) => (
                       <div
-                        key={cliente.idCliente}
+                        key={cliente.CardCode}
                         onClick={() => handleQuickClienteSelect(cliente)}
                         className="p-3 rounded-lg border cursor-pointer transition-all"
                         style={{
@@ -2801,30 +2788,30 @@ const CaseDetail: React.FC = () => {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap mb-1">
                               <span className="text-xs font-bold" style={{color: styles.text.primary}}>
-                                {cliente.nombreEmpresa}
+                                {cliente.CardName}
                               </span>
                               <span className="text-xs font-semibold px-2 py-0.5 rounded" style={{
                                 backgroundColor: 'rgba(16, 122, 180, 0.1)',
                                 color: '#107ab4'
                               }}>
-                                {cliente.idCliente}
+                                {cliente.CardCode}
                               </span>
                             </div>
                             <div className="space-y-0.5">
                               <div className="flex items-center gap-2 text-xs" style={{color: styles.text.tertiary}}>
                                 <User className="w-3 h-3" />
-                                {cliente.contactoPrincipal}
+                                {cliente.ContactoServicioCliente}
                               </div>
-                              {cliente.email && (
+                              {cliente.Email && (
                                 <div className="flex items-center gap-2 text-xs" style={{color: styles.text.tertiary}}>
                                   <Mail className="w-3 h-3" />
-                                  {cliente.email}
+                                  {cliente.Email}
                                 </div>
                               )}
-                              {cliente.telefono && (
+                              {cliente.Telefono && (
                                 <div className="flex items-center gap-2 text-xs" style={{color: styles.text.tertiary}}>
                                   <Phone className="w-3 h-3" />
-                                  {cliente.telefono}
+                                  {cliente.Telefono}
                                 </div>
                               )}
                             </div>

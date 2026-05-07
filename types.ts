@@ -39,13 +39,12 @@ export interface KPI {
 }
 
 export interface Cliente {
-  idCliente: string;
-  nombreEmpresa: string;
-  contactoPrincipal: string;
-  email: string;
-  telefono: string;
-  pais: string;
+  CardCode: string;
+  CardName: string;
   estado: string;
+  Email?: string;
+  Telefono?: string;
+  Pais?: string;
 }
 
 export interface Categoria {

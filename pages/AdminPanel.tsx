@@ -64,10 +64,10 @@ const AdminPanel: React.FC = () => {
 
   const enrichCasesWithClients = (cases: Caso[], clientesList: Cliente[]): Caso[] => {
     return cases.map(caso => {
-      const cliente = clientesList.find(c => c.idCliente === caso.clientId);
+      const cliente = clientesList.find(c => c.CardCode === caso.clientId);
       return {
         ...caso,
-        clientName: cliente?.nombreEmpresa || caso.clientName || 'Sin nombre',
+        clientName: cliente?.CardName || caso.clientName || 'Sin nombre',
         cliente: cliente || caso.cliente
       };
     });
@@ -1039,13 +1039,13 @@ const AdminPanel: React.FC = () => {
       if (!caso) return;
       
       // Buscar cliente en múltiples campos posibles
-      const clienteId = caso.clientId || 
-                       (caso as any).cliente?.idCliente || 
+      const clienteId = caso.clientId ||
+                       (caso as any).cliente?.CardCode ||
                        (caso as any).cliente_id ||
                        '';
-      
-      const clienteNombre = caso.clientName || 
-                           (caso as any).cliente?.nombreEmpresa || 
+
+      const clienteNombre = caso.clientName ||
+                           (caso as any).cliente?.CardName ||
                            (caso as any).cliente_nombre ||
                            (caso as any).nombre_cliente ||
                            (caso as any).nombreEmpresa ||

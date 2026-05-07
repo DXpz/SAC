@@ -53,10 +53,10 @@ const SupervisorPanel: React.FC = () => {
 
   const enrichCasesWithClients = (cases: Caso[], clientesList: Cliente[]): Caso[] => {
     return cases.map(caso => {
-      const cliente = clientesList.find(c => c.idCliente === caso.clientId);
+      const cliente = clientesList.find(c => c.CardCode === caso.clientId);
       return {
         ...caso,
-        clientName: cliente?.nombreEmpresa || caso.clientName || 'Sin nombre',
+        clientName: cliente?.CardName || caso.clientName || 'Sin nombre',
         cliente: cliente || caso.cliente
       };
     });

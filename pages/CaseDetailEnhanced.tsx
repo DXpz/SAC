@@ -48,19 +48,19 @@ const CaseDetail: React.FC = () => {
   // Enriquecer caso con datos del cliente cuando se carguen los clientes
   useEffect(() => {
     if (caso && clientes.length > 0) {
-      const clienteCompleto = clientes.find(cli => 
-        cli.idCliente === caso.clientId || 
-        cli.idCliente === (caso as any).cliente?.idCliente ||
-        cli.idCliente === caso.clientId?.replace('CL', 'CL0000') // Normalizar formato de ID
+      const clienteCompleto = clientes.find(cli =>
+        cli.CardCode === caso.clientId ||
+        cli.CardCode === (caso as any).cliente?.CardCode ||
+        cli.CardCode === caso.clientId?.replace('CL', 'CL0000') // Normalizar formato de ID
       );
-      
+
       if (clienteCompleto) {
         setCaso({
           ...caso,
-          clientName: clienteCompleto.nombreEmpresa,
-          clientId: clienteCompleto.idCliente,
-          clientEmail: clienteCompleto.email || caso.clientEmail,
-          clientPhone: clienteCompleto.telefono || caso.clientPhone,
+          clientName: clienteCompleto.CardName,
+          clientId: clienteCompleto.CardCode,
+          clientEmail: clienteCompleto.Email || caso.clientEmail,
+          clientPhone: clienteCompleto.Telefono || caso.clientPhone,
           cliente: clienteCompleto,
         });
       }

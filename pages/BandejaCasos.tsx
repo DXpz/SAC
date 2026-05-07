@@ -344,16 +344,16 @@ const BandejaCasos: React.FC = () => {
     
     const casosEnriquecidos = casos.map(caso => {
       let casoActualizado = { ...caso };
-      
+
       // Preservar datos críticos que no deben perderse
       const preservedTicketNumber = caso.ticketNumber || (caso as any).idCaso || caso.id;
-      const preservedClientId = caso.clientId || caso.cliente?.idCliente;
-      const preservedClientName = caso.clientName || caso.cliente?.nombreEmpresa;
-      
+      const preservedClientId = caso.clientId || caso.cliente?.CardCode;
+      const preservedClientName = caso.clientName || caso.cliente?.CardName;
+
       // Enriquecer con cliente completo solo si no lo tiene o está vacío
       if (clientes.length > 0 && preservedClientId) {
         const needsClientEnrichment = !caso.cliente || !caso.clientName || (typeof caso.clientName === 'string' && caso.clientName.trim() === '') || caso.clientName === 'Por definir';
-        
+
         if (needsClientEnrichment) {
           // Normalizar el ID del caso para comparación
           const normalizeId = (id: string) => {
@@ -372,36 +372,36 @@ const BandejaCasos: React.FC = () => {
             }
             return normalized;
           };
-          
+
           const casoClientIdNormalized = normalizeId(caso.clientId);
-          
+
           // Buscar cliente con múltiples estrategias
           const clienteCompleto = clientes.find(cli => {
-            const cliIdNormalized = normalizeId(cli.idCliente);
-            
+            const cliIdNormalized = normalizeId(cli.CardCode);
+
             // Comparación exacta normalizada
             if (casoClientIdNormalized === cliIdNormalized) return true;
-            
+
             // Comparación directa
-            if (cli.idCliente === caso.clientId) return true;
-            
+            if (cli.CardCode === caso.clientId) return true;
+
             // Comparación numérica (solo números)
             const casoNum = caso.clientId.replace(/\D/g, '');
-            const cliNum = cli.idCliente.replace(/\D/g, '');
+            const cliNum = cli.CardCode.replace(/\D/g, '');
             if (casoNum && cliNum && casoNum === cliNum) return true;
-            
+
             return false;
           });
-          
+
           if (clienteCompleto) {
             // Preservar clientName si ya existe y es válido, sino usar el del cliente completo
             casoActualizado = {
               ...casoActualizado,
-              clientName: (caso.clientName && caso.clientName.trim() !== '' && caso.clientName !== 'Por definir') ? caso.clientName : clienteCompleto.nombreEmpresa,
-              clientId: clienteCompleto.idCliente || caso.clientId || preservedClientId,
+              clientName: (caso.clientName && caso.clientName.trim() !== '' && caso.clientName !== 'Por definir') ? caso.clientName : clienteCompleto.CardName,
+              clientId: clienteCompleto.CardCode || caso.clientId || preservedClientId,
               cliente: clienteCompleto,
-              clientEmail: caso.clientEmail || clienteCompleto.email,
-              clientPhone: caso.clientPhone || clienteCompleto.telefono,
+              clientEmail: caso.clientEmail || clienteCompleto.Email,
+              clientPhone: caso.clientPhone || clienteCompleto.Telefono,
               // Preservar ticketNumber
               ticketNumber: caso.ticketNumber || preservedTicketNumber,
               id: caso.id || preservedTicketNumber,
@@ -466,7 +466,7 @@ const BandejaCasos: React.FC = () => {
       return (
         caso.clientName !== original.clientName ||
         caso.clientId !== original.clientId ||
-        caso.cliente?.idCliente !== original.cliente?.idCliente ||
+        caso.cliente?.CardCode !== original.cliente?.CardCode ||
         caso.category !== original.category ||
         caso.categoria?.idCategoria !== original.categoria?.idCategoria
       );
@@ -1056,10 +1056,10 @@ const BandejaCasos: React.FC = () => {
                             e.currentTarget.style.transform = 'scale(1)';
                           }}
                         >
-                          {caso.clientId || caso.cliente?.idCliente || 'N/A'}
+                          {caso.clientId || caso.cliente?.CardCode || 'N/A'}
                         </span>
                         <span className="text-xs font-semibold" style={{color: styles.text.primary}}>
-                          {caso.clientName || caso.cliente?.nombreEmpresa || 'Por definir'}
+                          {caso.clientName || caso.cliente?.CardName || 'Por definir'}
                         </span>
                       </div>
                     </td>
