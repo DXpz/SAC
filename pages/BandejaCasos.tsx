@@ -31,6 +31,8 @@ const BandejaCasos: React.FC = () => {
   const PAGE_SIZE = 20;
   const [userCountry, setUserCountry] = useState<'SV' | 'GT' | null>(null);
   const { theme } = useTheme();
+  const currentUser = api.getUser();
+  const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR';
 
   const navigate = useNavigate();
 
@@ -536,7 +538,6 @@ const BandejaCasos: React.FC = () => {
       // Obtener usuario autenticado
       const currentUser = api.getUser();
       const isAgente = currentUser?.role === 'AGENTE';
-      const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR';
       
       // IMPORTANTE: Si es agente, getCases() usa case.agent que YA retorna solo los casos del agente
       // El webhook case.agent filtra automáticamente por agente_user_id
