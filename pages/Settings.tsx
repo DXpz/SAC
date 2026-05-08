@@ -156,7 +156,7 @@ const [showUserModal, setShowUserModal] = useState(false);
 
   const [newState, setNewState] = useState({
     name: '',
-    order: 10,
+    order: 0,
     isFinal: false
   });
 
