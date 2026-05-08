@@ -28,6 +28,7 @@ import {
 import { useTheme } from '../contexts/ThemeContext';
 import { api, clearCache } from '../services/api';
 import LoadingLogo from '../components/LoadingLogo';
+import Toast, { ToastType } from '../components/Toast';
 
 const Settings: React.FC = () => {
   const { theme } = useTheme();
@@ -76,6 +77,8 @@ const Settings: React.FC = () => {
     rol: 'AGENTE',
     pais: 'El Salvador'
   });
+
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
   // Estados para parámetros de estados finales
   type TipoParametro = 'correo' | 'adjuntar_archivo' | 'telefono' | 'texto' | 'numero' | 'fecha' | 'checkbox';
@@ -1519,13 +1522,13 @@ const Settings: React.FC = () => {
 
   const handleCreateUser = async () => {
     if (!userFormData.nombre.trim() || !userFormData.email.trim()) {
-      alert('El nombre y el email son obligatorios');
+      setToast({ message: 'El nombre y el email son obligatorios', type: 'warning' });
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(userFormData.email.trim())) {
-      alert('El formato del email es inválido');
+      setToast({ message: 'El formato del email es inválido', type: 'warning' });
       return;
     }
 
@@ -1543,9 +1546,9 @@ const Settings: React.FC = () => {
       clearCache('usuarios');
       setShowUserModal(false);
       setUserFormData({ nombre: '', email: '', rol: 'AGENTE', pais: 'El Salvador' });
-      alert('Usuario creado exitosamente');
+      setToast({ message: 'Usuario creado exitosamente', type: 'success' });
     } catch (error: any) {
-      alert(error.message || 'Error al crear el usuario');
+      setToast({ message: error.message || 'Error al crear el usuario', type: 'error' });
     }
   };
 
@@ -2289,6 +2292,13 @@ const Settings: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full" style={{ overflow: 'hidden', ...styles.container }}>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
       {/* Header con título */}
       <div className="flex-shrink-0 mb-6">
         <div className="flex items-center gap-3 mb-4">
