@@ -1810,6 +1810,16 @@ export const api = {
         } else {
           estadoId = String(estadoId || `estado_${index + 1}`);
         }
+
+        // Solo usar ID normalizado si NO hay un ID numérico válido del webhook
+        // Si el webhook devuelve un ID numérico (como "1", "2"), usar ese
+        const idOriginalEsNumerico = estado.id && /^\d+$/.test(String(estado.id));
+        if (!idOriginalEsNumerico && estado.nombre_estado) {
+          estadoId = nombreNormalizado;
+        } else if (idOriginalEsNumerico) {
+          estadoId = String(estado.id);
+        }
+
         return {
           id: String(estadoId),
           name: estado.nombre_estado || estado.nombre || estado.name || 'Sin nombre',
