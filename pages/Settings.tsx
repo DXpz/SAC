@@ -3123,7 +3123,7 @@ const Settings: React.FC = () => {
                                   handleCancelEditOrder();
                                 }
                               }}
-                              onBlur={() => handleSaveEditState(state.id)}
+onBlur={() => {}} // Solo guardar con Enter, no al perder foco
                               className="w-14 px-2 py-1 rounded border text-xs font-semibold text-center"
                               style={{
                                 backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
