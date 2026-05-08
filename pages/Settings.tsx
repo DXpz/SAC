@@ -1257,7 +1257,7 @@ const Settings: React.FC = () => {
       
       const estadoParaApi = {
         id: String(id),
-        nombre: String(estadoEditar.name),
+        nombre_estado: String(estadoEditar.name),
         descripcion: String(estadoEditar.name),
         orden: String(newOrder),
         estado_final: estadoEditar.isFinal ? 'true' : 'false'
