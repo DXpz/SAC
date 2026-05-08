@@ -1538,9 +1538,7 @@ export const api = {
         email: actor.email,
         role: mappedRole
       },
-      data: {
-        estados: estados
-      }
+      data: estados[0] // Enviar el primer estado directamente, no como array
     };
 
     try {

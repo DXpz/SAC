@@ -1240,30 +1240,38 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleSaveEditState = (id: string) => {
+  const handleSaveEditState = async (id: string) => {
     if (editingOrderStateId === id && editingOrderStateId !== null) {
       const newOrder = parseInt(String(editingOrderValue), 10);
       if (isNaN(newOrder) || newOrder < 1) {
         alert('El orden debe ser un número mayor a 0');
         return;
       }
-      const updatedStates = states.map(s =>
+      
+      // Encontrar el estado que estamos editando
+      const estadoEditar = states.find(s => s.id === id);
+      if (!estadoEditar) {
+        console.error('Estado no encontrado:', id);
+        return;
+      }
+      
+      const estadoParaApi = {
+        id: id,
+        nombre: estadoEditar.name,
+        descripcion: estadoEditar.name,
+        orden: newOrder,
+        es_final: estadoEditar.isFinal
+      };
+      
+      setStates(states.map(s =>
         s.id === id ? { ...s, order: newOrder } : s
-      );
-      setStates(updatedStates);
+      ));
       setEditingOrderStateId(null);
       setEditingOrderValue(0);
       setHasChanges(true);
 
       try {
-        const estadosParaWebhook = updatedStates.map(state => ({
-          id: state.id,
-          nombre: state.name,
-          descripcion: state.name,
-          orden: state.order,
-          es_final: state.isFinal
-        }));
-        api.updateEstados(estadosParaWebhook);
+        await api.updateEstados([estadoParaApi]);
       } catch (error) {
         alert('Error al actualizar el orden. Por favor intenta de nuevo.');
       }
