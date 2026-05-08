@@ -1143,7 +1143,6 @@ export const api = {
       };
 
       const response = await callCategoriesWebhook<any>('POST', payload);
-      console.log('DEBUG getCategorias response:', JSON.stringify(response)?.substring(0, 500));
 
       let categoriasArray: any[] = [];
       if (Array.isArray(response)) {
