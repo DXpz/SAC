@@ -28,7 +28,6 @@ import {
 import { useTheme } from '../contexts/ThemeContext';
 import { api, clearCache } from '../services/api';
 import LoadingLogo from '../components/LoadingLogo';
-import Toast, { ToastType } from '../components/Toast';
 
 const Settings: React.FC = () => {
   const { theme } = useTheme();
@@ -1521,13 +1520,13 @@ const [showUserModal, setShowUserModal] = useState(false);
 
   const handleCreateUser = async () => {
     if (!userFormData.nombre.trim() || !userFormData.email.trim()) {
-      setToast({ message: 'El nombre y el email son obligatorios', type: 'warning' });
+      alert('El nombre y el email son obligatorios');
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(userFormData.email.trim())) {
-      setToast({ message: 'El formato del email es inválido', type: 'warning' });
+      alert('El formato del email es inválido');
       return;
     }
 
@@ -1548,7 +1547,7 @@ const [showUserModal, setShowUserModal] = useState(false);
       setShowUserSuccess(true);
       setTimeout(() => setShowUserSuccess(false), 2500);
     } catch (error: any) {
-      setToast({ message: error.message || 'Error al crear el usuario', type: 'error' });
+      alert(error.message || 'Error al crear el usuario');
     }
   };
 
@@ -2292,13 +2291,6 @@ const [showUserModal, setShowUserModal] = useState(false);
 
   return (
     <div className="flex flex-col h-full" style={{ overflow: 'hidden', ...styles.container }}>
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
       {/* Header con título */}
       <div className="flex-shrink-0 mb-6">
         <div className="flex items-center gap-3 mb-4">
