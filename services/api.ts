@@ -437,6 +437,7 @@ const authenticateWithWebhook = async (email: string, password: string): Promise
   const user: User = {
     id: data.user.id,
     name: data.user.name.trim(),
+    email: email.trim().toLowerCase(), // Guardar email en el objeto user para persistencia
     role: userRole,
     avatar: data.user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.user.name)}&background=0f172a&color=fff`,
     pais: paisDelUsuario
@@ -1464,7 +1465,7 @@ export const api = {
     nombre: string;
     descripcion: string;
     orden: string;
-    orden_final: string;
+    estado_final: string;
   }): Promise<any> {
     const user = this.getUser();
     if (!user) {
@@ -1491,7 +1492,7 @@ export const api = {
         nombre: stateData.nombre,
         descripcion: stateData.descripcion,
         orden: stateData.orden,
-        orden_final: stateData.orden_final
+        estado_final: stateData.estado_final
       }
     };
     try {

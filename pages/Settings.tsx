@@ -1146,41 +1146,27 @@ const Settings: React.FC = () => {
       alert('El nombre del estado es obligatorio');
       return;
     }
-    // Generar ID basado en el nombre normalizado (ej: "En Proceso" -> "en_proceso")
     const newId = nombreToId(newState.name.trim());
     const maxOrder = Math.max(...states.map(s => s.order), 0);
     const newOrder = newState.order || maxOrder + 1;
-    // Verificar si ya existe un estado con ese ID
     const estadoExistente = states.find(s => s.id === newId);
     if (estadoExistente) {
       alert(`Ya existe un estado con el nombre "${newState.name.trim()}". Por favor, elige un nombre diferente.`);
       return;
     }
-    
-    // Enviar webhook para crear el estado
+
     try {
       await api.createState({
         id: newId,
         nombre: newState.name.trim(),
-        descripcion: newState.name.trim(), // Usar el nombre como descripción por defecto
+        descripcion: newState.name.trim(),
         orden: String(newOrder),
-        orden_final: newState.isFinal ? 'true' : 'false'
+        estado_final: newState.isFinal ? 'true' : 'false'
       });
-      // Limpiar el formulario antes de recargar
-      const nombreEstadoCreado = newState.name.trim();
       setNewState({ name: '', order: 10, isFinal: false });
-      
-      // Esperar un momento para que el servidor procese el nuevo estado
       await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Después de crear el estado, recargar todos los estados desde el webhook
       await loadEstados();
-      // Esperar un momento más para que React actualice el estado
       await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Verificar que el nuevo estado esté en la lista usando un callback
-      // Nota: No podemos verificar states directamente aquí porque setState es asíncrono
-      // En su lugar, loadEstados() ya actualiza los estados, así que solo logueamos
       setHasChanges(true);
     } catch (error: any) {
       alert(error.message || 'Error al crear el estado. Por favor, intenta nuevamente.');
@@ -3552,7 +3538,7 @@ const Settings: React.FC = () => {
                         borderBottom: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
                       }}
                     >
-                      EMPRESA
+                      PAÍS
                     </th>
                     <th 
                       className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider"
