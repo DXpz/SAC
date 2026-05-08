@@ -2390,71 +2390,53 @@ export const api = {
       
       // Parsear la nueva estructura: [{ data: [...] }]
       let asuetos: Array<{ fecha: string; motivo: string; pais: string; row_number: number; fechaDate?: Date }> = [];
-      
-      if (Array.isArray(response)) {
-        // La respuesta es un array: [{ data: [...] }]
-        for (const item of response) {
-          if (item && typeof item === 'object' && Array.isArray(item.data)) {
-            // Procesar cada elemento del array data
-            // IMPORTANTE: NO modificar la fecha que viene del webhook - guardarla exactamente como viene
-            asuetos = item.data.map((asueto: any) => {
-              const fechaStr = asueto.fecha || '';
-              let fechaDate: Date | undefined;
-              
-              // Convertir fecha string a Date SOLO para cálculos internos (ordenamiento, etc.)
-              // NO usar esta fecha para mostrar - siempre usar fechaStr directamente
-              if (fechaStr && fechaStr.includes('/')) {
-                try {
-                  const [day, month, year] = fechaStr.split('/').map(Number);
-                  // Crear fecha en zona horaria local a mediodía para evitar problemas de zona horaria
-                  fechaDate = new Date(year, month - 1, day, 12, 0, 0);
-                } catch (error) {
-                }
-              }
-              
-              // Guardar la fecha EXACTAMENTE como viene del webhook en el campo fecha
-              return {
-                fecha: fechaStr, // ESTE es el valor que se debe mostrar - viene directamente del webhook
-                motivo: asueto.motivo || 'Indefinido',
-                pais: asueto.pais || 'Indefinido',
-                row_number: asueto.row_number || 0,
-                fechaDate: fechaDate // Solo para cálculos internos, NO para mostrar
-              };
-            });
-            break; // Solo procesar el primer objeto con data
+
+      // Función auxiliar para mapear un asueto
+      const mapAsueto = (asueto: any) => {
+        const fechaStr = asueto.fecha || '';
+        let fechaDate: Date | undefined;
+
+        // Convertir fecha string a Date SOLO para cálculos internos (ordenamiento, etc.)
+        // NO usar esta fecha para mostrar - siempre usar fechaStr directamente
+        if (fechaStr && fechaStr.includes('/')) {
+          try {
+            const [day, month, year] = fechaStr.split('/').map(Number);
+            fechaDate = new Date(year, month - 1, day, 12, 0, 0);
+          } catch (error) {
           }
+        }
+
+        return {
+          fecha: fechaStr,
+          motivo: asueto.motivo || 'Indefinido',
+          pais: asueto.pais || 'Indefinido',
+          row_number: asueto.row_number || 0,
+          fechaDate: fechaDate
+        };
+      };
+
+      if (Array.isArray(response)) {
+        // Verificar si es formato { data: [...] } o array directo de asuetos
+        const firstItem = response[0];
+        if (firstItem && typeof firstItem === 'object' && Array.isArray(firstItem.data)) {
+          // Formato: [{ data: [...] }]
+          for (const item of response) {
+            if (item && typeof item === 'object' && Array.isArray(item.data)) {
+              asuetos = item.data.map(mapAsueto);
+              break;
+            }
+          }
+        } else if (firstItem && typeof firstItem === 'object' && (firstItem.id || firstItem.fecha)) {
+          // Formato directo: [{id, fecha, motivo, pais, ...}] - array de asuetos sin wrapper
+          asuetos = response.map(mapAsueto);
         }
       } else if (response && typeof response === 'object') {
         // Si es un objeto directo con data
         if (Array.isArray(response.data)) {
-          // IMPORTANTE: NO modificar la fecha que viene del webhook - guardarla exactamente como viene
-          asuetos = response.data.map((asueto: any) => {
-            const fechaStr = asueto.fecha || '';
-            let fechaDate: Date | undefined;
-            
-            // Convertir fecha string a Date SOLO para cálculos internos (ordenamiento, etc.)
-            // NO usar esta fecha para mostrar - siempre usar fechaStr directamente
-            if (fechaStr && fechaStr.includes('/')) {
-              try {
-                const [day, month, year] = fechaStr.split('/').map(Number);
-                // Crear fecha en zona horaria local a mediodía para evitar problemas de zona horaria
-                fechaDate = new Date(year, month - 1, day, 12, 0, 0);
-              } catch (error) {
-              }
-            }
-            
-            // Guardar la fecha EXACTAMENTE como viene del webhook en el campo fecha
-            return {
-              fecha: fechaStr, // ESTE es el valor que se debe mostrar - viene directamente del webhook
-              motivo: asueto.motivo || 'Indefinido',
-              pais: asueto.pais || 'Indefinido',
-              row_number: asueto.row_number || 0,
-              fechaDate: fechaDate // Solo para cálculos internos, NO para mostrar
-            };
-          });
+          asuetos = response.data.map(mapAsueto);
         }
       }
-      
+
       // Ordenar por fecha cronológicamente
       asuetos.sort((a, b) => {
         if (a.fechaDate && b.fechaDate) {
