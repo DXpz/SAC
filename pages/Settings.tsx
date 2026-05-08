@@ -69,7 +69,7 @@ const Settings: React.FC = () => {
     name: string;
   } | null>(null);
 
-  const [showUserModal, setShowUserModal] = useState(false);
+const [showUserModal, setShowUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState<any | null>(null);
   const [userFormData, setUserFormData] = useState({
     nombre: '',
@@ -77,8 +77,7 @@ const Settings: React.FC = () => {
     rol: 'AGENTE',
     pais: 'El Salvador'
   });
-
-  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  const [showUserSuccess, setShowUserSuccess] = useState(false);
 
   // Estados para parámetros de estados finales
   type TipoParametro = 'correo' | 'adjuntar_archivo' | 'telefono' | 'texto' | 'numero' | 'fecha' | 'checkbox';
@@ -1546,7 +1545,8 @@ const Settings: React.FC = () => {
       clearCache('usuarios');
       setShowUserModal(false);
       setUserFormData({ nombre: '', email: '', rol: 'AGENTE', pais: 'El Salvador' });
-      setToast({ message: 'Usuario creado exitosamente', type: 'success' });
+      setShowUserSuccess(true);
+      setTimeout(() => setShowUserSuccess(false), 2500);
     } catch (error: any) {
       setToast({ message: error.message || 'Error al crear el usuario', type: 'error' });
     }
@@ -4040,6 +4040,87 @@ const Settings: React.FC = () => {
             )}
           </div>
         )}
+
+        {/* Success Animation Modal */}
+        {showUserSuccess && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            style={{
+              backgroundColor: 'rgba(0, 0, 0, 0.75)',
+              WebkitBackdropFilter: 'blur(8px)',
+              animation: 'fadeIn 0.3s ease-out'
+            }}
+          >
+            <div
+              className="flex flex-col items-center justify-center"
+              style={{
+                animation: 'scaleInBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+              }}
+            >
+              <div
+                className="relative mb-6"
+                style={{
+                  animation: 'checkMark 0.5s ease-out 0.3s both'
+                }}
+              >
+                <div
+                  className="w-24 h-24 rounded-full flex items-center justify-center"
+                  style={{
+                    background: 'linear-gradient(135deg, var(--color-brand-red), var(--color-accent-red))',
+                    boxShadow: '0 20px 60px rgba(200, 21, 27, 0.4)'
+                  }}
+                >
+                  <CheckCircle2
+                    className="w-14 h-14 text-white"
+                    style={{ strokeWidth: 2.5 }}
+                  />
+                </div>
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    border: '3px solid var(--color-brand-red)',
+                    animation: 'ringExpand 0.8s ease-out 0.2s',
+                    opacity: 0
+                  }}
+                />
+              </div>
+              <h2
+                className="text-2xl font-bold mb-2"
+                style={{
+                  color: '#ffffff',
+                  animation: 'fadeInUp 0.5s ease-out 0.4s both'
+                }}
+              >
+                ¡Usuario creado exitosamente!
+              </h2>
+            </div>
+          </div>
+        )}
+
+        <style>{`
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          @keyframes scaleInBounce {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+          }
+          @keyframes checkMark {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); opacity: 1; }
+          }
+          @keyframes ringExpand {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(1.5); opacity: 0; }
+          }
+          @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
 
         {activeTab === 'asuetos' && (
           <div 
