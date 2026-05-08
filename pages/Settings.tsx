@@ -26,7 +26,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
-import { api } from '../services/api';
+import { api, clearCache } from '../services/api';
 import LoadingLogo from '../components/LoadingLogo';
 
 const Settings: React.FC = () => {
@@ -1540,7 +1540,7 @@ const Settings: React.FC = () => {
         }
       );
 
-      api.clearCache('usuarios');
+      clearCache('usuarios');
       setShowUserModal(false);
       setUserFormData({ nombre: '', email: '', rol: 'AGENTE', pais: 'El Salvador' });
       alert('Usuario creado exitosamente');
