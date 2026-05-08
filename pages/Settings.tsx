@@ -1287,6 +1287,27 @@ const Settings: React.FC = () => {
       return;
     }
 
+    const estadoEditar = states.find(s => s.id === id);
+    if (!estadoEditar) {
+      console.error('Estado no encontrado:', id);
+      return;
+    }
+
+    const estadoParaApi = {
+      id: String(id),
+      nombre_estado: editingStateName.trim(),
+      descripcion: editingStateName.trim(),
+      orden: estadoEditar.order,
+      estado_final: estadoEditar.isFinal
+    };
+
+    try {
+      await api.updateEstados([estadoParaApi]);
+    } catch (error) {
+      alert('Error al actualizar el nombre del estado. Por favor intenta de nuevo.');
+      return;
+    }
+
     setStates(states.map(s =>
       s.id === id ? { ...s, name: editingStateName.trim() } : s
     ));
