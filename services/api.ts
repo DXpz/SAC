@@ -1131,13 +1131,15 @@ export const api = {
 
       const actor = buildActorPayload(user);
       const payload = {
-        action: 'READ',
+        action: 'category.read',
         actor: {
           user_id: actor.user_id,
           email: actor.email,
           role: actor.role
         },
-        data: {}
+        data: {
+          id: ''
+        }
       };
 
       const response = await callCategoriesWebhook<any>('POST', payload);
