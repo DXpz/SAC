@@ -68,6 +68,15 @@ const Settings: React.FC = () => {
     name: string;
   } | null>(null);
 
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<any | null>(null);
+  const [userFormData, setUserFormData] = useState({
+    nombre: '',
+    email: '',
+    rol: 'AGENTE',
+    pais: 'El Salvador'
+  });
+
   // Estados para parámetros de estados finales
   type TipoParametro = 'correo' | 'adjuntar_archivo' | 'telefono' | 'texto' | 'numero' | 'fecha' | 'checkbox';
 
@@ -1505,7 +1514,38 @@ const Settings: React.FC = () => {
   const handleDeleteUser = (id: string) => {
     if (window.confirm('¿Está seguro de que desea eliminar este usuario?')) {
       setSettingsUsers(settingsUsers.filter(u => u.id !== id));
-      // TODO: Eliminar en backend
+    }
+  };
+
+  const handleCreateUser = async () => {
+    if (!userFormData.nombre.trim() || !userFormData.email.trim()) {
+      alert('El nombre y el email son obligatorios');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(userFormData.email.trim())) {
+      alert('El formato del email es inválido');
+      return;
+    }
+
+    try {
+      await api.createAccount(
+        userFormData.email.trim(),
+        '',
+        userFormData.nombre.trim(),
+        {
+          rol: userFormData.rol,
+          pais: userFormData.pais
+        }
+      );
+
+      api.clearCache('usuarios');
+      setShowUserModal(false);
+      setUserFormData({ nombre: '', email: '', rol: 'AGENTE', pais: 'El Salvador' });
+      alert('Usuario creado exitosamente');
+    } catch (error: any) {
+      alert(error.message || 'Error al crear el usuario');
     }
   };
 
@@ -3582,10 +3622,11 @@ const Settings: React.FC = () => {
                 className="px-6 py-3 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
                 style={{
                 backgroundColor: theme === 'dark' ? '#991b1b' : '#7a1a1a',
-                boxShadow: theme === 'dark' 
-                  ? '0 4px 12px rgba(153, 27, 27, 0.3)' 
+                boxShadow: theme === 'dark'
+                  ? '0 4px 12px rgba(153, 27, 27, 0.3)'
                   : '0 4px 12px rgba(122, 26, 26, 0.3)'
                 }}
+                onClick={() => setShowUserModal(true)}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = theme === 'dark' ? '#dc2626' : '#b91c1c';
                 }}
@@ -3876,6 +3917,117 @@ const Settings: React.FC = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Modal Crear Usuario */}
+            {showUserModal && (
+              <div
+                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+                onClick={() => setShowUserModal(false)}
+                style={{ animation: 'fadeIn 0.2s ease-out' }}
+              >
+                <div
+                  className="bg-white dark:bg-slate-800 rounded-xl p-6 w-full max-w-md"
+                  style={{
+                    ...styles.card,
+                    animation: 'fadeInSlide 0.3s ease-out'
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-bold" style={{ color: styles.text.primary }}>Crear Usuario</h2>
+                    <button onClick={() => setShowUserModal(false)} style={{ color: styles.text.tertiary }}>
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold mb-1" style={{ color: styles.text.secondary }}>Nombre</label>
+                      <input
+                        type="text"
+                        value={userFormData.nombre}
+                        onChange={(e) => setUserFormData({ ...userFormData, nombre: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg border text-sm"
+                        style={{
+                          backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
+                          borderColor: 'rgba(148, 163, 184, 0.3)',
+                          color: styles.text.primary
+                        }}
+                        placeholder="Nombre completo"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold mb-1" style={{ color: styles.text.secondary }}>Email</label>
+                      <input
+                        type="email"
+                        value={userFormData.email}
+                        onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg border text-sm"
+                        style={{
+                          backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
+                          borderColor: 'rgba(148, 163, 184, 0.3)',
+                          color: styles.text.primary
+                        }}
+                        placeholder="email@ejemplo.com"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold mb-1" style={{ color: styles.text.secondary }}>País</label>
+                      <select
+                        value={userFormData.pais}
+                        onChange={(e) => setUserFormData({ ...userFormData, pais: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg border text-sm"
+                        style={{
+                          backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
+                          borderColor: 'rgba(148, 163, 184, 0.3)',
+                          color: styles.text.primary
+                        }}
+                      >
+                        <option value="El Salvador">El Salvador</option>
+                        <option value="Guatemala">Guatemala</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold mb-1" style={{ color: styles.text.secondary }}>Rol</label>
+                      <select
+                        value={userFormData.rol}
+                        onChange={(e) => setUserFormData({ ...userFormData, rol: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg border text-sm"
+                        style={{
+                          backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
+                          borderColor: 'rgba(148, 163, 184, 0.3)',
+                          color: styles.text.primary
+                        }}
+                      >
+                        <option value="AGENTE">AGENTE</option>
+                        <option value="SUPERVISOR">SUPERVISOR</option>
+                        <option value="GERENTE">GERENTE</option>
+                        <option value="ADMIN">ADMIN</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex gap-3 mt-6">
+                    <button
+                      onClick={handleCreateUser}
+                      className="flex-1 px-4 py-2 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all"
+                      style={{ background: 'linear-gradient(to right, var(--color-brand-red), var(--color-accent-red))' }}
+                    >
+                      Crear
+                    </button>
+                    <button
+                      onClick={() => setShowUserModal(false)}
+                      className="px-4 py-2 text-sm font-semibold rounded-lg border transition-all"
+                      style={{
+                        backgroundColor: 'transparent',
+                        borderColor: 'rgba(148, 163, 184, 0.3)',
+                        color: styles.text.secondary
+                      }}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
