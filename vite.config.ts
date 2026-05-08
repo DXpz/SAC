@@ -74,6 +74,13 @@ export default defineConfig(({ mode }) => {
             secure: true,
             rewrite: () => '/webhook/837e1ddf-3677-411d-9aca-9b5095a42ecd',
           },
+          // Asuetos - proxy para desarrollo local
+          '/api/asuetos': {
+            target: 'https://n8n.red.com.sv',
+            changeOrigin: true,
+            secure: true,
+            rewrite: () => '/webhook/asuetos-workflow',
+          },
         },
       },
       plugins: [react()],

@@ -1161,7 +1161,7 @@ const AdminUsers: React.FC = () => {
                       style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}
                       onClick={() => handleChangeSort('pais')}
                     >
-                      Empresa{' '}
+                      País{' '}
                       {sortField === 'pais' && (
                         <span>{sortDirection === 'asc' ? '▲' : '▼'}</span>
                       )}
@@ -1574,7 +1574,7 @@ const AdminUsers: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{color: styles.text.secondary}}>Empresa</label>
+                <label className="block text-xs font-semibold mb-1" style={{color: styles.text.secondary}}>País</label>
                 <select
                   value={formData.pais}
                   onChange={(e) => setFormData({...formData, pais: e.target.value})}
@@ -1585,7 +1585,7 @@ const AdminUsers: React.FC = () => {
                     color: styles.text.primary
                   }}
                 >
-                  <option value="El_Salvador">El Salvador</option>
+                  <option value="El Salvador">El Salvador</option>
                   <option value="Guatemala">Guatemala</option>
                 </select>
               </div>

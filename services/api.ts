@@ -219,8 +219,11 @@ const callAsuetosWebhook = async <T = any>(
   method: 'GET' | 'POST',
   body?: unknown
 ): Promise<T> => {
-  // URL del webhook de asuetos según documentación
-  const ASUETOS_WEBHOOK_URL = 'https://n8n.red.com.sv/webhook/asuetos-workflow';
+  // URL del webhook de asuetos - usa proxy en desarrollo, URL directa en producción
+  const ASUETOS_WEBHOOK_URL = (import.meta.env as any).VITE_WEBHOOK_ASUETOS_URL
+    || API_CONFIG.WEBHOOK_ASUETOS_URL_FULL
+    || API_CONFIG.WEBHOOK_ASUETOS_URL
+    || '/api/asuetos';
   try {
     const response = await callWebhookGeneric<T>(ASUETOS_WEBHOOK_URL, method, body);
     return response;

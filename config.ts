@@ -28,6 +28,10 @@ export const API_CONFIG = {
   // En desarrollo usa el proxy de Vite (/api/estados), en producción usa la URL completa
   WEBHOOK_ESTADOS_URL: (import.meta.env as any).VITE_WEBHOOK_ESTADOS_URL || '/api/estados',
 
+  // URL del webhook de n8n para gestión de asuetos
+  // En desarrollo usa el proxy de Vite (/api/asuetos), en producción usa la URL completa
+  WEBHOOK_ASUETOS_URL: (import.meta.env as any).VITE_WEBHOOK_ASUETOS_URL || '/api/asuetos',
+
   // URLs completas de n8n (para referencia y uso en producción)
   // Estas URLs se usan cuando VITE_WEBHOOK_*_URL está definido o en producción
   // Authentication Workflow

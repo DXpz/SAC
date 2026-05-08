@@ -21,7 +21,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const data = await response.json();
-      return res.status(200).json(data);
+
+      const transformedData = Array.isArray(data)
+        ? data.map((est: any) => ({
+            id: String(est.id || ''),
+            name: est.nombre_estado || est.name || '',
+            order: Number(est.orden || est.order || 0),
+            isFinal: est.estado_final === true || est.isFinal === true || est.is_final === true || false
+          }))
+        : data;
+
+      return res.status(200).json(transformedData);
     } catch (error) {
       return res.status(500).json({ error: 'Proxy error', message: (error as Error).message });
     }
