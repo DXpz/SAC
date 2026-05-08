@@ -649,15 +649,52 @@ const AdminUsers: React.FC = () => {
     // }
   };
 
-  const deleteUser = () => {
+  const deleteUser = async () => {
     if (!selectedUser) return;
-    
-    setUsers(users.filter(u => u.id !== selectedUser.id));
-    setShowDeleteModal(false);
-    setSelectedUser(null);
-    
-    // TODO: Preparar para webhook n8n
-    // await sendUserToWebhook('delete', { id: selectedUser.id });
+
+    try {
+      setLoading(true);
+
+      // Llamar al webhook para eliminar usuario
+      const currentUser = api.getUser();
+      if (currentUser) {
+        const actor = {
+          user_id: Number((currentUser as any).user_id ?? currentUser.id) || 0,
+          email: (currentUser as any).email || currentUser.email || '',
+          role: currentUser.role,
+        };
+
+        const payload = {
+          action: 'user.delete',
+          actor: actor,
+          data: {
+            id: selectedUser.id
+          }
+        };
+
+        // Llamar directamente al webhook de n8n
+        await fetch('https://n8n.red.com.sv/webhook/usuarios-workflow', {
+          method: 'POST',
+          mode: 'cors',
+          credentials: 'omit',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      // Recargar la lista de usuarios desde el webhook
+      await loadUsers();
+
+      setShowDeleteModal(false);
+      setSelectedUser(null);
+    } catch (error: any) {
+      setToast({ message: `Error al eliminar usuario: ${error.message}`, type: 'error' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const openEditModal = (user: DemoUser) => {
