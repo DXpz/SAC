@@ -63,7 +63,7 @@ const getCachedOrFetch = async <T>(
 };
 
 // Limpiar caché manualmente
-const clearCache = (key?: 'cases' | 'clientes' | 'agentes' | 'usuarios') => {
+export const clearCache = (key?: 'cases' | 'clientes' | 'agentes' | 'usuarios') => {
   if (key) {
     delete cache[key];
   } else {

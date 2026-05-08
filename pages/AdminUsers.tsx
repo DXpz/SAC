@@ -16,7 +16,7 @@ import {
   Download
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
-import { api } from '../services/api';
+import { api, clearCache } from '../services/api';
 import { Agente } from '../types';
 import LoadingScreen from '../components/LoadingScreen';
 import LoadingLogo from '../components/LoadingLogo';
@@ -555,6 +555,7 @@ const AdminUsers: React.FC = () => {
       
       // Recargar la lista de usuarios desde el webhook
       // El webhook debe devolver todos los usuarios
+      clearCache('usuarios');
       await loadUsers();
       
       setShowCreateModal(false);
@@ -686,6 +687,7 @@ const AdminUsers: React.FC = () => {
       }
 
       // Recargar la lista de usuarios desde el webhook
+      clearCache('usuarios');
       await loadUsers();
 
       setShowDeleteModal(false);
