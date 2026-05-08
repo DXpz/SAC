@@ -158,6 +158,8 @@ const Settings: React.FC = () => {
   const [dragOverStateId, setDragOverStateId] = useState<string | null>(null);
   const [editingStateId, setEditingStateId] = useState<string | null>(null);
   const [editingStateName, setEditingStateName] = useState<string>('');
+  const [editingOrderStateId, setEditingOrderStateId] = useState<string | null>(null);
+  const [editingOrderValue, setEditingOrderValue] = useState<number>(0);
   const [deletingState, setDeletingState] = useState<{
     id: string;
     name: string;
@@ -1239,12 +1241,41 @@ const Settings: React.FC = () => {
   };
 
   const handleSaveEditState = (id: string) => {
+    if (editingOrderStateId === id && editingOrderStateId !== null) {
+      const newOrder = parseInt(String(editingOrderValue), 10);
+      if (isNaN(newOrder) || newOrder < 1) {
+        alert('El orden debe ser un número mayor a 0');
+        return;
+      }
+      const updatedStates = states.map(s =>
+        s.id === id ? { ...s, order: newOrder } : s
+      );
+      setStates(updatedStates);
+      setEditingOrderStateId(null);
+      setEditingOrderValue(0);
+      setHasChanges(true);
+
+      try {
+        const estadosParaWebhook = updatedStates.map(state => ({
+          id: state.id,
+          nombre: state.name,
+          descripcion: state.name,
+          orden: state.order,
+          es_final: state.isFinal
+        }));
+        api.updateEstados(estadosParaWebhook);
+      } catch (error) {
+        alert('Error al actualizar el orden. Por favor intenta de nuevo.');
+      }
+      return;
+    }
+
     if (!editingStateName.trim()) {
       alert('El nombre del estado no puede estar vacío');
       return;
     }
-    
-    setStates(states.map(s => 
+
+    setStates(states.map(s =>
       s.id === id ? { ...s, name: editingStateName.trim() } : s
     ));
     setEditingStateId(null);
@@ -1252,7 +1283,20 @@ const Settings: React.FC = () => {
     setHasChanges(true);
   };
 
+  const handleEditOrder = (stateId: string, currentOrder: number) => {
+    setEditingOrderStateId(stateId);
+    setEditingOrderValue(currentOrder);
+  };
+
+  const handleCancelEditOrder = () => {
+    setEditingOrderStateId(null);
+    setEditingOrderValue(0);
+  };
+
   const handleCancelEditState = () => {
+    if (editingOrderStateId !== null) {
+      handleCancelEditOrder();
+    }
     setEditingStateId(null);
     setEditingStateName('');
   };
@@ -3074,9 +3118,39 @@ const Settings: React.FC = () => {
                           e.currentTarget.style.color = styles.text.tertiary;
                         }}
                       />
-                      <div className="w-16 text-sm font-semibold" style={{ color: styles.text.secondary }}>
-                        Orden {state.order}
-                      </div>
+                      <div className="w-16 text-sm font-semibold flex items-center gap-1" style={{ color: styles.text.secondary }}>
+                          {editingOrderStateId === state.id ? (
+                            <input
+                              type="number"
+                              value={editingOrderValue}
+                              onChange={(e) => setEditingOrderValue(parseInt(e.target.value, 10) || 0)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleSaveEditState(state.id);
+                                } else if (e.key === 'Escape') {
+                                  handleCancelEditOrder();
+                                }
+                              }}
+                              onBlur={() => handleSaveEditState(state.id)}
+                              className="w-12 px-1 py-0.5 rounded border text-xs font-semibold text-center"
+                              style={{
+                                backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
+                                borderColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.5)' : 'rgba(37, 99, 235, 0.5)',
+                                color: styles.text.primary
+                              }}
+                              min={1}
+                              autoFocus
+                            />
+                          ) : (
+                            <span
+                              className="cursor-pointer hover:opacity-70 px-1 py-0.5 rounded hover:bg-blue-100 dark:hover:bg-blue-900"
+                              title="Click para editar orden"
+                              onClick={() => handleEditOrder(state.id, state.order)}
+                            >
+                              #{state.order}
+                            </span>
+                          )}
+                        </div>
                       <div className="flex-1 flex items-center gap-2">
                         {editingStateId === state.id ? (
                           <input
