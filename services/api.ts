@@ -2234,14 +2234,13 @@ export const api = {
     };
     const mappedRole = roleMap[actor.role] || actor.role;
 
-    // Formatear fecha como DD/MM/YYYY
+    // Formatear fecha como YYYY-MM-DD para la base de datos
     // Usar getFullYear, getMonth, getDate para obtener valores en zona horaria local
-    // Asegurarse de que la fecha esté a mediodía para evitar problemas de zona horaria
     const dateAtNoon = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0);
     const day = String(dateAtNoon.getDate()).padStart(2, '0');
     const month = String(dateAtNoon.getMonth() + 1).padStart(2, '0');
     const year = dateAtNoon.getFullYear();
-    const dateStr = `${day}/${month}/${year}`;
+    const dateStr = `${year}-${month}-${day}`;
     // Construir el payload según el formato esperado
     const payload = {
       action: 'asueto.create',
@@ -2282,11 +2281,11 @@ export const api = {
     };
     const mappedRole = roleMap[actor.role] || actor.role;
 
-    // Formatear fecha como DD/MM/YYYY (mismo formato que usa el webhook)
+    // Formatear fecha como YYYY-MM-DD para la base de datos
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
-    const fechaStr = `${day}/${month}/${year}`;
+    const fechaStr = `${year}-${month}-${day}`;
 
     // Construir el payload con la misma estructura que asueto.read
     const payload = {
@@ -2327,12 +2326,12 @@ export const api = {
     };
     const mappedRole = roleMap[actor.role] || actor.role;
 
-    // Formatear fechas como DD/MM/YYYY en un array
+    // Formatear fechas como YYYY-MM-DD en un array
     const fechasArray = dates.map((date) => {
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const year = date.getFullYear();
-      return `${day}/${month}/${year}`;
+      return `${year}-${month}-${day}`;
     });
 
     // Construir el payload según el formato esperado
