@@ -1256,11 +1256,11 @@ const Settings: React.FC = () => {
       }
       
       const estadoParaApi = {
-        id: id,
-        nombre: estadoEditar.name,
-        descripcion: estadoEditar.name,
-        orden: newOrder,
-        es_final: estadoEditar.isFinal
+        id: String(id),
+        nombre: String(estadoEditar.name),
+        descripcion: String(estadoEditar.name),
+        orden: String(newOrder),
+        estado_final: estadoEditar.isFinal ? 'true' : 'false'
       };
       
       setStates(states.map(s =>
