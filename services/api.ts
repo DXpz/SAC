@@ -2067,7 +2067,8 @@ export const api = {
     
     // Log para debugging
     
-    const webhookUrl = API_CONFIG.WEBHOOK_CREAR_USUARIO_URL;
+    // En producción usar URL directa a n8n, en desarrollo usar proxy
+    const webhookUrl = API_CONFIG.WEBHOOK_CREAR_USUARIO_URL_FULL || API_CONFIG.WEBHOOK_CREAR_USUARIO_URL;
 
     
     // Llamar al webhook correspondiente
