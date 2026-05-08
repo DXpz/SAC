@@ -1131,7 +1131,7 @@ export const api = {
 
       const actor = buildActorPayload(user);
       const payload = {
-        action: 'category.query',
+        action: 'READ',
         actor: {
           user_id: actor.user_id,
           email: actor.email,
