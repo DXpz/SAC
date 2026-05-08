@@ -1262,7 +1262,7 @@ const Settings: React.FC = () => {
         nombre_estado: String(estadoEditar.name),
         descripcion: String(estadoEditar.name),
         orden: String(newOrder),
-        estado_final: estadoEditar.isFinal ? 'true' : 'false'
+        estado_final: estadoEditar.isFinal
       };
 
       console.log('DEBUG estadoParaApi:', JSON.stringify(estadoParaApi, null, 2));
@@ -1369,10 +1369,10 @@ const Settings: React.FC = () => {
     try {
       const estadosParaWebhook = reorderedStates.map(state => ({
         id: state.id,
-        nombre: state.name,
-        descripcion: state.name, // Usar el nombre como descripción
+        nombre_estado: state.name,
+        descripcion: state.name,
         orden: state.order,
-        es_final: state.isFinal
+        estado_final: state.isFinal
       }));
       await api.updateEstados(estadosParaWebhook);
       // Después de actualizar, recargar los estados y transiciones desde el webhook para obtener el orden actualizado
