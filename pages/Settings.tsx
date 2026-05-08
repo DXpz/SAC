@@ -3136,15 +3136,39 @@ const Settings: React.FC = () => {
                             <input
                               type="number"
                               value={editingOrderValue}
-                              onChange={(e) => setEditingOrderValue(parseInt(e.target.value, 10) || 0)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  handleSaveEditState(state.id);
-                                } else if (e.key === 'Escape') {
-                                  handleCancelEditOrder();
+                              onChange={async (e) => {
+                                const newOrder = parseInt(e.target.value, 10) || 0;
+                                setEditingOrderValue(newOrder);
+                                if (newOrder >= 1) {
+                                  const estadoEditar = states.find(s => s.id === state.id);
+                                  if (estadoEditar) {
+                                    const estadoParaApi = {
+                                      id: String(state.id),
+                                      nombre_estado: estadoEditar.name,
+                                      descripcion: estadoEditar.name,
+                                      orden: newOrder,
+                                      estado_final: estadoEditar.isFinal
+                                    };
+                                    try {
+                                      await api.updateEstados([estadoParaApi]);
+                                    } catch (error) {
+                                      console.error('Error al guardar orden:', error);
+                                    }
+                                  }
+                                  setEditingOrderStateId(null);
+                                  setEditingOrderValue(0);
                                 }
                               }}
-onBlur={() => {}} // Solo guardar con Enter, no al perder foco
+                              onKeyDown={(e) => {
+                                if (e.key === 'Escape') {
+                                  setEditingOrderStateId(null);
+                                  setEditingOrderValue(0);
+                                }
+                              }}
+                              onBlur={() => {
+                                setEditingOrderStateId(null);
+                                setEditingOrderValue(0);
+                              }}
                               className="w-14 px-2 py-1 rounded border text-xs font-semibold text-center"
                               style={{
                                 backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
