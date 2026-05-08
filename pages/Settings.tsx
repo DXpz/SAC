@@ -3071,7 +3071,7 @@ const Settings: React.FC = () => {
               </div>
             </div>
 
-            {/* Lista de estados con drag and drop */}
+            {/* Lista de estados simplificada - solo con orden editable */}
             <div className="mb-8">
               <h3 className="text-sm font-bold mb-4 uppercase" style={{ color: styles.text.primary }}>
                 Gestión de Estados
@@ -3082,43 +3082,23 @@ const Settings: React.FC = () => {
                   .map((state, index) => (
                     <div
                       key={state.id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, state.id)}
-                      onDragOver={(e) => handleDragOver(e, state.id)}
-                      onDragLeave={handleDragLeave}
-                      onDrop={(e) => handleDrop(e, state.id)}
-                      className="flex items-center gap-4 p-4 rounded-lg border cursor-move transition-all"
+                      className="flex items-center gap-3 p-3 rounded-lg border transition-all"
                       style={{
-                        backgroundColor: draggedStateId === state.id
-                          ? (theme === 'dark' ? '#1e3a8a' : '#dbeafe')
-                          : dragOverStateId === state.id
-                          ? (theme === 'dark' ? '#1e40af' : '#bfdbfe')
-                          : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
+                        backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
                         borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)',
-                        opacity: draggedStateId === state.id ? 0.5 : 1,
                         animation: `fadeInSlide 0.3s ease-out ${index * 0.05}s both`,
-                        transform: draggedStateId === state.id ? 'scale(0.98)' : 'scale(1)',
-                        transition: 'all 0.2s ease-in-out'
                       }}
                     >
-                      <GripVertical 
-                        className="w-5 h-5 flex-shrink-0 transition-all" 
-                        style={{ 
-                          color: styles.text.tertiary, 
-                          cursor: 'grab',
-                          transform: 'scale(1)',
-                          transition: 'all 0.2s ease-in-out'
+                      <span
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
+                        style={{
+                          backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)',
+                          color: theme === 'dark' ? '#60a5fa' : '#3b82f6',
                         }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'scale(1.1)';
-                          e.currentTarget.style.color = theme === 'dark' ? '#94a3b8' : '#64748b';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'scale(1)';
-                          e.currentTarget.style.color = styles.text.tertiary;
-                        }}
-                      />
-                      <div className="w-16 text-sm font-semibold flex items-center gap-1" style={{ color: styles.text.secondary }}>
+                      >
+                        {index + 1}
+                      </span>
+                      <div className="w-20 text-sm font-semibold flex items-center gap-1" style={{ color: styles.text.secondary }}>
                           {editingOrderStateId === state.id ? (
                             <input
                               type="number"
@@ -3132,7 +3112,7 @@ const Settings: React.FC = () => {
                                 }
                               }}
                               onBlur={() => handleSaveEditState(state.id)}
-                              className="w-12 px-1 py-0.5 rounded border text-xs font-semibold text-center"
+                              className="w-14 px-2 py-1 rounded border text-xs font-semibold text-center"
                               style={{
                                 backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
                                 borderColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.5)' : 'rgba(37, 99, 235, 0.5)',
@@ -3142,13 +3122,14 @@ const Settings: React.FC = () => {
                               autoFocus
                             />
                           ) : (
-                            <span
-                              className="cursor-pointer hover:opacity-70 px-1 py-0.5 rounded hover:bg-blue-100 dark:hover:bg-blue-900"
+                            <button
+                              className="px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900 cursor-pointer font-medium text-xs"
                               title="Click para editar orden"
                               onClick={() => handleEditOrder(state.id, state.order)}
+                              style={{ color: styles.text.secondary }}
                             >
                               #{state.order}
-                            </span>
+                            </button>
                           )}
                         </div>
                       <div className="flex-1 flex items-center gap-2">
