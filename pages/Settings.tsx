@@ -1262,6 +1262,8 @@ const Settings: React.FC = () => {
         orden: String(newOrder),
         estado_final: estadoEditar.isFinal ? 'true' : 'false'
       };
+
+      console.log('DEBUG estadoParaApi:', JSON.stringify(estadoParaApi, null, 2));
       
       setStates(states.map(s =>
         s.id === id ? { ...s, order: newOrder } : s
