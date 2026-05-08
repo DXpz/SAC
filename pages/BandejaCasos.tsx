@@ -585,7 +585,9 @@ const BandejaCasos: React.FC = () => {
       if (categoriaFilter !== 'all') {
         result = result.filter(c => {
           const categoriaId = c.categoria?.idCategoria || (c as any).categoria_id || (c as any).categoriaId;
-          return String(categoriaId) === String(categoriaFilter) || c.category === categoriaFilter;
+          const filterIdStr = String(categoriaFilter).trim();
+          const categoriaIdStr = String(categoriaId || '').trim();
+          return categoriaIdStr === filterIdStr || c.category === categoriaFilter;
         });
       }
 
