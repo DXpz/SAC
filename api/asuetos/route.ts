@@ -22,12 +22,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const data = await response.json();
 
+      // Transformar fecha ISO (2026-10-05T06:00:00.000Z) a DD/MM/YYYY
+      const parseDateToDDMMYYYY = (isoDate: string): string => {
+        if (!isoDate) return '';
+        try {
+          const date = new Date(isoDate);
+          if (isNaN(date.getTime())) return isoDate;
+          const day = String(date.getUTCDate()).padStart(2, '0');
+          const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+          const year = date.getUTCFullYear();
+          return `${day}/${month}/${year}`;
+        } catch {
+          return isoDate;
+        }
+      };
+
       // El frontend espera formato { data: [...] }
       // El webhook devuelve array directo, envolvemos en el formato esperado
       const asuetosArray = Array.isArray(data)
         ? data.map((asueto: any, index: number) => ({
             id: asueto.id || '',
-            fecha: asueto.fecha || '',
+            fecha: parseDateToDDMMYYYY(asueto.fecha),
             motivo: asueto.motivo || 'Indefinido',
             pais: asueto.pais || 'Indefinido',
             row_number: index + 1,
