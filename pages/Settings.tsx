@@ -3173,18 +3173,30 @@ const [showUserModal, setShowUserModal] = useState(false);
                               onChange={async (e) => {
                                 const newOrder = parseInt(e.target.value, 10) || 0;
                                 setEditingOrderValue(newOrder);
-                                if (newOrder >= 1) {
+                                if (newOrder >= 1 && newOrder <= states.length) {
                                   const estadoEditar = states.find(s => s.id === state.id);
                                   if (estadoEditar) {
-                                    const estadoParaApi = {
-                                      id: String(state.id),
-                                      nombre_estado: estadoEditar.name,
-                                      descripcion: estadoEditar.name,
-                                      orden: newOrder,
-                                      estado_final: estadoEditar.isFinal
-                                    };
+                                    // Recalcular todos los órdenes basado en la nueva posición
+                                    const sortedStates = [...states].sort((a, b) => a.order - b.order);
+                                    const currentIndex = sortedStates.findIndex(s => s.id === state.id);
+                                    
+                                    // Remover el estado de su posición actual e insertar en la nueva
+                                    const updatedOrder = [...sortedStates];
+                                    const [movedState] = updatedOrder.splice(currentIndex, 1);
+                                    updatedOrder.splice(newOrder - 1, 0, movedState);
+                                    
+                                    // Reasignar órdenes a todos
+                                    const estadosParaApi = updatedOrder.map((s, idx) => ({
+                                      id: String(s.id),
+                                      nombre: s.name,
+                                      descripcion: s.name,
+                                      orden: idx + 1,
+                                      es_final: s.isFinal
+                                    }));
+                                    
                                     try {
-                                      await api.updateEstados([estadoParaApi]);
+                                      await api.updateEstados(estadosParaApi);
+                                      await loadEstados();
                                     } catch (error) {
                                       console.error('Error al guardar orden:', error);
                                     }
