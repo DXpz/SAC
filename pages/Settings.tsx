@@ -465,18 +465,18 @@ const [showUserModal, setShowUserModal] = useState(false);
   const loadEstados = async () => {
     try {
       const estadosFromWebhook = await api.readEstados();
+      console.log('DEBUG loadEstados - raw response:', JSON.stringify(estadosFromWebhook));
       console.log('DEBUG loadEstados - count:', estadosFromWebhook?.length);
       if (estadosFromWebhook && Array.isArray(estadosFromWebhook) && estadosFromWebhook.length > 0) {
         console.log('DEBUG loadEstados - first state:', JSON.stringify(estadosFromWebhook[0]));
-        setStates(() => {
-          const estadosDelWebhook = estadosFromWebhook.map((s: any) => ({
-            id: String(s.id || ''),
-            name: String(s.nombre_estado || s.name || s.nombre || ''),
-            order: Number(s.orden || s.order || 0),
-            isFinal: s.estado_final === true || s.is_final === true
-          }));
-          return estadosDelWebhook;
-        });
+        const estadosDelWebhook = estadosFromWebhook.map((s: any) => ({
+          id: String(s.id || ''),
+          name: String(s.nombre_estado || s.name || s.nombre || ''),
+          order: Number(s.orden || s.order || 0),
+          isFinal: s.estado_final === true || s.is_final === true
+        }));
+        console.log('DEBUG loadEstados - mapped states:', JSON.stringify(estadosDelWebhook));
+        setStates(estadosDelWebhook);
         // Inicializar transiciones para los nuevos estados si no existen
         setTransitions(prevTransitions => {
           const newTransitions: Record<string, Record<string, boolean>> = {};
