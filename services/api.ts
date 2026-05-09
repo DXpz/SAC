@@ -1543,10 +1543,10 @@ export const api = {
       data: {
         estados: estados.map(e => ({
           id: String(e.id),
-          nombre_estado: e.nombre,
-          descripcion: e.descripcion,
+          nombre: e.nombre || e.descripcion || e.nombre_estado || '',
+          descripcion: e.descripcion || e.nombre || e.nombre_estado || '',
           orden: e.orden,
-          estado_final: e.es_final
+          estado_final: e.es_final ?? e.estado_final ?? false
         }))
       }
     };
