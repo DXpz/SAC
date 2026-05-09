@@ -1399,13 +1399,8 @@ const [showUserModal, setShowUserModal] = useState(false);
         orden: state.order,
         es_final: state.isFinal
       }));
-      const payload = {
-        action: 'estado.update',
-        actor: { user_id: 1, email: 'admin@test.com', role: 'ADMINISTRADOR' },
-        data: { estados: estadosParaWebhook }
-      };
-      console.log('DEBUG handleDrop - estadosParaWebhook length:', estadosParaWebhook.length);
-      console.log('DEBUG handleDrop - payload:', JSON.stringify(payload));
+      console.log('🔄 handleDrop - estadosParaWebhook:', estadosParaWebhook.length, 'estados');
+      console.log('🔄 handleDrop - reorderedStates:', JSON.stringify(estadosParaWebhook, null, 2));
       await api.updateEstados(estadosParaWebhook);
       // Después de actualizar, recargar los estados y transiciones desde el webhook
       // IMPORTANTE: Forzar recarga limpia para evitar caché
