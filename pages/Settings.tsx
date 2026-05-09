@@ -1387,21 +1387,16 @@ const [showUserModal, setShowUserModal] = useState(false);
       order: index + 1
     }));
 
+    // CLONAR el array para evitar mutaciones de React
+    const estadosParaEnviar = reorderedStates.map(s => ({ ...s }));
+
     // Actualizar el estado local inmediatamente para feedback visual
     setStates(reorderedStates);
 
     // Enviar webhook con todos los estados y su nuevo orden
     try {
-      const estadosParaWebhook = reorderedStates.map(state => ({
-        id: state.id,
-        nombre: state.name,
-        descripcion: state.name,
-        orden: state.order,
-        es_final: state.isFinal
-      }));
-      console.log('🔄 handleDrop - estadosParaWebhook:', estadosParaWebhook.length, 'estados');
-      console.log('🔄 handleDrop - reorderedStates:', JSON.stringify(estadosParaWebhook, null, 2));
-      await api.updateEstados(estadosParaWebhook);
+      console.log('🔄 handleDrop - count:', estadosParaEnviar.length, JSON.stringify(estadosParaEnviar));
+      await api.updateEstados(estadosParaEnviar);
       // Después de actualizar, recargar los estados y transiciones desde el webhook
       // IMPORTANTE: Forzar recarga limpia para evitar caché
       await loadEstados();
