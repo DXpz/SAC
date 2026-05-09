@@ -1271,8 +1271,8 @@ const [showUserModal, setShowUserModal] = useState(false);
         id: String(id),
         nombre_estado: String(estadoEditar.name),
         descripcion: String(estadoEditar.name),
-        orden: String(newOrder),
-        estado_final: estadoEditar.isFinal
+        orden: Number(newOrder),
+        es_final: estadoEditar.isFinal
       };
 
       console.log('DEBUG estadoParaApi:', JSON.stringify(estadoParaApi, null, 2));
@@ -1282,10 +1282,10 @@ const [showUserModal, setShowUserModal] = useState(false);
       ));
       setEditingOrderStateId(null);
       setEditingOrderValue(0);
-      setHasChanges(true);
 
       try {
         await api.updateEstados([estadoParaApi]);
+        await loadEstados();
       } catch (error) {
         alert('Error al actualizar el orden. Por favor intenta de nuevo.');
       }
@@ -1400,22 +1400,23 @@ const [showUserModal, setShowUserModal] = useState(false);
     try {
       const estadosParaWebhook = reorderedStates.map(state => ({
         id: state.id,
-        nombre_estado: state.name,
+        nombre: state.name,
         descripcion: state.name,
         orden: state.order,
-        estado_final: state.isFinal
+        es_final: state.isFinal
       }));
       await api.updateEstados(estadosParaWebhook);
-      // Después de actualizar, recargar los estados y transiciones desde el webhook para obtener el orden actualizado
+      // Después de actualizar, recargar los estados y transiciones desde el webhook
+      // IMPORTANTE: Forzar recarga limpia para evitar caché
       await loadEstados();
       // Recargar transiciones después de recargar estados
       await loadTransiciones();
-      setHasChanges(true);
     } catch (error: any) {
       alert(error.message || 'Error al actualizar el orden de los estados. Por favor, intenta nuevamente.');
       // Si falla, recargar los estados originales desde el servidor
       await loadEstados();
     }
+    setHasChanges(true);
   };
 
   // ORIGEN = FILA (fromState), DESTINO = COLUMNA (toState)
