@@ -1505,9 +1505,14 @@ const [showUserModal, setShowUserModal] = useState(false);
     }
   };
 
-  const handleDeleteUser = (id: string) => {
+  const handleDeleteUser = async (id: string) => {
     if (window.confirm('¿Está seguro de que desea eliminar este usuario?')) {
-      setSettingsUsers(settingsUsers.filter(u => u.id !== id));
+      try {
+        await api.deleteAgente(id);
+        setSettingsUsers(settingsUsers.filter(u => u.id !== id));
+      } catch (error: any) {
+        alert(error.message || 'Error al eliminar el usuario');
+      }
     }
   };
 
