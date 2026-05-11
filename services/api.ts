@@ -923,12 +923,12 @@ export const api = {
       };
 
 
-      // Llamar al webhook de crear usuario (que también lista usuarios)
+      // Llamar al webhook de agentes
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
 
       try {
-        const response = await fetch(API_CONFIG.WEBHOOK_CREAR_USUARIO_URL_FULL || API_CONFIG.WEBHOOK_CREAR_USUARIO_URL, {
+        const response = await fetch(API_CONFIG.WEBHOOK_AGENTES_URL_FULL || API_CONFIG.WEBHOOK_AGENTES_URL, {
           method: 'POST',
           mode: 'cors',
           credentials: 'omit',
