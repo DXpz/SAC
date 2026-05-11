@@ -694,22 +694,17 @@ const [showUserModal, setShowUserModal] = useState(false);
     
     try {
       // Enviar al webhook de categorías
-      // TODO: La URL del webhook de categorías está definida en config.ts pero aún no está disponible
       await api.createCategory({
         category_name: newCategory.name.trim(),
         description: newCategory.description.trim(),
         sla: newCategory.slaDays
       });
 
-      // Si el webhook responde correctamente, agregar a la lista local
-      const newId = String(Date.now());
-      setCategories([...categories, {
-        id: newId,
-        name: newCategory.name.trim(),
-        slaDays: newCategory.slaDays,
-        description: newCategory.description.trim()
-      }]);
-      
+      // Recargar categorías desde el webhook para asegurar sincronización
+      const categoriasActualizadas = await api.readCategories();
+      setCategories(categoriasActualizadas);
+      setFilteredCategories(categoriasActualizadas);
+
       setNewCategory({ name: '', slaDays: 3, description: '' });
       setHasChanges(true);
     } catch (error: any) {
@@ -761,18 +756,11 @@ const [showUserModal, setShowUserModal] = useState(false);
         sla: slaValue
       });
 
-      // Si el webhook responde correctamente, actualizar en la lista local
-      setCategories(categories.map(cat => 
-        cat.id === editingCategory.id 
-          ? {
-              id: cat.id,
-              name: editingCategory.name.trim(),
-              slaDays: slaValue,
-              description: editingCategory.description.trim()
-            }
-          : cat
-      ));
-      
+      // Recargar categorías desde el webhook para asegurar sincronización
+      const categoriasActualizadas = await api.readCategories();
+      setCategories(categoriasActualizadas);
+      setFilteredCategories(categoriasActualizadas);
+
       setEditingCategory(null);
       setHasChanges(true);
     } catch (error: any) {
@@ -791,8 +779,11 @@ const [showUserModal, setShowUserModal] = useState(false);
       // Enviar al webhook de categorías
       await api.deleteCategory(deletingCategory.id);
 
-      // Si el webhook responde correctamente, eliminar de la lista local
-      setCategories(categories.filter(cat => cat.id !== deletingCategory.id));
+      // Recargar categorías desde el webhook para asegurar sincronización
+      const categoriasActualizadas = await api.readCategories();
+      setCategories(categoriasActualizadas);
+      setFilteredCategories(categoriasActualizadas);
+
       setHasChanges(true);
       setDeletingCategory(null);
     } catch (error: any) {
@@ -1258,33 +1249,40 @@ const [showUserModal, setShowUserModal] = useState(false);
         alert('El orden debe ser un número mayor a 0');
         return;
       }
-      
-      // Encontrar el estado que estamos editando
+
       const estadoEditar = states.find(s => s.id === id);
       if (!estadoEditar) {
         console.error('Estado no encontrado:', id);
         return;
       }
-      
-      const estadoParaApi = {
-        id: String(id),
-        nombre_estado: String(estadoEditar.name),
-        descripcion: String(estadoEditar.name),
-        orden: Number(newOrder),
-        es_final: estadoEditar.isFinal
-      };
-      
-      setStates(states.map(s =>
-        s.id === id ? { ...s, order: newOrder } : s
-      ));
+
+      // Clear editing state BEFORE API call to prevent UI issues
       setEditingOrderStateId(null);
       setEditingOrderValue(0);
 
+      // Recalculate ALL states orders when one changes
+      const updatedStates = states.map(s =>
+        s.id === id ? { ...s, order: newOrder } : s
+      );
+      // Reorder all states by order value
+      updatedStates.sort((a, b) => a.order - b.order);
+      const reorderedStates = updatedStates.map((s, idx) => ({ ...s, order: idx + 1 }));
+
+      setStates(reorderedStates);
+
       try {
-        await api.updateEstados([estadoParaApi]);
+        const estadosParaApi = reorderedStates.map(state => ({
+          id: String(state.id),
+          nombre_estado: String(state.name),
+          descripcion: String(state.name),
+          orden: state.order,
+          es_final: state.isFinal
+        }));
+        await api.updateEstados(estadosParaApi);
         await loadEstados();
       } catch (error) {
         alert('Error al actualizar el orden. Por favor intenta de nuevo.');
+        await loadEstados();
       }
       return;
     }
@@ -1300,6 +1298,10 @@ const [showUserModal, setShowUserModal] = useState(false);
       return;
     }
 
+    // Clear editing state BEFORE API call
+    setEditingStateId(null);
+    setEditingStateName('');
+
     const estadoParaApi = {
       id: String(id),
       nombre_estado: editingStateName.trim(),
@@ -1312,6 +1314,7 @@ const [showUserModal, setShowUserModal] = useState(false);
       await api.updateEstados([estadoParaApi]);
     } catch (error) {
       alert('Error al actualizar el nombre del estado. Por favor intenta de nuevo.');
+      await loadEstados();
       return;
     }
 
@@ -1326,11 +1329,6 @@ const [showUserModal, setShowUserModal] = useState(false);
   const handleEditOrder = (stateId: string, currentOrder: number) => {
     setEditingOrderStateId(stateId);
     setEditingOrderValue(currentOrder);
-  };
-
-  const handleCancelEditOrder = () => {
-    setEditingOrderStateId(null);
-    setEditingOrderValue(0);
   };
 
   const handleCancelEditState = () => {
