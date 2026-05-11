@@ -2067,10 +2067,9 @@ export const api = {
     // Determinar el rol del usuario
     const rolUsuario = additionalData?.rol || 'AGENTE';
     
-    // Construir el payload - SIEMPRE usar user.create para crear usuarios desde el panel admin
-    // Esto incluye agentes, supervisores, gerentes, etc.
+    // Construir el payload - usar agent.create para crear agentes desde el panel admin
     const payload: any = {
-      action: 'user.create',
+      action: 'agent.create',
       actor: {
         user_id: Number(actor.user_id) || 0,
         email: actor.email,
@@ -2079,16 +2078,14 @@ export const api = {
       data: {
         nombre: name.trim(),
         email: email.trim().toLowerCase(),
-        password: passwordFinal, // IMPORTANTE: incluir la contraseña generada
-        role: rolUsuario, // IMPORTANTE: usar 'role' no 'rol'
-        pais: additionalData?.pais || 'El_Salvador' // Incluir país si está disponible (puede venir como "El Salvador", "Guatemala", "SV", "GT", etc.)
+        pais: additionalData?.pais || 'El Salvador'
       }
     };
     
     // Log para debugging
     
-    // En producción usar URL directa a n8n, en desarrollo usar proxy
-    const webhookUrl = API_CONFIG.WEBHOOK_CREAR_USUARIO_URL_FULL || API_CONFIG.WEBHOOK_CREAR_USUARIO_URL;
+    // Usar el webhook de agentes (AGENTES workflow)
+    const webhookUrl = API_CONFIG.WEBHOOK_AGENTES_URL_FULL || API_CONFIG.WEBHOOK_AGENTES_URL;
 
     
     // Llamar al webhook correspondiente
