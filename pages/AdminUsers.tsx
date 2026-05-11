@@ -374,7 +374,7 @@ const AdminUsers: React.FC = () => {
       return 0;
     });
     return sorted;
-  }, [filteredUsersBySearch, roleFilter, sortField, sortDirection]);
+  }, [filteredUsersBySearch, roleFilter, estadoFilter, sortField, sortDirection]);
 
   const totalPages = useMemo(() => {
     return Math.max(1, Math.ceil(filteredUsers.length / pageSize));
