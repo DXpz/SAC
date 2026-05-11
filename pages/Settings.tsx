@@ -462,7 +462,12 @@ const [showUserModal, setShowUserModal] = useState(false);
   }, [activeTab]);
 
   // Cargar estados desde el webhook
+  // Estado para evitar múltiples chamadas simultáneas de loadEstados
+  const [loadingEstados, setLoadingEstados] = useState(false);
+
   const loadEstados = async () => {
+    if (loadingEstados) return; // Evitar chamadas duplicadas
+    setLoadingEstados(true);
     try {
       const estadosFromWebhook = await api.readEstados();
       if (estadosFromWebhook && Array.isArray(estadosFromWebhook) && estadosFromWebhook.length > 0) {
@@ -473,20 +478,16 @@ const [showUserModal, setShowUserModal] = useState(false);
           isFinal: s.estado_final === true || s.is_final === true
         }));
         setStates(estadosDelWebhook);
-        // Inicializar transiciones para los nuevos estados si no existen
         setTransitions(prevTransitions => {
           const newTransitions: Record<string, Record<string, boolean>> = {};
-
-          // Usar EXACTAMENTE los IDs que vienen del webhook (sin normalizar)
           estadosFromWebhook.forEach(state => {
-            const origenKey = String(state.id || ''); // ID tal como viene del webhook
+            const origenKey = String(state.id || '');
             if (!newTransitions[origenKey]) {
               newTransitions[origenKey] = {};
             }
             estadosFromWebhook.forEach(otherState => {
-              const destinoKey = String(otherState.id || ''); // ID tal como viene del webhook
+              const destinoKey = String(otherState.id || '');
               if (origenKey !== destinoKey) {
-                // Preservar transición existente si existe, sino false
                 const prevRow = prevTransitions[origenKey] || {};
                 newTransitions[origenKey][destinoKey] = prevRow[destinoKey] || false;
               }
@@ -496,6 +497,8 @@ const [showUserModal, setShowUserModal] = useState(false);
         });
       }
     } catch (error: any) {
+    } finally {
+      setLoadingEstados(false);
     }
   };
 
