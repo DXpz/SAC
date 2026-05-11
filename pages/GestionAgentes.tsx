@@ -253,13 +253,14 @@ const GestionAgentes: React.FC = () => {
   const handleDeleteConfirm = async () => {
     if (!agenteToDelete) return;
     
-    // TODO: Implementar deleteAgente en api.ts
-    // const success = await api.deleteAgente(agenteToDelete.idAgente);
-    // Por ahora, solo removemos del estado local
-    setAgentes(agentes.filter(a => a.idAgente !== agenteToDelete.idAgente));
+    try {
+      await api.deleteAgente(agenteToDelete.idAgente);
+      await loadAgentes();
+    } catch (error: any) {
+      alert(error.message || 'Error al eliminar el agente');
+    }
     setShowDeleteModal(false);
     setAgenteToDelete(null);
-    // loadAgentes();
   };
 
   const handleDeleteCancel = () => {

@@ -1917,6 +1917,55 @@ export const api = {
     }
   },
 
+  async deleteAgente(id: string): Promise<boolean> {
+    const currentUser = this.getUser();
+    if (!currentUser) {
+      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
+    }
+
+    const actor = buildActorPayload(currentUser);
+
+    const payload = {
+      action: 'agent.delete',
+      actor: {
+        user_id: Number(actor.user_id) || 0,
+        email: actor.email,
+        role: actor.role
+      },
+      data: {
+        agent_id: id
+      }
+    };
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
+
+      const response = await fetch(API_CONFIG.WEBHOOK_AGENTES_URL_FULL || API_CONFIG.WEBHOOK_AGENTES_URL, {
+        method: 'POST',
+        mode: 'cors',
+        credentials: 'omit',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      clearCache('agentes');
+      return true;
+    } catch (error: any) {
+      throw error;
+    }
+  },
+
   logout() {
     localStorage.removeItem('intelfon_user');
     localStorage.removeItem('intelfon_token');
