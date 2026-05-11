@@ -93,7 +93,7 @@ const getAgentesInfo = async (): Promise<AgenteInfo[]> => {
 
     // Intentar primero con el webhook de usuarios ya que tiene los datos
     const usuariosPayload = {
-      action: 'user.read',
+      action: 'agent.read',
       actor,
       data: { id: 'all' }
     };

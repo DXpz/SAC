@@ -911,7 +911,7 @@ export const api = {
 
       // Construir el payload para listar usuarios
       const payload = {
-        action: 'user.read',
+        action: 'agent.read',
         actor: {
           user_id: Number(actor.user_id) || 0,
           email: actor.email,
