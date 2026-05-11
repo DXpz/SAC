@@ -918,7 +918,7 @@ export const api = {
           role: actor.role
         },
         data: {
-          id: "all"
+          agent_id: 'all'
         }
       };
 

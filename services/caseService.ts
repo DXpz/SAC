@@ -95,19 +95,23 @@ const getAgentesInfo = async (): Promise<AgenteInfo[]> => {
     const usuariosPayload = {
       action: 'agent.read',
       actor,
-      data: { id: 'all' }
+      data: { agent_id: 'all' }
     };
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-    // Usar el webhook de usuarios (que tiene id_agente/nombre para agentes)
-    const response = await fetch('https://n8n.red.com.sv/webhook/usuarios-workflow', {
+// Usar el webhook de agentes
+    const response = await fetch('https://n8n.red.com.sv/webhook/d804c804-9841-41f7-bc4b-66d2edeed53b', {
       method: 'POST',
       mode: 'cors',
       credentials: 'omit',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify(usuariosPayload),
+      body: JSON.stringify({
+        action: 'agent.read',
+        actor,
+        data: { agent_id: 'all' }
+      }),
       signal: controller.signal,
     });
 
