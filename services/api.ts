@@ -488,12 +488,16 @@ export const api = {
       // Obtener el pais del usuario desde la tabla usuarios y guardarlo
       try {
         const usuarios = await this.getUsuarios();
+        console.log('[DEBUG] Buscando pais para usuario:', user.email, 'name:', user.name);
+        console.log('[DEBUG] Lista de usuarios disponibles:', usuarios.map(u => ({email: u.email, nombre: u.nombre, pais: u.pais})));
         const usuarioCompleto = usuarios.find((u: any) =>
           (u.email || '').toLowerCase() === emailLower ||
           (u.nombre || '').toUpperCase() === (user.name || '').toUpperCase()
         );
+        console.log('[DEBUG] Usuario encontrado:', usuarioCompleto);
         if (usuarioCompleto && usuarioCompleto.pais) {
           user.pais = usuarioCompleto.pais;
+          console.log('[DEBUG] Pais asignado:', user.pais);
           // Guardar el usuario con el pais en localStorage
           localStorage.setItem('intelfon_user', JSON.stringify(user));
         }
