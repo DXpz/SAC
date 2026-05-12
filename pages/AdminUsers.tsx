@@ -712,7 +712,7 @@ const AdminUsers: React.FC = () => {
     setShowEditModal(true);
   };
 
-  const updateUser = () => {
+  const updateUser = async () => {
     if (!selectedUser) return;
     if (!formData.nombre.trim() || !formData.email.trim()) {
       setToast({ message: 'El nombre y el email son obligatorios', type: 'warning' });
@@ -725,22 +725,41 @@ const AdminUsers: React.FC = () => {
       return;
     }
 
-    setUsers(users.map(u => 
-      u.id === selectedUser.id ? {
-        ...u,
-        nombre: formData.nombre.trim(),
-        email: formData.email.trim(),
-        rol: formData.rol,
-        activo: formData.activo,
-        enVacaciones: formData.enVacaciones
-      } : u
-    ));
-    setShowEditModal(false);
-    setSelectedUser(null);
-    setFormData({ nombre: '', email: '', rol: 'AGENTE', pais: 'El_Salvador', activo: true, enVacaciones: false });
-    
-    // TODO: Preparar para webhook n8n
-    // await sendUserToWebhook('update', { id: selectedUser.id, ...formData });
+    // Determinar el estado basado en activo y vacaciones
+    let estado = 'Inactivo';
+    if (formData.enVacaciones) {
+      estado = 'Vacaciones';
+    } else if (formData.activo) {
+      estado = 'Activo';
+    }
+
+    try {
+      // Llamar al API para actualizar el agente
+      await api.updateAgente(selectedUser.id, { estado });
+
+      // Actualizar estado local
+      setUsers(users.map(u =>
+        u.id === selectedUser.id ? {
+          ...u,
+          nombre: formData.nombre.trim(),
+          email: formData.email.trim(),
+          rol: formData.rol,
+          activo: formData.activo,
+          enVacaciones: formData.enVacaciones
+        } : u
+      ));
+
+      // Recargar usuarios desde el webhook para asegurar sincronización
+      clearCache('usuarios');
+      await loadUsers();
+
+      setShowEditModal(false);
+      setSelectedUser(null);
+      setFormData({ nombre: '', email: '', rol: 'AGENTE', pais: 'El_Salvador', activo: true, enVacaciones: false });
+      setToast({ message: 'Usuario actualizado correctamente', type: 'success' });
+    } catch (error: any) {
+      setToast({ message: error.message || 'Error al actualizar el usuario', type: 'error' });
+    }
   };
 
   // ==================================================
