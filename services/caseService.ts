@@ -309,9 +309,9 @@ export const getUserCountry = async (): Promise<'SV' | 'GT' | null> => {
       }
     }
     
-    // Validar que el país no sea string vacío
+    // Validar que el país no sea string vacío - si no se encuentra, default a 'SV' para admins
     if (!pais || String(pais).trim() === '') {
-      return null;
+      return 'SV';
     }
     
     // Normalizar a códigos de 2 letras
@@ -329,9 +329,9 @@ export const getUserCountry = async (): Promise<'SV' | 'GT' | null> => {
         paisNormalizado.includes('GUATEMALA')) {
       return 'GT';
     }
-    return null;
+    return 'SV'; // Default a SV si no matchea GT
   } catch (error) {
-    return null;
+    return 'SV'; // Default a SV en caso de error
   }
 };
 
