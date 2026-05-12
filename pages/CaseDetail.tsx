@@ -582,10 +582,10 @@ const CaseDetail: React.FC = () => {
         }
       }
       
-      // Normalizar el estado para asegurar que sea válido
+      // Normalizar el estado para asegurar que sea válido (solo para status/enum, mantener estado original para comparaciones)
       if (data.status) {
         data.status = normalizeStatus(data.status);
-        data.estado = data.status; // También asignar a 'estado' para compatibilidad
+        // NO sobreescribir data.estado con el valor normalizado - mantener el original de n8n para las comparaciones de transiciones
       }
       
       // Asegurar que ambos arrays de historial existan y estén sincronizados
