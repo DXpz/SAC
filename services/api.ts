@@ -484,6 +484,24 @@ export const api = {
     try {
       const user = await authenticateWithWebhook(email.trim(), pass);
       // Si llegamos aquí, el usuario está almacenado en el sistema y las credenciales son correctas
+
+      // Obtener el pais del usuario desde la tabla usuarios y guardarlo
+      try {
+        const usuarios = await this.getUsuarios();
+        const usuarioCompleto = usuarios.find((u: any) =>
+          (u.email || '').toLowerCase() === emailLower ||
+          (u.nombre || '').toUpperCase() === (user.name || '').toUpperCase()
+        );
+        if (usuarioCompleto && usuarioCompleto.pais) {
+          user.pais = usuarioCompleto.pais;
+          // Guardar el usuario con el pais en localStorage
+          localStorage.setItem('intelfon_user', JSON.stringify(user));
+        }
+      } catch (paisError) {
+        // Si falla al obtener el pais, continuar sin él
+        console.warn('No se pudo obtener el pais del usuario:', paisError);
+      }
+
       return user;
     } catch (error: any) {
       // Limpiar cualquier dato previo en caso de error
