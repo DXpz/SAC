@@ -2218,7 +2218,7 @@ export const api = {
     };
 
       // Validar que el rol sea válido
-      if (!['AGENTE', 'SUPERVISOR', 'GERENTE'].includes(user.role)) {
+      if (!['AGENTE', 'SUPERVISOR', 'GERENTE', 'ADMIN', 'ADMINISTRADOR'].includes(user.role)) {
         throw new Error('Rol de usuario inválido. La cuenta debe tener un rol válido asignado.');
       }
 
