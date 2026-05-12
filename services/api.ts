@@ -2127,7 +2127,8 @@ export const api = {
       data: {
         nombre: name.trim(),
         email: email.trim().toLowerCase(),
-        pais: additionalData?.pais || 'El Salvador'
+        pais: additionalData?.pais || 'El Salvador',
+        rol: rolUsuario
       }
     };
     
