@@ -1828,7 +1828,7 @@ const newStateNormalizado = normalizeEstadoName(newState);
                  </div>
                  ) : (
                 <div className="p-4 rounded-lg border text-center" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
-                  <p className="text-xs font-medium" style={{color: styles.text.tertiary}}>No hay acciones disponibles para este estado ({caso.status}).</p>
+                  <p className="text-xs font-medium" style={{color: styles.text.tertiary}}>No hay acciones disponibles para este estado ({caso.estado || caso.status}).</p>
                    </div>
                  )}
             </div>
