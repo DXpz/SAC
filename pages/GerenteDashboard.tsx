@@ -152,9 +152,8 @@ const GerenteDashboard: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (gerenteCountry !== null) {
-      loadData();
-    }
+    // Siempre cargar datos, gerenteCountry null se maneja internamente con default 'SV'
+    loadData();
   }, [location.pathname, gerenteCountry]);
 
   const loadClientes = async () => {
