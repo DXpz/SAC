@@ -387,6 +387,7 @@ const CaseDetail: React.FC = () => {
     // Mapa de posibles valores que puede devolver el webhook
     const statusMap: Record<string, CaseStatus> = {
       'nuevo': CaseStatus.NUEVO,
+      'sin respuesta': CaseStatus.NUEVO, // Mantener como Nuevo para compatibilidad con enum
       'en proceso': CaseStatus.EN_PROCESO,
       'en_proceso': CaseStatus.EN_PROCESO,
       'pendiente cliente': CaseStatus.PENDIENTE_CLIENTE,
