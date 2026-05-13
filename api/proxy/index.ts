@@ -3,7 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 const UPSTREAM_BASE = process.env.UPSTREAM_BASE || 'http://200.35.189.139:4000';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const { method, url, headers, body } = req;
+  const { method, url, query, headers, body } = req;
 
   if (method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -12,7 +12,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(204).end();
   }
 
-  const targetUrl = `${UPSTREAM_BASE}/api${url.split('/api')[1] || ''}`;
+  const endpoint = query.endpoint as string;
+  if (!endpoint) {
+    return res.status(400).json({ error: 'Missing endpoint query param' });
+  }
+
+  const targetUrl = `${UPSTREAM_BASE}/api${endpoint}`;
 
   const upstreamHeaders: Record<string, string> = {
     'Content-Type': headers['content-type'] || 'application/json',
@@ -26,13 +31,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (authHeader) upstreamHeaders['Authorization'] = authHeader;
 
   try {
+    let bodyToSend: string | undefined;
+
+    if (method !== 'GET' && method !== 'HEAD') {
+      if (typeof body === 'string') {
+        bodyToSend = body;
+      } else if (body && typeof body === 'object') {
+        bodyToSend = JSON.stringify(body);
+      } else {
+        const rawBody = await req.text();
+        bodyToSend = rawBody;
+      }
+    }
+
     const fetchOptions: RequestInit = {
       method,
       headers: upstreamHeaders,
     };
 
-    if (method !== 'GET' && method !== 'HEAD' && body) {
-      fetchOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
+    if (bodyToSend) {
+      fetchOptions.body = bodyToSend;
     }
 
     const response = await fetch(targetUrl, fetchOptions);
