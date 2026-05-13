@@ -19,7 +19,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Missing endpoint query param', url });
   }
 
-  const targetUrl = `${UPSTREAM_BASE}/api${endpoint}`;
+  const targetUrl = `${UPSTREAM_BASE}${endpoint}`;
 
   const upstreamHeaders: Record<string, string> = {
     'Content-Type': headers['content-type'] || 'application/json',
