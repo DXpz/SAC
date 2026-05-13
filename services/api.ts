@@ -276,7 +276,8 @@ const callWebhook = async (scenario: 'login' | 'forgot_password' | 'reset_passwo
   const event = eventMap[scenario];
 
 try {
-    // Construir URL con endpoint param para proxy de Vercel
+    let response: Response;
+
     const pathMap: Record<string, string> = {
       'login': '/api/auth/login',
       'forgot_password': '/api/auth/forgot_password',
@@ -287,39 +288,29 @@ try {
     const webhookUrl = `${API_CONFIG.WEBHOOK_URL}?endpoint=${encodeURIComponent(path)}`;
 
     response = await fetch(webhookUrl, {
-        method: 'POST',
-        mode: 'cors',
-        credentials: 'omit',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(data),
-        signal: controller.signal,
-      });
-    } catch (fetchError: any) {
-      // Si hay un error de red o CORS, proporcionar un mensaje más específico
-      if (fetchError.name === 'TypeError' && fetchError.message.includes('fetch')) {
-        throw new Error('Error de conexión: El servidor n8n no está permitiendo peticiones CORS. Contacta al administrador para configurar CORS en el servidor.');
-      }
-      throw fetchError;
-    }
+      method: 'POST',
+      mode: 'cors',
+      credentials: 'omit',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(data),
+      signal: controller.signal,
+    });
 
     clearTimeout(timeoutId);
 
-    // Verificar si la respuesta es válida antes de intentar parsear JSON
     if (!response.ok && response.status === 0) {
       throw new Error('Error de CORS: El servidor no está permitiendo peticiones desde este origen.');
     }
 
     const result = await response.json();
-    
-    // Verificar si hay error en la respuesta (formato de Make.com)
+
     if (result.error === true) {
       throw new Error(result.message || 'Error en la operación');
     }
 
-    // Si la respuesta no es ok, también tratar como error
     if (!response.ok) {
       throw new Error(result.message || `Error ${response.status}: ${response.statusText}`);
     }
@@ -398,15 +389,15 @@ try {
 // Solo permite acceso si el webhook de ClickUp valida la cuenta
 const authenticateWithWebhook = async (email: string, password: string): Promise<User> => {
   const data = await callWebhook('login', { email, password });
-  
-  // El webhook debe retornar: { token: string, user: { id, name, role, avatar? } }
-  // Si no hay token o usuario, significa que la cuenta no está registrada o las credenciales son inválidas
-  if (!data.token || !data.user) {
+
+  // El backend retorna: { id, name, role, email, token }
+  // Si no hay token o id, significa credenciales inválidas
+  if (!data.token || !data.id) {
     throw new Error('Credenciales inválidas o cuenta no registrada en el sistema');
   }
 
   // Validar que el usuario tenga un ID válido
-  if (!data.user.id) {
+  if (!data.id) {
     throw new Error('La cuenta no está correctamente registrada en el sistema');
   }
 
@@ -416,12 +407,12 @@ const authenticateWithWebhook = async (email: string, password: string): Promise
   }
 
   // Validar que el usuario tenga nombre válido
-  if (!data.user.name || typeof data.user.name !== 'string' || data.user.name.trim() === '') {
+  if (!data.name || typeof data.name !== 'string' || data.name.trim() === '') {
     throw new Error('Información de usuario incompleta. La cuenta no está correctamente registrada.');
   }
 
   // Validar que el rol sea válido y venga del webhook
-  const userRole = data.user.role;
+  const userRole = data.role;
   if (!userRole || !['AGENTE', 'SUPERVISOR', 'GERENTE', 'ADMIN', 'ADMINISTRADOR'].includes(userRole)) {
     throw new Error('Rol de usuario inválido. La cuenta debe tener un rol válido asignado.');
   }
@@ -433,20 +424,17 @@ const authenticateWithWebhook = async (email: string, password: string): Promise
   sessionStorage.setItem('intelfon_user_email', email.trim().toLowerCase());
   
   // Almacenar información del usuario EXACTAMENTE como viene del webhook
-  // NO se permite sobrescribir con mapeos locales - todo debe venir del webhook
-  // Buscar país en todos los campos posibles de data.user
-  const paisDelUsuario = data.user.pais || data.user.country || data.user.país || 
-                         data.user.Pais || data.user.Country || data.user.PAIS || 
-                         data.user.COUNTRY || (data.user as any).pais_usuario || 
-                         (data.user as any).country_user || (data.user as any).user_pais ||
-                         undefined;
+  // Buscar país en todos los campos posibles
+  const paisDelUsuario = (data as any).pais || (data as any).country || (data as any).país || 
+                         (data as any).Pais || (data as any).Country || (data as any).PAIS || 
+                         (data as any).COUNTRY || undefined;
   
   const user: User = {
-    id: data.user.id,
-    name: data.user.name.trim(),
-    email: email.trim().toLowerCase(), // Guardar email en el objeto user para persistencia
+    id: data.id,
+    name: data.name.trim(),
+    email: data.email || email.trim().toLowerCase(),
     role: userRole,
-    avatar: data.user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.user.name)}&background=0f172a&color=fff`,
+    avatar: data.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name)}&background=0f172a&color=fff`,
     pais: paisDelUsuario
   };
   
