@@ -34,15 +34,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     let bodyToSend: string | undefined;
+    let originalBody: any = body;
 
     if (method !== 'GET' && method !== 'HEAD') {
       if (typeof body === 'string') {
+        originalBody = JSON.parse(body);
+      }
+      if (originalBody && originalBody.body && typeof originalBody.body === 'object') {
+        bodyToSend = JSON.stringify(originalBody.body);
+      } else if (typeof body === 'string') {
         bodyToSend = body;
       } else if (body && typeof body === 'object') {
         bodyToSend = JSON.stringify(body);
       } else {
-        const rawBody = await req.text();
-        bodyToSend = rawBody;
+        bodyToSend = await req.text();
       }
     }
 
@@ -54,6 +59,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (bodyToSend) {
       fetchOptions.body = bodyToSend;
     }
+
+    console.log('[proxy] targetUrl:', targetUrl, 'body:', bodyToSend);
 
     const response = await fetch(targetUrl, fetchOptions);
     const contentType = response.headers.get('content-type');
