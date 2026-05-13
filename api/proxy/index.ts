@@ -3,7 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 const UPSTREAM_BASE = process.env.UPSTREAM_BASE || 'http://200.35.189.139:4000';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const { method, url, query, headers, body } = req;
+  const { method, url, query, headers } = req;
 
   if (method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -12,9 +12,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(204).end();
   }
 
-  const endpoint = query.endpoint as string;
+  const urlObj = new URL(url, 'https://sac-ruby.vercel.app');
+  const endpoint = urlObj.searchParams.get('endpoint');
+
   if (!endpoint) {
-    return res.status(400).json({ error: 'Missing endpoint query param' });
+    return res.status(400).json({ error: 'Missing endpoint query param', url });
   }
 
   const targetUrl = `${UPSTREAM_BASE}/api${endpoint}`;
