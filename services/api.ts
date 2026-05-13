@@ -285,7 +285,7 @@ try {
       'new_account': '/api/auth/register'
     };
     const path = pathMap[scenario] || '/api/auth/login';
-    const webhookUrl = `${API_CONFIG.WEBHOOK_URL}?endpoint=${encodeURIComponent(path)}`;
+    const webhookUrl = `${API_CONFIG.WEBHOOK_URL}${path}`;
 
     response = await fetch(webhookUrl, {
       method: 'POST',
