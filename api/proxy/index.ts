@@ -3,7 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 const UPSTREAM_BASE = process.env.UPSTREAM_BASE || 'http://200.35.189.139:4000';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const { method, url, query, headers } = req;
+  const { method, url, query, headers, body } = req;
 
   if (method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -33,25 +33,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (authHeader) upstreamHeaders['Authorization'] = authHeader;
 
   try {
-    let bodyToSend: string | undefined;
-
-    if (method !== 'GET' && method !== 'HEAD') {
-      const rawBody = await req.text();
-      if (rawBody) {
-        bodyToSend = rawBody;
-      }
-    }
-
     const fetchOptions: RequestInit = {
       method,
       headers: upstreamHeaders,
     };
 
-    if (bodyToSend) {
-      fetchOptions.body = bodyToSend;
+    if (method !== 'GET' && method !== 'HEAD' && body) {
+      fetchOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
     }
 
-    console.log('[proxy] targetUrl:', targetUrl, 'body:', bodyToSend);
+    console.log('[proxy] targetUrl:', targetUrl, 'body:', body);
 
     const response = await fetch(targetUrl, fetchOptions);
     const contentType = response.headers.get('content-type');
