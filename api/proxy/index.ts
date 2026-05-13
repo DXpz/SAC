@@ -34,20 +34,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     let bodyToSend: string | undefined;
-    let originalBody: any = body;
 
     if (method !== 'GET' && method !== 'HEAD') {
-      if (typeof body === 'string') {
-        originalBody = JSON.parse(body);
-      }
-      if (originalBody && originalBody.body && typeof originalBody.body === 'object') {
-        bodyToSend = JSON.stringify(originalBody.body);
-      } else if (typeof body === 'string') {
-        bodyToSend = body;
-      } else if (body && typeof body === 'object') {
-        bodyToSend = JSON.stringify(body);
-      } else {
-        bodyToSend = await req.text();
+      const rawBody = await req.text();
+      if (rawBody) {
+        bodyToSend = rawBody;
       }
     }
 
