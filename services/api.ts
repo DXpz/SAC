@@ -275,11 +275,18 @@ const callWebhook = async (scenario: 'login' | 'forgot_password' | 'reset_passwo
 
   const event = eventMap[scenario];
 
-  try {
-    // Intentar la petición con CORS
-    let response: Response;
-    try {
-      response = await fetch(API_CONFIG.WEBHOOK_URL, {
+try {
+    // Construir URL con endpoint param para proxy de Vercel
+    const pathMap: Record<string, string> = {
+      'login': '/api/auth/login',
+      'forgot_password': '/api/auth/forgot_password',
+      'reset_password': '/api/auth/reset_password',
+      'new_account': '/api/auth/register'
+    };
+    const path = pathMap[scenario] || '/api/auth/login';
+    const webhookUrl = `${API_CONFIG.WEBHOOK_URL}?endpoint=${encodeURIComponent(path)}`;
+
+    response = await fetch(webhookUrl, {
         method: 'POST',
         mode: 'cors',
         credentials: 'omit',
@@ -287,10 +294,7 @@ const callWebhook = async (scenario: 'login' | 'forgot_password' | 'reset_passwo
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: JSON.stringify({
-          event,
-          body: data,
-        }),
+        body: JSON.stringify(data),
         signal: controller.signal,
       });
     } catch (fetchError: any) {
