@@ -389,55 +389,44 @@ try {
 // Solo permite acceso si el webhook de ClickUp valida la cuenta
 const authenticateWithWebhook = async (email: string, password: string): Promise<User> => {
   const data = await callWebhook('login', { email, password });
+  console.log('[auth] data from callWebhook:', JSON.stringify(data));
 
-  // El backend retorna: { id, name, role, email, token }
-  // Si no hay token o id, significa credenciales inválidas
-  if (!data.token || !data.id) {
+  // El backend retorna: { id, name, role, email, token } directamente
+  // O callWebhook puede retornar: { token, user: { id, name, role, email } }
+  // Manejar ambos casos
+  const userData = data.user || data;
+  const token = data.token || data.token;
+
+  if (!token || !userData.id) {
     throw new Error('Credenciales inválidas o cuenta no registrada en el sistema');
   }
 
-  // Validar que el usuario tenga un ID válido
-  if (!data.id) {
-    throw new Error('La cuenta no está correctamente registrada en el sistema');
-  }
-
-  // Validar que el token sea una cadena no vacía
-  if (!data.token || typeof data.token !== 'string' || data.token.trim() === '') {
-    throw new Error('Token de autenticación inválido. La cuenta no está correctamente registrada.');
-  }
-
   // Validar que el usuario tenga nombre válido
-  if (!data.name || typeof data.name !== 'string' || data.name.trim() === '') {
+  if (!userData.name || typeof userData.name !== 'string' || userData.name.trim() === '') {
     throw new Error('Información de usuario incompleta. La cuenta no está correctamente registrada.');
   }
 
   // Validar que el rol sea válido y venga del webhook
-  const userRole = data.role;
+  const userRole = userData.role;
   if (!userRole || !['AGENTE', 'SUPERVISOR', 'GERENTE', 'ADMIN', 'ADMINISTRADOR'].includes(userRole)) {
     throw new Error('Rol de usuario inválido. La cuenta debe tener un rol válido asignado.');
   }
 
   // Almacenar el token JWT para futuras peticiones
-  localStorage.setItem('intelfon_token', data.token);
-  
+  localStorage.setItem('intelfon_token', token);
+
   // Guardar el email usado para login en sessionStorage (se limpia al cerrar sesión)
   sessionStorage.setItem('intelfon_user_email', email.trim().toLowerCase());
-  
-  // Almacenar información del usuario EXACTAMENTE como viene del webhook
-  // Buscar país en todos los campos posibles
-  const paisDelUsuario = (data as any).pais || (data as any).country || (data as any).país || 
-                         (data as any).Pais || (data as any).Country || (data as any).PAIS || 
-                         (data as any).COUNTRY || undefined;
-  
+
   const user: User = {
-    id: data.id,
-    name: data.name.trim(),
-    email: data.email || email.trim().toLowerCase(),
+    id: userData.id,
+    name: userData.name.trim(),
+    email: userData.email || email.trim().toLowerCase(),
     role: userRole,
-    avatar: data.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name)}&background=0f172a&color=fff`,
-    pais: paisDelUsuario
+    avatar: userData.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=0f172a&color=fff`,
+    pais: userData.pais || userData.country || undefined
   };
-  
+
   localStorage.setItem('intelfon_user', JSON.stringify(user));
   return user;
 };
