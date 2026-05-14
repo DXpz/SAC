@@ -2915,6 +2915,26 @@ const [showUserModal, setShowUserModal] = useState(false);
                       >
                         {index + 1}
                       </span>
+                      <div className="flex flex-col gap-0.5">
+                        <button
+                          onClick={() => handleMoveState(state.id, 'up')}
+                          disabled={index === 0}
+                          className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                          style={{ opacity: index === 0 ? 0.3 : 1 }}
+                          title="Mover arriba"
+                        >
+                          <ChevronUp className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={() => handleMoveState(state.id, 'down')}
+                          disabled={index === states.length - 1}
+                          className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                          style={{ opacity: index === states.length - 1 ? 0.3 : 1 }}
+                          title="Mover abajo"
+                        >
+                          <ChevronDown className="w-3 h-3" />
+                        </button>
+                      </div>
                       <div className="w-20 text-sm font-semibold flex items-center gap-1" style={{ color: styles.text.secondary }}>
                           {editingOrderStateId === state.id ? (
                             <input
