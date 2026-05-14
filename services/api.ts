@@ -860,7 +860,14 @@ export const api = {
       }
 
       const data = await response.json();
-      return Array.isArray(data) ? data : data.data ?? data.categorias ?? [];
+      const rawCategorias = Array.isArray(data) ? data : data.data ?? data.categorias ?? [];
+      
+      return rawCategorias.map((c: any) => ({
+        id: String(c.id ?? ''),
+        name: c.categoria ?? c.nombre ?? c.name ?? '',
+        slaDays: Number(c.valor_sla ?? c.sla ?? c.sla_dias ?? 3),
+        description: c.descripcion ?? c.description ?? ''
+      }));
     } catch (error: any) {
       throw new Error(error.message || 'Error al leer las categorías');
     }
