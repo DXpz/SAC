@@ -2029,7 +2029,7 @@ export const api = {
       data: {
         nombre: name.trim(),
         email: email.trim().toLowerCase(),
-        pais: additionalData?.pais || 'El Salvador',
+        pais: additionalData?.pais || 'ElSalvador',
         rol: rolUsuario
       }
     };
@@ -2221,7 +2221,7 @@ export const api = {
         type: 'individual',
         fecha: dateStr,
         motivo: holidayName || '',
-        pais: 'El Salvador'
+        pais: 'ElSalvador'
       }
     };
     try {
