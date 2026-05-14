@@ -1164,8 +1164,8 @@ const [showUserModal, setShowUserModal] = useState(false);
         id: newId,
         nombre: newState.name.trim(),
         descripcion: newState.name.trim(),
-        orden: String(newOrder),
-        estado_final: newState.isFinal ? 'true' : 'false'
+        orden: newOrder,
+        estado_final: newState.isFinal
       });
       setNewState({ name: '', order: 10, isFinal: false });
       await new Promise(resolve => setTimeout(resolve, 500));
