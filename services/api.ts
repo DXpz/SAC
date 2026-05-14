@@ -1177,8 +1177,8 @@ return response.json();
     const payload = {
       email: email.trim().toLowerCase(),
       nombre: name.trim(),
-      rol: rolUsuario,
-      pais: paisUsuario
+      role: rolUsuario,
+      pais: paisUsuario === 'El Salvador' ? 'ElSalvador' : paisUsuario
     };
     
     // Llamar directamente al backend /api/usuarios
