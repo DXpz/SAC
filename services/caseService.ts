@@ -1324,41 +1324,13 @@ export const sendCaseCloseWebhook = async (
   anexos: string,
   parametros?: Record<string, any>
 ): Promise<CaseCloseWebhookResponse> => {
-  // Usar el proxy de Vite para evitar problemas de CORS
-  // En desarrollo: /api/case-close -> proxy a n8n
-  // La URL completa es: https://n8n.red.com.sv/webhook/d967cdf7-aa21-4d63-95e8-918dff18cf2b
-  const CASE_CLOSE_WEBHOOK_URL = '/api/case-close';
-  
   try {
     const userStr = localStorage.getItem('intelfon_user');
     if (!userStr) {
       return { success: false, message: 'Usuario no autenticado' };
     }
 
-    const user = JSON.parse(userStr);
-    const userEmail = sessionStorage.getItem('intelfon_user_email') || user.email || `${user.role?.toLowerCase()}@red.com.sv`;
-
-    // Obtener país para el payload
-    const pais = await getUserCountry();
-    const paisValue = pais === 'GT' ? 'Guatemala' : 'El Salvador';
-
-    const payload = {
-      action: 'case.close',
-      pais: paisValue,
-      actor: {
-        email: userEmail
-      },
-      data: {
-        case_id: caseId,
-        cliente: {
-          cliente_id: clienteId
-        },
-        anexos: anexos,
-        ...(parametros && Object.keys(parametros).length > 0 ? { parametros } : {})
-      }
-    };
-    
-    const response = await fetch(CASE_CLOSE_WEBHOOK_URL, {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/close`, {
       method: 'POST',
       mode: 'cors',
       credentials: 'omit',
@@ -1366,12 +1338,16 @@ export const sendCaseCloseWebhook = async (
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        case_id: caseId,
+        cliente_id: clienteId,
+        anexos: anexos,
+        ...(parametros && Object.keys(parametros).length > 0 ? { parametros } : {})
+      })
     });
-    
+
     const responseText = await response.text();
 
-    // Intentar parsear JSON para extraer message en cualquier caso (éxito o error)
     let parsed: any = null;
     let messageFromBody: string | null = null;
     if (responseText && !responseText.includes('<!DOCTYPE') && !responseText.includes('<html')) {
@@ -1381,12 +1357,10 @@ export const sendCaseCloseWebhook = async (
           messageFromBody = parsed.message;
         }
       } catch {
-        // cuerpo no JSON, ignorar
       }
     }
-    
+
     if (!response.ok) {
-      // Error HTTP: usar mensaje del cuerpo si está disponible
       let errorMessage = 'Error al procesar la solicitud. Verifique los anexos e intente nuevamente.';
       if (messageFromBody) {
         errorMessage = messageFromBody;
@@ -1394,34 +1368,18 @@ export const sendCaseCloseWebhook = async (
       return { success: false, message: errorMessage };
     }
 
-    // HTTP 200 OK: el webhook puede devolver un mensaje indicando si los anexos son válidos o no.
     if (messageFromBody) {
       const lower = messageFromBody.toLowerCase();
-
-      // Considerar "éxito" solo cuando el mensaje indica explícitamente que
-      // todos los anexos corresponden al cliente y están activos.
       const isValidAnexos =
         lower.includes('todos los anexos corresponden') ||
         lower.includes('todos los anexos') && lower.includes('corresponden al cliente');
 
       if (!isValidAnexos) {
-        // El webhook está devolviendo una alerta, por ejemplo:
-        // "Alerta: Los siguientes anexos NO corresponden al cliente (inactivos): ..."
-        // Tratarlo como rechazo y mostrar ese mensaje al usuario.
-        return {
-          success: false,
-          message: messageFromBody,
-        };
+        return { success: false, message: messageFromBody };
       }
-
-      // Mensaje de éxito del webhook: anexos correctos
-      return {
-        success: true,
-        message: messageFromBody,
-      };
+      return { success: true, message: messageFromBody };
     }
-    
-    // Si no hay mensaje en el cuerpo pero el status es 200, asumir éxito genérico
+
     return { success: true, message: 'Caso cerrado correctamente' };
   } catch (error) {
     return { success: false, message: 'Error de conexión con el servidor' };
