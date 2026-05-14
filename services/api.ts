@@ -906,7 +906,7 @@ export const api = {
   },
 
   // Actualizar estado mediante backend directo
-  async updateState(id: string, stateData: {
+  async updateEstado(id: string, stateData: {
     nombre?: string;
     descripcion?: string;
     orden?: number;
@@ -921,6 +921,22 @@ export const api = {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.message || 'Error al actualizar el estado');
+    }
+
+    return response.json();
+  },
+
+  // Actualizar orden de un estado
+  async updateEstadoOrden(id: string, orden: number): Promise<any> {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+      body: JSON.stringify({ orden })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Error al actualizar el orden');
     }
 
     return response.json();

@@ -1144,8 +1144,6 @@ const [showUserModal, setShowUserModal] = useState(false);
       return;
     }
     const newId = nombreToId(newState.name.trim());
-    const maxOrder = Math.max(...states.map(s => s.order), 0);
-    const newOrder = newState.order || maxOrder + 1;
     const estadoExistente = states.find(s => s.id === newId);
     if (estadoExistente) {
       alert(`Ya existe un estado con el nombre "${newState.name.trim()}". Por favor, elige un nombre diferente.`);
@@ -1157,7 +1155,6 @@ const [showUserModal, setShowUserModal] = useState(false);
         id: newId,
         nombre: newState.name.trim(),
         descripcion: newState.name.trim(),
-        orden: newOrder,
         estado_final: newState.isFinal
       });
       setNewState({ name: '', order: 0, isFinal: false });
@@ -1202,28 +1199,17 @@ const [showUserModal, setShowUserModal] = useState(false);
   };
 
   const handleToggleFinalState = async (id: string) => {
-    // Actualizar el estado local inmediatamente
-    const updatedStates = states.map(s => s.id === id ? { ...s, isFinal: !s.isFinal } : s);
-    setStates(updatedStates);
-    setHasChanges(true);
+    const estado = states.find(s => s.id === id);
+    if (!estado) return;
+
+    const newIsFinal = !estado.isFinal;
     
-    // Guardar inmediatamente en el webhook para que persista
     try {
-      const estadosParaWebhook = updatedStates.map(state => ({
-        id: state.id,
-        nombre: state.name,
-        descripcion: state.name,
-        orden: state.order,
-        es_final: state.isFinal
-      }));
-      
-      await api.updateEstados(estadosParaWebhook);
-      // Recargar estados para asegurar sincronización
-      await loadEstados();
+      await api.updateEstado(id, { estado_final: newIsFinal });
+      setStates(states.map(s => s.id === id ? { ...s, isFinal: newIsFinal } : s));
+      setHasChanges(true);
     } catch (error: any) {
-      // Revertir el cambio local si falla
-      setStates(states);
-      alert('Error al guardar el cambio. Por favor, intenta nuevamente.');
+      alert(error.message || 'Error al cambiar estado final');
     }
   };
 
@@ -1236,87 +1222,49 @@ const [showUserModal, setShowUserModal] = useState(false);
   };
 
   const handleSaveEditState = async (id: string) => {
-    if (editingOrderStateId === id && editingOrderStateId !== null) {
-      const newOrder = parseInt(String(editingOrderValue), 10);
-      if (isNaN(newOrder) || newOrder < 1) {
-        alert('El orden debe ser un número mayor a 0');
-        return;
-      }
-
-      const estadoEditar = states.find(s => s.id === id);
-      if (!estadoEditar) {
-        console.error('Estado no encontrado:', id);
-        return;
-      }
-
-      // Clear editing state BEFORE API call to prevent UI issues
-      setEditingOrderStateId(null);
-      setEditingOrderValue(0);
-
-      // Recalculate ALL states orders when one changes
-      const updatedStates = states.map(s =>
-        s.id === id ? { ...s, order: newOrder } : s
-      );
-      // Reorder all states by order value
-      updatedStates.sort((a, b) => a.order - b.order);
-      const reorderedStates = updatedStates.map((s, idx) => ({ ...s, order: idx + 1 }));
-
-      setStates(reorderedStates);
-
-      try {
-        const estadosParaApi = reorderedStates.map(state => ({
-          id: String(state.id),
-          nombre_estado: String(state.name),
-          descripcion: String(state.name),
-          orden: state.order,
-          es_final: state.isFinal
-        }));
-        await api.updateEstados(estadosParaApi);
-        await loadEstados();
-      } catch (error) {
-        alert('Error al actualizar el orden. Por favor intenta de nuevo.');
-        await loadEstados();
-      }
-      return;
-    }
-
     if (!editingStateName.trim()) {
       alert('El nombre del estado no puede estar vacío');
       return;
     }
 
-    const estadoEditar = states.find(s => s.id === id);
-    if (!estadoEditar) {
-      console.error('Estado no encontrado:', id);
-      return;
-    }
+    const estado = states.find(s => s.id === id);
+    if (!estado) return;
 
-    // Clear editing state BEFORE API call
     setEditingStateId(null);
     setEditingStateName('');
-
-    const estadoParaApi = {
-      id: String(id),
-      nombre_estado: editingStateName.trim(),
-      descripcion: editingStateName.trim(),
-      orden: estadoEditar.order,
-      estado_final: estadoEditar.isFinal
-    };
 
     try {
-      await api.updateEstados([estadoParaApi]);
-    } catch (error) {
-      alert('Error al actualizar el nombre del estado. Por favor intenta de nuevo.');
+      await api.updateEstado(id, { nombre: editingStateName.trim(), descripcion: editingStateName.trim() });
+      setStates(states.map(s => s.id === id ? { ...s, name: editingStateName.trim() } : s));
+    } catch (error: any) {
+      alert(error.message || 'Error al actualizar el nombre del estado');
       await loadEstados();
-      return;
     }
+  };
 
-    setStates(states.map(s =>
-      s.id === id ? { ...s, name: editingStateName.trim() } : s
-    ));
-    setEditingStateId(null);
-    setEditingStateName('');
-    setHasChanges(true);
+  const handleMoveState = async (id: string, direction: 'up' | 'down') => {
+    const currentIndex = states.findIndex(s => s.id === id);
+    if (currentIndex === -1) return;
+    
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (newIndex < 0 || newIndex >= states.length) return;
+
+    const newStates = [...states];
+    const temp = newStates[currentIndex].order;
+    newStates[currentIndex].order = newStates[newIndex].order;
+    newStates[newIndex].order = temp;
+    newStates.sort((a, b) => a.order - b.order);
+    
+    setStates(newStates);
+
+    try {
+      await api.updateEstado(id, { orden: newStates[currentIndex].order });
+      await api.updateEstado(newStates[newIndex].id, { orden: newStates[newIndex].order });
+      await loadEstados();
+    } catch (error: any) {
+      alert(error.message || 'Error al reordenar');
+      await loadEstados();
+    }
   };
 
   const handleEditOrder = (stateId: string, currentOrder: number) => {
