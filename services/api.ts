@@ -1170,37 +1170,23 @@ return response.json();
 
     const passwordFinal = password && password.trim() ? password.trim() : generarPasswordAleatoria();
 
-    // Determinar el rol del usuario
+    // Construir el payload directo para el backend
     const rolUsuario = additionalData?.rol || 'AGENTE';
+    const paisUsuario = additionalData?.pais || 'ElSalvador';
     
-    // Construir el payload - usar agent.create para crear agentes desde el panel admin
-    const payload: any = {
-      action: 'agent.create',
-      actor: {
-        user_id: Number(actor.user_id) || 0,
-        email: actor.email,
-        role: actor.role
-      },
-      data: {
-        nombre: name.trim(),
-        email: email.trim().toLowerCase(),
-        pais: additionalData?.pais || 'ElSalvador',
-        rol: rolUsuario
-      }
+    const payload = {
+      email: email.trim().toLowerCase(),
+      nombre: name.trim(),
+      rol: rolUsuario,
+      pais: paisUsuario
     };
     
-    // Log para debugging
-    
-    // Usar el webhook de agentes (AGENTES workflow)
-    const webhookUrl = API_CONFIG.WEBHOOK_AGENTES_URL;
-
-    
-    // Llamar al webhook correspondiente
+    // Llamar directamente al backend /api/usuarios
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
 
     try {
-      const response = await fetch(webhookUrl, {
+      const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/usuarios`, {
         method: 'POST',
         mode: 'cors',
         credentials: 'omit',
@@ -1214,7 +1200,6 @@ return response.json();
       });
 
       clearTimeout(timeoutId);
-
 
       if (!response.ok) {
         if (response.status === 0) {
@@ -1230,60 +1215,22 @@ return response.json();
         throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
       }
 
-      // Verificar si la respuesta tiene contenido antes de parsear JSON
-      const contentType = response.headers.get('content-type');
-      
-      const responseText = await response.text();
-
-      if (!responseText || responseText.trim() === '') {
-        throw new Error('El webhook no devolvió ninguna respuesta. Verifica que el flujo de n8n esté configurado correctamente y devuelva los datos del usuario creado.');
-      }
-
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch (parseError) {
-        throw new Error(`El webhook devolvió una respuesta inválida. Respuesta: ${responseText.substring(0, 200)}`);
-      }
+const result = await response.json();
 
       // Verificar si hay error en la respuesta
       if (result.error === true) {
         throw new Error(result.message || 'Error al crear el usuario');
-    }
-
-      // El webhook puede retornar:
-      // 1. Un solo usuario creado: result.user, result.agent o result.data
-      // 2. Una lista de usuarios: result.users o result.data (array)
-      let userData = result.user || result.agent || result.data || result;
-      
-      // Si el webhook retorna un array de usuarios
-      if (Array.isArray(userData)) {
-        
-        // Buscar el usuario recién creado (el último o el que coincida con el email)
-        const emailLower = email.trim().toLowerCase();
-        userData = userData.find((u: any) => 
-          (u.email || '').toLowerCase() === emailLower
-        ) || userData[userData.length - 1] || userData[0];
-        
-      }
-      
-      // Crear un objeto User desde los datos del usuario
-    const user: User = {
-        id: userData.user_id || userData.agent_id || userData.id || userData.idAgente || userData.id_agente || `user-${Date.now()}`,
-        name: userData.nombre || userData.name || name.trim(),
-        role: (userData.role || userData.rol || 'AGENTE') as Role,
-        avatar: userData.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(name.trim())}&background=0f172a&color=fff`
-    };
-
-      // Validar que el rol sea válido
-      if (!['AGENTE', 'SUPERVISOR', 'GERENTE', 'ADMIN', 'ADMINISTRADOR'].includes(user.role)) {
-        throw new Error('Rol de usuario inválido. La cuenta debe tener un rol válido asignado.');
       }
 
-      // No almacenar el token ni el usuario en localStorage porque esto es para crear agentes, no para autenticarse
-      // El agente creado aparecerá en la lista de agentes cuando se recargue
+      // Mapear respuesta del backend al formato User
+      const user: User = {
+        id: result.id || result.user_id || `user-${Date.now()}`,
+        name: result.nombre || name.trim(),
+        role: (result.rol || result.role || 'AGENTE') as Role,
+        avatar: result.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(name.trim())}&background=0f172a&color=fff`
+      };
 
-    return user;
+      return user;
     } catch (error: any) {
       clearTimeout(timeoutId);
       
