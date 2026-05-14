@@ -144,15 +144,8 @@ const [showUserModal, setShowUserModal] = useState(false);
   const [isSavingParametro, setIsSavingParametro] = useState(false);
   const [isDeletingParametro, setIsDeletingParametro] = useState(false);
 
-  // Estados iniciales solo como placeholder; los IDs REALES vienen del webhook (normalizados)
-  const [states, setStates] = useState([
-    { id: 'nuevo', name: 'Nuevo', order: 1, isFinal: false },
-    { id: 'en_proceso', name: 'En Proceso', order: 2, isFinal: false },
-    { id: 'pendiente_cliente', name: 'Pendiente Cliente', order: 3, isFinal: false },
-    { id: 'escalado', name: 'Escalado', order: 4, isFinal: false },
-    { id: 'resuelto', name: 'Resuelto', order: 5, isFinal: true },
-    { id: 'cerrado', name: 'Cerrado', order: 6, isFinal: true }
-  ]);
+  // Estados - se cargan desde el backend via loadEstados()
+  const [states, setStates] = useState<Array<{ id: string; name: string; order: number; isFinal: boolean }>>([]);
 
   const [newState, setNewState] = useState({
     name: '',
