@@ -189,11 +189,7 @@ const callCategoriesWebhook = async <T = any>(
   method: 'GET' | 'POST',
   body?: unknown
 ): Promise<T> => {
-  // Usar la URL completa del webhook de categorías o la URL relativa en desarrollo
-  const CATEGORIES_WEBHOOK_URL = (import.meta.env as any).VITE_WEBHOOK_CATEGORIAS_URL 
-    || API_CONFIG.WEBHOOK_CATEGORIAS_URL_FULL 
-    || API_CONFIG.WEBHOOK_CATEGORIAS_URL 
-    || '/api/categorias';
+  const CATEGORIES_WEBHOOK_URL = API_CONFIG.WEBHOOK_CATEGORIAS_URL;
   return callWebhookGeneric<T>(CATEGORIES_WEBHOOK_URL, method, body);
 };
 
@@ -202,10 +198,7 @@ const callEstadosWebhook = async <T = any>(
   method: 'GET' | 'POST',
   body?: unknown
 ): Promise<T> => {
-  const ESTADOS_WEBHOOK_URL = (import.meta.env as any).VITE_WEBHOOK_ESTADOS_URL
-    || API_CONFIG.WEBHOOK_ESTADOS_URL_FULL
-    || API_CONFIG.WEBHOOK_ESTADOS_URL
-    || '/api/estados';
+  const ESTADOS_WEBHOOK_URL = API_CONFIG.WEBHOOK_ESTADOS_URL;
   try {
     const response = await callWebhookGeneric<T>(ESTADOS_WEBHOOK_URL, method, body);
     return response;
@@ -219,11 +212,7 @@ const callAsuetosWebhook = async <T = any>(
   method: 'GET' | 'POST',
   body?: unknown
 ): Promise<T> => {
-  // URL del webhook de asuetos - usa proxy en desarrollo, URL directa en producción
-  const ASUETOS_WEBHOOK_URL = (import.meta.env as any).VITE_WEBHOOK_ASUETOS_URL
-    || API_CONFIG.WEBHOOK_ASUETOS_URL_FULL
-    || API_CONFIG.WEBHOOK_ASUETOS_URL
-    || '/api/asuetos';
+  const ASUETOS_WEBHOOK_URL = API_CONFIG.WEBHOOK_ASUETOS_URL;
   try {
     const response = await callWebhookGeneric<T>(ASUETOS_WEBHOOK_URL, method, body);
     return response;
