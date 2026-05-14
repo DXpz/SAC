@@ -799,72 +799,38 @@ export const createCase = async (caseData: {
   const userCountry = await getUserCountry();
   const pais = caseData.pais || caseData.country || (userCountry === 'SV' ? 'El Salvador' : 'Guatemala');
 
-  // Construir payload según documentación de case.create
-  // actor solo debe tener email según la API docs
+  // Enviar directo al backend sin wrapper n8n
   const payload = {
-    action: 'case.create',
+    cliente_id: caseData.clienteId || 'N/A',
+    categoria_id: parseInt(caseData.categoriaId) || 1,
     pais: pais,
-    actor: {
-      email: actor.email
-    },
-    data: {
-      cliente: {
-        cliente_id: caseData.clienteId || 'N/A',
-        email: caseData.clientEmail || '',
-        telefono: caseData.phone || caseData.clientPhone || ''
-      },
-      categoria: {
-        id: parseInt(caseData.categoriaId) || 1
-      }
-    },
     canal_origen: mapChannel(caseData.contactChannel),
     canal_notificacion: mapChannel(caseData.contactChannel) || 'Email',
     asunto: caseData.subject,
     descripcion: caseData.description,
+    email_cliente: caseData.clientEmail || ''
   };
 
-  const response = await callCaseWebhook(payload);
+  const response = await fetch(API_CONFIG.WEBHOOK_CASOS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Error al crear caso');
+  }
+
+  const result = await response.json();
   
-  if (response && typeof response === 'object' && !Array.isArray(response)) {
-    Object.keys(response).forEach(key => {
-    });
+  // Mapear respuesta del backend
+  if (result && result.case_id) {
+    return mapWebhookResponseToCase(result);
   }
   
-  // Si el webhook retorna un caso, mapearlo
-  if (response.case) {
-    
-    const mappedCase = mapWebhookResponseToCase(response.case);
-    if (mappedCase) {
-      // Asegurar que el historial tenga la entrada de creación
-      if (!mappedCase.historial) {
-        mappedCase.historial = [];
-      }
-      if (!mappedCase.history) {
-        mappedCase.history = [];
-      }
-      
-      // Verificar si ya hay una entrada de creación
-      const tieneEntradaCreacion = mappedCase.historial.some(entry => entry.tipo_evento === 'CREADO');
-      
-      // Si no hay entrada de creación, agregarla
-      if (!tieneEntradaCreacion && mappedCase.createdAt) {
-        const entradaCreacion: HistorialEntry = {
-          tipo_evento: 'CREADO',
-          justificacion: 'Caso creado',
-          autor_nombre: 'Sistema',
-          autor_rol: 'sistema',
-          fecha: mappedCase.createdAt
-        };
-        // Agregar al final (más antigua) para que aparezca primero cuando se ordena por fecha descendente
-        mappedCase.historial.push(entradaCreacion);
-        mappedCase.history.push(entradaCreacion);
-      }
-      
-      return mappedCase;
-    }
-  }
-  
-  // Si no retorna caso, crear uno básico desde los datos enviados
+  return result as Case;
+};
   // Esto es un fallback en caso de que el webhook no retorne el caso creado
   const fallbackCase: Case = {
     id: `CASO-${Date.now()}`,
@@ -909,58 +875,51 @@ export const getCases = async (): Promise<Case[]> => {
   // Cargar cache de agentes para poder resolver nombres de agentes
   await getAgentesInfo();
 
-  // Si es AGENTE, usar case.agent para obtener solo sus casos asignados
-  if (userRole === 'AGENTE') {
-    const pais = await getUserCountry();
-    const paisValue = pais === 'GT' ? 'Guatemala' : 'El Salvador';
-    const payload: CaseWebhookPayload = {
-      action: 'case.agent',
-      pais: paisValue,
-      actor,
-      data: {
-        agent_id: actor.email
-      }
-    };
-
-    const response = await callCaseWebhook(payload);
-    const casos = processWebhookResponse(response);
-    return casos;
-  }
-
-  // Si es SUPERVISOR o GERENTE, usar case.query para obtener todos los casos
+  // Obtener país del usuario
   const pais = await getUserCountry();
   const paisValue = pais === 'GT' ? 'Guatemala' : 'El Salvador';
-  const payload: CaseWebhookPayload = {
-    action: 'case.query',
-    pais: paisValue,
-    actor,
-    data: {}
-  };
 
-  const response = await callCaseWebhook(payload);
+  // Si es AGENTE, obtener solo sus casos asignados
+  if (userRole === 'AGENTE') {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/agente`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        agente_id: actor.email,
+        pais: paisValue
+      })
+    });
 
-  let casos = processWebhookResponse(response);
-
-  // Si es SUPERVISOR, filtrar casos por país del supervisor
-  if (userRole === 'SUPERVISOR') {
-    const supervisorCountry = await getUserCountry();
-    
-    if (supervisorCountry) {
-      casos = casos.filter(caso => {
-        const casoPais = (caso as any).pais || 
-                        caso.cliente?.pais || 
-                        (caso as any).country ||
-                        '';
-        const casoPaisNormalizado = normalizeCaseCountry(casoPais);
-        if (!casoPaisNormalizado) {
-          return false;
-        }
-        return casoPaisNormalizado === supervisorCountry;
-      });
+    if (!response.ok) {
+      throw new Error('Error al obtener casos');
     }
+
+    const result = await response.json();
+    return mapWebhookResponseToCases(result);
   }
-  
-  return casos;
+
+  // Si es SUPERVISOR o GERENTE, obtener todos los casos
+  const response = await fetch(API_CONFIG.WEBHOOK_CASOS_URL, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' }
+  });
+
+  if (!response.ok) {
+    throw new Error('Error al obtener casos');
+  }
+
+  let casos = await response.json();
+
+  // Si es SUPERVISOR, filtrar casos por país
+  if (userRole === 'SUPERVISOR' && Array.isArray(casos)) {
+    casos = casos.filter((caso: any) => {
+      const casoPais = caso.pais || caso.cliente?.pais || '';
+      const casoPaisNormalizado = normalizeCaseCountry(casoPais);
+      return casoPaisNormalizado === pais;
+    });
+  }
+
+  return mapWebhookResponseToCases(casos);
 };
 
 /**
@@ -1067,62 +1026,42 @@ export const getCaseById = async (caseId: string): Promise<Case | null> => {
   // Cargar cache de agentes para poder resolver nombres de agentes
   await getAgentesInfo();
 
-  // Usar case.read para obtener un caso específico con historial y transiciones
-  const pais = await getUserCountry();
-  const paisValue = pais === 'GT' ? 'Guatemala' : 'El Salvador';
-  const payload: CaseWebhookPayload = {
-    action: 'case.read',
-    pais: paisValue,
-    actor,
-    data: {
-      case_id: caseId
-    }
-  };
+  // Obtener caso por ID directamente
+  const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/${caseId}`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' }
+  });
 
-  const response = await callCaseWebhook(payload);
+  if (!response.ok) {
+    throw new Error('Error al obtener caso');
+  }
 
-  // Procesar respuesta del case.read (que viene con historial y transiciones)
-  if (Array.isArray(response) && response.length > 0) {
-    const firstItem = response[0];
-    
-    // NUEVO FORMATO V4: El caso viene directamente con historial y transiciones
-    // { case_id, estado, historial: [...], transiciones: [...] }
-    // Solo aplicar si tiene case_id Y tiene historial O transiciones (no es una lista de casos)
-    if (firstItem && typeof firstItem === 'object' && 
-        'case_id' in firstItem && !('historial_caso' in firstItem) &&
-        (Array.isArray(firstItem.historial) || Array.isArray(firstItem.transiciones))) {
-      // Formato nuevo V4: viene directo del Code READ Response
-      const casoData = { ...firstItem };
-      
-      // El historial viene como array en firstItem.historial
-      const historialArray = Array.isArray(firstItem.historial) ? firstItem.historial : [];
-      
-      // Las transiciones vienen como array en firstItem.transiciones
+  const result = await response.json();
+
+  if (result && typeof result === 'object') {
+    // Manejar formato con historial y transiciones
+    if (result.historial_caso && result.detalle_caso) {
+      const historialArray = Array.isArray(result.historial_caso) ? result.historial_caso : [];
+      const detalleCasoArray = Array.isArray(result.detalle_caso) ? result.detalle_caso : [];
+
       let transicionesArray: any[] = [];
-      if (typeof firstItem.transiciones === 'string') {
-        try {
-          transicionesArray = JSON.parse(firstItem.transiciones);
-        } catch (error) {
-          transicionesArray = [];
-        }
-      } else if (Array.isArray(firstItem.transiciones)) {
-        transicionesArray = firstItem.transiciones;
+      if (typeof result.transiciones === 'string') {
+        try { transicionesArray = JSON.parse(result.transiciones); } catch { transicionesArray = []; }
+      } else if (Array.isArray(result.transiciones)) {
+        transicionesArray = result.transiciones;
       }
-      
-      // Mapear el historial
-      const historialMapeado = historialArray.length > 0 
-        ? historialArray.map((h: any) => ({
-            id: h.id || h.fechayhora || Date.now().toString(),
-            fecha: h.fechayhora || h.fecha || new Date().toISOString(),
-            estadoAnterior: h.estado_anterior || '',
-            estadoNuevo: h.estado_nuevo || h.estado || '',
-            usuario: h.usuario || 'Sistema',
-            detalle: h.detalle || '',
-            pais: h.pais || ''
-          }))
+
+      let estadosFinalesArray: any[] = [];
+      if (typeof result.estados_finales === 'string') {
+        try { estadosFinalesArray = JSON.parse(result.estados_finales); } catch { estadosFinalesArray = []; }
+      } else if (Array.isArray(result.estados_finales)) {
+        estadosFinalesArray = result.estados_finales;
+      }
+
+      const historialMapeado = historialArray.length > 0
+        ? mapWebhookHistorialToFrontend(historialArray as WebhookHistorialEntry[])
         : [];
-      
-      // Mapear las transiciones permitidas
+
       const transicionesMapeadas = transicionesArray.map((transicion: any) => ({
         row_number: transicion.row_number,
         estado_origen: transicion.estado_origen || transicion.estadoOrigen || '',
@@ -1131,119 +1070,35 @@ export const getCaseById = async (caseId: string): Promise<Case | null> => {
         permitido: transicion.permitido !== undefined ? transicion.permitido : true,
         ...transicion
       }));
-      
-      const casoActualizado = mapWebhookResponseToCase(casoData);
-      
-      if (casoActualizado) {
-        casoActualizado.transiciones = transicionesMapeadas;
-        casoActualizado.historial = historialMapeado;
-        casoActualizado.history = historialMapeado;
-        return casoActualizado;
-      }
-    }
-    
-    // Formato antiguo con historial_caso y detalle_caso
-    if (firstItem && typeof firstItem === 'object' && 'historial_caso' in firstItem && 'detalle_caso' in firstItem) {
-      
-      const historialArray = Array.isArray(firstItem.historial_caso) ? firstItem.historial_caso : [];
-      const detalleCasoArray = Array.isArray(firstItem.detalle_caso) ? firstItem.detalle_caso : [];
-      const agenteArray = Array.isArray(firstItem.agente) ? firstItem.agente : [];
-      
-      // PARSEAR transiciones si vienen como string JSON
-      let transicionesArray: any[] = [];
-      if (typeof firstItem.transiciones === 'string') {
-        try {
-          transicionesArray = JSON.parse(firstItem.transiciones);
-        } catch (error) {
-          transicionesArray = [];
-        }
-      } else if (Array.isArray(firstItem.transiciones)) {
-        transicionesArray = firstItem.transiciones;
-      }
-      
-      // PARSEAR estados_finales si vienen como string JSON
-      let estadosFinalesArray: any[] = [];
-      if (typeof firstItem.estados_finales === 'string') {
-        try {
-          estadosFinalesArray = JSON.parse(firstItem.estados_finales);
-        } catch (error) {
-          estadosFinalesArray = [];
-        }
-      } else if (Array.isArray(firstItem.estados_finales)) {
-        estadosFinalesArray = firstItem.estados_finales;
-      }
-      
-      // Mapear el historial
-      const historialMapeado = historialArray.length > 0 
-        ? mapWebhookHistorialToFrontend(historialArray as WebhookHistorialEntry[])
-        : [];
-      
-      // Mapear las transiciones permitidas
-      const transicionesMapeadas = transicionesArray.map((transicion: any) => ({
-        row_number: transicion.row_number,
-        estado_origen: transicion.estado_origen || transicion.estadoOrigen || '',
-        estado_destino: transicion.estado_destino || transicion.estadoDestino || '',
-        permitido: transicion.permitido !== undefined ? transicion.permitido : true,
-        ...transicion // Preservar cualquier otro campo adicional
-      }));
-      
-      // Mapear el caso desde detalle_caso y combinar con datos del agente
+
       if (detalleCasoArray.length > 0) {
-        const casoData = detalleCasoArray[0];
-        
-        // Si hay información del agente en el array agente, combinarla con los datos del caso
-        if (agenteArray.length > 0) {
-          const agenteData = agenteArray[0];
-          
-          // Combinar datos del agente con los datos del caso
+        const casoData = { ...detalleCasoArray[0] };
+
+        if (Array.isArray(result.agente) && result.agente.length > 0) {
+          const agenteData = result.agente[0];
           casoData.agente = agenteData;
           casoData.agente_nombre = agenteData.nombre || casoData.agente_nombre;
-          casoData.agente_name = agenteData.nombre || casoData.agente_name;
           casoData.agentename = agenteData.nombre || casoData.agentename;
           casoData.agente_id = agenteData.id_agente || casoData.agente_id;
           casoData.agente_user_id = agenteData.id_agente || casoData.agente_user_id;
         }
-        
+
         const casoActualizado = mapWebhookResponseToCase(casoData);
-        
+
         if (casoActualizado) {
-          // Agregar las transiciones permitidas
           casoActualizado.transiciones = transicionesMapeadas;
-          
-          // Agregar los estados finales disponibles
           (casoActualizado as any).estadosFinales = estadosFinalesArray;
-          
-          // Usar el historial del webhook (historial_caso) si está disponible
-          // Este es el historial completo y correcto que viene de n8n
-          if (historialMapeado.length > 0) {
-            casoActualizado.historial = [...historialMapeado];
-            casoActualizado.history = [...historialMapeado];
-          } else {
-            // Si no hay historial del webhook, usar el que viene del caso mapeado
-            // o inicializar si no existe
-            if (!casoActualizado.historial || casoActualizado.historial.length === 0) {
-              casoActualizado.historial = casoActualizado.history || [];
-              casoActualizado.history = casoActualizado.historial;
-            }
-          }
-          
+          casoActualizado.historial = historialMapeado;
+          casoActualizado.history = historialMapeado;
           return casoActualizado;
         }
       }
     }
+
+    // Formato simple con case_id o id
+    return mapWebhookResponseToCase(result);
   }
-  
-  // Fallback: intentar mapear como caso normal (sin historial)
-  if (response.case) {
-    return mapWebhookResponseToCase(response.case);
-  }
-  
-  // Si retorna un array, buscar el caso por ID
-  if (response.cases || response.casos || Array.isArray(response)) {
-    const cases = mapWebhookResponseToCases(response);
-    return cases.find(c => c.id === caseId || c.ticketNumber === caseId) || null;
-  }
-  
+
   return null;
 };
 
@@ -1339,412 +1194,32 @@ export const updateCaseStatus = async (
     throw new Error('ID de caso y nuevo estado son requeridos.');
   }
 
-  // Obtener país para el payload
-  const pais = await getUserCountry();
-  const paisValue = pais === 'GT' ? 'Guatemala' : 'El Salvador';
-
-  const payload = {
-    action: 'case.update',
-    pais: paisValue,
-    actor: {
-      email: actor.email
-    },
-    data: {
+  // Enviar actualización de estado directamente
+  const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
       case_id: caseId,
       estado: newStatus,
       comentario: detail || `Cambio de estado a ${newStatus}`
-    }
-  };
-  
-  
-  // Enviar actualización de estado
-  const response = await callCaseWebhook(payload);
-  
-  // ========== VALIDACIÓN INMEDIATA: Verificar si el webhook rechazó el comentario ==========
-  // IMPORTANTE: Esta validación debe ser LO PRIMERO que se haga después de recibir la respuesta
-  // El webhook puede retornar 200 OK pero con valid: "false" cuando rechaza
-  // O puede retornar un array (historial) cuando acepta
-  
-  // Función auxiliar para verificar si un valor es "false" en cualquier formato
-  const esValorFalse = (value: any): boolean => {
-    if (value === undefined || value === null) return false;
-    if (value === false) return true;
-    if (value === 0) return false; // 0 no es false en este contexto
-    if (typeof value === 'string') {
-      const trimmed = value.trim().toLowerCase();
-      return trimmed === 'false' || trimmed === '"false"' || trimmed === "'false'";
-    }
-    return false;
-  };
-  
-  // Verificar si el webhook rechazó el comentario (valid: "false" o valid: false)
-  // El webhook puede retornar valid como string "false" o booleano false
-  let validValue: any = undefined;
-  let responseObj: any = null;
-  
-  // Intentar extraer valid de diferentes estructuras de respuesta
-  if (response && typeof response === 'object') {
-    if (Array.isArray(response)) {
-      // Si es un array, buscar en el primer elemento
-      if (response.length > 0 && typeof response[0] === 'object') {
-        responseObj = response[0];
-        validValue = responseObj.valid;
-      }
-    } else {
-      // Si es un objeto, buscar directamente
-      responseObj = response;
-      validValue = (response as any).valid;
-      
-      // También buscar en data si existe
-      if (validValue === undefined && (response as any).data) {
-        validValue = (response as any).data.valid;
-        if (validValue !== undefined) {
-          responseObj = (response as any).data;
-        }
-      }
-      
-      // También buscar en el nivel raíz si no se encontró
-      if (validValue === undefined) {
-        // Intentar buscar en cualquier propiedad que contenga "valid"
-        for (const key in response) {
-          if (key.toLowerCase().includes('valid')) {
-            validValue = (response as any)[key];
-            break;
-          }
-        }
-      }
-    }
+    })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Error al actualizar estado');
   }
-  
-  // Verificar si el comentario fue rechazado
-  const esComentarioInvalido = esValorFalse(validValue);
-  
-  // DEBUG: Log temporal para verificar la detección (remover después)
-  // VALIDACIÓN CRÍTICA: Si es inválido, lanzar error INMEDIATAMENTE y DETENER ejecución
-  // ESTO DEBE SER LO PRIMERO - ANTES de cualquier otro código
-  if (esComentarioInvalido) {
-    // Extraer mensaje de error del campo "comentario" o "message" o "error"
-    let mensajeError = 'El comentario no cumple con los requisitos necesarios.';
-    
-    if (responseObj) {
-      const comentarioError = responseObj.comentario || responseObj.message || responseObj.error || responseObj.feedback;
-      if (comentarioError) {
-        mensajeError = typeof comentarioError === 'string' ? comentarioError : JSON.stringify(comentarioError);
-      }
-    } else if (response && typeof response === 'object' && !Array.isArray(response)) {
-      const comentarioError = (response as any).comentario || (response as any).message || (response as any).error;
-      if (comentarioError) {
-        mensajeError = typeof comentarioError === 'string' ? comentarioError : JSON.stringify(comentarioError);
-      }
-    }
-    
-    // LANZAR ERROR - esto detendrá la ejecución inmediatamente
-    // IMPORTANTE: Este throw detendrá TODA la ejecución de updateCaseStatus
-    const error = new Error(`Comentario no válido: ${mensajeError}`);
-    throw error;
-    // NUNCA se ejecutará código después de este throw
+
+  const result = await response.json();
+
+  // Verificar si hay error en la respuesta
+  if (result.error || result.success === false) {
+    throw new Error(result.message || 'Error al actualizar el caso');
   }
-  
-  // Si llegamos aquí, significa que valid NO es false
-  
-  // Si llegamos aquí, el comentario NO fue rechazado (valid !== false)
-  // IMPORTANTE: Este código SOLO se ejecuta si valid NO es false
-  // Verificar si es un array (historial) - significa que fue exitoso
-  const esRespuestaExitosa = Array.isArray(response) && response.length > 0;
-  
-  
-  if (esRespuestaExitosa) {
-  } else {
-    // Si no es array ni tiene valid: false, asumir éxito (compatibilidad con otros formatos)
-    // PERO solo si NO tiene valid: false (ya validado arriba)
-  }
-  
-  // Continuar con la obtención del caso actualizado
-  // (el código que sigue después del else original)
-  
-  // El webhook YA actualizó el caso, ahora consultamos para obtener el caso actualizado
-  
-  const queryPayloadCaseId: CaseWebhookPayload = {
-    action: 'case.query',
-    actor,
-    data: {
-      case_id: caseId
-    }
-  };
-  
-  const queryPayloadUserId: CaseWebhookPayload = {
-    action: 'case.query',
-    actor,
-    data: {
-      user_id: actor.user_id
-    }
-  };
-  
-  
-  // Hacer ambas peticiones en paralelo
-  const [queryResponseCaseId, queryResponseUserId] = await Promise.all([
-    callCaseWebhook(queryPayloadCaseId),
-    callCaseWebhook(queryPayloadUserId)
-  ]);
-  
-  if (Array.isArray(queryResponseCaseId) && queryResponseCaseId.length > 0) {
-  }
-  
-  if (Array.isArray(queryResponseUserId) && queryResponseUserId.length > 0) {
-  }
-  
-  // Usar la respuesta de case_id para el caso específico
-  const queryResponse = queryResponseCaseId;
-  
-  // Procesar respuesta del case.query (que viene con historial_caso y detalle_caso)
-  
-  if (Array.isArray(queryResponse) && queryResponse.length > 0) {
-    const firstItem = queryResponse[0];
-    
-    // Verificar si es el nuevo formato con historial_caso y detalle_caso
-    if (firstItem && typeof firstItem === 'object' && 'historial_caso' in firstItem && 'detalle_caso' in firstItem) {
-      
-      const historialArray = Array.isArray(firstItem.historial_caso) ? firstItem.historial_caso : [];
-      const detalleCasoArray = Array.isArray(firstItem.detalle_caso) ? firstItem.detalle_caso : [];
-      const agenteArray = Array.isArray(firstItem.agente) ? firstItem.agente : [];
-      
-      // PARSEAR transiciones si vienen como string JSON
-      let transicionesArray: any[] = [];
-      if (typeof firstItem.transiciones === 'string') {
-        try {
-          transicionesArray = JSON.parse(firstItem.transiciones);
-        } catch (error) {
-          transicionesArray = [];
-        }
-      } else if (Array.isArray(firstItem.transiciones)) {
-        transicionesArray = firstItem.transiciones;
-      }
-      
-      // PARSEAR estados_finales si vienen como string JSON
-      let estadosFinalesArray: any[] = [];
-      if (typeof firstItem.estados_finales === 'string') {
-        try {
-          estadosFinalesArray = JSON.parse(firstItem.estados_finales);
-        } catch (error) {
-          estadosFinalesArray = [];
-        }
-      } else if (Array.isArray(firstItem.estados_finales)) {
-        estadosFinalesArray = firstItem.estados_finales;
-      }
-      
-      // Mapear el historial
-      const historialMapeado = historialArray.length > 0 
-        ? mapWebhookHistorialToFrontend(historialArray as WebhookHistorialEntry[])
-        : [];
-      
-      // Mapear las transiciones permitidas
-      const transicionesMapeadas = transicionesArray.map((transicion: any) => ({
-        row_number: transicion.row_number,
-        estado_origen: transicion.estado_origen || transicion.estadoOrigen || '',
-        estado_destino: transicion.estado_destino || transicion.estadoDestino || '',
-        permitido: transicion.permitido !== undefined ? transicion.permitido : true,
-        ...transicion // Preservar cualquier otro campo adicional
-      }));
-      
-      // Mapear el caso desde detalle_caso - SOLO usar datos del webhook
-      if (detalleCasoArray.length > 0) {
-        const casoData = detalleCasoArray[0];
-        
-        // Si hay información del agente en el array agente, combinarla con los datos del caso
-        if (agenteArray.length > 0) {
-          const agenteData = agenteArray[0];
-          
-          // Combinar datos del agente con los datos del caso
-          casoData.agente = agenteData;
-          casoData.agente_nombre = agenteData.nombre || casoData.agente_nombre;
-          casoData.agente_name = agenteData.nombre || casoData.agente_name;
-          casoData.agentename = agenteData.nombre || casoData.agentename;
-          casoData.agente_id = agenteData.id_agente || casoData.agente_id;
-          casoData.agente_user_id = agenteData.id_agente || casoData.agente_user_id;
-        }
-        
-        const casoActualizado = mapWebhookResponseToCase(casoData);
-        
-        if (casoActualizado) {
-          // Agregar las transiciones permitidas
-          casoActualizado.transiciones = transicionesMapeadas;
-          
-          // Agregar los estados finales disponibles
-          (casoActualizado as any).estadosFinales = estadosFinalesArray;
-          
-          // Usar el historial del webhook (historial_caso) si está disponible
-          // Este es el historial completo y correcto que viene de n8n
-          if (historialMapeado.length > 0) {
-            casoActualizado.historial = [...historialMapeado];
-            casoActualizado.history = [...historialMapeado];
-          } else {
-            // Si no hay historial del webhook, usar el que viene del caso mapeado
-            // o inicializar si no existe
-            if (!casoActualizado.historial || casoActualizado.historial.length === 0) {
-              casoActualizado.historial = casoActualizado.history || [];
-              casoActualizado.history = casoActualizado.historial;
-            }
-          }
-          
-          // USAR SOLO EL ESTADO QUE RETORNA EL WEBHOOK - NO USAR newStatus COMO FALLBACK
-          
-          // 1. Intentar obtener el estado del historial (última entrada)
-          let estadoDelWebhook: string | undefined = undefined;
-          if (historialMapeado.length > 0) {
-            const ultimaEntrada = historialMapeado[0];
-            estadoDelWebhook = ultimaEntrada.estado_nuevo;
-          }
-          
-          // 2. Si no hay estado en historial, usar el estado del caso mapeado del webhook
-          if (!estadoDelWebhook) {
-            estadoDelWebhook = casoActualizado.status || (casoActualizado as any).estado;
-          }
-          
-          // 3. Si aún no hay estado, buscar en casoData original del webhook
-          if (!estadoDelWebhook) {
-            estadoDelWebhook = casoData.estado || casoData.status || casoData.estado_caso;
-          }
-          
-          // 4. SOLO usar el estado del webhook, NO usar newStatus como fallback
-          if (estadoDelWebhook) {
-            casoActualizado.status = estadoDelWebhook;
-            (casoActualizado as any).estado = estadoDelWebhook;
-          } else {
-            throw new Error('El webhook no retornó el estado del caso. No se puede determinar el estado actual.');
-          }
-          
-          return casoActualizado;
-        } else {
-        }
-      } else {
-      }
-      
-      // Si no se pudo mapear el caso desde detalle_caso, lanzar error
-      throw new Error('El webhook no retornó el detalle del caso actualizado');
-    }
-    
-    // Verificar si es un array de historial directo (formato anterior)
-    // NOTA: Este formato ya no se usa, pero mantenemos compatibilidad
-    if (firstItem && typeof firstItem === 'object' && 'id_historial' in firstItem && 'caso_id' in firstItem) {
-      
-      const historialMapeado = mapWebhookHistorialToFrontend(queryResponse as WebhookHistorialEntry[]);
-      
-      // Obtener el caso actualizado desde el webhook (NO usar datos locales)
-      const casoActualizado = await getCaseById(caseId);
-      if (casoActualizado) {
-        // Usar SOLO el historial del webhook, no combinar
-        casoActualizado.historial = [...historialMapeado];
-        casoActualizado.history = [...historialMapeado];
-        
-        // Actualizar el estado del caso con el estado_nuevo de la última entrada
-        if (historialMapeado.length > 0) {
-          const ultimaEntrada = historialMapeado[0];
-          casoActualizado.status = ultimaEntrada.estado_nuevo || newStatus;
-          (casoActualizado as any).estado = ultimaEntrada.estado_nuevo || newStatus;
-        }
-        
-        return casoActualizado;
-      } else {
-        throw new Error('No se pudo obtener el caso actualizado desde el webhook');
-      }
-    }
-  }
-  
-  // Si llegamos aquí, no se procesó el formato con historial_caso y detalle_caso
-  // Intentar otros formatos como fallback
-  
-  // Si la respuesta es directamente un objeto de caso (tiene case_id o id)
-  if (!Array.isArray(queryResponse) && queryResponse && typeof queryResponse === 'object') {
-    const hasCaseId = 'case_id' in queryResponse || 'id' in queryResponse || 'ticketNumber' in queryResponse;
-    if (hasCaseId) {
-      const mappedCase = mapWebhookResponseToCase(queryResponse);
-      if (mappedCase) {
-        return mappedCase;
-      }
-    }
-  }
-  
-  // Si retorna un objeto con data que es un array
-  if (queryResponse && typeof queryResponse === 'object' && queryResponse.data && Array.isArray(queryResponse.data)) {
-    const cases = mapWebhookResponseToCases(queryResponse.data);
-    const foundCase = cases.find(c => {
-      const cId = (c.id || c.ticketNumber || '').toString();
-      const searchId = caseId.toString();
-      return cId === searchId || cId === caseId || c.ticketNumber === caseId ||
-             cId.replace(/^CASO-?/, '') === searchId.replace(/^CASO-?/, '');
-    });
-    if (foundCase) {
-      return foundCase;
-    }
-  }
-  
-  // Si el webhook retorna el caso directamente
-  if (queryResponse && typeof queryResponse === 'object' && queryResponse.case && !Array.isArray(queryResponse.case)) {
-    const mappedCase = mapWebhookResponseToCase(queryResponse.case);
-    if (mappedCase) {
-      return mappedCase;
-    }
-  }
-  
-  // Si retorna cases o casos como array
-  if (queryResponse && typeof queryResponse === 'object' && (queryResponse.cases || queryResponse.casos)) {
-    const casesArray = queryResponse.cases || queryResponse.casos;
-    if (Array.isArray(casesArray)) {
-      const cases = mapWebhookResponseToCases(casesArray);
-      const foundCase = cases.find(c => {
-        const cId = c.id || c.ticketNumber || '';
-        const searchId = caseId.toString();
-        return cId === searchId || cId === caseId || c.ticketNumber === caseId;
-      });
-      if (foundCase) {
-        return foundCase;
-      }
-    }
-  }
-  
-  // Si no se pudo procesar la respuesta del case.query, intentar obtener el caso directamente
-  // como último recurso
-  try {
-    const casoFallback = await getCaseById(caseId);
-    if (casoFallback) {
-      // Actualizar el estado con el nuevo estado que se envió
-      casoFallback.status = newStatus;
-      (casoFallback as any).estado = newStatus;
-      return casoFallback;
-    }
-  } catch (fallbackError) {
-    // Si también falla, continuar sin error - el frontend recargará el caso
-  }
-  
-  // Si no se pudo obtener el caso de ninguna manera, el frontend lo recargará
-  // No lanzar error para no interrumpir el flujo - el cambio de estado ya se procesó en el webhook
-  // El frontend recargará el caso después de updateCaseStatus
-  // Retornar un caso básico con el estado actualizado para que el frontend pueda continuar
-  const casoBasico: Case = {
-    id: caseId,
-    ticketNumber: caseId,
-    clientId: '',
-    clientName: '',
-    category: '',
-    origin: Channel.WEB,
-    subject: '',
-    description: '',
-    status: newStatus,
-    priority: 'Media',
-    agentId: '',
-    agentName: '',
-    createdAt: new Date().toISOString(),
-    slaExpired: false,
-    history: [],
-    historial: [],
-    clientEmail: '',
-    diasAbierto: 0,
-    agenteAsignado: null as any,
-    categoria: null as any,
-    cliente: null as any
-  };
-  
-  return casoBasico;
+
+  // Obtener el caso actualizado
+  const updatedCase = await getCaseById(caseId);
+  return updatedCase;
 };
 
 /**
@@ -1768,40 +1243,34 @@ export const reassignCase = async (
     throw new Error('ID de caso y ID de agente son requeridos.');
   }
 
-  const pais = await getUserCountry();
-  const paisValue = pais === 'GT' ? 'Guatemala' : 'El Salvador';
-
-  const payload: CaseWebhookPayload = {
-    action: 'case.update',
-    pais: paisValue,
-    actor: {
-      email: actor.email
-    },
-    data: {
-      update_type: 'reassign',
-      case_id: caseId,
-      agent_id: agentId,
-      comentario: motivo || `Reasignación manual de caso`
-    }
-  };
-
   try {
-    // Enviar reasignación al webhook de casos
-    const response = await callCaseWebhook(payload);
+    const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/reassign`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        case_id: caseId,
+        agente_id: agentId,
+        comentario: motivo || `Reasignación manual de caso`
+      })
+    });
 
-    // Verificar respuesta exitosa
-    if (response && typeof response === 'object' && response.success === false) {
-      const errorMsg = typeof response.error === 'string' ? response.error : 'Error al reasignar el caso';
-      return { success: false, message: errorMsg };
+    if (!response.ok) {
+      const error = await response.json();
+      return { success: false, message: error.message || 'Error al reasignar' };
     }
 
-    // Invalidar cache de agentes para forzar recarga
+    const result = await response.json();
+
+    if (result.error || result.success === false) {
+      return { success: false, message: result.message || 'Error al reasignar' };
+    }
+
     agentesCache = null;
     agentesCacheTime = 0;
 
     return { success: true, message: 'Caso reasignado correctamente' };
   } catch (error: any) {
-    return { success: false, message: error.message || 'Error al reasignar el caso' };
+    return { success: false, message: error.message || 'Error al reasignar' };
   }
 };
 
@@ -1810,26 +1279,25 @@ export const reassignCase = async (
  */
 export const deleteCase = async (caseId: string): Promise<boolean> => {
   const actor = getActor();
-  
+
   if (!actor) {
     throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
   }
-  
+
   if (!caseId) {
     throw new Error('ID de caso requerido.');
   }
-  
-  const payload: CaseWebhookPayload = {
-    action: 'case.delete',
-    actor,
-    data: {
-      case_id: caseId
-    }
-  };
-  
-  const response = await callCaseWebhook(payload);
-  
-  return response.success !== false && !response.error;
+
+  const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/${caseId}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' }
+  });
+
+  if (!response.ok) {
+    return false;
+  }
+
+  return true;
 };
 
 /**
@@ -1977,55 +1445,38 @@ export const updateCaseData = async (
     throw new Error('Usuario no autenticado');
   }
 
-  // Obtener el caso actual para usar sus valores como base si no se proporcionan en updates
+  // Obtener el caso actual para usar sus valores como base
   const currentCase = await getCaseById(caseId);
 
-  // Mapear los campos según la documentación de case.edit
-  // Usar valores de updates si están presentes, sino usar valores del caso actual
-  // Asegurar que todos los campos sean strings (incluso si están vacíos, enviar "")
-  // IMPORTANTE: Si un campo no está en updates, usar el valor del caso actual
-  // Obtener el nombre del cliente desde diferentes fuentes posibles
   const currentClientName = currentCase?.clientName || currentCase?.cliente?.nombreEmpresa || '';
   const currentClientEmail = currentCase?.clientEmail || currentCase?.cliente?.email || '';
   const currentClientPhone = currentCase?.clientPhone || currentCase?.cliente?.telefono || '';
 
-  // Obtener país para el payload
-  const pais = await getUserCountry();
-  const paisValue = pais === 'GT' ? 'Guatemala' : 'El Salvador';
-
-  const payload = {
-    action: 'case.edit',
-    pais: paisValue,
-    actor: {
-      email: actor.email
-    },
-    data: {
+  const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/${caseId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
       case_id: caseId,
       asunto: (updates.asunto !== undefined ? updates.asunto : (currentCase?.subject || '')) || '',
       descripcion: (updates.descripcion !== undefined ? updates.descripcion : (currentCase?.description || '')) || '',
       cliente_id: (updates.cliente_id !== undefined ? updates.cliente_id : (currentCase?.clientId || '')) || '',
-      // Para cliente_nombre: si está en updates, usar ese valor; si no, usar el del caso actual
-      cliente_nombre: updates.client_name !== undefined
-        ? (updates.client_name || '')
-        : (currentClientName || ''),
+      cliente_nombre: updates.client_name !== undefined ? (updates.client_name || '') : (currentClientName || ''),
       email_cliente: (updates.client_email !== undefined ? String(updates.client_email || '') : String(currentClientEmail || '')) || '',
       telefono_cliente: (updates.client_phone !== undefined ? String(updates.client_phone || '') : String(currentClientPhone || '')) || ''
-    }
-  };
+    })
+  });
 
-  const response = await callCaseWebhook(payload);
-  
-  // Verificar si el webhook retornó un error explícito
-  if (response && typeof response === 'object') {
-    if (response.success === false || response.error === true) {
-      const errorMsg = response.message || 'Error al actualizar el caso';
-      throw new Error(errorMsg);
-    }
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Error al actualizar el caso');
   }
 
-  // Si el webhook fue exitoso, intentar obtener el caso actualizado
-  // Pero no lanzar error si no se puede obtener inmediatamente
-  // El frontend se encargará de recargar el caso
+  const result = await response.json();
+
+  if (result.error || result.success === false) {
+    throw new Error(result.message || 'Error al actualizar el caso');
+  }
+
   try {
     const updatedCase = await getCaseById(caseId);
     return updatedCase;

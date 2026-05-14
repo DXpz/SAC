@@ -1167,44 +1167,12 @@ export const api = {
     description: string;
     sla: number;
   }): Promise<any> {
-    const user = this.getUser();
-    if (!user) {
-      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
-    }
-
-    // Construir el actor con el formato esperado
-    const actor = buildActorPayload(user);
-    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
-    const roleMap: Record<string, string> = {
-      'ADMIN': 'ADMINISTRADOR',
-      'AGENTE': 'AGENTE',
-      'SUPERVISOR': 'SUPERVISOR',
-      'GERENTE': 'GERENTE'
-    };
-    const mappedRole = roleMap[actor.role] || actor.role;
-
-    // Construir el payload según el formato que espera n8n (campos de la BD)
-    const payload = {
-      action: 'category.create',
-      actor: {
-        user_id: actor.user_id,
-        email: actor.email,
-        role: mappedRole
-      },
-      data: {
-        id: '',
-        categoria: categoryData.category_name, // Campo BD: categoria
-        descripcion: categoryData.description,   // Campo BD: descripcion
-        valor_sla: String(categoryData.sla)     // Campo BD: valor_sla
-      }
-    };
-
-    try {
-      const response = await callCategoriesWebhook('POST', payload);
-      return response;
-    } catch (error: any) {
-      throw new Error(error.message || 'Error al crear la categoría');
-    }
+    const response = await callCategoriesWebhook('POST', {
+      categoria: categoryData.category_name,
+      descripcion: categoryData.description,
+      valor_sla: categoryData.sla
+    });
+    return response;
   },
 
   // Actualizar categoría existente mediante webhook
@@ -1214,63 +1182,26 @@ export const api = {
     description: string;
     sla: number;
   }): Promise<any> {
-    const user = this.getUser();
-    if (!user) {
-      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
-    }
-
-    // Construir el actor con el formato esperado
-    const actor = buildActorPayload(user);
-    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
-    const roleMap: Record<string, string> = {
-      'ADMIN': 'ADMINISTRADOR',
-      'AGENTE': 'AGENTE',
-      'SUPERVISOR': 'SUPERVISOR',
-      'GERENTE': 'GERENTE'
-    };
-    const mappedRole = roleMap[actor.role] || actor.role;
-
-    // Construir el payload según el formato que espera n8n (campos de la BD)
-    const payload = {
-      action: 'category.update',
-      actor: {
-        user_id: actor.user_id,
-        email: actor.email,
-        role: mappedRole
-      },
-      data: {
-        id: categoryData.id,
-        categoria: categoryData.category_name || '',  // Campo BD: categoria
-        descripcion: categoryData.description || '',   // Campo BD: descripcion
-        valor_sla: String(categoryData.sla)            // Campo BD: valor_sla
-      }
-    };
-
-    try {
-      const response = await callCategoriesWebhook('POST', payload);
-      return response;
-    } catch (error: any) {
-      throw new Error(error.message || 'Error al actualizar la categoría');
-    }
+    const response = await fetch(`${API_CONFIG.WEBHOOK_CATEGORIAS_URL}/${categoryData.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        categoria: categoryData.category_name,
+        descripcion: categoryData.description,
+        valor_sla: categoryData.sla
+      })
+    });
+    return response.json();
   },
 
   // Eliminar categoría mediante webhook
   async deleteCategory(categoryId: string): Promise<any> {
-    const user = this.getUser();
-    if (!user) {
-      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
-    }
-
-    // Construir el actor con el formato esperado
-    const actor = buildActorPayload(user);
-    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
-    const roleMap: Record<string, string> = {
-      'ADMIN': 'ADMINISTRADOR',
-      'AGENTE': 'AGENTE',
-      'SUPERVISOR': 'SUPERVISOR',
-      'GERENTE': 'GERENTE'
-    };
-    const mappedRole = roleMap[actor.role] || actor.role;
+    const response = await fetch(`${API_CONFIG.WEBHOOK_CATEGORIAS_URL}/${categoryId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    return response.json();
+  },
 
     // Construir el payload según el formato especificado
     const payload = {
