@@ -955,6 +955,21 @@ export const api = {
     return response.json();
   },
 
+  // Leer todos los estados desde backend directo
+  async readEstados(): Promise<any[]> {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al leer los estados');
+    }
+
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  },
+
   // Actualizar matriz de transiciones mediante backend directo
   async updateTransiciones(estados: Record<string, { transiciones: string[] }>): Promise<any> {
     const response = await fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}/transiciones`, {
