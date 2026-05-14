@@ -157,8 +157,6 @@ const [showUserModal, setShowUserModal] = useState(false);
   // transitions[estado_origen_normalizado][estado_destino_normalizado] = true/false
   const [transitions, setTransitions] = useState<Record<string, Record<string, boolean>>>({});
 
-  const [draggedStateId, setDraggedStateId] = useState<string | null>(null);
-  const [dragOverStateId, setDragOverStateId] = useState<string | null>(null);
   const [editingStateId, setEditingStateId] = useState<string | null>(null);
   const [editingStateName, setEditingStateName] = useState<string>('');
   const [editingOrderStateId, setEditingOrderStateId] = useState<string | null>(null);
@@ -1278,75 +1276,6 @@ const [showUserModal, setShowUserModal] = useState(false);
     }
     setEditingStateId(null);
     setEditingStateName('');
-  };
-
-  const handleDragStart = (e: React.DragEvent, stateId: string) => {
-    setDraggedStateId(stateId);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e: React.DragEvent, stateId: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setDragOverStateId(stateId);
-  };
-
-  const handleDragLeave = () => {
-    setDragOverStateId(null);
-  };
-
-  const handleDrop = async (e: React.DragEvent, targetStateId: string) => {
-    e.preventDefault();
-    if (!draggedStateId || draggedStateId === targetStateId) {
-      setDraggedStateId(null);
-      setDragOverStateId(null);
-      return;
-    }
-
-    const draggedState = states.find(s => s.id === draggedStateId);
-    const targetState = states.find(s => s.id === targetStateId);
-    
-    if (!draggedState || !targetState) {
-      setDraggedStateId(null);
-      setDragOverStateId(null);
-      return;
-    }
-
-    // Limpiar estados de drag inmediatamente para evitar que se quede "pegado"
-    setDraggedStateId(null);
-    setDragOverStateId(null);
-
-    const newStates = [...states];
-    const draggedIndex = newStates.findIndex(s => s.id === draggedStateId);
-    const targetIndex = newStates.findIndex(s => s.id === targetStateId);
-    // Reordenar
-    newStates.splice(draggedIndex, 1);
-    newStates.splice(targetIndex, 0, draggedState);
-
-    // Actualizar órdenes
-    const reorderedStates = newStates.map((state, index) => ({
-      ...state,
-      order: index + 1
-    }));
-
-    // CLONAR el array para evitar mutaciones de React
-    const estadosParaEnviar = reorderedStates.map(s => ({ ...s }));
-
-    // Actualizar el estado local inmediatamente para feedback visual
-    setStates(reorderedStates);
-
-    // Enviar actualización individually para cada estado
-    try {
-      for (const estado of reorderedStates) {
-        await api.updateEstado(estado.id, { orden: estado.order });
-      }
-      await loadEstados();
-      await loadTransiciones();
-    } catch (error: any) {
-      alert(error.message || 'Error al actualizar el orden de los estados.');
-      await loadEstados();
-    }
-    setHasChanges(true);
   };
 
   // ORIGEN = FILA (fromState), DESTINO = COLUMNA (toState)
