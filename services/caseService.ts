@@ -831,33 +831,6 @@ export const createCase = async (caseData: {
   
   return result as Case;
 };
-  // Esto es un fallback en caso de que el webhook no retorne el caso creado
-  const fallbackCase: Case = {
-    id: `CASO-${Date.now()}`,
-    ticketNumber: `CASO-${Date.now()}`,
-    clientId: caseData.clienteId,
-    clientName: caseData.clientName || '',
-    category: caseData.category || '',
-    origin: caseData.contactChannel as Channel,
-    subject: caseData.subject,
-    description: caseData.description,
-    status: CaseStatus.NUEVO,
-    pais: caseData.pais || caseData.country || caseData.cliente?.pais || '',
-    priority: 'Media',
-    agentId: '',
-    agentName: '',
-    createdAt: new Date().toISOString(),
-    slaExpired: false,
-    history: [],
-    clientEmail: caseData.clientEmail || '',
-    diasAbierto: 0,
-    agenteAsignado: null as any,
-    categoria: null as any,
-    cliente: null as any
-  };
-  
-  return fallbackCase;
-};
 
 /**
  * Obtiene todos los casos

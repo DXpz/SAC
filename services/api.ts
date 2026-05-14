@@ -1203,27 +1203,6 @@ export const api = {
     return response.json();
   },
 
-    // Construir el payload según el formato especificado
-    const payload = {
-      action: 'category.delete',
-      actor: {
-        user_id: actor.user_id,
-        email: actor.email,
-        role: mappedRole
-      },
-      data: {
-        id: categoryId
-      }
-    };
-
-    try {
-      const response = await callCategoriesWebhook('POST', payload);
-      return response;
-    } catch (error: any) {
-      throw new Error(error.message || 'Error al eliminar la categoría');
-    }
-  },
-
   // Leer todas las categorías mediante webhook
   async readCategories(): Promise<any[]> {
     const user = this.getUser();
