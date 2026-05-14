@@ -1243,7 +1243,7 @@ const [showUserModal, setShowUserModal] = useState(false);
   const handleMoveState = async (id: string, direction: 'up' | 'down') => {
     const currentIndex = states.findIndex(s => s.id === id);
     if (currentIndex === -1) return;
-    
+
     const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
     if (newIndex < 0 || newIndex >= states.length) return;
 
@@ -1252,15 +1252,21 @@ const [showUserModal, setShowUserModal] = useState(false);
     newStates[currentIndex].order = newStates[newIndex].order;
     newStates[newIndex].order = temp;
     newStates.sort((a, b) => a.order - b.order);
-    
-    setStates(newStates);
 
+    setStates(newStates);
+    setHasChanges(true);
+  };
+
+  const handleSaveOrden = async () => {
     try {
-      await api.updateEstado(id, { orden: newStates[currentIndex].order });
-      await api.updateEstado(newStates[newIndex].id, { orden: newStates[newIndex].order });
+      for (const estado of states) {
+        await api.updateEstado(estado.id, { orden: estado.order });
+      }
       await loadEstados();
+      setHasChanges(false);
+      alert('Orden guardado correctamente');
     } catch (error: any) {
-      alert(error.message || 'Error al reordenar');
+      alert(error.message || 'Error al guardar orden');
       await loadEstados();
     }
   };
@@ -2890,9 +2896,22 @@ const [showUserModal, setShowUserModal] = useState(false);
 
             {/* Lista de estados simplificada - solo con orden editable */}
             <div className="mb-8">
-              <h3 className="text-sm font-bold mb-4 uppercase" style={{ color: styles.text.primary }}>
-                Gestión de Estados
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold uppercase" style={{ color: styles.text.primary }}>
+                  Gestión de Estados
+                </h3>
+                {hasChanges && (
+                  <button
+                    onClick={handleSaveOrden}
+                    className="px-4 py-1.5 text-xs font-semibold rounded-lg text-white transition-all"
+                    style={{ backgroundColor: '#166534' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#14532d'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#166534'}
+                  >
+                    Guardar Orden
+                  </button>
+                )}
+              </div>
               <div className="space-y-2">
                 {states
                   .sort((a, b) => a.order - b.order)
@@ -2935,76 +2954,6 @@ const [showUserModal, setShowUserModal] = useState(false);
                           <ChevronDown className="w-3 h-3" />
                         </button>
                       </div>
-                      <div className="w-20 text-sm font-semibold flex items-center gap-1" style={{ color: styles.text.secondary }}>
-                          {editingOrderStateId === state.id ? (
-                            <input
-                              type="number"
-                              value={editingOrderValue}
-                              onChange={async (e) => {
-                                const newOrder = parseInt(e.target.value, 10) || 0;
-                                setEditingOrderValue(newOrder);
-                                if (newOrder >= 1 && newOrder <= states.length) {
-                                  const estadoEditar = states.find(s => s.id === state.id);
-                                  if (estadoEditar) {
-                                    // Recalcular todos los órdenes basado en la nueva posición
-                                    const sortedStates = [...states].sort((a, b) => a.order - b.order);
-                                    const currentIndex = sortedStates.findIndex(s => s.id === state.id);
-                                    
-                                    // Remover el estado de su posición actual e insertar en la nueva
-                                    const updatedOrder = [...sortedStates];
-                                    const [movedState] = updatedOrder.splice(currentIndex, 1);
-                                    updatedOrder.splice(newOrder - 1, 0, movedState);
-                                    
-                                    // Reasignar órdenes a todos
-                                    const estadosParaApi = updatedOrder.map((s, idx) => ({
-                                      id: String(s.id),
-                                      nombre: s.name,
-                                      descripcion: s.name,
-                                      orden: idx + 1,
-                                      es_final: s.isFinal
-                                    }));
-                                    
-                                    try {
-                                      await api.updateEstados(estadosParaApi);
-                                      await loadEstados();
-                                    } catch (error) {
-                                      console.error('Error al guardar orden:', error);
-                                    }
-                                  }
-                                  setEditingOrderStateId(null);
-                                  setEditingOrderValue(0);
-                                }
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Escape') {
-                                  setEditingOrderStateId(null);
-                                  setEditingOrderValue(0);
-                                }
-                              }}
-                              onBlur={() => {
-                                setEditingOrderStateId(null);
-                                setEditingOrderValue(0);
-                              }}
-                              className="w-14 px-2 py-1 rounded border text-xs font-semibold text-center"
-                              style={{
-                                backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
-                                borderColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.5)' : 'rgba(37, 99, 235, 0.5)',
-                                color: styles.text.primary
-                              }}
-                              min={1}
-                              autoFocus
-                            />
-                          ) : (
-                            <button
-                              className="px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900 cursor-pointer font-medium text-xs"
-                              title="Click para editar orden"
-                              onClick={() => handleEditOrder(state.id, state.order)}
-                              style={{ color: styles.text.secondary }}
-                            >
-                              #{state.order}
-                            </button>
-                          )}
-                        </div>
                       <div className="flex-1 flex items-center gap-2">
                         {editingStateId === state.id ? (
                           <input
