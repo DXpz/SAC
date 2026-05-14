@@ -1248,12 +1248,12 @@ const [showUserModal, setShowUserModal] = useState(false);
     if (newIndex < 0 || newIndex >= states.length) return;
 
     const newStates = [...states];
-    const temp = newStates[currentIndex].order;
-    newStates[currentIndex].order = newStates[newIndex].order;
-    newStates[newIndex].order = temp;
-    newStates.sort((a, b) => a.order - b.order);
+    const movedState = newStates[currentIndex];
+    newStates.splice(currentIndex, 1);
+    newStates.splice(newIndex, 0, movedState);
+    const reorderedStates = newStates.map((s, idx) => ({ ...s, order: idx + 1 }));
 
-    setStates(newStates);
+    setStates(reorderedStates);
     setHasChanges(true);
   };
 
