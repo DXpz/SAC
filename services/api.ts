@@ -71,6 +71,11 @@ export const clearCache = (key?: 'cases' | 'clientes' | 'agentes' | 'usuarios') 
   }
 };
 
+// Helper para obtener la URL base del backend
+const getBaseUrl = (): string => {
+  return API_CONFIG.WEBHOOK_URL;
+};
+
 // Helper genérico para llamadas a webhooks de n8n
 // Usa el JWT almacenado (cuando exista) y respeta el timeout global
 const callWebhookGeneric = async <T = any>(
@@ -1155,18 +1160,28 @@ export const api = {
     }
   },
 
-  // Crear nueva categoría mediante webhook
+  // Crear nueva categoría mediante backend directo
   async createCategory(categoryData: {
     category_name: string;
     description: string;
     sla: number;
   }): Promise<any> {
-    const response = await callCategoriesWebhook('POST', {
-      categoria: categoryData.category_name,
-      descripcion: categoryData.description,
-      valor_sla: categoryData.sla
+    const response = await fetch(`${API_CONFIG.WEBHOOK_CATEGORIAS_URL}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        categoria: categoryData.category_name,
+        descripcion: categoryData.description,
+        valor_sla: categoryData.sla
+      })
     });
-    return response;
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Error al crear categoría');
+    }
+
+    return response.json();
   },
 
   // Actualizar categoría existente mediante webhook
@@ -1263,48 +1278,66 @@ export const api = {
     }
   },
 
-  // Crear nuevo estado mediante webhook
+  // Crear nuevo estado mediante backend directo
   async createState(stateData: {
-    id: string;
     nombre: string;
-    descripcion: string;
-    orden: string;
-    estado_final: string;
+    descripcion?: string;
+    orden?: number;
+    estado_final?: boolean;
   }): Promise<any> {
-    const user = this.getUser();
-    if (!user) {
-      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
-    }
-
-    const actor = buildActorPayload(user);
-    const roleMap: Record<string, string> = {
-      'ADMIN': 'ADMINISTRADOR',
-      'AGENTE': 'AGENTE',
-      'SUPERVISOR': 'SUPERVISOR',
-      'GERENTE': 'GERENTE'
-    };
-    const mappedRole = roleMap[actor.role] || actor.role;
-    const payload = {
-      action: 'estado.create',
-      actor: {
-        user_id: actor.user_id,
-        email: actor.email,
-        role: mappedRole
-      },
-      data: {
-        id: stateData.id,
+    const response = await fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         nombre: stateData.nombre,
-        descripcion: stateData.descripcion,
-        orden: stateData.orden,
-        estado_final: stateData.estado_final
-      }
-    };
-    try {
-      const response = await callEstadosWebhook('POST', payload);
-      return response;
-    } catch (error: any) {
+        descripcion: stateData.descripcion || null,
+        orden: stateData.orden || 1,
+        estado_final: stateData.estado_final || false
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
       throw new Error(error.message || 'Error al crear el estado');
     }
+
+    return response.json();
+  },
+
+  // Actualizar estado mediante backend directo
+  async updateState(id: string, stateData: {
+    nombre?: string;
+    descripcion?: string;
+    orden?: number;
+    estado_final?: boolean;
+  }): Promise<any> {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(stateData)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Error al actualizar el estado');
+    }
+
+    return response.json();
+  },
+
+  // Eliminar estado mediante backend directo
+  async deleteState(id: string): Promise<any> {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}/${id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Error al eliminar el estado');
+    }
+
+    return response.json();
   },
 
   // Actualizar orden de estados mediante webhook
@@ -1358,328 +1391,70 @@ export const api = {
     }
   },
 
-  // Leer transiciones de estados mediante webhook
-  async readTransiciones(): Promise<Record<string, { transiciones: string[] }>> {
-    const user = this.getUser();
-    if (!user) {
-      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
+// Leer transiciones de estados desde backend directo
+  async readTransiciones(): Promise<any[]> {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}/transiciones`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al leer las transiciones');
     }
 
-    const actor = buildActorPayload(user);
-    const roleMap: Record<string, string> = {
-      'ADMIN': 'ADMINISTRADOR',
-      'AGENTE': 'AGENTE',
-      'SUPERVISOR': 'SUPERVISOR',
-      'GERENTE': 'GERENTE'
-    };
-    const mappedRole = roleMap[actor.role] || actor.role;
-    const payload = {
-      action: 'transicion.read',
-      actor: {
-        user_id: actor.user_id,
-        email: actor.email,
-        role: mappedRole
-      },
-      data: {}
-    };
-    try {
-      const response = await callEstadosWebhook('POST', payload);
-      // El formato esperado es: [{ "data": [{ "estado_origen": "nuevo", "estado_destino": "en_proceso", "permitido": true }, ...] }]
-      let transicionesData: Record<string, { transiciones: string[] }> = {};
-      
-      if (response && typeof response === 'object') {
-        // Si es un array (formato esperado: [{ "data": [...] }])
-        if (Array.isArray(response)) {
-          if (response.length > 0 && response[0] && typeof response[0] === 'object') {
-            if (response[0].data && Array.isArray(response[0].data)) {
-              const transicionesArray = response[0].data;
-              
-              // Agrupar por estado_origen y construir el formato esperado
-              transicionesArray.forEach((transicion: any) => {
-                if (transicion && transicion.estado_origen && transicion.estado_destino && transicion.permitido === true) {
-                  const estadoOrigen = transicion.estado_origen;
-                  const estadoDestino = transicion.estado_destino;
-                  
-                  // Inicializar el estado origen si no existe
-                  if (!transicionesData[estadoOrigen]) {
-                    transicionesData[estadoOrigen] = { transiciones: [] };
-                  }
-                  
-                  // Agregar el estado destino a las transiciones permitidas
-                  if (!transicionesData[estadoOrigen].transiciones.includes(estadoDestino)) {
-                    transicionesData[estadoOrigen].transiciones.push(estadoDestino);
-                  }
-                  
-                }
-              });
-            } else if (response[0].data && typeof response[0].data === 'object' && !Array.isArray(response[0].data)) {
-              transicionesData = response[0].data;
-            }
-          }
-        } 
-        else {
-          if (response.data) {
-            if (Array.isArray(response.data)) {
-              const transicionesArray = response.data;
-              
-              transicionesArray.forEach((transicion: any) => {
-                if (transicion && transicion.estado_origen && transicion.estado_destino && transicion.permitido === true) {
-                  const estadoOrigen = transicion.estado_origen;
-                  const estadoDestino = transicion.estado_destino;
-                  
-                  if (!transicionesData[estadoOrigen]) {
-                    transicionesData[estadoOrigen] = { transiciones: [] };
-                  }
-                  
-                  if (!transicionesData[estadoOrigen].transiciones.includes(estadoDestino)) {
-                    transicionesData[estadoOrigen].transiciones.push(estadoDestino);
-                  }
-                }
-              });
-            } else if (typeof response.data === 'object') {
-              transicionesData = response.data;
-            }
-          } else {
-            transicionesData = response as Record<string, { transiciones: string[] }>;
-          }
-        }
-      }
-      return transicionesData;
-    } catch (error: any) {
-      throw new Error(error.message || 'Error al leer las transiciones');
-    }
+    return response.json();
   },
 
-  // Actualizar transiciones de estados mediante webhook
-  async updateTransiciones(transicionesData: Record<string, { transiciones: string[] }>): Promise<any> {
-    const user = this.getUser();
-    if (!user) {
-      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
-    }
+  // Actualizar matriz de transiciones mediante backend directo
+  async updateTransiciones(estados: Record<string, { transiciones: string[] }>): Promise<any> {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}/transiciones`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ estados })
+    });
 
-    const actor = buildActorPayload(user);
-    const roleMap: Record<string, string> = {
-      'ADMIN': 'ADMINISTRADOR',
-      'AGENTE': 'AGENTE',
-      'SUPERVISOR': 'SUPERVISOR',
-      'GERENTE': 'GERENTE'
-    };
-    const mappedRole = roleMap[actor.role] || actor.role;
-    const payload = {
-      action: 'transicion.update',
-      actor: {
-        user_id: actor.user_id,
-        email: actor.email,
-        role: mappedRole
-      },
-      data: transicionesData
-    };
-    try {
-      const response = await callEstadosWebhook('POST', payload);
-      return response;
-    } catch (error: any) {
+    if (!response.ok) {
+      const error = await response.json();
       throw new Error(error.message || 'Error al actualizar las transiciones');
     }
-  },
 
-  // Eliminar estado mediante webhook
-  async deleteState(stateId: string): Promise<any> {
-    const user = this.getUser();
-    if (!user) {
-      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
-    }
-
-    const actor = buildActorPayload(user);
-    const roleMap: Record<string, string> = {
-      'ADMIN': 'ADMINISTRADOR',
-      'AGENTE': 'AGENTE',
-      'SUPERVISOR': 'SUPERVISOR',
-      'GERENTE': 'GERENTE'
-    };
-    const mappedRole = roleMap[actor.role] || actor.role;
-    const payload = {
-      action: 'estado.delete',
-      actor: {
-        user_id: actor.user_id,
-        email: actor.email,
-        role: mappedRole
-      },
-      data: {
-        id: stateId
-      }
-    };
-    try {
-      const response = await callEstadosWebhook('POST', payload);
-      return response;
-    } catch (error: any) {
-      throw new Error(error.message || 'Error al eliminar el estado');
-    }
-  },
-
-  // Leer todos los estados mediante webhook
-async readEstados(): Promise<Array<{
-    id: string;
-    name: string;
-    order: number;
-    isFinal: boolean;
-  }>> {
-    const user = this.getUser();
-    if (!user) {
-      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
-    }
-
-    try {
-      const response = await fetch(`${getBaseUrl()}/api/estados`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('intelfon_token')}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Error al leer los estados');
-      }
-
-      const data = await response.json();
-      const estadosArray = Array.isArray(data) ? data : data.data ?? data.estados ?? [];
-
-      const mappedEstados = estadosArray.map((estado: any, index: number) => {
-        const nombre = estado.nombre || estado.name || estado.nombre_estado || 'Sin nombre';
-
-        return {
-          id: String(estado.id || ''),
-          name: nombre,
-          order: Number(estado.orden ?? estado.order ?? index + 1),
-          isFinal: estado.estado_final === true || estado.estado_final === 'true' ||
-                   estado.es_final === true || estado.es_final === 'true' || false
-        };
-      });
-
-      mappedEstados.sort((a, b) => a.order - b.order);
-      return mappedEstados;
-    } catch (error: any) {
-      throw new Error(error.message || 'Error al leer los estados');
-    }
+return response.json();
   },
 
   async updateAgente(id: string, data: any): Promise<boolean> {
-    
-    // Obtener el usuario actual (actor)
-    const currentUser = this.getUser();
-    if (!currentUser) {
-      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
-    }
-
-    // Construir el actor
-    const actor = buildActorPayload(currentUser);
-
-    // Construir el payload para el webhook de agentes
-    // Solo enviar agent_id y estado (uno de: Activo/Inactivo/Vacaciones)
-    const payload = {
-      action: 'agent.update',
-      actor: {
-        user_id: Number(actor.user_id) || 0,
-        email: actor.email,
-        role: actor.role
-      },
-      data: {
-        agent_id: id,
-        estado: data.estado // Puede ser: "Activo", "Inactivo" o "Vacaciones"
-      }
-    };
-
-
     try {
-      // Enviar actualización al webhook de agentes
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
-
-      const response = await fetch(API_CONFIG.WEBHOOK_AGENTES_URL, {
-        method: 'POST',
-        mode: 'cors',
-        credentials: 'omit',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
+      const response = await fetch(`${API_CONFIG.WEBHOOK_AGENTES_URL}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: data.estado })
       });
 
-      clearTimeout(timeoutId);
-
       if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
+        throw new Error(`Error ${response.status}`);
       }
 
-      const result = await response.json();
-
-      // Limpiar caché para forzar recarga
       clearCache('agentes');
-      
       return true;
     } catch (error: any) {
-      
-      // Fallback: actualizar en localStorage
-      const agentes = await this.getAgentes();
-      const idx = agentes.findIndex(a => a.idAgente === id);
-      if (idx !== -1) {
-        agentes[idx] = { ...agentes[idx], ...data };
-        localStorage.setItem('intelfon_agents', JSON.stringify(agentes));
-        return true;
-      }
-      
-      throw error;
+      throw new Error(error.message || 'Error al actualizar agente');
     }
   },
 
   async deleteAgente(id: string): Promise<boolean> {
-    const currentUser = this.getUser();
-    if (!currentUser) {
-      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
-    }
-
-    const actor = buildActorPayload(currentUser);
-
-    const payload = {
-      action: 'agent.delete',
-      actor: {
-        user_id: Number(actor.user_id) || 0,
-        email: actor.email,
-        role: actor.role
-      },
-      data: {
-        agent_id: id
-      }
-    };
-
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
-
-      const response = await fetch(API_CONFIG.WEBHOOK_AGENTES_URL, {
-        method: 'POST',
-        mode: 'cors',
-        credentials: 'omit',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
+      const response = await fetch(`${API_CONFIG.WEBHOOK_AGENTES_URL}/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
       });
 
-      clearTimeout(timeoutId);
-
       if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
+        throw new Error(`Error ${response.status}`);
       }
 
       clearCache('agentes');
       return true;
     } catch (error: any) {
-      throw error;
+      throw new Error(error.message || 'Error al eliminar agente');
     }
   },
 
@@ -2203,56 +1978,20 @@ async readEstados(): Promise<Array<{
   // ==================== PARÁMETROS FINALES ====================
 
   /**
-   * Leer todos los parámetros de estados finales desde el webhook
+   * Leer todos los parámetros desde el backend directo
    */
   async readParametros(): Promise<any[]> {
-    const user = this.getUser();
-    if (!user) {
-      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
+    const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/parametros`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al leer los parámetros');
     }
 
-    // Construir el actor con el formato esperado
-    const actor = buildActorPayload(user);
-    
-    // Mapear el role
-    const roleMap: Record<string, string> = {
-      'ADMIN': 'ADMINISTRADOR',
-      'AGENTE': 'AGENTE',
-      'SUPERVISOR': 'SUPERVISOR',
-      'GERENTE': 'GERENTE'
-    };
-    const mappedRole = roleMap[actor.role] || actor.role;
-
-    // Construir el payload según el formato especificado
-    const payload = {
-      action: 'parametro.read',
-      actor: {
-        user_id: actor.user_id,
-        email: actor.email,
-        role: mappedRole
-      },
-      data: {
-        id: ''  // Vacío para leer todos
-      }
-    };
-    try {
-      const response = await callEstadosWebhook('POST', payload);
-      let parametros: any[] = [];
-      if (Array.isArray(response)) {
-        if (response.length > 0 && response[0]?.data && Array.isArray(response[0].data)) {
-          parametros = response[0].data;
-        } else {
-          parametros = response;
-        }
-      } else if (response && typeof response === 'object') {
-        if (Array.isArray(response.data)) {
-          parametros = response.data;
-        }
-      }
-      return parametros;
-    } catch (error: any) {
-      throw new Error(error.message || 'Error al leer los parámetros');
-    }
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
   },
 
   /**
@@ -2267,79 +2006,34 @@ async readEstados(): Promise<Array<{
     placeholder?: string;
     requerido?: boolean;
   }): Promise<any> {
-    const user = this.getUser();
-    if (!user) {
-      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
-    }
+    const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/parametros`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(parametroData)
+    });
 
-    // Construir el actor
-    const actor = buildActorPayload(user);
-    
-    // Mapear el role
-    const roleMap: Record<string, string> = {
-      'ADMIN': 'ADMINISTRADOR',
-      'AGENTE': 'AGENTE',
-      'SUPERVISOR': 'SUPERVISOR',
-      'GERENTE': 'GERENTE'
-    };
-    const mappedRole = roleMap[actor.role] || actor.role;
-
-    // Construir el payload
-    const payload = {
-      action: 'parametro.create',
-      actor: {
-        user_id: actor.user_id,
-        email: actor.email,
-        role: mappedRole
-      },
-      data: parametroData
-    };
-    try {
-      const response = await callEstadosWebhook('POST', payload);
-      return response;
-    } catch (error: any) {
+    if (!response.ok) {
+      const error = await response.json();
       throw new Error(error.message || 'Error al crear el parámetro');
     }
+
+    return response.json();
   },
 
   /**
    * Eliminar un parámetro de estado final
    */
   async deleteParametro(id: string): Promise<any> {
-    const user = this.getUser();
-    if (!user) {
-      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
-    }
+    const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/parametros/${id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' }
+    });
 
-    // Construir el actor
-    const actor = buildActorPayload(user);
-    
-    // Mapear el role
-    const roleMap: Record<string, string> = {
-      'ADMIN': 'ADMINISTRADOR',
-      'AGENTE': 'AGENTE',
-      'SUPERVISOR': 'SUPERVISOR',
-      'GERENTE': 'GERENTE'
-    };
-    const mappedRole = roleMap[actor.role] || actor.role;
-
-    // Construir el payload
-    const payload = {
-      action: 'parametro.delete',
-      actor: {
-        user_id: actor.user_id,
-        email: actor.email,
-        role: mappedRole
-      },
-      data: {
-        id: id
-      }
-    };
-    try {
-      const response = await callEstadosWebhook('POST', payload);
-      return response;
-    } catch (error: any) {
+    if (!response.ok) {
+      const error = await response.json();
       throw new Error(error.message || 'Error al eliminar el parámetro');
     }
+
+    return response.json();
   }
 };
