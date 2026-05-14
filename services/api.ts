@@ -1239,43 +1239,10 @@ export const api = {
     }
   },
 
-  // Buscar categoría por ID mediante webhook
+  // Buscar categoría por ID mediante backend directo
   async queryCategory(categoryId: string): Promise<any> {
-    const user = this.getUser();
-    if (!user) {
-      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
-    }
-
-    // Construir el actor con el formato esperado
-    const actor = buildActorPayload(user);
-    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
-    const roleMap: Record<string, string> = {
-      'ADMIN': 'ADMINISTRADOR',
-      'AGENTE': 'AGENTE',
-      'SUPERVISOR': 'SUPERVISOR',
-      'GERENTE': 'GERENTE'
-    };
-    const mappedRole = roleMap[actor.role] || actor.role;
-
-    // Construir el payload según el formato especificado
-    const payload = {
-      action: 'category.query',
-      actor: {
-        user_id: actor.user_id,
-        email: actor.email,
-        role: mappedRole
-      },
-      data: {
-        id: categoryId
-      }
-    };
-
-    try {
-      const response = await callCategoriesWebhook('POST', payload);
-      return response;
-    } catch (error: any) {
-      throw new Error(error.message || 'Error al buscar la categoría');
-    }
+    const categorias = await this.readCategories();
+    return categorias.find(c => String(c.id) === String(categoryId));
   },
 
   // Crear nuevo estado mediante backend directo
@@ -1340,58 +1307,7 @@ export const api = {
     return response.json();
   },
 
-  // Actualizar orden de estados mediante webhook
-  async updateEstados(estados: Array<{
-    id: string;
-    nombre: string;
-    descripcion: string;
-    orden: number;
-    es_final: boolean;
-  }>): Promise<any> {
-    const user = this.getUser();
-    if (!user) {
-      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
-    }
-
-    // Construir el actor con el formato esperado
-    const actor = buildActorPayload(user);
-    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
-    const roleMap: Record<string, string> = {
-      'ADMIN': 'ADMINISTRADOR',
-      'AGENTE': 'AGENTE',
-      'SUPERVISOR': 'SUPERVISOR',
-      'GERENTE': 'GERENTE'
-    };
-    const mappedRole = roleMap[actor.role] || actor.role;
-
-    // Construir el payload según el formato especificado
-    const payload = {
-      action: 'estado.update',
-      actor: {
-        user_id: actor.user_id,
-        email: actor.email,
-        role: mappedRole
-      },
-      data: {
-        estados: estados.map(e => ({
-          id: String(e.id),
-          nombre: e.nombre || e.descripcion || e.nombre_estado || '',
-          descripcion: e.descripcion || e.nombre || e.nombre_estado || '',
-          orden: e.orden,
-          estado_final: e.es_final ?? e.estado_final ?? false
-        }))
-      }
-    };
-
-    try {
-      const response = await callEstadosWebhook('POST', payload);
-      return response;
-    } catch (error: any) {
-      throw new Error(error.message || 'Error al actualizar el orden de los estados');
-    }
-  },
-
-// Leer transiciones de estados desde backend directo
+  // Leer transiciones de estados desde backend directo
   async readTransiciones(): Promise<any[]> {
     const response = await fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}/transiciones`, {
       method: 'GET',
@@ -1774,52 +1690,29 @@ return response.json();
     return true;
   },
 
-  // Agregar fecha de asueto mediante webhook
+  // Agregar fecha de asueto mediante backend directo
   async addHoliday(date: Date, holidayName?: string | null): Promise<any> {
-    const user = this.getUser();
-    if (!user) {
-      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
-    }
-
-    // Construir el actor con el formato esperado
-    const actor = buildActorPayload(user);
-    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
-    const roleMap: Record<string, string> = {
-      'ADMIN': 'ADMINISTRADOR',
-      'AGENTE': 'AGENTE',
-      'SUPERVISOR': 'SUPERVISOR',
-      'GERENTE': 'GERENTE'
-    };
-    const mappedRole = roleMap[actor.role] || actor.role;
-
-    // Formatear fecha como YYYY-MM-DD para la base de datos
-    // Usar getFullYear, getMonth, getDate para obtener valores en zona horaria local
-    const dateAtNoon = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0);
-    const day = String(dateAtNoon.getDate()).padStart(2, '0');
-    const month = String(dateAtNoon.getMonth() + 1).padStart(2, '0');
-    const year = dateAtNoon.getFullYear();
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
     const dateStr = `${year}-${month}-${day}`;
-    // Construir el payload según el formato esperado
-    const payload = {
-      action: 'asueto.create',
-      actor: {
-        user_id: actor.user_id || 0,
-        email: actor.email,
-        role: mappedRole || 'ADMINISTRADOR'
-      },
-      data: {
-        type: 'individual',
+
+    const response = await fetch(`${API_CONFIG.WEBHOOK_ASUETOS_URL}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         fecha: dateStr,
         motivo: holidayName || '',
         pais: 'ElSalvador'
-      }
-    };
-    try {
-      const response = await callAsuetosWebhook('POST', payload);
-      return response;
-    } catch (error: any) {
-      throw new Error(error.message || 'Error al agregar la fecha de asueto');
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Error al crear el asueto');
     }
+
+    return response.json();
   },
 
   // Eliminar fecha de asueto mediante backend directo
