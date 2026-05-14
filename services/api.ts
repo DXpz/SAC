@@ -1121,27 +1121,21 @@ export const api = {
       const user = this.getUser();
       if (!user) return [];
 
-      const actor = buildActorPayload(user);
-      const payload = {
-        action: 'category.read',
-        actor: {
-          user_id: actor.user_id,
-          email: actor.email,
-          role: actor.role
+      const response = await fetch(`${getBaseUrl()}/api/categorias`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('intelfon_token')}`,
+          'Content-Type': 'application/json',
         },
-        data: {
-          id: ''
-        }
-      };
+      });
 
-      const response = await callCategoriesWebhook<any>('POST', payload);
-
-      let categoriasArray: any[] = [];
-      if (Array.isArray(response)) {
-        categoriasArray = response;
-      } else if (response && typeof response === 'object') {
-        categoriasArray = response.categorias ?? response.categories ?? response.data ?? [];
+      if (!response.ok) {
+        console.error('Error fetching categorias:', response.status);
+        return [];
       }
+
+      const data = await response.json();
+      const categoriasArray = Array.isArray(data) ? data : data.categorias ?? data.categories ?? data.data ?? [];
 
       if (!Array.isArray(categoriasArray)) return [];
 
@@ -1203,127 +1197,30 @@ export const api = {
     return response.json();
   },
 
-  // Leer todas las categorías mediante webhook
+  // Leer todas las categorías mediante backend directo
   async readCategories(): Promise<any[]> {
     const user = this.getUser();
     if (!user) {
       throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
     }
 
-    // Construir el actor con el formato esperado
-    const actor = buildActorPayload(user);
-    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
-    const roleMap: Record<string, string> = {
-      'ADMIN': 'ADMINISTRADOR',
-      'AGENTE': 'AGENTE',
-      'SUPERVISOR': 'SUPERVISOR',
-      'GERENTE': 'GERENTE'
-    };
-    const mappedRole = roleMap[actor.role] || actor.role;
-
-    // Construir el payload según el formato especificado
-    // Para obtener todas las categorías, el data.id puede estar vacío o ser "all"
-    const payload = {
-      action: 'category.read',
-      actor: {
-        user_id: actor.user_id,
-        email: actor.email,
-        role: mappedRole
-      },
-      data: {
-        id: '' // Vacío para obtener todas las categorías
-      }
-    };
-
     try {
-      const response = await callCategoriesWebhook('POST', payload);
-      // El webhook retorna un formato específico:
-      // [
-      //   {
-      //     "data": [
-      //       {
-      //         "id": 2,
-      //         "caegoria": "Facturación",  // Nota: typo en "caegoria"
-      //         "descripcion": "",
-      //         "valor SLA": 5
-      //       },
-      //       ...
-      //     ]
-      //   }
-      // ]
-      let categories: any[] = [];
-
-      // Manejar el formato específico del webhook
-      // El n8n devuelve un array directo: [{id, categoria, descripcion, valor_sla}, ...]
-      if (Array.isArray(response)) {
-        // Si el primer elemento tiene la propiedad 'data', usar data; si no, usar el array directo
-        const firstItem = response[0];
-        if (firstItem && typeof firstItem === 'object' && 'data' in firstItem && Array.isArray(firstItem.data)) {
-          // Formato: [{data: [...]}]
-          categories = firstItem.data;
-        } else if (firstItem && typeof firstItem === 'object' && 'id' in firstItem) {
-          // Formato directo de n8n: [{id, categoria, descripcion, valor_sla}, ...]
-          categories = response;
-        } else if (Array.isArray(firstItem)) {
-          categories = firstItem;
-        } else {
-          // Intentar otros formatos
-          categories = firstItem?.categories ||
-                       firstItem?.categorias ||
-                       firstItem?.result ||
-                       firstItem?.results ||
-                       (Array.isArray(firstItem?.items) ? firstItem.items : []);
-        }
-      } else if (response && typeof response === 'object') {
-        // Si no es array, buscar propiedades comunes (incl. data anidado)
-        const dataObj = response.data && typeof response.data === 'object' && !Array.isArray(response.data)
-          ? response.data
-          : null;
-        categories = response.categories ||
-                     response.categorias ||
-                     (Array.isArray(response.data) ? response.data : null) ||
-                     (dataObj ? (dataObj.categories ?? dataObj.categorias ?? dataObj.data) : null) ||
-                     response.result ||
-                     response.results ||
-                     (Array.isArray(response.items) ? response.items : null) ||
-                     [];
-        if (!Array.isArray(categories)) categories = [];
-      }
-
-      if (!categories || categories.length === 0) {
-        return [];
-      }
-
-      // Mapear las categorías del webhook al formato local
-      // El webhook usa: "caegoria" (typo), "descripcion", "valor_sla"
-      const mappedCategories = categories.map((cat: any, index: number) => {
-        const mapped = {
-          id: String(cat.id || cat.idCategoria || cat.category_id || cat.id_categoria || String(index + 1)),
-          name: cat.categoria || // Base de datos tiene columna "categoria"
-                cat.name ||
-                cat.nombre ||
-                cat.category_name ||
-                cat.categoryName ||
-                cat.caegoria || // Manejar el typo del webhook
-                'Sin nombre',
-          slaDays: Number(cat.valor_sla || // Base de datos tiene columna "valor_sla"
-                         cat.slaDays ||
-                         cat.slaDias ||
-                         cat.sla ||
-                         cat.sla_dias ||
-                         cat['valor SLA'] ||
-                         cat.valorSLA ||
-                         3),
-          description: String(cat.descripcion ||
-                            cat.description ||
-                            cat.desc ||
-                            '')
-        };
-        return mapped;
+      const response = await fetch(`${getBaseUrl()}/api/categorias`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('intelfon_token')}`,
+          'Content-Type': 'application/json',
+        },
       });
-      return mappedCategories;
+
+      if (!response.ok) {
+        throw new Error('Error al leer las categorías');
+      }
+
+      const data = await response.json();
+      return Array.isArray(data) ? data : data.data ?? data.categorias ?? [];
     } catch (error: any) {
-      return [];
+      throw new Error(error.message || 'Error al leer las categorías');
     }
   },
 
@@ -1620,7 +1517,7 @@ export const api = {
   },
 
   // Leer todos los estados mediante webhook
-  async readEstados(): Promise<Array<{
+async readEstados(): Promise<Array<{
     id: string;
     name: string;
     order: number;
@@ -1631,116 +1528,34 @@ export const api = {
       throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
     }
 
-    const actor = buildActorPayload(user);
-    const roleMap: Record<string, string> = {
-      'ADMIN': 'ADMINISTRADOR',
-      'AGENTE': 'AGENTE',
-      'SUPERVISOR': 'SUPERVISOR',
-      'GERENTE': 'GERENTE'
-    };
-    const mappedRole = roleMap[actor.role] || actor.role;
-    const payload = {
-      action: 'estado.read',
-      actor: {
-        user_id: actor.user_id,
-        email: actor.email,
-        role: mappedRole
-      },
-      data: {
-        id: 'all'
-      }
-    };
     try {
-      const response = await callEstadosWebhook('POST', payload);
-      // El formato esperado es: [{ "data": [...] }]
-      let estados: any[] = [];
-      
-      if (response === null || response === undefined) {
-        return [];
-      }
-      if (Array.isArray(response)) {
-        if (response.length > 0 && response[0] && typeof response[0] === 'object') {
-          if (Array.isArray(response[0].data)) {
-            estados = response[0].data;
-          } else {
-            const tieneEstados = response.some(item => 
-              item && typeof item === 'object' && (item.id !== undefined || item.nombre !== undefined || item.name !== undefined)
-            );
-            if (tieneEstados) {
-              estados = response;
-            }
-          }
-        } else {
-          const tieneEstados = response.some(item => 
-            item && typeof item === 'object' && (item.id !== undefined || item.nombre !== undefined || item.name !== undefined)
-          );
-          if (tieneEstados) {
-            estados = response;
-          }
-        }
-      } else if (response && typeof response === 'object') {
-        const posiblesEstados = [
-          response.data,
-          response.estados,
-          response.result,
-          response.results,
-          response.items,
-        ];
-        for (const posibleEstado of posiblesEstados) {
-          if (Array.isArray(posibleEstado) && posibleEstado.length > 0) {
-            estados = posibleEstado;
-            break;
-          }
-        }
-      }
-      if (!estados || estados.length === 0) {
-        return [];
+      const response = await fetch(`${getBaseUrl()}/api/estados`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('intelfon_token')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al leer los estados');
       }
 
-      // Mapear los estados del webhook al formato local
-      // El webhook/BD retorna: { id, nombre_estado, descripcion, orden, estado_final }
-      // IMPORTANTE: El ID siempre debe ser texto normalizado (ej: "en_proceso"), no números
-      const mappedEstados = estados.map((estado: any, index: number) => {
-        // El ID puede venir como número o string, pero SIEMPRE debe convertirse a formato normalizado
-        let estadoId = estado.id || estado.id_estado || estado.estado_id;
+      const data = await response.json();
+      const estadosArray = Array.isArray(data) ? data : data.data ?? data.estados ?? [];
 
-        // Si el ID es un número o no está en formato normalizado, generar el ID desde el nombre
-        if (estado.nombre_estado || estado.nombre || estado.name) {
-          const nombreEstado = estado.nombre_estado || estado.nombre || estado.name;
-          // Convertir nombre a ID normalizado (ej: "En Proceso" -> "en_proceso")
-          const nombreNormalizado = nombreEstado
-            .trim()
-            .toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '') // Remover tildes
-            .replace(/\s+/g, '_') // Reemplazar espacios con guiones bajos
-            .replace(/[^a-z0-9_]/g, ''); // Remover caracteres especiales
-
-          // Siempre usar el ID normalizado basado en el nombre
-          estadoId = nombreNormalizado;
-
-        } else {
-          estadoId = String(estadoId || `estado_${index + 1}`);
-        }
-
-        // Solo usar ID normalizado si NO hay un ID numérico válido del webhook
-        // Si el webhook devuelve un ID numérico (como "1", "2"), usar ese
-        const idOriginalEsNumerico = estado.id && /^\d+$/.test(String(estado.id));
-        if (!idOriginalEsNumerico && estado.nombre_estado) {
-          estadoId = nombreNormalizado;
-        } else if (idOriginalEsNumerico) {
-          estadoId = String(estado.id);
-        }
+      const mappedEstados = estadosArray.map((estado: any, index: number) => {
+        const nombre = estado.nombre || estado.name || estado.nombre_estado || 'Sin nombre';
 
         return {
-          id: String(estadoId),
-          name: estado.nombre_estado || estado.nombre || estado.name || 'Sin nombre',
-          order: Number(estado.orden || estado.order || index + 1),
+          id: String(estado.id || ''),
+          name: nombre,
+          order: Number(estado.orden ?? estado.order ?? index + 1),
           isFinal: estado.estado_final === true || estado.estado_final === 'true' ||
-                   estado.es_final === true || estado.es_final === 'true' ||
-                   estado.isFinal === true || estado.is_final === true || false
+                   estado.es_final === true || estado.es_final === 'true' || false
         };
       });
+
       mappedEstados.sort((a, b) => a.order - b.order);
       return mappedEstados;
     } catch (error: any) {
@@ -2330,46 +2145,34 @@ export const api = {
       throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
     }
 
-    // Construir el actor con el formato esperado
-    const actor = buildActorPayload(user);
-    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
-    const roleMap: Record<string, string> = {
-      'ADMIN': 'ADMINISTRADOR',
-      'AGENTE': 'AGENTE',
-      'SUPERVISOR': 'SUPERVISOR',
-      'GERENTE': 'GERENTE'
-    };
-    const mappedRole = roleMap[actor.role] || actor.role;
-
-    // Construir el payload según el formato esperado
-    const payload = {
-      action: 'asueto.read',
-      actor: {
-        user_id: actor.user_id || 0,
-        email: actor.email,
-        role: mappedRole || 'ADMINISTRADOR'
-      },
-      data: {}
-    };
-
     try {
-      const response = await callAsuetosWebhook('POST', payload);
-      
-      // Parsear la nueva estructura: [{ data: [...] }]
-      let asuetos: Array<{ fecha: string; motivo: string; pais: string; row_number: number; fechaDate?: Date }> = [];
+      const response = await fetch(`${getBaseUrl()}/api/asuetos`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('intelfon_token')}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-      // Función auxiliar para mapear un asueto
+      if (!response.ok) {
+        throw new Error('Error al leer las fechas de asuetos');
+      }
+
+      const data = await response.json();
+      const asuetosArray = Array.isArray(data) ? data : data.data ?? [];
+
       const mapAsueto = (asueto: any) => {
         const fechaStr = asueto.fecha || '';
         let fechaDate: Date | undefined;
 
-        // Convertir fecha string a Date SOLO para cálculos internos (ordenamiento, etc.)
-        // NO usar esta fecha para mostrar - siempre usar fechaStr directamente
-        if (fechaStr && fechaStr.includes('/')) {
+        if (fechaStr) {
           try {
-            const [day, month, year] = fechaStr.split('/').map(Number);
-            fechaDate = new Date(year, month - 1, day, 12, 0, 0);
-          } catch (error) {
+            fechaDate = new Date(fechaStr);
+            if (isNaN(fechaDate.getTime())) {
+              fechaDate = undefined;
+            }
+          } catch {
+            fechaDate = undefined;
           }
         }
 
@@ -2377,41 +2180,20 @@ export const api = {
           fecha: fechaStr,
           motivo: asueto.motivo || 'Indefinido',
           pais: asueto.pais || 'Indefinido',
-          row_number: asueto.row_number || 0,
+          row_number: asueto.id || asueto.row_number || 0,
           fechaDate: fechaDate
         };
       };
 
-      if (Array.isArray(response)) {
-        // Verificar si es formato { data: [...] } o array directo de asuetos
-        const firstItem = response[0];
-        if (firstItem && typeof firstItem === 'object' && Array.isArray(firstItem.data)) {
-          // Formato: [{ data: [...] }]
-          for (const item of response) {
-            if (item && typeof item === 'object' && Array.isArray(item.data)) {
-              asuetos = item.data.map(mapAsueto);
-              break;
-            }
-          }
-        } else if (firstItem && typeof firstItem === 'object' && (firstItem.id || firstItem.fecha)) {
-          // Formato directo: [{id, fecha, motivo, pais, ...}] - array de asuetos sin wrapper
-          asuetos = response.map(mapAsueto);
-        }
-      } else if (response && typeof response === 'object') {
-        // Si es un objeto directo con data
-        if (Array.isArray(response.data)) {
-          asuetos = response.data.map(mapAsueto);
-        }
-      }
+      const asuetos = asuetosArray.map(mapAsueto);
 
-      // Ordenar por fecha cronológicamente
       asuetos.sort((a, b) => {
         if (a.fechaDate && b.fechaDate) {
           return a.fechaDate.getTime() - b.fechaDate.getTime();
         }
         return a.fecha.localeCompare(b.fecha);
       });
-      
+
       return asuetos;
     } catch (error: any) {
       throw new Error(error.message || 'Error al leer las fechas de asuetos');
