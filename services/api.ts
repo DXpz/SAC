@@ -696,7 +696,7 @@ export const api = {
       const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
 
       try {
-        const response = await fetch(API_CONFIG.WEBHOOK_AGENTES_URL_FULL || API_CONFIG.WEBHOOK_AGENTES_URL, {
+        const response = await fetch(API_CONFIG.WEBHOOK_AGENTES_URL, {
           method: 'POST',
           mode: 'cors',
           credentials: 'omit',
@@ -931,7 +931,7 @@ export const api = {
       const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
 
       try {
-        const response = await fetch(API_CONFIG.WEBHOOK_AGENTES_URL_FULL || API_CONFIG.WEBHOOK_AGENTES_URL, {
+        const response = await fetch(API_CONFIG.WEBHOOK_AGENTES_URL, {
           method: 'POST',
           mode: 'cors',
           credentials: 'omit',
@@ -1881,7 +1881,7 @@ export const api = {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
 
-      const response = await fetch(API_CONFIG.WEBHOOK_AGENTES_URL_FULL || API_CONFIG.WEBHOOK_AGENTES_URL, {
+      const response = await fetch(API_CONFIG.WEBHOOK_AGENTES_URL, {
         method: 'POST',
         mode: 'cors',
         credentials: 'omit',
@@ -1944,7 +1944,7 @@ export const api = {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
 
-      const response = await fetch(API_CONFIG.WEBHOOK_AGENTES_URL_FULL || API_CONFIG.WEBHOOK_AGENTES_URL, {
+      const response = await fetch(API_CONFIG.WEBHOOK_AGENTES_URL, {
         method: 'POST',
         mode: 'cors',
         credentials: 'omit',
@@ -2138,7 +2138,7 @@ export const api = {
     // Log para debugging
     
     // Usar el webhook de agentes (AGENTES workflow)
-    const webhookUrl = API_CONFIG.WEBHOOK_AGENTES_URL_FULL || API_CONFIG.WEBHOOK_AGENTES_URL;
+    const webhookUrl = API_CONFIG.WEBHOOK_AGENTES_URL;
 
     
     // Llamar al webhook correspondiente
