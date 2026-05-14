@@ -1822,69 +1822,29 @@ return response.json();
     }
   },
 
-  // Eliminar fecha de asueto mediante webhook
+  // Eliminar fecha de asueto mediante backend directo
   async deleteHoliday(date: Date): Promise<any> {
-    const user = this.getUser();
-    if (!user) {
-      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
-    }
-
-    const actor = buildActorPayload(user);
-    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
-    const roleMap: Record<string, string> = {
-      'ADMIN': 'ADMINISTRADOR',
-      'AGENTE': 'AGENTE',
-      'SUPERVISOR': 'SUPERVISOR',
-      'GERENTE': 'GERENTE'
-    };
-    const mappedRole = roleMap[actor.role] || actor.role;
-
-    // Formatear fecha como YYYY-MM-DD para la base de datos
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
     const fechaStr = `${year}-${month}-${day}`;
 
-    // Construir el payload con la misma estructura que asueto.read
-    const payload = {
-      action: 'asueto.delete',
-      actor: {
-        user_id: actor.user_id || 0,
-        email: actor.email,
-        role: mappedRole || 'ADMINISTRADOR'
-      },
-      data: {
-        fecha: fechaStr
-      }
-    };
+    const response = await fetch(`${API_CONFIG.WEBHOOK_ASUETOS_URL}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fecha: fechaStr })
+    });
 
-    try {
-      const response = await callAsuetosWebhook('POST', payload);
-      return response;
-    } catch (error: any) {
-      throw new Error(error.message || 'Error al eliminar la fecha de asueto');
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Error al eliminar el asueto');
     }
+
+    return response.json();
   },
 
-  // Agregar múltiples fechas de asuetos mediante webhook (carga masiva)
+  // Agregar múltiples fechas de asuetos mediante backend directo
   async addBulkHolidays(dates: Date[], holidayNames?: (string | null)[]): Promise<any> {
-    const user = this.getUser();
-    if (!user) {
-      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
-    }
-
-    // Construir el actor con el formato esperado
-    const actor = buildActorPayload(user);
-    // Mapear el role: ADMIN -> ADMINISTRADOR, otros roles se mantienen
-    const roleMap: Record<string, string> = {
-      'ADMIN': 'ADMINISTRADOR',
-      'AGENTE': 'AGENTE',
-      'SUPERVISOR': 'SUPERVISOR',
-      'GERENTE': 'GERENTE'
-    };
-    const mappedRole = roleMap[actor.role] || actor.role;
-
-    // Formatear fechas como YYYY-MM-DD en un array
     const fechasArray = dates.map((date) => {
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -1892,87 +1852,77 @@ return response.json();
       return `${year}-${month}-${day}`;
     });
 
-    // Construir el payload según el formato esperado
-    const payload = {
-      action: 'asueto.create',
-      actor: {
-        user_id: actor.user_id || 0,
-        email: actor.email,
-        role: mappedRole || 'ADMINISTRADOR'
-      },
-      data: {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_ASUETOS_URL}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         type: 'masivo',
-        fecha: fechasArray
-      }
-    };
-    try {
-      const response = await callAsuetosWebhook('POST', payload);
-      return response;
-    } catch (error: any) {
-      throw new Error(error.message || 'Error al agregar las fechas de asuetos');
+        data: {
+          fechas: fechasArray.map((fecha, i) => ({
+            fecha,
+            motivo: holidayNames?.[i] || 'Indefinido',
+            pais: 'El Salvador'
+          }))
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Error al crear asuetos masivos');
     }
+
+    return response.json();
   },
 
-  // Leer fechas de asuetos desde el webhook
+  // Leer fechas de asuetos desde backend directo
   async readHolidays(): Promise<Array<{ fecha: string; motivo: string; pais: string; row_number: number; fechaDate?: Date }>> {
-    const user = this.getUser();
-    if (!user) {
-      throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
+    const response = await fetch(`${API_CONFIG.WEBHOOK_ASUETOS_URL}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al leer las fechas de asuetos');
     }
 
-    try {
-      const response = await fetch(`${getBaseUrl()}/api/asuetos`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('intelfon_token')}`,
-          'Content-Type': 'application/json',
-        },
-      });
+    const data = await response.json();
+    const asuetosArray = Array.isArray(data) ? data : data.data ?? [];
 
-      if (!response.ok) {
-        throw new Error('Error al leer las fechas de asuetos');
-      }
+    const mapAsueto = (asueto: any) => {
+      const fechaStr = asueto.fecha || '';
+      let fechaDate: Date | undefined;
 
-      const data = await response.json();
-      const asuetosArray = Array.isArray(data) ? data : data.data ?? [];
-
-      const mapAsueto = (asueto: any) => {
-        const fechaStr = asueto.fecha || '';
-        let fechaDate: Date | undefined;
-
-        if (fechaStr) {
-          try {
-            fechaDate = new Date(fechaStr);
-            if (isNaN(fechaDate.getTime())) {
-              fechaDate = undefined;
-            }
-          } catch {
+      if (fechaStr) {
+        try {
+          fechaDate = new Date(fechaStr);
+          if (isNaN(fechaDate.getTime())) {
             fechaDate = undefined;
           }
+        } catch {
+          fechaDate = undefined;
         }
+      }
 
-        return {
-          fecha: fechaStr,
-          motivo: asueto.motivo || 'Indefinido',
-          pais: asueto.pais || 'Indefinido',
-          row_number: asueto.id || asueto.row_number || 0,
-          fechaDate: fechaDate
-        };
+      return {
+        fecha: fechaStr,
+        motivo: asueto.motivo || 'Indefinido',
+        pais: asueto.pais || 'Indefinido',
+        row_number: asueto.id || asueto.row_number || 0,
+        fechaDate: fechaDate
       };
+    };
 
-      const asuetos = asuetosArray.map(mapAsueto);
+    const asuetos = asuetosArray.map(mapAsueto);
 
-      asuetos.sort((a, b) => {
-        if (a.fechaDate && b.fechaDate) {
-          return a.fechaDate.getTime() - b.fechaDate.getTime();
-        }
-        return a.fecha.localeCompare(b.fecha);
-      });
+    asuetos.sort((a, b) => {
+      if (a.fechaDate && b.fechaDate) {
+        return a.fechaDate.getTime() - b.fechaDate.getTime();
+      }
+      return a.fecha.localeCompare(b.fecha);
+    });
 
-      return asuetos;
-    } catch (error: any) {
-      throw new Error(error.message || 'Error al leer las fechas de asuetos');
-    }
+    return asuetos;
   },
 
   // ==================== PARÁMETROS FINALES ====================
