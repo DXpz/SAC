@@ -663,374 +663,52 @@ export const api = {
 
   async getAgentes(): Promise<any[]> {
     return getCachedOrFetch('agentes', async () => {
-      const currentUser = this.getUser();
-      
-      if (!currentUser) {
-        return [];
-      }
-
-      const actor = buildActorPayload(currentUser);
-
-      // Construir el payload según el formato del webhook de agentes
-      const payload = {
-        action: 'agent.read',
-        actor: {
-          user_id: Number(actor.user_id) || 0,
-          email: actor.email,
-          role: actor.role
-        },
-        data: {
-          agent_id: 'all'
-        }
-      };
-
-
-      // Llamar al webhook de agentes
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
-
-      try {
-        const response = await fetch(API_CONFIG.WEBHOOK_AGENTES_URL, {
-          method: 'POST',
-          mode: 'cors',
-          credentials: 'omit',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify(payload),
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          if (response.status === 0) {
-            throw new Error('Error de CORS: El servidor no está permitiendo peticiones desde este origen.');
-          }
-          const errorText = await response.text();
-          let errorData;
-          try {
-            errorData = JSON.parse(errorText);
-          } catch {
-            errorData = { message: errorText || `Error ${response.status}: ${response.statusText}` };
-          }
-          throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
-        }
-
-        const result = await response.json();
-
-        // Verificar si hay error en la respuesta
-        if (result.error === true) {
-          throw new Error(result.message || 'Error al obtener los agentes');
-        }
-
-        // Mapear la respuesta a un array de agentes
-        // El webhook puede retornar diferentes formatos:
-        // 1. { agents: [...] } o { agentes: [...] }
-        // 2. Array directo de agentes
-        // 3. [{ data: [...] }] - estructura anidada
-        // 4. { data: [...] } o { data: { agents/agentes: [...] } }
-        let agents: any[] = [];
-
-        if (Array.isArray(result.agents)) {
-          agents = result.agents;
-        } else if (Array.isArray(result.agentes)) {
-          agents = result.agentes;
-        } else if (result.data) {
-          if (Array.isArray(result.data)) {
-            agents = result.data;
-          } else if (result.data && typeof result.data === 'object') {
-            agents = result.data.agents ?? result.data.agentes ?? [];
-            if (!Array.isArray(agents)) agents = [];
-          }
-        } else if (Array.isArray(result)) {
-          if (result.length > 0 && result[0]?.data && Array.isArray(result[0].data)) {
-            agents = result[0].data;
-          } else if (result.length > 0 && result[0]?.data?.agents) {
-            agents = result[0].data.agents;
-          } else if (result.length > 0 && result[0]?.data?.agentes) {
-            agents = result[0].data.agentes;
-          } else {
-            agents = result;
-          }
-        }
-        // Fallback: buscar cualquier array de objetos con id_agente/idAgente
-        if (agents.length === 0 && result && typeof result === 'object') {
-          for (const key of Object.keys(result)) {
-            const val = (result as any)[key];
-            if (Array.isArray(val) && val.length > 0) {
-              const first = val[0];
-              if (first && typeof first === 'object' && (first.id_agente != null || first.idAgente != null || first.id != null)) {
-                agents = val;
-                break;
-              }
-            }
-          }
-        }
-        
-        
-        if (Array.isArray(agents) && agents.length > 0) {
-          let mappedAgents = agents.map((agente: any) => {
-            // Determinar el estado: el webhook puede retornar "ACTIVO", "INACTIVO", "VACACIONES"
-            let estado: 'Activo' | 'Inactivo' | 'Vacaciones' = 'Inactivo';
-            const estadoRaw = agente.estado || agente.state || '';
-            if (estadoRaw.toUpperCase() === 'ACTIVO' || estadoRaw === 'Activo') {
-              estado = 'Activo';
-            } else if (estadoRaw.toUpperCase() === 'VACACIONES' || estadoRaw === 'Vacaciones') {
-              estado = 'Vacaciones';
-            } else {
-              estado = 'Inactivo';
-            }
-            
-            // Parsear fecha del último caso asignado (puede venir en formato DD/MM/YYYY)
-            let ultimoCasoAsignado = agente.ultimo_caso_asignado || agente.ultimoCasoAsignado || new Date().toISOString();
-            if (ultimoCasoAsignado && typeof ultimoCasoAsignado === 'string' && ultimoCasoAsignado.includes('/')) {
-              // Formato DD/MM/YYYY
-              const [day, month, year] = ultimoCasoAsignado.split('/');
-              if (day && month && year) {
-                ultimoCasoAsignado = new Date(`${year}-${month}-${day}`).toISOString();
-              }
-            }
-            
-            // Mapear país desde múltiples fuentes posibles
-            const paisRaw = agente.pais || agente.country || agente.país || agente.Pais || agente.Country || 
-                           (agente as any).pais_usuario || (agente as any).country_user || undefined;
-            return {
-              idAgente: String(agente.id || agente.id_agente || agente.idAgente || ''),
-              nombre: agente.nombre || agente.name || '',
-              email: agente.email || '',
-              estado: estado,
-              ordenRoundRobin: 999, // Se calculará después
-              ultimoCasoAsignado: ultimoCasoAsignado,
-              casosActivos: agente.casos_activos !== undefined ? agente.casos_activos : (agente.casosActivos || agente.casos_asignados || 0),
-              pais: paisRaw || undefined
-            };
-          }).filter((agente: any) => {
-            const tieneId = agente.idAgente || agente.id_agente || agente.id;
-            return !!tieneId;
-          });
-          // Calcular el orden Round Robin en el frontend
-          // Lógica: 1. Menor cantidad de casos activos = mayor prioridad
-          //         2. Si hay empate, el que tenga el caso más antiguo (fecha más antigua) = mayor prioridad
-          try {
-            const casos = await this.getCases();
-            
-            // Contar casos activos por agente y obtener fecha del último caso
-            const agentesConCasos = mappedAgents.map(agente => {
-              const casosAgente = casos.filter(c => 
-                (c.agenteAsignado?.idAgente === agente.idAgente || c.agentId === agente.idAgente) &&
-                c.status !== CaseStatus.RESUELTO && c.status !== CaseStatus.CERRADO
-              );
-              
-              const casosActivos = casosAgente.length;
-              
-              // Obtener la fecha del caso más antiguo (último caso asignado)
-              let fechaUltimoCaso = new Date(agente.ultimoCasoAsignado);
-              if (casosAgente.length > 0) {
-                const fechasCasos = casosAgente
-                  .map(c => new Date(c.createdAt))
-                  .filter(d => !isNaN(d.getTime()));
-                
-                if (fechasCasos.length > 0) {
-                  // La fecha más antigua (menor timestamp)
-                  fechaUltimoCaso = new Date(Math.min(...fechasCasos.map(d => d.getTime())));
-                }
-              }
-              
-              return {
-                ...agente,
-                casosActivos: casosActivos, // Usar casos reales del sistema
-                ultimoCasoAsignado: fechaUltimoCaso.toISOString(),
-                _fechaUltimoCaso: fechaUltimoCaso.getTime() // Para ordenamiento
-              };
-            });
-            
-            // Separar agentes activos de inactivos
-            const agentesActivos = agentesConCasos.filter(a => a.estado === 'Activo');
-            const agentesInactivos = agentesConCasos.filter(a => a.estado !== 'Activo');
-            
-            // Ordenar solo los agentes activos por casos activos (menor primero), luego por fecha más antigua
-            agentesActivos.sort((a, b) => {
-              // Ordenar por casos activos (menor cantidad primero)
-              if (a.casosActivos !== b.casosActivos) {
-                return a.casosActivos - b.casosActivos; // Menor cantidad = mayor prioridad
-              }
-              
-              // Si tienen la misma cantidad de casos, ordenar por fecha más antigua primero
-              return a._fechaUltimoCaso - b._fechaUltimoCaso;
-            });
-            
-            // Asignar orden round robin (1, 2, 3, ...) solo a agentes activos
-            const agentesActivosConOrden = agentesActivos.map((agente, index) => ({
-              ...agente,
-              ordenRoundRobin: index + 1
-            }));
-            
-            // Asignar orden 999 a agentes inactivos
-            const agentesInactivosConOrden = agentesInactivos.map(agente => ({
-              ...agente,
-              ordenRoundRobin: 999
-            }));
-            
-            // Combinar: primero activos ordenados, luego inactivos
-            mappedAgents = [...agentesActivosConOrden, ...agentesInactivosConOrden];
-          } catch (error) {
-            // Si falla, mantener los valores originales
-          }
-          
-          
-          // Guardar en localStorage como cache
-          localStorage.setItem('intelfon_agents', JSON.stringify(mappedAgents));
-          return mappedAgents;
-        }
-
-        // Si no hay agentes, devolver array vacío
-        return [];
-      } catch (err: any) {
-        console.error('Error fetching agentes:', err);
-        return [];
-      }
-    });
-  },
-
-  // Obtener lista de usuarios desde el webhook de crear usuario
-  // Este webhook retorna TODOS los usuarios creados desde ese flujo
-  async getUsuarios(): Promise<any[]> {
-    return getCachedOrFetch('usuarios', async () => {
-      const currentUser = this.getUser();
-      
-      if (!currentUser) {
-        return [];
-      }
-
-      const actor = buildActorPayload(currentUser);
-
-      // Construir el payload para listar usuarios
-      const payload = {
-        action: 'agent.read',
-        actor: {
-          user_id: Number(actor.user_id) || 0,
-          email: actor.email,
-          role: actor.role
-        },
-        data: {
-          agent_id: 'all'
-        }
-      };
-
-
-      // Llamar al webhook de agentes
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
-
-      try {
-        const response = await fetch(API_CONFIG.WEBHOOK_AGENTES_URL, {
-          method: 'POST',
-          mode: 'cors',
-          credentials: 'omit',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify(payload),
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          if (response.status === 0) {
-            throw new Error('Error de CORS: El servidor no está permitiendo peticiones desde este origen.');
-          }
-          const errorText = await response.text();
-          let errorData;
-          try {
-            errorData = JSON.parse(errorText);
-          } catch {
-            errorData = { message: errorText || `Error ${response.status}: ${response.statusText}` };
-          }
-          throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
-        }
-
-        const result = await response.json();
-
-        // Verificar si hay error en la respuesta
-        if (result.error === true) {
-          throw new Error(result.message || 'Error al obtener los usuarios');
-        }
-
-        // El webhook puede retornar diferentes formatos:
-        // 1. { users: [...] } o { usuarios: [...] }
-        // 2. Array directo de usuarios
-        // 3. { data: [...] } o { data: { users/usuarios: [...] } }
-        // 4. [{ data: [...] }] - array con objeto que contiene data
-        let usuarios: any[] = [];
-
-        if (Array.isArray(result)) {
-          if (result.length > 0 && result[0] && typeof result[0] === 'object' && 'data' in result[0]) {
-            const d = result[0].data;
-            if (Array.isArray(d)) {
-              usuarios = d;
-            } else if (d && typeof d === 'object' && (Array.isArray(d.users) || Array.isArray(d.usuarios))) {
-              usuarios = d.users ?? d.usuarios ?? [];
-            } else {
-              usuarios = result;
-            }
-          } else {
-            usuarios = result;
-          }
-        } else if (result && typeof result === 'object') {
-          if (Array.isArray(result.users)) usuarios = result.users;
-          else if (Array.isArray(result.usuarios)) usuarios = result.usuarios;
-          else if (Array.isArray(result.data)) usuarios = result.data;
-          else if (result.data && typeof result.data === 'object') {
-            usuarios = result.data.users ?? result.data.usuarios ?? [];
-            if (!Array.isArray(usuarios)) usuarios = [];
-          }
-          // Fallback: primera propiedad que sea array de objetos con id/email
-          if (usuarios.length === 0) {
-            for (const key of Object.keys(result)) {
-              const val = (result as any)[key];
-              if (Array.isArray(val) && val.length > 0) {
-                const first = val[0];
-                if (first && typeof first === 'object' && (first.id != null || first.email != null || first.user_id != null)) {
-                  usuarios = val;
-                  break;
-                }
-              }
-            }
-          }
-        }
-
-        return usuarios;
-      } catch (error: any) {
-        clearTimeout(timeoutId);
-        
-        if (error.name === 'AbortError') {
-          throw new Error('Timeout: El servidor no respondió a tiempo. Verifica tu conexión.');
-        }
-        
-        throw error;
-      }
-    });
-  },
-
-  // Obtener lista de clientes desde n8n
-  async getClientes(): Promise<Cliente[]> {
-    return getCachedOrFetch('clientes', async () => {
-    const user = this.getUser();
-    
-    try {
-      const response = await callClientsWebhook<any>('POST', {
-        action: 'case.list_client',
-        actor: buildActorPayload(user),
-        data: {
-          client: 'all',
-        },
+      const response = await fetch(`${API_CONFIG.WEBHOOK_AGENTES_URL}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
       });
 
-      // Función helper para mapear un cliente al formato Cliente
+      if (!response.ok) {
+        throw new Error('Error al obtener agentes');
+      }
+
+      const data = await response.json();
+      return Array.isArray(data) ? data : data.agentes ?? data.agents ?? [];
+    });
+  },
+
+  // Obtener lista de usuarios desde backend directo
+  async getUsuarios(): Promise<any[]> {
+    return getCachedOrFetch('usuarios', async () => {
+      const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/usuarios`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al obtener usuarios');
+      }
+
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    });
+  },
+
+  // Obtener lista de clientes desde backend directo
+  async getClientes(): Promise<Cliente[]> {
+    return getCachedOrFetch('clientes', async () => {
+      const response = await fetch(`${API_CONFIG.WEBHOOK_CLIENTES_URL}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al obtener clientes');
+      }
+
+      const data = await response.json();
+      const clientesArray = Array.isArray(data) ? data : data.clientes ?? data.clients ?? [];
+
       const mapCliente = (c: any): Cliente => ({
         idCliente: c.cliente_id || c.idCliente || c.id || '',
         nombreEmpresa: c.nombre_empresa || c.nombreEmpresa || c.nombre || '',
@@ -1041,83 +719,29 @@ export const api = {
         estado: c.estado || c.state || c.status || 'ACTIVO',
       });
 
-      // Intentar diferentes formatos de respuesta de n8n
-      let clientesArray: any[] = [];
-
-      if (Array.isArray(response)) {
-        if (response.length > 0 && response[0]?.data) {
-          const d = response[0].data;
-          clientesArray = Array.isArray(d) ? d : (d?.clientes ?? d?.clients ?? []);
-          if (!Array.isArray(clientesArray)) clientesArray = [];
-        } else {
-          clientesArray = response;
-        }
-      } else if (response && typeof response === 'object') {
-        if (Array.isArray(response.clients)) clientesArray = response.clients;
-        else if (Array.isArray(response.clientes)) clientesArray = response.clientes;
-        else if (Array.isArray(response.data)) clientesArray = response.data;
-        else if (response.data && typeof response.data === 'object') {
-          clientesArray = response.data.clientes ?? response.data.clients ?? response.data.data ?? [];
-          if (!Array.isArray(clientesArray)) clientesArray = [];
-        } else if (Array.isArray(response.result)) clientesArray = response.result;
-        // Fallback: primera propiedad que sea array de objetos con cliente_id/idCliente
-        if (clientesArray.length === 0) {
-          for (const key of Object.keys(response)) {
-            const val = (response as any)[key];
-            if (Array.isArray(val) && val.length > 0) {
-              const first = val[0];
-              if (first && typeof first === 'object' && (first.cliente_id != null || first.idCliente != null || first.id != null)) {
-                clientesArray = val;
-                break;
-              }
-            }
-          }
-        }
-      }
-
-      if (clientesArray.length > 0) {
-          const mapped = clientesArray.map(mapCliente);
-          return mapped;
-      }
-
-      return [];
-    } catch (err) {
-      console.error('Error fetching clientes:', err);
-      return [];
-    }
+      return clientesArray.map(mapCliente);
     });
   },
 
   // Obtener cliente por ID
   async getClienteById(clienteId: string): Promise<Cliente | undefined> {
-    try {
-      const user = this.getUser();
-      if (!user) return undefined;
+    const response = await fetch(`${API_CONFIG.WEBHOOK_CLIENTES_URL}/${clienteId}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
 
-      const actor = buildActorPayload(user);
-      const payload = {
-        action: 'case.list_client',
-        actor,
-        data: { client: clienteId }
-      };
+    if (!response.ok) return undefined;
 
-      const response = await callClientsWebhook<any>('POST', payload);
-
-      let clientesArray: any[] = [];
-      if (Array.isArray(response)) {
-        clientesArray = response;
-      } else if (response && typeof response === 'object') {
-        clientesArray = response.clientes ?? response.clients ?? response.data ?? [];
-      }
-
-      if (clientesArray.length > 0) {
-        const mapped = clientesArray.map(mapCliente);
-        return mapped.find(c => c.idCliente === clienteId);
-      }
-      return undefined;
-    } catch (err) {
-      return undefined;
-    }
+    const data = await response.json();
+    return {
+      idCliente: data.cliente_id || data.idCliente || data.id || '',
+      nombreEmpresa: data.nombre_empresa || data.nombreEmpresa || data.nombre || '',
+      contactoPrincipal: data.contacto_principal || data.contactoPrincipal || 'N/A',
+      email: data.email || data.correo || 'sin-email@cliente.com',
+      telefono: data.telefono || data.phone || 'N/A',
+      pais: data.pais || data.country || 'El Salvador',
+      estado: data.estado || data.state || data.status || 'ACTIVO',
+    };
   },
 
   // Obtener lista de categorías desde la API real
