@@ -151,6 +151,7 @@ const callRoundRobinWebhook = async (payload: AgentWebhookPayload): Promise<Agen
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
       },
       body: JSON.stringify(payload),
       signal: controller.signal,

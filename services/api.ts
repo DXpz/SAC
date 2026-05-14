@@ -90,6 +90,7 @@ const callWebhookGeneric = async <T = any>(
 
   const headers: Record<string, string> = {
     'Accept': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
   };
 
   if (body) {
@@ -665,7 +666,7 @@ export const api = {
     return getCachedOrFetch('agentes', async () => {
       const response = await fetch(`${API_CONFIG.WEBHOOK_AGENTES_URL}`, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       });
 
       if (!response.ok) {
@@ -682,7 +683,7 @@ export const api = {
     return getCachedOrFetch('usuarios', async () => {
       const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/usuarios`, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       });
 
       if (!response.ok) {
@@ -699,7 +700,7 @@ export const api = {
     return getCachedOrFetch('clientes', async () => {
       const response = await fetch(`${API_CONFIG.WEBHOOK_CLIENTES_URL}`, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       });
 
       if (!response.ok) {
@@ -727,7 +728,7 @@ export const api = {
   async getClienteById(clienteId: string): Promise<Cliente | undefined> {
     const response = await fetch(`${API_CONFIG.WEBHOOK_CLIENTES_URL}/${clienteId}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
     });
 
     if (!response.ok) return undefined;
@@ -755,6 +756,7 @@ export const api = {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('intelfon_token')}`,
           'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
         },
       });
 
@@ -792,7 +794,7 @@ export const api = {
   }): Promise<any> {
     const response = await fetch(`${API_CONFIG.WEBHOOK_CATEGORIAS_URL}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       body: JSON.stringify({
         categoria: categoryData.category_name,
         descripcion: categoryData.description,
@@ -817,7 +819,7 @@ export const api = {
   }): Promise<any> {
     const response = await fetch(`${API_CONFIG.WEBHOOK_CATEGORIAS_URL}/${categoryData.id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       body: JSON.stringify({
         categoria: categoryData.category_name,
         descripcion: categoryData.description,
@@ -831,7 +833,7 @@ export const api = {
   async deleteCategory(categoryId: string): Promise<any> {
     const response = await fetch(`${API_CONFIG.WEBHOOK_CATEGORIAS_URL}/${categoryId}`, {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
     });
     return response.json();
   },
@@ -849,6 +851,7 @@ export const api = {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('intelfon_token')}`,
           'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
         },
       });
 
@@ -878,7 +881,7 @@ export const api = {
   }): Promise<any> {
     const response = await fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       body: JSON.stringify({
         nombre: stateData.nombre,
         descripcion: stateData.descripcion || null,
@@ -904,7 +907,7 @@ export const api = {
   }): Promise<any> {
     const response = await fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       body: JSON.stringify(stateData)
     });
 
@@ -920,7 +923,7 @@ export const api = {
   async deleteState(id: string): Promise<any> {
     const response = await fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}/${id}`, {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
     });
 
     if (!response.ok) {
@@ -935,7 +938,7 @@ export const api = {
   async readTransiciones(): Promise<any[]> {
     const response = await fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}/transiciones`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
     });
 
     if (!response.ok) {
@@ -949,7 +952,7 @@ export const api = {
   async updateTransiciones(estados: Record<string, { transiciones: string[] }>): Promise<any> {
     const response = await fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}/transiciones`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       body: JSON.stringify({ estados })
     });
 
@@ -965,7 +968,7 @@ return response.json();
     try {
       const response = await fetch(`${API_CONFIG.WEBHOOK_AGENTES_URL}/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
         body: JSON.stringify({ estado: data.estado })
       });
 
@@ -984,7 +987,7 @@ return response.json();
     try {
       const response = await fetch(`${API_CONFIG.WEBHOOK_AGENTES_URL}/${id}`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
       });
 
       if (!response.ok) {
@@ -1182,6 +1185,7 @@ return response.json();
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
         },
         body: JSON.stringify(payload),
         signal: controller.signal,
@@ -1323,7 +1327,7 @@ return response.json();
 
     const response = await fetch(`${API_CONFIG.WEBHOOK_ASUETOS_URL}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       body: JSON.stringify({
         fecha: dateStr,
         motivo: holidayName || '',
@@ -1348,7 +1352,7 @@ return response.json();
 
     const response = await fetch(`${API_CONFIG.WEBHOOK_ASUETOS_URL}`, {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       body: JSON.stringify({ fecha: fechaStr })
     });
 
@@ -1371,7 +1375,7 @@ return response.json();
 
     const response = await fetch(`${API_CONFIG.WEBHOOK_ASUETOS_URL}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       body: JSON.stringify({
         type: 'masivo',
         data: {
@@ -1396,7 +1400,7 @@ return response.json();
   async readHolidays(): Promise<Array<{ fecha: string; motivo: string; pais: string; row_number: number; fechaDate?: Date }>> {
     const response = await fetch(`${API_CONFIG.WEBHOOK_ASUETOS_URL}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
     });
 
     if (!response.ok) {
@@ -1450,7 +1454,7 @@ return response.json();
   async readParametros(): Promise<any[]> {
     const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/parametros`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
     });
 
     if (!response.ok) {
@@ -1475,7 +1479,7 @@ return response.json();
   }): Promise<any> {
     const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/parametros`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       body: JSON.stringify(parametroData)
     });
 
@@ -1493,7 +1497,7 @@ return response.json();
   async deleteParametro(id: string): Promise<any> {
     const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/parametros/${id}`, {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
     });
 
     if (!response.ok) {
