@@ -1335,18 +1335,15 @@ const [showUserModal, setShowUserModal] = useState(false);
     // Actualizar el estado local inmediatamente para feedback visual
     setStates(reorderedStates);
 
-    // Enviar webhook con todos los estados y su nuevo orden
+    // Enviar actualización individually para cada estado
     try {
-      console.log('🔄 handleDrop - count:', estadosParaEnviar.length, JSON.stringify(estadosParaEnviar));
-      await api.updateEstados(estadosParaEnviar);
-      // Después de actualizar, recargar los estados y transiciones desde el webhook
-      // IMPORTANTE: Forzar recarga limpia para evitar caché
+      for (const estado of reorderedStates) {
+        await api.updateEstado(estado.id, { orden: estado.order });
+      }
       await loadEstados();
-      // Recargar transiciones después de recargar estados
       await loadTransiciones();
     } catch (error: any) {
-      alert(error.message || 'Error al actualizar el orden de los estados. Por favor, intenta nuevamente.');
-      // Si falla, recargar los estados originales desde el servidor
+      alert(error.message || 'Error al actualizar el orden de los estados.');
       await loadEstados();
     }
     setHasChanges(true);
