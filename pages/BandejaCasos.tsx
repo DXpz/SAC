@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import { sapService } from '../services/sapService';
+
 import { getUserCountry } from '../services/caseService';
 import { Case, CaseStatus, Cliente, Categoria, Agente } from '../types';
 import { STATE_COLORS } from '../constants';
@@ -374,64 +374,49 @@ const enrichCase = (caso: Case, clientesList: Cliente[], categoriasList: Categor
 
 const enrichCases = (casosList: Case[], clientesList: Cliente[], categoriasList: Categoria[]): Case[] => {
   return casosList.map(c => enrichCase(c, clientesList, categoriasList));
-}; // Incluir casos para que se ejecute cuando se cargan nuevos casos
+};
 
-  const loadClientes = async () => {
-    try {
-      const pais = userCountry || 'SV';
-      const data = await sapService.getClientesListado(pais);
-      setClientes(data);
-      return data;
-    } catch (err) {
-      return [];
-    }
-  };
-
-  const loadCategorias = async () => {
-    try {
-      const data = await api.getCategorias();
-      setCategorias(data);
-      return data;
-    } catch (err) {
-      return [];
-    }
-  };
+const loadCategorias = async () => {
+  try {
+    const data = await api.getCategorias();
+    setCategorias(data);
+    return data;
+  } catch (err) {
+    return [];
+  }
+};
 
   const loadAgentes = async () => {
-    try {
-      const data = await api.getAgentes();
-      setAgentes(data);
-      return data;
-    } catch (err) {
-      return [];
-    }
-  };
+  try {
+    const data = await api.getAgentes();
+    setAgentes(data);
+    return data;
+  } catch (err) {
+    return [];
+  }
+};
 
-  const loadCasos = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await api.getCases();
-      // Guardar casos directamente, el useEffect de enriquecimiento se ejecutará automáticamente
-      setCasos(data);
-      
-      const updateTime = new Date();
-      setLastUpdate(updateTime);
-      // Guardar en localStorage para que Layout pueda mostrarlo
-      localStorage.setItem('bandeja_last_update', updateTime.toISOString());
-      
-      return data;
-    } catch (err: any) {
-      setError(err.message || 'Error al cargar los casos desde el servidor. Por favor, intenta nuevamente.');
-      setCasos([]);
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  };
+const loadCasos = async () => {
+  setLoading(true);
+  setError(null);
+  try {
+    const data = await api.getCases();
+    setCasos(data);
+    const updateTime = new Date();
+    setLastUpdate(updateTime);
+    localStorage.setItem('bandeja_last_update', updateTime.toISOString());
+    return data;
+  } catch (err: any) {
+    setError(err.message || 'Error al cargar los casos desde el servidor. Por favor, intenta nuevamente.');
+    setCasos([]);
+    return [];
+  } finally {
+    setLoading(false);
+  }
+};
 
 // Memoizar filtrado de casos para evitar recálculos innecesarios
-  const filteredCasos = useMemo(() => {
+const filteredCasos = useMemo(() => {
     const currentUser = api.getUser();
     const isAgente = currentUser?.role === 'AGENTE';
     
@@ -530,9 +515,6 @@ const enrichCases = (casosList: Case[], clientesList: Cliente[], categoriasList:
       color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
     }
   };
-
-  const totalPages = Math.ceil(filteredCasos.length / PAGE_SIZE);
-  const paginatedCasos = filteredCasos.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <div className="space-y-6" style={styles.container}>

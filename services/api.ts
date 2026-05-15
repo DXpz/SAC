@@ -701,10 +701,10 @@ export const api = {
     });
   },
 
-  // Obtener lista de clientes desde backend directo
+  // Obtener lista de clientes desde SAP via backend
   async getClientes(): Promise<Cliente[]> {
     return getCachedOrFetch('clientes', async () => {
-      const response = await fetch(`${API_CONFIG.WEBHOOK_CLIENTES_URL}`, {
+      const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/sap/clientes?var_pais=SV`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       });
@@ -714,16 +714,16 @@ export const api = {
       }
 
       const data = await response.json();
-      const clientesArray = Array.isArray(data) ? data : data.clientes ?? data.clients ?? [];
+      const clientesArray = Array.isArray(data) ? data : [];
 
       const mapCliente = (c: any): Cliente => ({
-        idCliente: c.cliente_id || c.idCliente || c.id || '',
-        nombreEmpresa: c.nombre_empresa || c.nombreEmpresa || c.nombre || '',
-        contactoPrincipal: c.contacto_principal || c.contactoPrincipal || c.contacto || 'N/A',
-        email: c.email || c.correo || 'sin-email@cliente.com',
-        telefono: c.telefono || c.phone || c.tel || 'N/A',
-        pais: c.pais || c.country || 'El Salvador',
-        estado: c.estado || c.state || c.status || 'ACTIVO',
+        idCliente: c.CardCode || c.cardCode || c.cliente_id || '',
+        nombreEmpresa: c.CardName || c.cardName || c.nombre || '',
+        contactoPrincipal: c.ContactoVentas || c.contactoVentas || 'N/A',
+        email: c.Correo || c.correo || c.email || 'sin-email@cliente.com',
+        telefono: c.Telefono1 || c.telefono1 || c.Telefono || c.telefono || 'N/A',
+        pais: 'SV',
+        estado: c.estado || 'ACTIVO',
       });
 
       return clientesArray.map(mapCliente);
