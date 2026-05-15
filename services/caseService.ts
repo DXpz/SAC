@@ -731,7 +731,14 @@ export const createCase = async (caseData: {
 
   // Obtener país del usuario o usar default
   const userCountry = await getUserCountry();
-  const pais = caseData.pais || caseData.country || (userCountry === 'SV' ? 'El Salvador' : 'Guatemala');
+  const paisMap: Record<string, string> = {
+    'SV': 'ElSalvador',
+    'GT': 'Guatemala',
+    'El Salvador': 'ElSalvador',
+    'Guatemala': 'Guatemala'
+  };
+  const rawPais = caseData.pais || caseData.country || (userCountry === 'SV' ? 'ElSalvador' : 'Guatemala');
+  const pais = paisMap[rawPais] || rawPais;
 
   // Enviar al backend con el formato que espera
   const payload = {
