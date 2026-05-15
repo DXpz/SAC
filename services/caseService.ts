@@ -495,7 +495,7 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
   try {
     // El webhook puede retornar el caso en diferentes formatos
     // Intentamos normalizar a la estructura Case
-    const caseData = webhookData.case || webhookData;
+    const caseData = webhookData.case || webhookData.caso || webhookData;
     
     // Validar que al menos tenga un ID
     const caseId = caseData.case_id || caseData.id || caseData.ticketNumber || caseData.idCaso || '';
@@ -800,16 +800,24 @@ export const createCase = async (caseData: {
   const userCountry = await getUserCountry();
   const pais = caseData.pais || caseData.country || (userCountry === 'SV' ? 'El Salvador' : 'Guatemala');
 
-  // Enviar directo al backend sin wrapper n8n
+  // Enviar al backend con el formato que espera
   const payload = {
-    cliente_id: caseData.clienteId || 'N/A',
-    categoria_id: parseInt(caseData.categoriaId) || 1,
     pais: pais,
+    cliente: {
+      cliente_id: caseData.clienteId || 'N/A',
+      email: caseData.clientEmail || '',
+      telefono: caseData.clientPhone || caseData.phone || ''
+    },
+    categoria: {
+      id: parseInt(caseData.categoriaId) || 1
+    },
     canal_origen: mapChannel(caseData.contactChannel),
     canal_notificacion: mapChannel(caseData.contactChannel) || 'Email',
     asunto: caseData.subject,
     descripcion: caseData.description,
-    email_cliente: caseData.clientEmail || ''
+    actor: {
+      email: actor.email
+    }
   };
 
   const response = await fetch(API_CONFIG.WEBHOOK_CASOS_URL, {
@@ -826,17 +834,20 @@ export const createCase = async (caseData: {
   const result = await response.json();
   
   // Mapear respuesta del backend
+  if (result && result.caso && result.caso.case_id) {
+    return mapWebhookResponseToCase(result.caso);
+  }
   if (result && result.case_id) {
     return mapWebhookResponseToCase(result);
   }
-  
+
   return result as Case;
 };
 
 /**
  * Obtiene todos los casos
- * Si el usuario es AGENTE, solo retorna los casos asignados a ese agente usando case.agent
- * Si el usuario es SUPERVISOR o GERENTE, retorna todos los casos usando case.read
+ * El backend tiene GET /api/casos que lista casos
+ * Incluye agentes, categorías y clientes relacionados
  */
 export const getCases = async (): Promise<Case[]> => {
   const actor = getActor();
@@ -846,10 +857,8 @@ export const getCases = async (): Promise<Case[]> => {
     throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
   }
 
-  // Cargar cache de agentes para poder resolver nombres de agentes
   await getAgentesInfo();
 
-  // Obtener país del usuario
   const pais = await getUserCountry();
   const paisValue = pais === 'GT' ? 'Guatemala' : 'El Salvador';
 
@@ -872,8 +881,8 @@ export const getCases = async (): Promise<Case[]> => {
     return mapWebhookResponseToCases(result);
   }
 
-  // Si es SUPERVISOR o GERENTE, obtener todos los casos
-  const response = await fetch(API_CONFIG.WEBHOOK_CASOS_URL, {
+  // Si es SUPERVISOR o GERENTE, obtener todos los casos del país
+  const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}?pais=${encodeURIComponent(paisValue)}`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
   });
@@ -882,16 +891,11 @@ export const getCases = async (): Promise<Case[]> => {
     throw new Error('Error al obtener casos');
   }
 
-  let casos = await response.json();
+  const result = await response.json();
 
-  // Si es SUPERVISOR, filtrar casos por país
-  if (userRole === 'SUPERVISOR' && Array.isArray(casos)) {
-    casos = casos.filter((caso: any) => {
-      const casoPais = caso.pais || caso.cliente?.pais || '';
-      const casoPaisNormalizado = normalizeCaseCountry(casoPais);
-      return casoPaisNormalizado === pais;
-    });
-  }
+  // El backend retorna { casos: [...], transiciones: [...] }
+  // Extraer solo el array de casos
+  const casos = result.casos || result.cases || result;
 
   return mapWebhookResponseToCases(casos);
 };
@@ -984,7 +988,8 @@ const processWebhookResponse = (response: CaseWebhookResponse): Case[] => {
 };
 
 /**
- * Obtiene un caso por ID usando case.query para obtener el historial completo
+ * Obtiene un caso por ID
+ * El backend tiene GET /api/casos/:id que retorna el caso con historial y transiciones
  */
 export const getCaseById = async (caseId: string): Promise<Case | null> => {
   const actor = getActor();
@@ -997,10 +1002,8 @@ export const getCaseById = async (caseId: string): Promise<Case | null> => {
     throw new Error('ID de caso requerido.');
   }
 
-  // Cargar cache de agentes para poder resolver nombres de agentes
   await getAgentesInfo();
 
-  // Obtener caso por ID directamente
   const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/${caseId}`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
@@ -1012,68 +1015,26 @@ export const getCaseById = async (caseId: string): Promise<Case | null> => {
 
   const result = await response.json();
 
-  if (result && typeof result === 'object') {
-    // Manejar formato con historial y transiciones
-    if (result.historial_caso && result.detalle_caso) {
-      const historialArray = Array.isArray(result.historial_caso) ? result.historial_caso : [];
-      const detalleCasoArray = Array.isArray(result.detalle_caso) ? result.detalle_caso : [];
-
-      let transicionesArray: any[] = [];
-      if (typeof result.transiciones === 'string') {
-        try { transicionesArray = JSON.parse(result.transiciones); } catch { transicionesArray = []; }
-      } else if (Array.isArray(result.transiciones)) {
-        transicionesArray = result.transiciones;
-      }
-
-      let estadosFinalesArray: any[] = [];
-      if (typeof result.estados_finales === 'string') {
-        try { estadosFinalesArray = JSON.parse(result.estados_finales); } catch { estadosFinalesArray = []; }
-      } else if (Array.isArray(result.estados_finales)) {
-        estadosFinalesArray = result.estados_finales;
-      }
-
-      const historialMapeado = historialArray.length > 0
-        ? mapWebhookHistorialToFrontend(historialArray as WebhookHistorialEntry[])
-        : [];
-
-      const transicionesMapeadas = transicionesArray.map((transicion: any) => ({
-        row_number: transicion.row_number,
-        estado_origen: transicion.estado_origen || transicion.estadoOrigen || '',
-        estado_destino: transicion.estado_destino || transicion.estadoDestino || '',
-        descripcion_transicion: transicion.descripcion_transicion || '',
-        permitido: transicion.permitido !== undefined ? transicion.permitido : true,
-        ...transicion
-      }));
-
-      if (detalleCasoArray.length > 0) {
-        const casoData = { ...detalleCasoArray[0] };
-
-        if (Array.isArray(result.agente) && result.agente.length > 0) {
-          const agenteData = result.agente[0];
-          casoData.agente = agenteData;
-          casoData.agente_nombre = agenteData.nombre || casoData.agente_nombre;
-          casoData.agentename = agenteData.nombre || casoData.agentename;
-          casoData.agente_id = agenteData.id_agente || casoData.agente_id;
-          casoData.agente_user_id = agenteData.id_agente || casoData.agente_user_id;
-        }
-
-        const casoActualizado = mapWebhookResponseToCase(casoData);
-
-        if (casoActualizado) {
-          casoActualizado.transiciones = transicionesMapeadas;
-          (casoActualizado as any).estadosFinales = estadosFinalesArray;
-          casoActualizado.historial = historialMapeado;
-          casoActualizado.history = historialMapeado;
-          return casoActualizado;
-        }
-      }
-    }
-
-    // Formato simple con case_id o id
-    return mapWebhookResponseToCase(result);
+  if (!result || typeof result !== 'object') {
+    return null;
   }
 
-  return null;
+  // El backend retorna { ...caso, historial, transiciones }
+  // Mapear el caso con su historial y transiciones
+  const casoMapeado = mapWebhookResponseToCase(result);
+
+  if (casoMapeado) {
+    // Incluir historial y transiciones del backend
+    if (result.historial && Array.isArray(result.historial)) {
+      casoMapeado.historial = mapWebhookHistorialToFrontend(result.historial);
+      casoMapeado.history = casoMapeado.historial;
+    }
+    if (result.transiciones && Array.isArray(result.transiciones)) {
+      (casoMapeado as any).transiciones = result.transiciones;
+    }
+  }
+
+  return casoMapeado;
 };
 
 /**
@@ -1152,6 +1113,10 @@ const mapWebhookHistorialToFrontend = (webhookHistorial: WebhookHistorialEntry[]
   });
 };
 
+/**
+ * Actualiza el estado de un caso
+ * El backend tiene PUT /api/casos/:id que acepta { data: { estado, comentario }, actor }
+ */
 export const updateCaseStatus = async (
   caseId: string,
   newStatus: string,
@@ -1168,14 +1133,17 @@ export const updateCaseStatus = async (
     throw new Error('ID de caso y nuevo estado son requeridos.');
   }
 
-  // Enviar actualización de estado directamente
-  const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/status`, {
-    method: 'PATCH',
+  const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/${caseId}`, {
+    method: 'PUT',
     headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
     body: JSON.stringify({
-      case_id: caseId,
-      estado: newStatus,
-      comentario: detail || `Cambio de estado a ${newStatus}`
+      data: {
+        estado: newStatus,
+        comentario: detail || `Cambio de estado a ${newStatus}`
+      },
+      actor: {
+        email: actor.email
+      }
     })
   });
 
@@ -1186,21 +1154,16 @@ export const updateCaseStatus = async (
 
   const result = await response.json();
 
-  // Verificar si hay error en la respuesta
-  if (result.error || result.success === false) {
+  if (result.error) {
     throw new Error(result.message || 'Error al actualizar el caso');
   }
 
-  // Obtener el caso actualizado
-  const updatedCase = await getCaseById(caseId);
-  return updatedCase;
+  return mapWebhookResponseToCase(result) as Case;
 };
 
 /**
  * Reasigna un caso a otro agente (manual)
- * @param caseId ID del caso
- * @param agentId ID del nuevo agente (user_id del agente)
- * @param motivo Motivo de la reasignación (opcional)
+ * El backend tiene PUT /api/casos/:id con update_type = 'reassign'
  */
 export const reassignCase = async (
   caseId: string,
@@ -1218,13 +1181,18 @@ export const reassignCase = async (
   }
 
   try {
-    const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/reassign`, {
-      method: 'PATCH',
+    const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/${caseId}`, {
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       body: JSON.stringify({
-        case_id: caseId,
-        agente_id: agentId,
-        comentario: motivo || `Reasignación manual de caso`
+        data: {
+          update_type: 'reassign',
+          agent_id: agentId,
+          comentario: motivo || `Reasignación manual de caso`
+        },
+        actor: {
+          email: actor.email
+        }
       })
     });
 
@@ -1250,6 +1218,7 @@ export const reassignCase = async (
 
 /**
  * Elimina un caso
+ * El backend tiene DELETE /api/casos/:id
  */
 export const deleteCase = async (caseId: string): Promise<boolean> => {
   const actor = getActor();
