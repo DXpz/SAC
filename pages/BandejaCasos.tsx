@@ -305,179 +305,76 @@ const BandejaCasos: React.FC = () => {
     init();
   }, []);
 
-  // Cargar datos iniciales en secuencia
+  // Cargar datos iniciales
   useEffect(() => {
     if (userCountry === null) return;
     const initializeData = async () => {
       try {
-        // Primero cargar clientes y categorías
-        await Promise.all([loadClientes(), loadCategorias(), loadAgentes()]);
-        // Luego cargar casos
-        await loadCasos();
+        // Cargar en paralelo - casos, clientes y categorias
+        await Promise.all([
+          loadCasos(),
+          api.getClientes().then(data => { setClientes(data); return data; }),
+          api.getCategorias().then(data => { setCategorias(data); return data; }),
+          api.getAgentes().then(data => { setAgentes(data); return data; })
+        ]);
       } catch (err) {
+        console.error('Error loading initial data:', err);
       }
     };
     initializeData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userCountry]);
 
 
-  // Enriquecer casos cuando se cargan clientes, categorías o casos
-  useEffect(() => {
-    if (casos.length === 0) {
-      return; // No hay casos que enriquecer
+  const normalizeId = (id: string): string => {
+  if (!id) return '';
+  let normalized = id.trim().toUpperCase();
+  if (!normalized.startsWith('CL')) {
+    normalized = 'CL' + normalized.replace(/^CL/i, '');
+  }
+  const match = normalized.match(/^CL0*(\d+)$/);
+  if (match) {
+    normalized = 'CL' + match[1].padStart(6, '0');
+  }
+  return normalized;
+};
+
+const findClienteById = (clientId: string, clientesList: Cliente[]): Cliente | undefined => {
+  if (!clientId) return undefined;
+  const normalized = normalizeId(clientId);
+  return clientesList.find(cli => {
+    const cliNorm = normalizeId(cli.CardCode);
+    return cliNorm === normalized || cli.CardCode === clientId;
+  });
+};
+
+const findCategoriaById = (categoriaId: string | number, categoriasList: Categoria[]): Categoria | undefined => {
+  return categoriasList.find(cat => String(cat.idCategoria) === String(categoriaId));
+};
+
+const enrichCase = (caso: Case, clientesList: Cliente[], categoriasList: Categoria[]): Case => {
+  const enriched = { ...caso };
+  if (clientesList.length > 0 && caso.clientId) {
+    const cliente = findClienteById(caso.clientId, clientesList);
+    if (cliente && (!caso.clientName || caso.clientName === 'Por definir')) {
+      enriched.clientName = cliente.CardName;
+      enriched.clientEmail = caso.clientEmail || (cliente as any).Email || '';
+      enriched.clientPhone = caso.clientPhone || (cliente as any).Telefono || '';
+      enriched.cliente = cliente;
     }
-    
-    // Solo enriquecer si tenemos clientes o categorías disponibles
-    if (clientes.length === 0 && categorias.length === 0) {
-      return;
+  }
+  if (categoriasList.length > 0 && caso.categoria?.idCategoria) {
+    const categoria = findCategoriaById(caso.categoria.idCategoria, categoriasList);
+    if (categoria && (!caso.category || caso.category === 'General')) {
+      enriched.category = categoria.nombre;
+      enriched.categoria = categoria;
     }
-    
-    // Verificar si hay casos que necesitan enriquecimiento
-    const casosNecesitanEnriquecimiento = casos.some(caso => {
-      const needsClient = caso.clientId && (!caso.clientName || (typeof caso.clientName === 'string' && caso.clientName.trim() === '') || !caso.cliente);
-      const needsCategory = caso.categoria?.idCategoria && (!caso.category || caso.category === 'General');
-      return needsClient || needsCategory;
-    });
-    
-    if (!casosNecesitanEnriquecimiento) {
-      return; // Todos los casos ya están enriquecidos
-    }
-    
-    const casosEnriquecidos = casos.map(caso => {
-      let casoActualizado = { ...caso };
+  }
+  return enriched;
+};
 
-      // Preservar datos críticos que no deben perderse
-      const preservedTicketNumber = caso.ticketNumber || (caso as any).idCaso || caso.id;
-      const preservedClientId = caso.clientId || caso.cliente?.CardCode;
-      const preservedClientName = caso.clientName || caso.cliente?.CardName;
-
-      // Enriquecer con cliente completo solo si no lo tiene o está vacío
-      if (clientes.length > 0 && preservedClientId) {
-        const needsClientEnrichment = !caso.cliente || !caso.clientName || (typeof caso.clientName === 'string' && caso.clientName.trim() === '') || caso.clientName === 'Por definir';
-
-        if (needsClientEnrichment) {
-          // Normalizar el ID del caso para comparación
-          const normalizeId = (id: string) => {
-            if (!id) return '';
-            // Remover espacios y convertir a mayúsculas
-            let normalized = id.trim().toUpperCase();
-            // Si no empieza con CL, agregarlo
-            if (!normalized.startsWith('CL')) {
-              normalized = 'CL' + normalized.replace(/^CL/i, '');
-            }
-            // Normalizar ceros a la izquierda: CL1 -> CL000001, CL001 -> CL000001
-            const match = normalized.match(/^CL0*(\d+)$/);
-            if (match) {
-              const num = match[1];
-              normalized = 'CL' + num.padStart(6, '0');
-            }
-            return normalized;
-          };
-
-          const casoClientIdNormalized = normalizeId(caso.clientId);
-
-          // Buscar cliente con múltiples estrategias
-          const clienteCompleto = clientes.find(cli => {
-            const cliIdNormalized = normalizeId(cli.CardCode);
-
-            // Comparación exacta normalizada
-            if (casoClientIdNormalized === cliIdNormalized) return true;
-
-            // Comparación directa
-            if (cli.CardCode === caso.clientId) return true;
-
-            // Comparación numérica (solo números)
-            const casoNum = caso.clientId.replace(/\D/g, '');
-            const cliNum = cli.CardCode.replace(/\D/g, '');
-            if (casoNum && cliNum && casoNum === cliNum) return true;
-
-            return false;
-          });
-
-          if (clienteCompleto) {
-            // Preservar clientName si ya existe y es válido, sino usar el del cliente completo
-            casoActualizado = {
-              ...casoActualizado,
-              clientName: (caso.clientName && caso.clientName.trim() !== '' && caso.clientName !== 'Por definir') ? caso.clientName : clienteCompleto.CardName,
-              clientId: clienteCompleto.CardCode || caso.clientId || preservedClientId,
-              cliente: clienteCompleto,
-              clientEmail: caso.clientEmail || clienteCompleto.Email,
-              clientPhone: caso.clientPhone || clienteCompleto.Telefono,
-              // Preservar ticketNumber
-              ticketNumber: caso.ticketNumber || preservedTicketNumber,
-              id: caso.id || preservedTicketNumber,
-            };
-          } else {
-            // Si no se encuentra el cliente, preservar al menos los datos existentes
-            casoActualizado = {
-              ...casoActualizado,
-              clientId: caso.clientId || preservedClientId || 'N/A',
-              clientName: (caso.clientName && caso.clientName.trim() !== '' && caso.clientName !== 'Por definir') ? caso.clientName : preservedClientName || 'Por definir',
-              ticketNumber: caso.ticketNumber || preservedTicketNumber,
-              id: caso.id || preservedTicketNumber,
-            };
-          }
-        } else {
-          // Si no necesita enriquecimiento, asegurar que los datos críticos estén presentes
-          casoActualizado = {
-            ...casoActualizado,
-            ticketNumber: caso.ticketNumber || preservedTicketNumber,
-            id: caso.id || preservedTicketNumber,
-            clientId: caso.clientId || preservedClientId || 'N/A',
-            clientName: (caso.clientName && caso.clientName.trim() !== '' && caso.clientName !== 'Por definir') ? caso.clientName : preservedClientName || 'Por definir',
-          };
-        }
-      } else {
-        // Si no hay clientId, preservar al menos ticketNumber
-        casoActualizado = {
-          ...casoActualizado,
-          ticketNumber: caso.ticketNumber || preservedTicketNumber,
-          id: caso.id || preservedTicketNumber,
-        };
-      }
-      
-      // Enriquecer con categoría completa
-      if (categorias.length > 0) {
-        const categoriaId = caso.categoria?.idCategoria || (caso as any).categoria_id || (caso as any).categoriaId;
-        
-        if (categoriaId) {
-          const categoriaCompleta = categorias.find(cat => 
-            String(cat.idCategoria) === String(categoriaId)
-          );
-          
-          if (categoriaCompleta) {
-            // Actualizar si el nombre es diferente o está vacío
-            if (!caso.category || caso.category === 'General' || caso.category !== categoriaCompleta.nombre) {
-              casoActualizado = {
-                ...casoActualizado,
-                category: categoriaCompleta.nombre,
-                categoria: categoriaCompleta,
-              };
-            }
-          }
-        }
-      }
-      
-      return casoActualizado;
-    });
-    
-    // Solo actualizar si hubo cambios reales
-    const hasChanges = casosEnriquecidos.some((caso, idx) => {
-      const original = casos[idx];
-      return (
-        caso.clientName !== original.clientName ||
-        caso.clientId !== original.clientId ||
-        caso.cliente?.CardCode !== original.cliente?.CardCode ||
-        caso.category !== original.category ||
-        caso.categoria?.idCategoria !== original.categoria?.idCategoria
-      );
-    });
-    
-    if (hasChanges) {
-      setCasos(casosEnriquecidos);
-    }
-  }, [casos, clientes, categorias]); // Incluir casos para que se ejecute cuando se cargan nuevos casos
+const enrichCases = (casosList: Case[], clientesList: Cliente[], categoriasList: Categoria[]): Case[] => {
+  return casosList.map(c => enrichCase(c, clientesList, categoriasList));
+}; // Incluir casos para que se ejecute cuando se cargan nuevos casos
 
   const loadClientes = async () => {
     try {

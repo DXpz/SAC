@@ -64,7 +64,15 @@ export const sapService = {
     const url = `${SAP_API_BASE}/consulta?var_pais=${paisParam}`;
 
     try {
-      const response = await fetch(url, { headers });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      const response = await fetch(url, { 
+        headers,
+        signal: controller.signal 
+      });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`API Error: ${response.status}`);
@@ -79,7 +87,7 @@ export const sapService = {
       return [];
     } catch (err) {
       console.error('[sapService] Error fetching clientes:', err);
-      throw err;
+      return [];
     }
   },
 

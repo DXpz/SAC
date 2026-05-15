@@ -11,11 +11,11 @@ interface CacheEntry {
   promise?: Promise<any>;
 }
 
-const CACHE_DURATION_CASES = 60000; // 1 minuto para casos
-const CACHE_DURATION_AGENTES = 300000; // 5 minutos para agentes
-const CACHE_DURATION_CLIENTES = 300000; // 5 minutos para clientes
-const CACHE_DURATION_USUARIOS = 300000; // 5 minutos para usuarios
-const CACHE_DURATION_CATEGORIAS = 300000; // 5 minutos para categorias
+const CACHE_DURATION_CASES = 10000; // 10 segundos para casos
+const CACHE_DURATION_AGENTES = 30000; // 30 segundos para agentes
+const CACHE_DURATION_CLIENTES = 30000; // 30 segundos para clientes
+const CACHE_DURATION_USUARIOS = 30000; // 30 segundos para usuarios
+const CACHE_DURATION_CATEGORIAS = 30000; // 30 segundos para categorias
 
 const cache: {
   cases?: CacheEntry;
