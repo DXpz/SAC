@@ -1,9 +1,10 @@
-const SAP_API_BASE = 'https://sapapi.red.com.sv/api/cliente';
-const API_KEY = 'fdf0cb340b00402c00a057b0f67c00a3';
+import { API_CONFIG } from '../config';
+
+const BACKEND_URL = API_CONFIG.WEBHOOK_URL; // https://kailee-chorial-toshiko.ngrok-free.dev
 
 const headers = {
-  'X-API-KEY': API_KEY,
-  'Content-Type': 'application/json'
+  'Content-Type': 'application/json',
+  'ngrok-skip-browser-warning': 'true'
 };
 
 export interface ClienteListado {
@@ -28,48 +29,20 @@ export interface ClienteDetalle {
   AnexosBloqueados: string;
   AnexosInhibidos: string;
   AnexosBloqueadosInhibidos: string;
-  ClienteRedPtt: string;
-  ClienteAnalogo: string;
-  ClienteDatared: string;
-  ClienteInfra: string;
-  AnexosPtt: string;
-  AnexosAnalogo: string;
-  AnexosSirv: string;
-  AnexosTracker: string;
-  AnexosIden: string;
-  Telefono1: string;
-  Telefono2: string;
-  TelefonoMovil: string;
-  Departamento: string;
-  Municipio: string;
-  TelefonoVentas: string;
-  CorreoVentas: string;
-  ContactoVentas: string;
-  TelefonoCobros: string;
-  CorreoCobros: string;
-  ContactoCobros: string;
-  TelefonoServicioCliente: string;
-  CorreoServicioCliente: string;
-  ContactoServicioCliente: string;
-  TelefonoRepresentanteLegal: string;
-  CorreoRepresentanteLegal: string;
-  ContactoRepresentanteLegal: string;
-  CLASIFICACION: string;
-  GestorCobro: string;
 }
 
 export const sapService = {
   async getClientesListado(pais: 'SV' | 'GT' = 'SV'): Promise<ClienteListado[]> {
-    const paisParam = pais === 'SV' ? 'SV' : 'GT';
-    const url = `${SAP_API_BASE}/consulta?var_pais=${paisParam}`;
+    const url = `${BACKEND_URL}/api/sap/clientes?var_pais=${pais}`;
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      const response = await fetch(url, { 
+      const response = await fetch(url, {
+        method: 'GET',
         headers,
-        signal: controller.signal 
+        signal: controller.signal
       });
 
       clearTimeout(timeoutId);
@@ -92,8 +65,7 @@ export const sapService = {
   },
 
   async getClienteDetalle(codigo: string, pais: 'SV' | 'GT' = 'SV'): Promise<ClienteDetalle | null> {
-    const paisParam = pais === 'SV' ? 'SV' : 'GT';
-    const url = `${SAP_API_BASE}/infocliente?criterio=${encodeURIComponent(codigo)}&var_pais=${paisParam}`;
+    const url = `${BACKEND_URL}/api/sap/cliente/${encodeURIComponent(codigo)}?var_pais=${pais}`;
 
     try {
       const response = await fetch(url, { headers });
