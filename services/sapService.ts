@@ -1,6 +1,10 @@
-const API_BASE = import.meta.env.DEV
-  ? '/api/clientes'
-  : (import.meta.env.VITE_API_URL || '/api/clientes');
+const SAP_API_BASE = 'https://sapapi.red.com.sv/api/cliente';
+const API_KEY = 'fdf0cb340b00402c00a057b0f67c00a3';
+
+const headers = {
+  'X-API-KEY': API_KEY,
+  'Content-Type': 'application/json'
+};
 
 export interface ClienteListado {
   CardCode: string;
@@ -56,30 +60,23 @@ export interface ClienteDetalle {
 
 export const sapService = {
   async getClientesListado(pais: 'SV' | 'GT' = 'SV'): Promise<ClienteListado[]> {
-    const url = `${API_BASE}/listado?pais=${pais}`;
+    const paisParam = pais === 'SV' ? 'SV' : 'GT';
+    const url = `${SAP_API_BASE}/consulta?var_pais=${paisParam}`;
 
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, { headers });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[sapService] API Error:', response.status, errorText);
         throw new Error(`API Error: ${response.status}`);
       }
 
       const data = await response.json();
 
-      let result: ClienteListado[] = [];
-
       if (Array.isArray(data)) {
-        result = data;
-      } else if (data?.clientes && Array.isArray(data.clientes)) {
-        result = data.clientes;
-      } else if (data?.data && Array.isArray(data.data)) {
-        result = data.data;
+        return data;
       }
 
-      return result;
+      return [];
     } catch (err) {
       console.error('[sapService] Error fetching clientes:', err);
       throw err;
@@ -87,10 +84,11 @@ export const sapService = {
   },
 
   async getClienteDetalle(codigo: string, pais: 'SV' | 'GT' = 'SV'): Promise<ClienteDetalle | null> {
-    const url = `${API_BASE}/detalle?criterio=${encodeURIComponent(codigo)}&pais=${pais}`;
+    const paisParam = pais === 'SV' ? 'SV' : 'GT';
+    const url = `${SAP_API_BASE}/infocliente?criterio=${encodeURIComponent(codigo)}&var_pais=${paisParam}`;
 
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, { headers });
 
       if (!response.ok) {
         throw new Error(`API Error: ${response.status}`);
@@ -98,17 +96,15 @@ export const sapService = {
 
       const data = await response.json();
 
-      let result: ClienteDetalle | null = null;
-
       if (Array.isArray(data) && data.length > 0) {
-        result = data[0];
-      } else if (data?.cliente) {
-        result = data.cliente;
-      } else if (data?.data) {
-        result = data.data;
+        return data[0];
       }
 
-      return result;
+      if (data && typeof data === 'object') {
+        return data as ClienteDetalle;
+      }
+
+      return null;
     } catch (err) {
       console.error('[sapService] Error fetching cliente detalle:', err);
       throw err;
