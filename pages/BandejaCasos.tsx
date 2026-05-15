@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { sapService } from '../services/sapService';
@@ -12,7 +12,7 @@ import LoadingScreen from '../components/LoadingScreen';
 
 const BandejaCasos: React.FC = () => {
   const [casos, setCasos] = useState<Case[]>([]);
-  const [filtered, setFiltered] = useState<Case[]>([]);
+  // Eliminated filtered state - using useMemo instead
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoriaFilter, setCategoriaFilter] = useState<string>('all');
@@ -533,106 +533,83 @@ const BandejaCasos: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    const processCases = async () => {
-      // Obtener usuario autenticado
-      const currentUser = api.getUser();
-      const isAgente = currentUser?.role === 'AGENTE';
-      
-      // IMPORTANTE: Si es agente, getCases() usa case.agent que YA retorna solo los casos del agente
-      // El webhook case.agent filtra automáticamente por agente_user_id
-      // PERO ahora también necesitamos filtrar por país del agente
-      let casosParaFiltrar = casos;
-      if (isAgente) {
-        const agentCountry = await getAgentCountry();
-        if (agentCountry) {
-          casosParaFiltrar = casos.filter(caso => {
-            const casoPais = (caso as any).pais || 
-                            caso.cliente?.pais || 
-                            (caso as any).country ||
-                            '';
-            const casoPaisNormalizado = normalizeCaseCountry(casoPais);
-            if (!casoPaisNormalizado) {
-              return false;
-            }
-            return casoPaisNormalizado === agentCountry;
-          });
-        } else {
-          casosParaFiltrar = [];
-        }
-      }
-      // Filtrar fuera los casos que están en un estado final (dinámico)
-      casosParaFiltrar = casosParaFiltrar.filter((caso) => !isEstadoFinal(caso as any));
+// Memoizar filtrado de casos para evitar recálculos innecesarios
+  const filteredCasos = useMemo(() => {
+    const currentUser = api.getUser();
+    const isAgente = currentUser?.role === 'AGENTE';
+    
+    let casosParaFiltrar = casos;
+    
+    // Filtrar por país del agente si aplica
+    if (isAgente && userCountry) {
+      casosParaFiltrar = casos.filter(caso => {
+        const casoPais = (caso as any).pais || (caso as any).country || '';
+        const casoPaisNormalizado = normalizeCaseCountry(casoPais);
+        return casoPaisNormalizado === userCountry;
+      });
+    }
+    
+    // Filtrar estados finales
+    casosParaFiltrar = casosParaFiltrar.filter((caso) => !isEstadoFinal(caso as any));
 
-      // Aplicar filtros de búsqueda, estado y categoría
+    // Aplicar búsqueda
+    if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      let result = casosParaFiltrar.filter(c => {
+      casosParaFiltrar = casosParaFiltrar.filter(c => {
         const id = (c.id || c.ticketNumber || '').toLowerCase();
         const client = (c.clientName || '').toLowerCase();
         const subject = (c.subject || '').toLowerCase();
-        
         return id.includes(term) || client.includes(term) || subject.includes(term);
       });
+    }
 
-      if (statusFilter !== 'all') {
-        result = result.filter(c => {
-          const rawStatus = c.status || (c as any).estado;
-          const normalizedStatus = normalizeStatus(rawStatus);
-          return normalizedStatus === statusFilter;
-        });
-      }
+    // Filtrar por estado
+    if (statusFilter !== 'all') {
+      casosParaFiltrar = casosParaFiltrar.filter(c => {
+        const rawStatus = c.status || (c as any).estado;
+        return normalizeStatus(rawStatus) === statusFilter;
+      });
+    }
 
-      if (categoriaFilter !== 'all') {
-        result = result.filter(c => {
-          const categoriaId = c.categoria?.idCategoria || (c as any).categoria_id || (c as any).categoriaId;
-          const filterIdStr = String(categoriaFilter).trim();
-          const categoriaIdStr = String(categoriaId || '').trim();
-          return categoriaIdStr === filterIdStr || c.category === categoriaFilter;
-        });
-      }
+    // Filtrar por categoría
+    if (categoriaFilter !== 'all') {
+      casosParaFiltrar = casosParaFiltrar.filter(c => {
+        const catId = c.categoria?.idCategoria || (c as any).categoria_id || '';
+        return String(catId) === String(categoriaFilter);
+      });
+    }
 
-      if (agenteFilter !== 'all') {
-        result = result.filter(c => {
-          const agentObject = (c as any).agent || c.agenteAsignado || null;
-          const agenteIdFromAgent = agentObject?.idAgente || agentObject?.id || agentObject?.id_agente || agentObject?.agente_id || agentObject?.user_id || '';
-          const agenteIdFromObject = c.agenteAsignado?.idAgente || c.agenteAsignado?.id || (c.agenteAsignado as any)?.id_agente || (c.agenteAsignado as any)?.agente_id;
-          const agenteIdFromCase = c.agentId || (c as any).agente_id || (c as any).agente_user_id;
-          const agenteId = agenteIdFromAgent || agenteIdFromObject || agenteIdFromCase;
+    // Filtrar por agente
+    if (agenteFilter !== 'all') {
+      casosParaFiltrar = casosParaFiltrar.filter(c => {
+        const agenteId = (c as any).agentId || (c as any).agente_user_id || '';
+        const agenteIdStr = String(agenteId).trim();
+        const filterIdStr = String(agenteFilter).trim();
+        if (!agenteIdStr || agenteIdStr === 'undefined' || agenteIdStr === 'null') return false;
+        
+        const extractIdNumber = (id: string): string => {
+          const match = id.match(/(\d+)$/);
+          return match ? match[1] : id;
+        };
+        const normalizeId = (id: string): string => {
+          const numStr = extractIdNumber(id);
+          return /^\d+$/.test(numStr) ? String(Number(numStr)) : numStr;
+        };
+        
+        return agenteIdStr === filterIdStr || 
+               agenteIdStr.toLowerCase() === filterIdStr.toLowerCase() ||
+               normalizeId(agenteIdStr) === normalizeId(filterIdStr);
+      });
+    }
 
-          const extractIdNumber = (id: string): string => {
-            const match = id.match(/(\d+)$/);
-            return match ? match[1] : id;
-          };
+    return casosParaFiltrar;
+  }, [casos, searchTerm, statusFilter, categoriaFilter, agenteFilter, userCountry, isEstadoFinal]);
 
-          const normalizeId = (id: string): string => {
-            const numStr = extractIdNumber(id);
-            if (/^\d+$/.test(numStr)) {
-              return String(Number(numStr));
-            }
-            return numStr;
-          };
+  // Paginación
+  const totalPages = Math.ceil(filteredCasos.length / PAGE_SIZE);
+  const paginatedCasos = filteredCasos.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-          const agenteIdStr = agenteId ? String(agenteId).trim() : '';
-          const filterIdStr = String(agenteFilter).trim();
-
-          if (agenteIdStr === filterIdStr) return true;
-          if (agenteIdStr.toLowerCase() === filterIdStr.toLowerCase()) return true;
-          const agenteIdNormalized = normalizeId(agenteIdStr);
-          const filterIdNormalized = normalizeId(filterIdStr);
-          if (agenteIdNormalized === filterIdNormalized) return true;
-          const agenteIdNum = Number(agenteIdStr.replace(/[^\d]/g, ''));
-          const filterIdNum = Number(filterIdStr.replace(/[^\d]/g, ''));
-          if (!isNaN(agenteIdNum) && !isNaN(filterIdNum) && agenteIdNum > 0 && filterIdNum > 0 && agenteIdNum === filterIdNum) return true;
-          return false;
-        });
-      }
-
-      setFiltered(result);
-      setCurrentPage(1); // Resetear a primera página cuando cambien los filtros
-    };
-    
-    processCases();
-  }, [searchTerm, statusFilter, categoriaFilter, agenteFilter, casos, isEstadoFinal]);
+  
 
   // Estilos dinámicos basados en el tema
   const styles = {
@@ -657,8 +634,8 @@ const BandejaCasos: React.FC = () => {
     }
   };
 
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paginatedCasos = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const totalPages = Math.ceil(filteredCasos.length / PAGE_SIZE);
+  const paginatedCasos = filteredCasos.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <div className="space-y-6" style={styles.container}>
@@ -981,7 +958,7 @@ const BandejaCasos: React.FC = () => {
             Reintentar
           </button>
         </div>
-      ) : filtered.length === 0 ? (
+      ) : filteredCasos.length === 0 ? (
         <div className="rounded-xl border p-12 text-center" style={{...styles.card}}>
           <div className="w-24 h-24 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg" style={{
             backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc'
@@ -1398,7 +1375,7 @@ const BandejaCasos: React.FC = () => {
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-2 py-3 rounded-xl border" style={{...styles.card}}>
           <p className="text-xs font-medium" style={{color: styles.text.tertiary}}>
-            Mostrando {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} de {filtered.length} casos
+            Mostrando {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredCasos.length)} de {filteredCasos.length} casos
           </p>
           <div className="flex items-center gap-1">
             <button

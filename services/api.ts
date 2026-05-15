@@ -11,34 +11,41 @@ interface CacheEntry {
   promise?: Promise<any>;
 }
 
-const CACHE_DURATION = 0; // Sin caché para agentes (siempre recalcular round robin)
+const CACHE_DURATION_CASES = 60000; // 1 minuto para casos
+const CACHE_DURATION_AGENTES = 300000; // 5 minutos para agentes
+const CACHE_DURATION_CLIENTES = 300000; // 5 minutos para clientes
+const CACHE_DURATION_USUARIOS = 300000; // 5 minutos para usuarios
+const CACHE_DURATION_CATEGORIAS = 300000; // 5 minutos para categorias
+
 const cache: {
   cases?: CacheEntry;
   clientes?: CacheEntry;
   agentes?: CacheEntry;
   usuarios?: CacheEntry;
+  categorias?: CacheEntry;
 } = {};
 
 // Helper para obtener datos del caché o hacer la llamada
 const getCachedOrFetch = async <T>(
-  key: 'cases' | 'clientes' | 'agentes' | 'usuarios',
-  fetchFn: () => Promise<T>,
-  maxAge: number = CACHE_DURATION
+  key: 'cases' | 'clientes' | 'agentes' | 'usuarios' | 'categorias',
+  fetchFn: () => Promise<T>
 ): Promise<T> => {
   const now = Date.now();
   const cached = cache[key];
+  const maxAge = key === 'cases' ? CACHE_DURATION_CASES : 
+                 key === 'agentes' ? CACHE_DURATION_AGENTES :
+                 key === 'clientes' ? CACHE_DURATION_CLIENTES :
+                 key === 'categorias' ? CACHE_DURATION_CATEGORIAS :
+                 CACHE_DURATION_USUARIOS;
   
-  // Si hay datos en caché y no han expirado, retornarlos
   if (cached && cached.data && (now - cached.timestamp) < maxAge) {
     return cached.data as T;
   }
   
-  // Si ya hay una petición en curso, esperar a que termine
   if (cached?.promise) {
     return await cached.promise as T;
   }
   
-  // Hacer nueva petición
   const promise = fetchFn();
   cache[key] = {
     data: null,
@@ -56,7 +63,6 @@ const getCachedOrFetch = async <T>(
     }
     return data;
   } catch (error) {
-    // Si falla, limpiar el caché para permitir reintentos
     delete cache[key];
     throw error;
   }
@@ -747,43 +753,43 @@ export const api = {
 
   // Obtener lista de categorías desde la API real
   async getCategorias(): Promise<Categoria[]> {
-    try {
-      const user = this.getUser();
-      if (!user) return [];
+    return getCachedOrFetch('categorias', async () => {
+      try {
+        const user = this.getUser();
+        if (!user) return [];
 
-      const response = await fetch(`${getBaseUrl()}/api/categorias`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('intelfon_token')}`,
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true',
-        },
-      });
+        const response = await fetch(`${getBaseUrl()}/api/categorias`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('intelfon_token')}`,
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true',
+          },
+        });
 
-      if (!response.ok) {
-        console.error('Error fetching categorias:', response.status);
+        if (!response.ok) {
+          return [];
+        }
+
+        const data = await response.json();
+        const categoriasArray = Array.isArray(data) ? data : data.categorias ?? data.categories ?? data.data ?? [];
+
+        if (!Array.isArray(categoriasArray)) return [];
+
+        return categoriasArray
+          .filter((c: any) => c.activa !== false)
+          .map((c: any): Categoria => ({
+            idCategoria: String(c.id ?? c.categoria_id ?? ''),
+            nombre: c.categoria ?? c.nombre ?? c.name ?? c.category_name ?? '',
+            slaDias: Number(c.valor_sla ?? c.sla ?? c.sla_dias ?? 5),
+            diasAlertaSupervisor: Number(c.dias_alerta_supervisor ?? c.diasAlertaSupervisor ?? 3),
+            diasAlertaGerente: Number(c.dias_alerta_gerente ?? c.diasAlertaGerente ?? 4),
+            activa: c.activa !== false
+          }));
+      } catch (err) {
         return [];
       }
-
-      const data = await response.json();
-      const categoriasArray = Array.isArray(data) ? data : data.categorias ?? data.categories ?? data.data ?? [];
-
-      if (!Array.isArray(categoriasArray)) return [];
-
-      return categoriasArray
-        .filter((c: any) => c.activa !== false)
-        .map((c: any): Categoria => ({
-          idCategoria: String(c.id ?? c.categoria_id ?? ''),
-          nombre: c.categoria ?? c.nombre ?? c.name ?? c.category_name ?? '',
-          slaDias: Number(c.valor_sla ?? c.sla ?? c.sla_dias ?? 5),
-          diasAlertaSupervisor: Number(c.dias_alerta_supervisor ?? c.diasAlertaSupervisor ?? 3),
-          diasAlertaGerente: Number(c.dias_alerta_gerente ?? c.diasAlertaGerente ?? 4),
-          activa: c.activa !== false
-        }));
-    } catch (err) {
-      console.error('Error fetching categorias:', err);
-      return [];
-    }
+    });
   },
 
   // Crear nueva categoría mediante backend directo
