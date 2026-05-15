@@ -65,7 +65,7 @@ export const sapService = {
   },
 
   async getClienteDetalle(codigo: string, pais: 'SV' | 'GT' = 'SV'): Promise<ClienteDetalle | null> {
-    const url = `${BACKEND_URL}/api/sap/cliente/${encodeURIComponent(codigo)}?var_pais=${pais}`;
+    const url = `${BACKEND_URL}/api/sap/clientes/${encodeURIComponent(codigo)}/${pais}`;
 
     try {
       const response = await fetch(url, { headers });
