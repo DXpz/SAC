@@ -3,7 +3,7 @@ import { Case, CaseStatus, Channel, HistorialEntry, CaseTransition } from '../ty
 import { calculateBusinessDaysElapsed, calculateSLADelayDays } from '../utils/slaUtils';
 import { api } from './api';
 
-// URL del webhook de n8n para gestión de casos
+// URL del backend directo para gestión de casos
 // En desarrollo usa ruta relativa que pasa por el proxy de Vite (/api/casos)
 // En producción puede usar URL completa si se configura en variables de entorno
 const WEBHOOK_CASOS_URL = API_CONFIG.WEBHOOK_CASOS_URL || '/api/casos';
@@ -79,7 +79,7 @@ let agentesCacheTime: number = 0;
 const AGENTES_CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
 /**
- * Obtiene la lista de agentes usando el webhook de agentes o el de usuarios
+ * Obtiene la lista de agentes desde el backend directo
  */
 const getAgentesInfo = async (): Promise<AgenteInfo[]> => {
   const now = Date.now();
@@ -88,49 +88,28 @@ const getAgentesInfo = async (): Promise<AgenteInfo[]> => {
   }
 
   try {
-    const actor = getActor();
-    if (!actor) return [];
-
-    // Intentar primero con el webhook de usuarios ya que tiene los datos
-    const usuariosPayload = {
-      action: 'agent.read',
-      actor,
-      data: { agent_id: 'all' }
-    };
-
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-// Usar el webhook de agentes
-    const response = await fetch('https://n8n.red.com.sv/webhook/d804c804-9841-41f7-bc4b-66d2edeed53b', {
-      method: 'POST',
+    const response = await fetch(API_CONFIG.WEBHOOK_AGENTES_URL, {
+      method: 'GET',
       mode: 'cors',
       credentials: 'omit',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({
-        action: 'agent.read',
-        actor,
-        data: { agent_id: 'all' }
-      }),
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       signal: controller.signal,
     });
 
     clearTimeout(timeoutId);
 
-    if (!response.ok) return [];
-
-    const result = await response.json();
-    let agents: any[] = [];
-
-    if (Array.isArray(result)) {
-      agents = result;
-    } else if (result.data && Array.isArray(result.data)) {
-      agents = result.data;
+    if (!response.ok) {
+      return agentesCache || [];
     }
 
-    // Filtrar solo usuarios con rol AGENTE y mapear
+    const result = await response.json();
+    let agents: any[] = Array.isArray(result) ? result : result.agentes || result.data || [];
+
     agentesCache = agents
-      .filter(a => a.role === 'AGENTE' || a.role === 'agente')
+      .filter(a => a.estado === 'ACTIVO' || a.estado === 'Activo')
       .map(a => ({
         id: a.id_agente || a.idAgente || a.id || '',
         id_agente: a.id_agente || a.idAgente || a.id || '',
@@ -139,52 +118,6 @@ const getAgentesInfo = async (): Promise<AgenteInfo[]> => {
         estado: a.estado || a.state || 'ACTIVO'
       }))
       .filter(a => a.nombre);
-
-    // Si no hay agentes del webhook de usuarios, intentar con agentes-workflow
-    if (agentesCache.length === 0) {
-      const agentesPayload = {
-        action: 'agent.read',
-        actor,
-        data: { agent_id: 'all' }
-      };
-
-      const controller2 = new AbortController();
-      const timeoutId2 = setTimeout(() => controller2.abort(), 15000);
-
-      const response2 = await fetch('https://n8n.red.com.sv/webhook/d804c804-9841-41f7-bc4b-66d2edeed53b', {
-        method: 'POST',
-        mode: 'cors',
-        credentials: 'omit',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify(agentesPayload),
-        signal: controller2.signal,
-      });
-
-      clearTimeout(timeoutId2);
-
-      if (response2.ok) {
-        const result2 = await response2.json();
-        let agents2: any[] = [];
-
-        if (Array.isArray(result2.agents)) {
-          agents2 = result2.agents;
-        } else if (Array.isArray(result2.agentes)) {
-          agents2 = result2.agentes;
-        } else if (result2.data && Array.isArray(result2.data)) {
-          agents2 = result2.data;
-        } else if (Array.isArray(result2)) {
-          agents2 = result2;
-        }
-
-        agentesCache = agents2.map(a => ({
-          id: a.id || a.id_agente || '',
-          id_agente: a.id_agente || a.idAgente || a.id || '',
-          nombre: a.nombre || a.name || '',
-          email: a.email || '',
-          estado: a.estado || a.state || 'ACTIVO'
-        })).filter(a => a.nombre);
-      }
-    }
 
     agentesCacheTime = now;
     return agentesCache || [];
@@ -759,7 +692,7 @@ const callCaseWebhook = async (payload: CaseWebhookPayload): Promise<CaseWebhook
       error.message.includes('fetch') ||
       error.message.includes('NetworkError')
     )) {
-      throw new Error('Error de CORS: El servidor n8n necesita permitir peticiones desde este dominio. Contacta al administrador.');
+      throw new Error('Error de CORS: El servidor backend necesita permitir peticiones desde este dominio. Contacta al administrador.');
     }
     
     if (error.message) {
