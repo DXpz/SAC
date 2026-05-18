@@ -64,7 +64,9 @@ const CaseDetail: React.FC = () => {
     if (userCountry === null) return;
     const initializeData = async () => {
       try {
-        await Promise.all([loadClientes(), loadAgentes(), loadCategorias()]);
+        // Primero cargar clientes, luego agentes y categorías en paralelo
+        await loadClientes();
+        await Promise.all([loadAgentes(), loadCategorias()]);
         if (id) await loadCaso(id);
       } catch (error) {
       }
@@ -268,16 +270,23 @@ const CaseDetail: React.FC = () => {
   // Enriquecer nombres desde webhooks de clientes y agentes
   // IMPORTANTE: Solo enriquecer si faltan datos, NO sobrescribir datos existentes
   useEffect(() => {
-    
-    if (caso && (clientes.length > 0 || agentes.length > 0)) {
+    console.log('[enriquecer useEffect] caso:', caso?.id, 'clientes:', clientes.length, 'agentes:', agentes.length);
+
+    if (!caso) {
+      console.log('[enriquecer useEffect] No caso, returning');
+      return;
+    }
+
+    if (clientes.length > 0 || agentes.length > 0) {
       let updated = false;
       const casoActualizado = { ...caso };
 
       // Enriquecer con cliente completo - usar búsqueda más robusta
       if (clientes.length > 0 && (casoActualizado.clientId || casoActualizado.clienteId)) {
         const clientIdBuscar = casoActualizado.clientId || casoActualizado.clienteId || '';
-        
-        
+
+        console.log('[enriquecer useEffect] Buscando cliente para:', clientIdBuscar, 'en', clientes.length, 'clientes');
+
         // Función para normalizar IDs (misma lógica que BandejaCasos)
         const normalizeId = (id: string) => {
           if (!id) return '';
@@ -291,7 +300,7 @@ const CaseDetail: React.FC = () => {
           }
           return normalized;
         };
-        
+
         const clientIdNormalized = normalizeId(clientIdBuscar);
 
         // Buscar cliente con múltiples estrategias
@@ -312,7 +321,9 @@ const CaseDetail: React.FC = () => {
 
           return false;
         });
-        
+
+        console.log('[enriquecer useEffect] Cliente encontrado:', cliente?.CardName);
+
         if (cliente) {
 
           // Enriquecer con datos del cliente
