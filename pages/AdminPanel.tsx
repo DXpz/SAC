@@ -217,9 +217,8 @@ const AdminPanel: React.FC = () => {
       return false;
     }
 
-    const slaDias = c.categoria?.slaDias || (c as any).categoria_id || 5;
-    const createdAt = c.createdAt ? new Date(c.createdAt) : new Date();
-    const diasAbierto = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+    const slaDias = c.categoria?.slaDias || 5;
+    const diasAbierto = c.diasAbierto || 0;
     const isVencido = diasAbierto >= slaDias;
     const isEscalado = normalizedStatus === CaseStatus.ESCALADO;
     const isEnRiesgo = (slaDias - diasAbierto <= 1) && diasAbierto > 0 && diasAbierto < slaDias;
@@ -233,9 +232,8 @@ const AdminPanel: React.FC = () => {
     if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
       return false;
     }
-    const slaDias = c.categoria?.slaDias || (c as any).categoria_id || 5;
-    const createdAt = c.createdAt ? new Date(c.createdAt) : new Date();
-    const diasAbierto = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+    const slaDias = c.categoria?.slaDias || 5;
+    const diasAbierto = c.diasAbierto || 0;
     return diasAbierto > slaDias;
   }).length;
   
