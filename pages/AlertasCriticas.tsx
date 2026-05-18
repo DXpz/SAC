@@ -183,16 +183,20 @@ const AlertasCriticas: React.FC = () => {
     try {
       const clientesList = await loadClientes();
       const list = await api.getCases();
+      console.log('[DEBUG] Casos recibidos:', list.length, list.map(c => ({ id: c.id, status: c.status, diasAbierto: c.diasAbierto, slaDias: c.categoria?.slaDias })));
       const enriched = enrichCasesWithClients(list, clientesList);
       const filtered = enriched.filter(c => {
         // Excluir siempre los casos en estados finales dinámicos
-        if (isEstadoFinal(c as any)) {
+        const estadoFinal = isEstadoFinal(c as any);
+        if (estadoFinal) {
+          console.log('[DEBUG] Caso excluido por ser estado final:', c.id, c.status);
           return false;
         }
 
         const normalizedStatus = normalizeStatus(c.status);
         const slaDias = c.categoria?.slaDias || 5;
         const diasAbierto = c.diasAbierto || 0;
+        console.log('[DEBUG] Caso evaluado:', c.id, 'status:', c.status, 'diasAbierto:', diasAbierto, 'slaDias:', slaDias);
         
         // Caso crítico si:
         // 1. Los días abiertos son >= al SLA (vencido)
