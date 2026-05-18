@@ -224,8 +224,8 @@ const CaseDetail: React.FC = () => {
     }
     const term = clienteSearchTerm.toLowerCase();
     return clientes.filter(cliente =>
-      cliente.CardCode.toLowerCase().includes(term) ||
-      cliente.CardName.toLowerCase().includes(term)
+      cliente?.CardCode?.toLowerCase().includes(term) ||
+      cliente?.CardName?.toLowerCase().includes(term)
     );
   }, [clientes, clienteSearchTerm]);
   
@@ -236,8 +236,8 @@ const CaseDetail: React.FC = () => {
     }
     const term = clienteQuickSearchTerm.toLowerCase();
     return clientes.filter(cliente =>
-      cliente.CardCode.toLowerCase().includes(term) ||
-      cliente.CardName.toLowerCase().includes(term)
+      cliente?.CardCode?.toLowerCase().includes(term) ||
+      cliente?.CardName?.toLowerCase().includes(term)
     );
   }, [clientes, clienteQuickSearchTerm]);
 
@@ -2122,9 +2122,9 @@ const newStateNormalizado = normalizeEstadoName(newState);
                           {filteredClientes.length} {filteredClientes.length === 1 ? 'cliente encontrado' : 'clientes encontrados'}
                         </p>
                       </div>
-                      {filteredClientes.map((cliente) => (
+                      {filteredClientes.map((cliente, index) => (
                         <div
-                          key={cliente.CardCode}
+                          key={cliente?.CardCode || `cliente-${index}`}
                           onClick={() => handleClienteSelect(cliente)}
                           className="p-3 cursor-pointer border-b last:border-b-0 transition-all"
                           style={{
