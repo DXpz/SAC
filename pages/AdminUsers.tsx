@@ -13,7 +13,8 @@ import {
   AlertCircle,
   Filter,
   Search,
-  Download
+  Download,
+  Copy
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { api, clearCache } from '../services/api';
@@ -75,8 +76,10 @@ const AdminUsers: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<DemoUser | null>(null);
-  
+  const [createdUserCredentials, setCreatedUserCredentials] = useState<{email: string; password: string; nombre: string} | null>(null);
+
   // Formulario
   const [formData, setFormData] = useState({
     nombre: '',
@@ -551,14 +554,23 @@ const AdminUsers: React.FC = () => {
           pais: formData.pais // Incluir país
         }
       );
-      
-      
+
       // Recargar la lista de usuarios desde el webhook
-      // El webhook debe devolver todos los usuarios
       clearCache('usuarios');
       await loadUsers();
-      
-      setShowCreateModal(false);
+
+      // Verificar si el backend devolvió password temporal
+      if (result.passwordTemporal) {
+        setCreatedUserCredentials({
+          email: formData.email.trim(),
+          password: result.passwordTemporal,
+          nombre: formData.nombre.trim()
+        });
+        setShowCreateModal(false);
+        setShowCredentialsModal(true);
+      } else {
+        setShowCreateModal(false);
+      }
       setFormData({ nombre: '', email: '', rol: 'AGENTE', pais: 'El_Salvador', activo: true, enVacaciones: false });
     } catch (error: any) {
       let errorMessage = error.message || 'Error desconocido al crear el usuario';
@@ -1684,6 +1696,77 @@ const AdminUsers: React.FC = () => {
                 }}
               >
                 Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Mostrar Credenciales */}
+      {showCredentialsModal && createdUserCredentials && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          style={{ animation: 'fadeIn 0.2s ease-out' }}
+        >
+          <div
+            className="bg-white dark:bg-slate-800 rounded-xl p-6 w-full max-w-md"
+            style={{
+              ...styles.card,
+              animation: 'fadeInSlide 0.3s ease-out'
+            }}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold" style={{color: styles.text.primary}}>Credenciales del Usuario</h2>
+              <button onClick={() => { setShowCredentialsModal(false); setCreatedUserCredentials(null); }} style={{color: styles.text.tertiary}}>
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-700">
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  <strong>Importante:</strong> Comparta estas credenciales de forma segura con el usuario. No las almacene ni las envíe por canales no seguros.
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{color: styles.text.secondary}}>Nombre</label>
+                <div className="px-3 py-2 rounded-lg" style={{background: theme === 'dark' ? '#0f172a' : '#f1f5f9', color: styles.text.primary}}>
+                  {createdUserCredentials.nombre}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{color: styles.text.secondary}}>Email</label>
+                <div className="px-3 py-2 rounded-lg flex items-center justify-between" style={{background: theme === 'dark' ? '#0f172a' : '#f1f5f9', color: styles.text.primary}}>
+                  <span>{createdUserCredentials.email}</span>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(createdUserCredentials.email)}
+                    className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
+                    title="Copiar email"
+                  >
+                    <Copy className="w-4 h-4" style={{color: styles.text.tertiary}} />
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{color: styles.text.secondary}}>Contraseña Temporal</label>
+                <div className="px-3 py-2 rounded-lg flex items-center justify-between" style={{background: theme === 'dark' ? '#0f172a' : '#f1f5f9', color: styles.text.primary}}>
+                  <span className="font-mono">{createdUserCredentials.password}</span>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(createdUserCredentials.password)}
+                    className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
+                    title="Copiar contraseña"
+                  >
+                    <Copy className="w-4 h-4" style={{color: styles.text.tertiary}} />
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => { setShowCredentialsModal(false); setCreatedUserCredentials(null); }}
+                className="flex-1 px-4 py-2 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all"
+                style={{background: 'linear-gradient(to right, var(--color-brand-red), var(--color-accent-red))'}}
+              >
+                Entendido
               </button>
             </div>
           </div>

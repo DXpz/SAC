@@ -1245,11 +1245,12 @@ const result = await response.json();
       }
 
       // Mapear respuesta del backend al formato User
-      const user: User = {
+      const user: User & { passwordTemporal?: string } = {
         id: result.id || result.user_id || `user-${Date.now()}`,
         name: result.nombre || name.trim(),
         role: (result.rol || result.role || 'AGENTE') as Role,
-        avatar: result.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(name.trim())}&background=0f172a&color=fff`
+        avatar: result.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(name.trim())}&background=0f172a&color=fff`,
+        passwordTemporal: result.passwordTemporal || undefined
       };
 
       return user;
