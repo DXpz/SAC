@@ -220,13 +220,17 @@ const CaseDetail: React.FC = () => {
   // Filtrar clientes según el término de búsqueda
   const filteredClientes = useMemo(() => {
     if (!clienteSearchTerm.trim()) {
-      return clientes.slice(0, 50);
+      const result = clientes.slice(0, 50);
+      console.log('[filteredClientes] No search term, returning', result.length, 'clientes');
+      return result;
     }
     const term = clienteSearchTerm.toLowerCase();
-    return clientes.filter(cliente =>
+    const result = clientes.filter(cliente =>
       cliente?.CardCode?.toLowerCase().includes(term) ||
       cliente?.CardName?.toLowerCase().includes(term)
     );
+    console.log('[filteredClientes] Search term:', term, 'Results:', result.length);
+    return result;
   }, [clientes, clienteSearchTerm]);
   
   // Filtrar clientes para el modal de selección rápida
@@ -244,9 +248,12 @@ const CaseDetail: React.FC = () => {
   const loadClientes = async () => {
     try {
       const pais = userCountry || 'SV';
+      console.log('[loadClientes] Loading clientes for pais:', pais, 'userCountry:', userCountry);
       const data = await sapService.getClientesListado(pais);
+      console.log('[loadClientes] Loaded:', data.length, 'clientes');
       setClientes(data);
     } catch (err) {
+      console.error('[loadClientes] Error:', err);
     }
   };
 
