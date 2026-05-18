@@ -214,7 +214,7 @@ const AdminPanel: React.FC = () => {
     if (!c) return false;
     const normalizedStatus = normalizeStatus(c.status);
     if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
-      return normalizedStatus === CaseStatus.ESCALADO;
+      return false;
     }
 
     const slaDias = c.categoria?.slaDias || (c as any).categoria_id || 5;
