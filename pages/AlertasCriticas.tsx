@@ -193,14 +193,14 @@ const AlertasCriticas: React.FC = () => {
         }
 
         const normalizedStatus = normalizeStatus(c.status);
-        const slaDias = c.categoria?.slaDias || 5;
+        const slaDias = c.slaDias || c.categoria?.slaDias || 5;
         const diasAbierto = c.diasAbierto || 0;
         const slaExpired = c.slaExpired || false;
         console.log('[DEBUG] Caso evaluado:', c.id, 'status:', c.status, 'diasAbierto:', diasAbierto, 'slaDias:', slaDias, 'slaExpired:', slaExpired);
 
         const isVencido = slaExpired;
         const isEscalado = normalizedStatus === CaseStatus.ESCALADO;
-        const isEnRiesgo = !slaExpired && (slaDias - diasAbierto <= 1) && diasAbierto > 0 && diasAbierto < slaDias;
+        const isEnRiesgo = !slaExpired && diasAbierto >= slaDias - 1 && diasAbierto < slaDias;
         return isVencido || isEscalado || isEnRiesgo;
       });
       
@@ -221,7 +221,7 @@ const AlertasCriticas: React.FC = () => {
     return cases.map(caso => {
       let priority: Priority = 'Media';
 
-      const slaDias = caso.categoria?.slaDias || 5;
+      const slaDias = caso.slaDias || caso.categoria?.slaDias || 5;
       const slaExpired = caso.slaExpired || false;
       if (caso.status === CaseStatus.ESCALADO) {
         priority = 'Critica';
@@ -231,7 +231,7 @@ const AlertasCriticas: React.FC = () => {
         priority = 'Alta';
       }
 
-      const diasRestantes = slaDias - caso.diasAbierto;
+      const diasRestantes = caso.businessHoursRemaining || Math.max(0, slaDias - caso.diasAbierto);
       const horasParaVencimiento = diasRestantes > 0 ? diasRestantes * 24 : 0;
 
       return {
