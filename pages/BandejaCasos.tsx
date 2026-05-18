@@ -456,7 +456,7 @@ const filteredCasos = useMemo(() => {
     // Filtrar por categoría
     if (categoriaFilter !== 'all') {
       casosParaFiltrar = casosParaFiltrar.filter(c => {
-        const catId = c.categoria?.idCategoria || (c as any).categoria_id || '';
+        const catId = c.categoria?.idCategoria || c.categoria?.id || (c as any).categoria_id || '';
         return String(catId) === String(categoriaFilter);
       });
     }
@@ -468,19 +468,9 @@ const filteredCasos = useMemo(() => {
         const agenteIdStr = String(agenteId).trim();
         const filterIdStr = String(agenteFilter).trim();
         if (!agenteIdStr || agenteIdStr === 'undefined' || agenteIdStr === 'null') return false;
-        
-        const extractIdNumber = (id: string): string => {
-          const match = id.match(/(\d+)$/);
-          return match ? match[1] : id;
-        };
-        const normalizeId = (id: string): string => {
-          const numStr = extractIdNumber(id);
-          return /^\d+$/.test(numStr) ? String(Number(numStr)) : numStr;
-        };
-        
-        return agenteIdStr === filterIdStr || 
-               agenteIdStr.toLowerCase() === filterIdStr.toLowerCase() ||
-               normalizeId(agenteIdStr) === normalizeId(filterIdStr);
+
+        return agenteIdStr === filterIdStr ||
+               agenteIdStr.toLowerCase() === filterIdStr.toLowerCase();
       });
     }
 
