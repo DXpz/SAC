@@ -495,9 +495,10 @@ const CaseDetail: React.FC = () => {
         } else {
           // Si no hay clientes en memoria, cargarlos ahora
           try {
-            const clientesDesdeAPI = await api.getClientes();
+            const paisCliente = data.pais === 'Guatemala' ? 'GT' : 'SV';
+            const clientesDesdeAPI = await sapService.getClientesListado(paisCliente);
             setClientes(clientesDesdeAPI);
-            
+
             const clienteEncontrado = clientesDesdeAPI.find(c =>
               c?.CardCode && (
                 c.CardCode === clientIdDelCaso ||
