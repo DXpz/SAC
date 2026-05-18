@@ -186,7 +186,6 @@ const AlertasCriticas: React.FC = () => {
       console.log('[DEBUG] Casos recibidos:', list.length, list.map(c => ({ id: c.id, status: c.status, diasAbierto: c.diasAbierto, slaDias: c.categoria?.slaDias })));
       const enriched = enrichCasesWithClients(list, clientesList);
       const filtered = enriched.filter(c => {
-        // Excluir siempre los casos en estados finales dinámicos
         const estadoFinal = isEstadoFinal(c as any);
         if (estadoFinal) {
           console.log('[DEBUG] Caso excluido por ser estado final:', c.id, c.status);
@@ -196,15 +195,12 @@ const AlertasCriticas: React.FC = () => {
         const normalizedStatus = normalizeStatus(c.status);
         const slaDias = c.categoria?.slaDias || 5;
         const diasAbierto = c.diasAbierto || 0;
-        console.log('[DEBUG] Caso evaluado:', c.id, 'status:', c.status, 'diasAbierto:', diasAbierto, 'slaDias:', slaDias);
-        
-        // Caso crítico si:
-        // 1. Los días abiertos son >= al SLA (vencido)
-        // 2. Está escalado
-        // 3. Le queda 1 día o menos para vencer (en riesgo)
-        const isVencido = diasAbierto >= slaDias;
+        const slaExpired = c.slaExpired || false;
+        console.log('[DEBUG] Caso evaluado:', c.id, 'status:', c.status, 'diasAbierto:', diasAbierto, 'slaDias:', slaDias, 'slaExpired:', slaExpired);
+
+        const isVencido = slaExpired;
         const isEscalado = normalizedStatus === CaseStatus.ESCALADO;
-        const isEnRiesgo = (slaDias - diasAbierto <= 1) && diasAbierto > 0 && diasAbierto < slaDias;
+        const isEnRiesgo = !slaExpired && (slaDias - diasAbierto <= 1) && diasAbierto > 0 && diasAbierto < slaDias;
         return isVencido || isEscalado || isEnRiesgo;
       });
       
@@ -224,11 +220,12 @@ const AlertasCriticas: React.FC = () => {
   const prioritizeCases = (cases: Caso[]): CaseWithPriority[] => {
     return cases.map(caso => {
       let priority: Priority = 'Media';
-      
+
       const slaDias = caso.categoria?.slaDias || 5;
+      const slaExpired = caso.slaExpired || false;
       if (caso.status === CaseStatus.ESCALADO) {
         priority = 'Critica';
-      } else if (caso.diasAbierto >= slaDias) {
+      } else if (slaExpired) {
         priority = 'Alta';
       } else if (caso.status === CaseStatus.EN_PROCESO) {
         priority = 'Alta';
@@ -325,14 +322,11 @@ const AlertasCriticas: React.FC = () => {
     };
   };
 
-  const casosFueraSLA = criticos.filter(c => {
-    const slaDias = c.categoria?.slaDias || 5;
-    return c.diasAbierto >= slaDias;
-  }).length;
-  
+  const casosFueraSLA = criticos.filter(c => c.slaExpired).length;
+
   const casosVencen24h = criticos.filter(c => {
     const slaDias = c.categoria?.slaDias || 5;
-    return slaDias - c.diasAbierto <= 1 && c.diasAbierto < slaDias;
+    return !c.slaExpired && slaDias - c.diasAbierto <= 1 && c.diasAbierto < slaDias;
   }).length;
 
   const casosEscalados = criticos.filter(c => c.status === CaseStatus.ESCALADO).length;
@@ -360,11 +354,10 @@ const AlertasCriticas: React.FC = () => {
     if (filterStatus !== 'all') {
       const normalizedStatus = normalizeStatus(caso.status);
       if (filterStatus === 'vencido') {
-        const slaDias = caso.categoria?.slaDias || 5;
-        if (caso.diasAbierto < slaDias) return false;
+        if (!caso.slaExpired) return false;
       } else if (filterStatus === 'en-riesgo') {
         const slaDias = caso.categoria?.slaDias || 5;
-        if (caso.diasAbierto >= slaDias || (slaDias - caso.diasAbierto) > 1) return false;
+        if (caso.slaExpired || (slaDias - caso.diasAbierto) > 1) return false;
       } else if (filterStatus === 'escalado') {
         if (normalizedStatus !== CaseStatus.ESCALADO) return false;
       } else if (normalizedStatus !== filterStatus) {

@@ -443,19 +443,20 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
       k.toLowerCase().includes('user')
     );
     
-    // Mapear categoría con valores por defecto
-    // Si solo tenemos categoria_id, crear un objeto básico
     const categoriaId = caseData.categoria_id || caseData.categoriaId || null;
     const categoria = caseData.categoria || caseData.category || null;
+    const valorSlaHours = categoria?.valor_sla || 24;
     const categoriaMapped = categoria ? {
       idCategoria: categoria.categoria_id || categoria.idCategoria || categoria.id || categoriaId || '',
       nombre: categoria.nombre || categoria.name || 'General',
-      slaDias: categoria.slaDias || categoria.sla_dias || 5,
+      slaDias: Math.ceil(valorSlaHours / 24),
+      valorSla: valorSlaHours,
       activa: categoria.activa !== undefined ? categoria.activa : true
     } : {
       idCategoria: categoriaId?.toString() || '',
       nombre: 'General',
-      slaDias: 5, // Default 5 días
+      slaDias: 1,
+      valorSla: 24,
       activa: true
     };
     
@@ -504,20 +505,27 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
     } : null);
     
     
-    // Calcular días hábiles
     const createdAtStr = caseData.fecha_creacion || caseData.createdAt || caseData.fechaCreacion;
     const createdAt = parseDate(createdAtStr);
     const slaDays = categoriaMapped.slaDias;
-    let diasAbierto = 0;
-    let slaExpired = false;
-    
-    try {
-      diasAbierto = calculateBusinessDaysElapsed(new Date(createdAt));
-      const delayDays = calculateSLADelayDays(new Date(createdAt), slaDays);
-      slaExpired = delayDays > 0;
-    } catch (error) {
-      diasAbierto = caseData.dias_abierto || caseData.diasAbierto || 0;
-      slaExpired = caseData.sla_vencido || caseData.slaExpired || false;
+    let diasAbierto = caseData.diasAbierto;
+    let slaExpired = caseData.slaExpired;
+
+    if (diasAbierto === undefined || diasAbierto === null) {
+      try {
+        diasAbierto = calculateBusinessDaysElapsed(new Date(createdAt));
+      } catch (error) {
+        diasAbierto = caseData.dias_abierto || 0;
+      }
+    }
+
+    if (slaExpired === undefined || slaExpired === null) {
+      try {
+        const delayDays = calculateSLADelayDays(new Date(createdAt), slaDays);
+        slaExpired = delayDays > 0;
+      } catch (error) {
+        slaExpired = caseData.sla_vencido || caseData.slaExpired || false;
+      }
     }
     
     // Capturar fecha final del SLA del webhook si está disponible
