@@ -14,7 +14,7 @@ const CaseDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [caso, setCaso] = useState<Case | null>(null);
-  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [clientes, setClientes] = useState<any[]>([]);
   const [agentes, setAgentes] = useState<any[]>([]);
   const [categorias, setCategorias] = useState<any[]>([]);
   const [transitionLoading, setTransitionLoading] = useState(false);
