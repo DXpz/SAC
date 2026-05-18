@@ -2153,7 +2153,7 @@ const newStateNormalizado = normalizeEstadoName(newState);
                                 </span>
                               </div>
                               <p className="text-xs mt-1" style={{color: styles.text.tertiary}}>
-                                {cliente.Email}
+                                {cliente?.Email}
                               </p>
                             </div>
                           </div>
