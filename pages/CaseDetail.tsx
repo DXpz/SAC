@@ -1004,18 +1004,19 @@ const newStateNormalizado = normalizeEstadoName(newState);
     setShowClienteDropdown(false);
   };
 
-  const handleClienteSelect = (cliente: Cliente) => {
+  const handleClienteSelect = (cliente: any) => {
+    if (!cliente?.CardCode) return;
     setEditedCase({
       ...editedCase,
       clienteId: cliente.CardCode,
-      clientName: cliente.CardName,
+      clientName: cliente.CardName || '-',
     });
-    setClienteSearchTerm(`${cliente.CardCode} - ${cliente.CardName}`);
+    setClienteSearchTerm(`${cliente.CardCode} - ${cliente.CardName || '-'}`);
     setShowClienteDropdown(false);
   };
   
   // Selección rápida de cliente desde el modal (sin entrar en modo edición)
-  const handleQuickClienteSelect = (cliente: Cliente) => {
+  const handleQuickClienteSelect = (cliente: any) => {
     if (!caso || !id) return;
     
     // Guardar el cliente seleccionado en el estado (NO enviarlo aún)
@@ -2143,13 +2144,13 @@ const newStateNormalizado = normalizeEstadoName(newState);
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-xs font-bold" style={{color: styles.text.primary}}>
-                                  {cliente.CardName}
+                                  {cliente?.CardName}
                                 </span>
                                 <span className="text-xs font-semibold px-2 py-0.5 rounded" style={{
                                   backgroundColor: theme === 'dark' ? '#0f172a' : '#e2e8f0',
                                   color: styles.text.secondary
                                 }}>
-                                  {cliente.CardCode}
+                                  {cliente?.CardCode}
                                 </span>
                               </div>
                               <p className="text-xs mt-1" style={{color: styles.text.tertiary}}>
@@ -2782,9 +2783,9 @@ const newStateNormalizado = normalizeEstadoName(newState);
                       </p>
                     </div>
                   ) : (
-                    filteredClientesQuick.map((cliente) => (
+                    filteredClientesQuick.map((cliente, index) => (
                       <div
-                        key={cliente.CardCode}
+                        key={cliente?.CardCode || `cliente-quick-${index}`}
                         onClick={() => handleQuickClienteSelect(cliente)}
                         className="p-3 rounded-lg border cursor-pointer transition-all"
                         style={{
@@ -2805,27 +2806,27 @@ const newStateNormalizado = normalizeEstadoName(newState);
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap mb-1">
                               <span className="text-xs font-bold" style={{color: styles.text.primary}}>
-                                {cliente.CardName}
+                                {cliente?.CardName}
                               </span>
                               <span className="text-xs font-semibold px-2 py-0.5 rounded" style={{
                                 backgroundColor: 'rgba(16, 122, 180, 0.1)',
                                 color: '#107ab4'
                               }}>
-                                {cliente.CardCode}
+                                {cliente?.CardCode}
                               </span>
                             </div>
                             <div className="space-y-0.5">
                               <div className="flex items-center gap-2 text-xs" style={{color: styles.text.tertiary}}>
                                 <User className="w-3 h-3" />
-                                {cliente.ContactoServicioCliente}
+                                {cliente?.ContactoServicioCliente}
                               </div>
-                              {cliente.Email && (
+                              {cliente?.Email && (
                                 <div className="flex items-center gap-2 text-xs" style={{color: styles.text.tertiary}}>
                                   <Mail className="w-3 h-3" />
                                   {cliente.Email}
                                 </div>
                               )}
-                              {cliente.Telefono && (
+                              {cliente?.Telefono && (
                                 <div className="flex items-center gap-2 text-xs" style={{color: styles.text.tertiary}}>
                                   <Phone className="w-3 h-3" />
                                   {cliente.Telefono}
