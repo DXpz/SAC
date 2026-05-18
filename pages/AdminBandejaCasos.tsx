@@ -93,6 +93,7 @@ const AdminBandejaCasos: React.FC = () => {
       // Enriquecer con cliente
       if (clientes.length > 0 && caso.clientId) {
         const clienteCompleto = clientes.find(c => {
+          if (!c?.CardCode) return false;
           const normalizeId = (id: string) => {
             if (!id) return '';
             let normalized = id.trim().toUpperCase();

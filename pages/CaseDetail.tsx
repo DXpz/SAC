@@ -286,27 +286,28 @@ const CaseDetail: React.FC = () => {
         };
         
         const clientIdNormalized = normalizeId(clientIdBuscar);
-        
+
         // Buscar cliente con múltiples estrategias
         const cliente = clientes.find(c => {
+          if (!c?.CardCode) return false;
           const cliIdNormalized = normalizeId(c.CardCode);
-          
+
           // Comparación normalizada
           if (clientIdNormalized === cliIdNormalized) return true;
-          
+
           // Comparación directa
           if (c.CardCode === clientIdBuscar) return true;
-          
+
           // Comparación numérica (solo números)
           const casoNum = clientIdBuscar.replace(/\D/g, '');
           const cliNum = c.CardCode.replace(/\D/g, '');
           if (casoNum && cliNum && casoNum === cliNum) return true;
-          
+
           return false;
         });
         
         if (cliente) {
-          
+
           // Enriquecer con datos del cliente
           if (!casoActualizado.clientName || casoActualizado.clientName === 'Sin cliente' || casoActualizado.clientName.trim() === '') {
             casoActualizado.clientName = cliente.CardName;
@@ -455,9 +456,11 @@ const CaseDetail: React.FC = () => {
         // Si ya tenemos clientes cargados, buscar ahí primero
         if (clientes.length > 0) {
           const clienteEncontrado = clientes.find(c =>
-            c.CardCode === clientIdDelCaso ||
-            c.CardCode.toLowerCase() === clientIdDelCaso.toLowerCase() ||
-            c.CardCode.replace(/\D/g, '') === clientIdDelCaso.replace(/\D/g, '')
+            c?.CardCode && (
+              c.CardCode === clientIdDelCaso ||
+              c.CardCode.toLowerCase() === clientIdDelCaso.toLowerCase() ||
+              c.CardCode.replace(/\D/g, '') === clientIdDelCaso.replace(/\D/g, '')
+            )
           );
 
           if (clienteEncontrado) {
@@ -478,9 +481,11 @@ const CaseDetail: React.FC = () => {
             setClientes(clientesDesdeAPI);
             
             const clienteEncontrado = clientesDesdeAPI.find(c =>
-              c.CardCode === clientIdDelCaso ||
-              c.CardCode.toLowerCase() === clientIdDelCaso.toLowerCase() ||
-              c.CardCode.replace(/\D/g, '') === clientIdDelCaso.replace(/\D/g, '')
+              c?.CardCode && (
+                c.CardCode === clientIdDelCaso ||
+                c.CardCode.toLowerCase() === clientIdDelCaso.toLowerCase() ||
+                c.CardCode.replace(/\D/g, '') === clientIdDelCaso.replace(/\D/g, '')
+              )
             );
 
             if (clienteEncontrado) {
