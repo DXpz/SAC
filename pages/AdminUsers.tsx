@@ -536,20 +536,20 @@ const AdminUsers: React.FC = () => {
     try {
       setLoading(true);
       
-      // Llamar al webhook para crear usuario
-      // La contraseña se genera automáticamente (8 caracteres aleatorios)
-      // Por defecto el usuario se crea activo
+      console.log('[createUser] Enviando:', { email: formData.email.trim(), nombre: formData.nombre.trim(), rol: formData.rol, pais: formData.pais });
+      
       const result = await api.createAccount(
         formData.email.trim(),
-        '', // Vacío para que se genere automáticamente
+        '',
         formData.nombre.trim(),
         {
-          rol: formData.rol, // Se enviará como 'role' en el payload
-          pais: formData.pais // Incluir país
+          rol: formData.rol,
+          pais: formData.pais
         }
       );
 
-      // Recargar la lista de usuarios desde el webhook
+      console.log('[createUser] Respuesta:', result);
+
       clearCache('usuarios');
       await loadUsers();
 
@@ -567,6 +567,7 @@ const AdminUsers: React.FC = () => {
       }
       setFormData({ nombre: '', email: '', rol: 'AGENTE', pais: 'El_Salvador', activo: true, enVacaciones: false });
     } catch (error: any) {
+      console.error('[createUser] Error:', error);
       let errorMessage = error.message || 'Error desconocido al crear el usuario';
       if (typeof errorMessage === 'string' && errorMessage.includes('Unexpected end of JSON input')) {
         errorMessage = 'El webhook no devolvió una respuesta válida. Verifica el flujo de n8n y asegúrate de que responda correctamente.';
