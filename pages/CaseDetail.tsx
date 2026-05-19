@@ -973,13 +973,30 @@ const newStateNormalizado = normalizeEstadoName(newState);
         setErrorMessage('La justificación es obligatoria');
         return;
       }
+      // Validar longitud mínima (no muy corta)
+      if (justificacionTrim.length < 10) {
+        setErrorMessage('La justificación debe tener al menos 10 caracteres');
+        return;
+      }
+      // Validar que no sea solo números
+      const soloNumeros = /^\d+$/;
+      if (soloNumeros.test(justificacionTrim)) {
+        setErrorMessage('La justificación no puede ser solo números');
+        return;
+      }
+      // Validar que no sea solo signos/símbolos
+      const soloSignos = /^[^\w\s]+$/;
+      if (soloSignos.test(justificacionTrim)) {
+        setErrorMessage('La justificación no puede ser solo signos o símbolos');
+        return;
+      }
       // Validar que no contenga símbolos peligrosos
       const simbolosPeligrosos = /[<>{}[\]\\|]/;
       if (simbolosPeligrosos.test(justificacionTrim)) {
         setErrorMessage('La justificación no puede contener símbolos como < > { } [ ] \\ |');
         return;
       }
-      // Validar longitud máxima (texto corto)
+      // Validar longitud máxima
       if (justificacionTrim.length > 500) {
         setErrorMessage('La justificación no puede exceder 500 caracteres');
         return;
