@@ -201,7 +201,7 @@ export const getUserCountry = async (): Promise<'SV' | 'GT' | null> => {
     if (pais && String(pais).trim() !== '') {
       const paisNormalizado = String(pais).trim().toUpperCase();
       
-      if (paisNormalizado === 'SV' || paisNormalizado === 'EL_SALVADOR' || paisNormalizado === 'EL SALVADOR' || paisNormalizado.includes('SALVADOR')) {
+      if (paisNormalizado === 'SV' || paisNormalizado === 'EL_SALVADOR' || paisNormalizado === 'ELSALVADOR' || paisNormalizado.includes('SALVADOR')) {
         return 'SV';
       }
       if (paisNormalizado === 'GT' || paisNormalizado === 'GUATEMALA' || paisNormalizado.includes('GUATEMALA')) {
@@ -808,7 +808,7 @@ export const getCases = async (): Promise<Case[]> => {
   await getAgentesInfo();
 
   const pais = await getUserCountry();
-  const paisValue = pais === 'GT' ? 'Guatemala' : 'El Salvador';
+  const paisValue = pais === 'GT' ? 'Guatemala' : 'ElSalvador';
 
   // Si es AGENTE, obtener solo sus casos asignados
   if (userRole === 'AGENTE') {
