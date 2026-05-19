@@ -533,12 +533,6 @@ const AdminUsers: React.FC = () => {
       return;
     }
 
-    // Validar email único
-    if (users.some(u => u.email.toLowerCase() === formData.email.toLowerCase())) {
-      setToast({ message: 'El email ya está en uso', type: 'warning' });
-      return;
-    }
-
     try {
       setLoading(true);
       
