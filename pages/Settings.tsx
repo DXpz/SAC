@@ -1360,16 +1360,14 @@ const [showUserModal, setShowUserModal] = useState(false);
 
   const handleSaveStates = async () => {
     try {
-      // Enviar todos los estados con su isFinal al webhook
-      const estadosParaWebhook = states.map(state => ({
-        id: state.id,
-        nombre: state.name,
-        descripcion: state.name,
-        orden: state.order,
-        es_final: state.isFinal
-      }));
-      await api.updateEstados(estadosParaWebhook);
-      // Recargar estados desde el webhook para asegurar sincronización
+      for (const state of states) {
+        await api.updateEstado(state.id, {
+          nombre: state.name,
+          descripcion: state.name,
+          orden: state.order,
+          estado_final: state.isFinal
+        });
+      }
       await loadEstados();
       
       setHasChanges(false);
