@@ -1193,14 +1193,27 @@ return response.json();
     const passwordFinal = password && password.trim() ? password.trim() : generarPasswordAleatoria();
 
     // Construir el payload directo para el backend
-    const rolUsuario = additionalData?.rol || 'AGENTE';
-    const paisUsuario = additionalData?.pais || 'ElSalvador';
-    
+    const rolMap: Record<string, string> = {
+      'ADMIN': 'ADMINISTRADOR',
+      'AGENTE': 'AGENTE',
+      'SUPERVISOR': 'SUPERVISOR',
+      'GERENTE': 'GERENTE'
+    };
+    const paisMap: Record<string, string> = {
+      'El Salvador': 'ElSalvador',
+      'El_Salvador': 'ElSalvador',
+      'ElSalvador': 'ElSalvador',
+      'Guatemala': 'Guatemala',
+      'GT': 'Guatemala'
+    };
+    const rolUsuario = rolMap[additionalData?.rol || 'AGENTE'] || 'AGENTE';
+    const paisUsuario = paisMap[additionalData?.pais || 'ElSalvador'] || 'ElSalvador';
+
     const payload = {
       email: email.trim().toLowerCase(),
       nombre: name.trim(),
       role: rolUsuario,
-      pais: paisUsuario === 'El Salvador' ? 'ElSalvador' : paisUsuario
+      pais: paisUsuario
     };
     
     // Llamar directamente al backend /api/usuarios

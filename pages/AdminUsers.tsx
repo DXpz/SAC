@@ -1674,7 +1674,7 @@ const AdminUsers: React.FC = () => {
                   <option value="AGENTE">AGENTE</option>
                   <option value="SUPERVISOR">SUPERVISOR</option>
                   <option value="GERENTE">GERENTE</option>
-                  <option value="ADMIN">ADMIN</option>
+                  <option value="ADMIN">ADMINISTRADOR</option>
                 </select>
               </div>
             </div>
