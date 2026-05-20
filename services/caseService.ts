@@ -813,11 +813,11 @@ export const getCases = async (): Promise<Case[]> => {
 
   // Si es AGENTE, obtener solo sus casos asignados
   if (userRole === 'AGENTE') {
-    const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/agente`, {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/agent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       body: JSON.stringify({
-        agente_id: actor.email,
+        agent_id: actor.email,
         pais: paisValue
       })
     });
