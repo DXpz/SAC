@@ -978,9 +978,27 @@ export const getCaseById = async (caseId: string): Promise<Case | null> => {
       casoMapeado.historial = mapWebhookHistorialToFrontend(result.historial);
       casoMapeado.history = casoMapeado.historial;
     }
-    if (result.transiciones && Array.isArray(result.transiciones)) {
+    // El backend retorna transiciones como objeto: { "En proceso": { transiciones: ["Resuelto"] } }
+if (result.transiciones && typeof result.transiciones === 'object' && !Array.isArray(result.transiciones)) {
       (casoMapeado as any).transiciones = result.transiciones;
+    } else if (Array.isArray(result.transiciones)) {
+      // Old array format - convert to object format for backwards compatibility
+      const transObj: Record<string, any> = {};
+      result.transiciones.forEach((t: any) => {
+        const origen = t.estado_origen || '';
+        if (!transObj[origen]) {
+          transObj[origen] = { transiciones: [] };
+        }
+        if (t.estado_destino) {
+          transObj[origen].transiciones.push(t.estado_destino);
+        }
+      });
+      (casoMapeado as any).transiciones = transObj;
     }
+  }
+  } else if (result.transiciones && typeof result.transiciones === 'object') {
+    // If casoMapeado is null but we have transiciones, still attach them
+    (casoMapeado as any) = { transiciones: result.transiciones };
   }
 
   return casoMapeado;
