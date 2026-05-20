@@ -705,8 +705,9 @@ const CaseDetail: React.FC = () => {
       setShowErrorAnimation(false);
       setErrorMessage('');
       
-      if (resultado) {
-        setCaso(resultado);
+      if (resultado && id) {
+        // Siempre recargar para obtener historial y transiciones completas
+        await loadCaso(id);
       } else if (id) {
         await loadCaso(id);
       }
