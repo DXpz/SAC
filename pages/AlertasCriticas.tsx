@@ -71,9 +71,26 @@ const AlertasCriticas: React.FC = () => {
     }
   };
 
+  const normalizeClienteId = (id: string): string => {
+    if (!id) return '';
+    let normalized = id.trim().toUpperCase();
+    if (!normalized.startsWith('CL')) {
+      normalized = 'CL' + normalized.replace(/^CL/i, '');
+    }
+    const match = normalized.match(/^CL0*(\d+)$/);
+    if (match) {
+      normalized = 'CL' + match[1].padStart(6, '0');
+    }
+    return normalized;
+  };
+
   const enrichCasesWithClients = (cases: Caso[], clientesList: any[]): Caso[] => {
     return cases.map(caso => {
-      const cliente = clientesList.find(c => c.CardCode === caso.clientId);
+      const normalizedClientId = normalizeClienteId(caso.clientId);
+      const cliente = clientesList.find(c => {
+        const cliNorm = normalizeClienteId(c.CardCode);
+        return cliNorm === normalizedClientId || c.CardCode === caso.clientId;
+      });
       return {
         ...caso,
         clientName: cliente?.CardName || caso.clientName || 'Sin nombre',
