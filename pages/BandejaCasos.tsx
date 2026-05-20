@@ -283,7 +283,13 @@ const BandejaCasos: React.FC = () => {
       try {
         const estadosResponse = await (api as any).readEstados();
         if (isMounted && Array.isArray(estadosResponse)) {
-          setEstados(estadosResponse as Array<{ id: string; name: string; order?: number; isFinal?: boolean }>);
+          const estadosMapeados = estadosResponse.map((e: any) => ({
+            id: String(e.id),
+            name: e.nombre,
+            order: e.orden,
+            isFinal: e.estado_final
+          }));
+          setEstados(estadosMapeados as Array<{ id: string; name: string; order?: number; isFinal?: boolean }>);
         }
       } catch (e) {
         // Si falla, simplemente usaremos el fallback basado en CaseStatus

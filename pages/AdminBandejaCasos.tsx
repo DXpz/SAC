@@ -13,6 +13,7 @@ const AdminBandejaCasos: React.FC = () => {
   const [filtered, setFiltered] = useState<Case[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [estados, setEstados] = useState<Array<{ id: string; name: string; order?: number; isFinal?: boolean }>>([]);
   const [categoriaFilter, setCategoriaFilter] = useState<string>('all');
   const [clienteFilter, setClienteFilter] = useState<string>('all');
   const [agenteFilter, setAgenteFilter] = useState<string>('all');
@@ -67,6 +68,29 @@ const AdminBandejaCasos: React.FC = () => {
     initializeData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
+
+  // Cargar estados desde el webhook
+  useEffect(() => {
+    let isMounted = true;
+    const loadEstados = async () => {
+      try {
+        const estadosResponse = await api.readEstados();
+        if (isMounted && Array.isArray(estadosResponse)) {
+          const estadosMapeados = estadosResponse.map((e: any) => ({
+            id: String(e.id),
+            name: e.nombre,
+            order: e.orden,
+            isFinal: e.estado_final
+          }));
+          setEstados(estadosMapeados);
+        }
+      } catch (e) {
+        // Si falla, usar fallback vacío para usar CaseStatus
+      }
+    };
+    loadEstados();
+    return () => { isMounted = false; };
+  }, []);
 
   // Actualizar casos cuando cambian los filtros (con debounce para evitar demasiadas llamadas)
   useEffect(() => {
@@ -510,7 +534,11 @@ const AdminBandejaCasos: React.FC = () => {
               }}
             >
               <option value="all">Todos los Estados</option>
-              {Object.values(CaseStatus).map(s => <option key={s} value={s}>{s}</option>)}
+              {(estados.length > 0 ? estados : Object.values(CaseStatus)).map(s => (
+                <option key={estados.length > 0 ? s.id : s} value={estados.length > 0 ? s.name : s}>
+                  {estados.length > 0 ? s.name : s}
+                </option>
+              ))}
             </select>
             <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{
               color: statusFilter === 'all' ? styles.text.tertiary : '#107ab4',
