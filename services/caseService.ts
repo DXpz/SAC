@@ -811,13 +811,16 @@ export const getCases = async (): Promise<Case[]> => {
   const pais = await getUserCountry();
   const paisValue = pais === 'GT' ? 'Guatemala' : 'ElSalvador';
 
-  // Si es AGENTE, obtener solo sus casos asignados
+// Si es AGENTE, obtener solo sus casos asignados
   if (userRole === 'AGENTE') {
+    const agentesInfo = await getAgentesInfo();
+    const agenteId = agentesInfo.find(a => a.email === actor.email)?.id_agente || actor.email;
+    
     const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/agent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       body: JSON.stringify({
-        agent_id: actor.email,
+        agent_id: agenteId,
         pais: paisValue
       })
     });
