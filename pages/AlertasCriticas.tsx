@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
+import { sapService } from '../services/sapService';
+import { getUserCountry } from '../services/caseService';
 import { Caso, CaseStatus } from '../types';
 import { STATE_COLORS } from '../constants';
 import { useTheme } from '../contexts/ThemeContext';
@@ -54,6 +56,7 @@ const AlertasCriticas: React.FC = () => {
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   // Estados de workflow cargados desde el webhook (incluye flag isFinal)
   const [estados, setEstados] = useState<Array<{ id: string; name: string; order?: number; isFinal?: boolean }>>([]);
+  const [userCountry, setUserCountry] = useState<'SV' | 'GT' | null>(null);
   const navigate = useNavigate();
   const { theme } = useTheme();
   const location = useLocation();
@@ -172,6 +175,12 @@ const AlertasCriticas: React.FC = () => {
     };
 
     loadEstados();
+    
+    const initCountry = async () => {
+      const country = await getUserCountry();
+      setUserCountry(country);
+    };
+    initCountry();
 
     return () => {
       isMounted = false;
@@ -181,7 +190,8 @@ const AlertasCriticas: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const clientesList = await loadClientes();
+      const clientesList = await sapService.getClientesListado(userCountry);
+      setClientes(clientesList);
       const list = await api.getCases();
       console.log('[DEBUG] Casos recibidos:', list.length, list.map(c => ({ id: c.id, status: c.status, diasAbierto: c.diasAbierto, slaDias: c.categoria?.slaDias })));
       const enriched = enrichCasesWithClients(list, clientesList);
