@@ -449,6 +449,12 @@ const filteredCasos = useMemo(() => {
     if (statusFilter !== 'all') {
       casosParaFiltrar = casosParaFiltrar.filter(c => {
         const rawStatus = c.status || (c as any).estado;
+        if (!rawStatus) return false;
+        const rawLower = String(rawStatus).toLowerCase().trim();
+        const filterLower = String(statusFilter).toLowerCase().trim();
+        if (estados.length > 0) {
+          return rawLower === filterLower || normalizeStatus(rawStatus) === statusFilter;
+        }
         return normalizeStatus(rawStatus) === statusFilter;
       });
     }
@@ -607,7 +613,11 @@ const filteredCasos = useMemo(() => {
               }}
             >
               <option value="all">Todos los Estados</option>
-              {Object.values(CaseStatus).map(s => <option key={s} value={s}>{s}</option>)}
+              {(estados.length > 0 ? estados : Object.values(CaseStatus)).map(s => (
+                <option key={estados.length > 0 ? s.id : s} value={estados.length > 0 ? s.name : s}>
+                  {estados.length > 0 ? s.name : s}
+                </option>
+              ))}
             </select>
             <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-all duration-200" style={{
               color: statusFilter === 'all' ? styles.text.tertiary : '#107ab4',
