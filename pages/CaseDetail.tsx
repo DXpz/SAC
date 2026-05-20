@@ -1362,31 +1362,8 @@ const newStateNormalizado = normalizeEstadoName(newState);
   const daysRemaining = !isSLAExpired ? daysRemainingRaw : 0;
   const hoursRemaining = !isSLAExpired ? hoursRemainingRaw : 0;
 
-  // Calcular progreso basado en el estado del caso
-  // 0% = Nuevo, 25% = En Proceso, 50% = Pendiente Cliente, 75% = Escalado, 100% = Resuelto/Cerrado
-  const getProgressByStatus = (status: string | CaseStatus): number => {
-    const statusStr = String(status).trim();
-    
-    if (statusStr === CaseStatus.CERRADO || statusStr === 'Cerrado') {
-      return 100;
-    }
-    if (statusStr === CaseStatus.RESUELTO || statusStr === 'Resuelto') {
-      return 100;
-    }
-    if (statusStr === CaseStatus.ESCALADO || statusStr === 'Escalado') {
-      return 75;
-    }
-    if (statusStr === CaseStatus.PENDIENTE_CLIENTE || statusStr === 'Pendiente Cliente') {
-      return 50;
-    }
-    if (statusStr === CaseStatus.EN_PROCESO || statusStr === 'En Proceso') {
-      return 25;
-    }
-    // Nuevo o cualquier otro estado
-    return 0;
-  };
-
-  const caseProgress = getProgressByStatus(estadoActual);
+  // Usar progreso del backend (caso.progreso), no hardcoded
+  const caseProgress = caso?.progreso ?? 0;
 
   const isEscalated = caso.status === CaseStatus.ESCALADO;
   const showAlert = isEscalated && caso.slaExpired;
@@ -1939,7 +1916,7 @@ const newStateNormalizado = normalizeEstadoName(newState);
                   if (tA === 0 && tB === 0) return 0;
                   if (tA === 0) return 1;
                   if (tB === 0) return -1;
-                  return tA - tB; // Ascendente (más antiguo primero)
+                  return tB - tA; // Descendente (más nuevo primero)
                 });
 
                 return historialOrdenado.length > 0 ? (
