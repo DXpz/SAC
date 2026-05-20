@@ -1198,9 +1198,24 @@ const filteredCasos = useMemo(() => {
                       </div>
 )}
             </div>
+          </div>
+                  
+                {/* Footer con acción */}
+                <div className="p-3 border-t flex items-center justify-end" style={{
+                  backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                  borderColor: 'rgba(148, 163, 184, 0.2)'
+                }}>
+                  <div className="flex items-center gap-2">
+                    <Eye className="w-4 h-4" style={{color: styles.text.tertiary}} />
+                    <span className="text-[10px] font-semibold" style={{color: styles.text.secondary}}>
+                      Ver detalle
+                    </span>
+                    <ChevronRight className="w-4 h-4" style={{color: styles.text.tertiary}} />
+                  </div>
                 </div>
-              );
-            })}
+              </div>
+            );
+          })}
         </div>
       )}
 
