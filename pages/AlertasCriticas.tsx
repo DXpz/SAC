@@ -240,9 +240,9 @@ const AlertasCriticas: React.FC = () => {
   };
 
   useEffect(() => {
+    if (userCountry === null) return;
     loadData();
-    // Ya no usamos setInterval, solo actualizamos cuando cambia la vista
-  }, [location.pathname]);
+  }, [location.pathname, userCountry]);
 
   const prioritizeCases = (cases: Caso[]): CaseWithPriority[] => {
     return cases.map(caso => {
