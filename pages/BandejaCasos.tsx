@@ -474,8 +474,8 @@ const filteredCasos = useMemo(() => {
       });
     }
 
-    return casosParaFiltrar;
-  }, [casos, searchTerm, statusFilter, categoriaFilter, agenteFilter, userCountry, isEstadoFinal]);
+    return enrichCases(casosParaFiltrar, clientes, categorias);
+  }, [casos, clientes, categorias, searchTerm, statusFilter, categoriaFilter, agenteFilter, userCountry, isEstadoFinal]);
 
   // Paginación
   const totalPages = Math.ceil(filteredCasos.length / PAGE_SIZE);
