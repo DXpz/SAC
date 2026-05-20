@@ -567,7 +567,8 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
       categoria: categoriaMapped as any,
       cliente: clienteMapped as any,
       diasAbierto: diasAbierto,
-      slaExpired: slaExpired
+      slaExpired: slaExpired,
+      progreso: caseData.progreso ?? 0
     };
     
     // Preservar agente_user_id del webhook en el objeto Case para comparación
