@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-
+import { sapService } from '../services/sapService';
 import { getUserCountry } from '../services/caseService';
 import { Case, CaseStatus, Cliente, Categoria, Agente } from '../types';
 import { STATE_COLORS } from '../constants';
@@ -313,7 +313,7 @@ const BandejaCasos: React.FC = () => {
         // Cargar en paralelo - casos, clientes y categorias
         await Promise.all([
           loadCasos(),
-          api.getClientes().then(data => { setClientes(data); return data; }),
+          sapService.getClientesListado(userCountry).then(data => { setClientes(data); return data; }),
           api.getCategorias().then(data => { setCategorias(data); return data; }),
           api.getAgentes().then(data => { setAgentes(data); return data; })
         ]);
