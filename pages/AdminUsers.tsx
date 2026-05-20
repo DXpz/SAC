@@ -533,6 +533,13 @@ const AdminUsers: React.FC = () => {
       return;
     }
 
+    // Validar email antes de enviar
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email.trim())) {
+      setToast({ message: 'El formato del correo electrónico es inválido. Ejemplo: usuario@ejemplo.com', type: 'warning' });
+      return;
+    }
+
     try {
       setLoading(true);
       
@@ -566,7 +573,20 @@ const AdminUsers: React.FC = () => {
     } catch (error: any) {
       console.error('[createUser] Error:', error);
       let errorMessage = error.message || 'Error desconocido al crear el usuario';
-      if (typeof errorMessage === 'string' && errorMessage.includes('Unexpected end of JSON input')) {
+      
+      // Manejar errores de validación Zod del backend
+      if (typeof errorMessage === 'string' && errorMessage.startsWith('[')) {
+        try {
+          const zodErrors = JSON.parse(errorMessage);
+          if (Array.isArray(zodErrors) && zodErrors.length > 0) {
+            errorMessage = zodErrors.map((e: any) => e.message).join(', ');
+          }
+        } catch {
+          // No era JSON válido, usar el mensaje original
+        }
+      }
+      
+      if (errorMessage.includes('Unexpected end of JSON input')) {
         errorMessage = 'El webhook no devolvió una respuesta válida. Verifica el flujo de n8n y asegúrate de que responda correctamente.';
       }
       setToast({ message: errorMessage, type: 'error' });
