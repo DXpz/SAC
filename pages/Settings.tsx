@@ -506,57 +506,48 @@ const [showUserModal, setShowUserModal] = useState(false);
       const transicionesFromWebhook = await api.readTransiciones();
       if (transicionesFromWebhook && typeof transicionesFromWebhook === 'object' && Object.keys(transicionesFromWebhook).length > 0) {
         // Convertir el formato del webhook al formato local
-        // El webhook retorna: { estado_origen: { transiciones: [estado_destino1, estado_destino2, ...] } }
-        // Necesitamos convertir a: transitions[estado_origen][estado_destino] = true
-        // y que la UI refleje EXCLUSIVAMENTE lo que viene del read
+        // El backend retorna: { "Nuevo": { transiciones: ["En proceso"] }, ... }
+        // Crear mapa de estado_id -> estado_nombre
+        const estadoIdToName: Record<string, string> = {};
+        estadosFromWebhook.forEach((e: any) => {
+          estadoIdToName[String(e.id)] = e.nombre || e.name || '';
+        });
+        
+        // Crear mapa de estado_nombre -> estado_id
+        const estadoNameToId: Record<string, string> = {};
+        estadosFromWebhook.forEach((e: any) => {
+          estadoNameToId[e.nombre || e.name || ''] = String(e.id);
+        });
+        
         setTransitions(() => {
           const newTransitions: Record<string, Record<string, boolean>> = {};
 
-          // Inicializar toda la matriz en false usando EXACTAMENTE los IDs del webhook (NO estados locales)
-          estadosFromWebhook.forEach(estadoOrigen => {
-            const origenKey = String(estadoOrigen.id || ''); // Usar ID tal como viene del webhook
+          // Inicializar toda la matriz en false usando IDs
+          estadosFromWebhook.forEach((estadoOrigen: any) => {
+            const origenKey = String(estadoOrigen.id || '');
             newTransitions[origenKey] = {};
-            estadosFromWebhook.forEach(estadoDestino => {
-              const destinoKey = String(estadoDestino.id || ''); // Usar ID tal como viene del webhook
+            estadosFromWebhook.forEach((estadoDestino: any) => {
+              const destinoKey = String(estadoDestino.id || '');
               if (origenKey !== destinoKey) {
                 newTransitions[origenKey][destinoKey] = false;
               }
             });
           });
 
-          // Marcar como true las transiciones que vienen del webhook
-          // ORIGEN (fila) -> DESTINO (columna)
-          // Usar EXACTAMENTE los IDs que vienen del webhook (NO estados locales)
-          Object.keys(transicionesFromWebhook).forEach(estadoOrigenIdFromWebhook => {
-            const transicionesEstado = transicionesFromWebhook[estadoOrigenIdFromWebhook];
-            if (transicionesEstado && Array.isArray(transicionesEstado.transiciones)) {
-              // Buscar el estado origen en los estados del webhook (NO estados locales)
-              const estadoOrigenDelWebhook = estadosFromWebhook.find(s => String(s.id || '') === String(estadoOrigenIdFromWebhook));
-              
-              if (!estadoOrigenDelWebhook) {
-                return;
-              }
-              const origenKey = String(estadoOrigenDelWebhook.id || '');
-              transicionesEstado.transiciones.forEach((estadoDestinoIdFromWebhook: string) => {
-                // Buscar el estado destino en los estados del webhook (NO estados locales)
-                const estadoDestinoDelWebhook = estadosFromWebhook.find(s => String(s.id || '') === String(estadoDestinoIdFromWebhook));
+          // Marcar como true las transiciones que vienen del backend
+          // El backend retorna: { "Nuevo": { transiciones: ["En proceso"] } }
+          Object.entries(transicionesFromWebhook).forEach(([estadoOrigenNombre, config]: [string, any]) => {
+            const estadoOrigenId = estadoNameToId[estadoOrigenNombre];
+            if (!estadoOrigenId) return;
+            
+            if (config && Array.isArray(config.transiciones)) {
+              config.transiciones.forEach((estadoDestinoNombre: string) => {
+                const estadoDestinoId = estadoNameToId[estadoDestinoNombre];
+                if (!estadoDestinoId) return;
                 
-                if (!estadoDestinoDelWebhook) {
-                  return;
+                if (newTransitions[estadoOrigenId]) {
+                  newTransitions[estadoOrigenId][estadoDestinoId] = true;
                 }
-                
-                const destinoKey = String(estadoDestinoDelWebhook.id || ''); // Usar ID tal como viene del webhook
-                
-                // Asegurarnos de que la matriz tenga la fila y columna inicializadas
-                if (!newTransitions[origenKey]) {
-                  newTransitions[origenKey] = {};
-                }
-                if (newTransitions[origenKey][destinoKey] === undefined) {
-                  // Si no estaba inicializada, inicializarla ahora
-                  newTransitions[origenKey][destinoKey] = false;
-                }
-                
-                newTransitions[origenKey][destinoKey] = true;
               });
             }
           });
@@ -1321,18 +1312,15 @@ const [showUserModal, setShowUserModal] = useState(false);
     const transicionesData: Record<string, { transiciones: string[] }> = {};
 
     // FILAS = estado ORIGEN, COLUMNAS = estado DESTINO
-    // Usar EXACTAMENTE los IDs que vienen del webhook (sin modificar)
+    // Ahora el backend usa nombres de estados, no IDs
     states.forEach(estadoOrigen => {
       const transicionesPermitidas: string[] = [];
-      const origenKey = estadoOrigen.id; // Usar ID tal como viene del webhook
+      const origenKey = estadoOrigen.id; // ID del estado
 
       states.forEach(estadoDestino => {
-        const destinoKey = estadoDestino.id; // Usar ID tal como viene del webhook
+        const destinoKey = estadoDestino.id; // ID del estado destino
         if (
           origenKey !== destinoKey &&
-          // La matriz guarda transitions[ORIGEN_ID][DESTINO_ID]
-          // y la casilla en fila ORIGEN / columna DESTINO es:
-          // checked = transitions[origenKey]?.[destinoKey]
           transitions[origenKey]?.[destinoKey] === true
         ) {
           transicionesPermitidas.push(destinoKey);
