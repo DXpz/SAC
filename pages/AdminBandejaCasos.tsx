@@ -306,8 +306,10 @@ const AdminBandejaCasos: React.FC = () => {
     if (statusFilter !== 'all') {
       result = result.filter(c => {
         const rawStatus = c.status || (c as any).estado;
-        const normalizedStatus = normalizeStatus(rawStatus);
-        return normalizedStatus === statusFilter;
+        if (!rawStatus) return false;
+        const rawLower = String(rawStatus).toLowerCase().trim();
+        const filterLower = String(statusFilter).toLowerCase().trim();
+        return rawLower === filterLower || normalizeStatus(rawStatus) === statusFilter;
       });
     }
 
