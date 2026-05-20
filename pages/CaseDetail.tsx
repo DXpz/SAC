@@ -1297,23 +1297,18 @@ const newStateNormalizado = normalizeEstadoName(newState);
       .trim();
   };
   
-  // Obtener transiciones permitidas ÚNICAMENTE desde n8n (sin fallback a estados demo)
+  // Obtener transiciones permitidas desde el backend
   let validTransitions: string[] = [];
   
-  if (caso.transiciones && caso.transiciones.length > 0) {
-    // Normalizar el estado actual para comparación
-    const estadoActualNormalizado = normalizeEstadoName(estadoActual);
+  if (caso.transiciones && typeof caso.transiciones === 'object') {
+    // El backend ahora envía { "Nuevo": { transiciones: ["En proceso"] }, ... }
+    // Buscar directamente usando el nombre del estado actual
+    const transicionesDelEstadoActual = caso.transiciones[estadoActual];
     
-    // Filtrar transiciones que parten del estado actual
-    const transicionesDelEstadoActual = caso.transiciones.filter((t) => {
-      const origenNormalizado = normalizeEstadoName(t.estado_origen || '');
-      return origenNormalizado === estadoActualNormalizado;
-    });
-    
-    // Extraer los estados destino únicos y mantener su formato original
-    validTransitions = [...new Set(transicionesDelEstadoActual.map(t => t.estado_destino))].filter(Boolean);
+    if (transicionesDelEstadoActual && Array.isArray(transicionesDelEstadoActual.transiciones)) {
+      validTransitions = transicionesDelEstadoActual.transiciones.filter(Boolean);
+    }
   }
-  // Si no hay transiciones del webhook, no mostrar botones (no usar fallback)
 
   // Calcular información SLA
   const createdDate = new Date(caso.createdAt);
