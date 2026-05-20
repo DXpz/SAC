@@ -553,18 +553,15 @@ const AdminUsers: React.FC = () => {
       clearCache('usuarios');
       await loadUsers();
 
-      // Verificar si el backend devolvió password temporal
-      if (result.passwordTemporal) {
-        setCreatedUserCredentials({
-          email: formData.email.trim(),
-          password: result.passwordTemporal,
-          nombre: formData.nombre.trim()
-        });
-        setShowCreateModal(false);
-        setShowCredentialsModal(true);
-      } else {
-        setShowCreateModal(false);
-      }
+      // Mostrar siempre el modal de credenciales después de crear usuario exitosamente
+      const creds = {
+        email: formData.email.trim(),
+        password: result.passwordTemporal || 'N/A',
+        nombre: formData.nombre.trim()
+      };
+      setCreatedUserCredentials(creds);
+      setShowCreateModal(false);
+      setShowCredentialsModal(true);
       setFormData({ nombre: '', email: '', rol: 'AGENTE', pais: 'El_Salvador', activo: true, enVacaciones: false });
     } catch (error: any) {
       console.error('[createUser] Error:', error);
@@ -1721,6 +1718,9 @@ const AdminUsers: React.FC = () => {
                 <p className="text-sm text-amber-800 dark:text-amber-200">
                   <strong>Importante:</strong> Comparta estas credenciales de forma segura con el usuario. No las almacene ni las envíe por canales no seguros.
                 </p>
+              </div>
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700 text-xs" style={{color: theme === 'dark' ? '#93c5fd' : '#1e40af'}}>
+                Las credenciales fueron enviadas al correo <strong>{createdUserCredentials.email}</strong>. Si no lo recibe, revise la carpeta de spam o correo no deseado.
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1" style={{color: styles.text.secondary}}>Nombre</label>
