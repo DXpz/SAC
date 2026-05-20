@@ -979,7 +979,7 @@ export const getCaseById = async (caseId: string): Promise<Case | null> => {
       casoMapeado.history = casoMapeado.historial;
     }
     // El backend retorna transiciones como objeto: { "En proceso": { transiciones: ["Resuelto"] } }
-if (result.transiciones && typeof result.transiciones === 'object' && !Array.isArray(result.transiciones)) {
+    if (result.transiciones && typeof result.transiciones === 'object' && !Array.isArray(result.transiciones)) {
       (casoMapeado as any).transiciones = result.transiciones;
     } else if (Array.isArray(result.transiciones)) {
       // Old array format - convert to object format for backwards compatibility
@@ -995,10 +995,6 @@ if (result.transiciones && typeof result.transiciones === 'object' && !Array.isA
       });
       (casoMapeado as any).transiciones = transObj;
     }
-  }
-  } else if (result.transiciones && typeof result.transiciones === 'object') {
-    // If casoMapeado is null but we have transiciones, still attach them
-    (casoMapeado as any) = { transiciones: result.transiciones };
   }
 
   return casoMapeado;
