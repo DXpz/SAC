@@ -840,31 +840,20 @@ const CaseDetail: React.FC = () => {
         .trim();
     };
     
-    // Obtener transiciones permitidas ÚNICAMENTE desde n8n (sin fallback a estados demo)
+    // Obtener transiciones permitidas desde el backend (formato objeto)
     let transicionesPermitidas: string[] = [];
     
-    if (caso?.transiciones && caso.transiciones.length > 0) {
-      // Normalizar el estado actual para comparación
-      const estadoActualNormalizado = normalizeEstadoName(estadoActual);
-      
-      // Filtrar transiciones que parten del estado actual
-      const transicionesDelEstadoActual = caso.transiciones.filter((t) => {
-        const origenNormalizado = normalizeEstadoName(t.estado_origen || '');
-        return origenNormalizado === estadoActualNormalizado;
-      });
-      
-      // Extraer los estados destino
-      transicionesPermitidas = transicionesDelEstadoActual.map(t => t.estado_destino).filter(Boolean);
+    if (caso?.transiciones && typeof caso.transiciones === 'object' && !Array.isArray(caso.transiciones)) {
+      // El backend retorna: { "En proceso": { transiciones: ["Resuelto"] } }
+      const estadoActual = caso.estado || caso.status || 'Nuevo';
+      const transicionesDelEstado = caso.transiciones[estadoActual];
+      if (transicionesDelEstado && Array.isArray(transicionesDelEstado.transiciones)) {
+        transicionesPermitidas = transicionesDelEstado.transiciones.filter(Boolean);
+      }
     }
-    // Si no hay transiciones del webhook, no permitir cambios (no usar fallback)
 
-    // Normalizar nombres de estados para comparación
-    const estadoActualNormalizado = normalizeEstadoName(estadoActual);
-const newStateNormalizado = normalizeEstadoName(newState);
-
-    const transicionesPermitidasNormalizadas = transicionesPermitidas.map(normalizeEstadoName);
-
-    if (!transicionesPermitidasNormalizadas.includes(newStateNormalizado)) {
+    // Verificar si la transición está permitida usando comparación directa
+    if (!transicionesPermitidas.includes(newState)) {
       const estadoActualFormateado = formatEstadoName(estadoActual);
       const newStateFormateado = formatEstadoName(newState);
       const transicionesFormateadas = transicionesPermitidas.map(formatEstadoName).join(', ');
