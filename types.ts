@@ -59,13 +59,16 @@ export interface Categoria {
 }
 
 export interface Agente {
-  idAgente: string;
+  idAgente?: string;
+  id_agente?: string;
+  id?: string;
   nombre: string;
   email: string;
-  estado: 'Activo' | 'Inactivo' | 'Vacaciones';
-  ordenRoundRobin: number;
-  ultimoCasoAsignado: string;
-  casosActivos: number;
+  estado: 'Activo' | 'Inactivo' | 'Vacaciones' | 'ACTIVO' | 'INACTIVO' | 'VACACIONES';
+  ordenRoundRobin?: number;
+  ultimoCasoAsignado?: string;
+  casosActivos?: number;
+  casos_asignados?: number;
   pais?: string;
 }
 

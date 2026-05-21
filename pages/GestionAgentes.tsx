@@ -419,9 +419,12 @@ const GestionAgentes: React.FC = () => {
     }
 
     const term = searchTerm.toLowerCase().trim();
-    return resultado.filter(agente => 
-      agente.nombre.toLowerCase().includes(term)
-    );
+    return resultado.filter(agente => {
+      const nombre = (agente.nombre || '').toLowerCase();
+      const idAgente = ((agente.id_agente || agente.idAgente || agente.id || '')).toLowerCase();
+      const email = (agente.email || '').toLowerCase();
+      return nombre.includes(term) || idAgente.includes(term) || email.includes(term);
+    });
   }, [agentes, searchTerm, estadoFilter]);
 
   // Generar sugerencias de autocompletado
@@ -431,10 +434,10 @@ const GestionAgentes: React.FC = () => {
     }
     const term = searchTerm.toLowerCase().trim();
     return agentes
-      .filter(agente => 
-        agente.nombre.toLowerCase().includes(term) &&
-        agente.nombre.toLowerCase() !== term
-      )
+      .filter(agente => {
+        const nombre = (agente.nombre || '').toLowerCase();
+        return nombre.includes(term) && nombre !== term;
+      })
       .slice(0, 5) // Máximo 5 sugerencias
       .map(agente => agente.nombre);
   }, [agentes, searchTerm]);
@@ -585,7 +588,7 @@ const GestionAgentes: React.FC = () => {
                    }
                  }}
                  onKeyDown={handleKeyDown}
-                 placeholder="Buscar agente por nombre..."
+                 placeholder="Buscar agente por nombre o ID..."
                  className="w-full pl-10 pr-10 py-2 text-xs rounded-lg border transition-all focus:outline-none"
                  style={{
                    backgroundColor: theme === 'dark' ? '#020617' : '#f8fafc',
