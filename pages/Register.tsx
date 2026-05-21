@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import { UserPlus, AlertCircle, ArrowLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { UserPlus, AlertCircle, ArrowLeft, ChevronRight } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import LoadingLogo from '../components/LoadingLogo';
 
@@ -11,20 +11,13 @@ const Register: React.FC = () => {
   const [pais, setPais] = useState('El Salvador');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
+  
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [createdUserCredentials, setCreatedUserCredentials] = useState<{email: string; password: string; nombre: string} | null>(null);
   const navigate = useNavigate();
   const { theme } = useTheme();
 
-  // Función para generar contraseña automática: "red" + número + letras random
-  const generatePassword = (): string => {
-    const randomNumber = Math.floor(Math.random() * 9000) + 1000; // Número de 4 dígitos
-    const letters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    let randomLetters = '';
-    for (let i = 0; i < 4; i++) {
-      randomLetters += letters.charAt(Math.floor(Math.random() * letters.length));
-    }
-    return `red${randomNumber}${randomLetters}`;
-  };
+  
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,28 +25,21 @@ const Register: React.FC = () => {
     setError('');
 
     try {
-      // Generar contraseña automática
-      const generatedPassword = generatePassword();
-      
-      // Crear cuenta y almacenarla en n8n con rol AGENTE por defecto
-      const user = await api.createAccount(email, generatedPassword, name, {
+      // Crear cuenta pasando password vacío para que el backend genere
+      const result = await api.createAccount(email, '', name, {
         pais: pais,
-        rol: 'AGENTE', // Siempre AGENTE
+        rol: 'AGENTE',
         estado: 'ACTIVO'
       });
-      
-      // Si llegamos aquí, el usuario fue creado y almacenado exitosamente en n8n
-      // Mostrar animación de éxito
-      setError('');
-      setShowSuccessAnimation(true);
-      
-      // Después de mostrar la animación, volver a gestión de agentes
-      setTimeout(() => {
-        setShowSuccessAnimation(false);
-        // Disparar evento para que GestionAgentes recargue sin auto-recargar
-        window.dispatchEvent(new CustomEvent('agente-creado'));
-        navigate('/app/agentes');
-      }, 2000);
+
+      // Mostrar modal de credenciales después de crear exitosamente
+      const creds = {
+        email: email.trim(),
+        password: result.passwordTemporal || 'N/A',
+        nombre: name.trim()
+      };
+      setCreatedUserCredentials(creds);
+      setShowCredentialsModal(true);
     } catch (err: any) {
       // Mejorar mensajes de error para indicar problemas con n8n
       const errorMessage = err.message || 'Error al crear la cuenta. Intenta de nuevo.';
@@ -230,135 +216,53 @@ const Register: React.FC = () => {
         </div>
       </div>
 
-      {/* Animación de éxito a pantalla completa */}
-      {showSuccessAnimation && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{
-            backgroundColor: 'rgba(15, 23, 42, 0.7)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            animation: 'fadeIn 0.3s ease-out'
-          }}
-        >
-          <div 
-            className="flex flex-col items-center justify-center"
-            style={{
-              animation: 'scaleInBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
-            }}
-          >
-            {/* Icono de check animado */}
-            <div
-              className="relative mb-6"
-              style={{
-                animation: 'checkMark 0.5s ease-out 0.3s both'
-              }}
-            >
-              <div
-                className="w-24 h-24 rounded-full flex items-center justify-center"
-                style={{
-                  background: 'linear-gradient(135deg, var(--color-brand-red), var(--color-accent-red))',
-                  boxShadow: '0 20px 60px rgba(200, 21, 27, 0.4)'
-                }}
-              >
-                <CheckCircle2 
-                  className="w-14 h-14 text-white" 
-                  style={{
-                    strokeWidth: 2.5
-                  }}
-                />
-              </div>
-              {/* Anillo de expansión */}
-              <div
-                className="absolute inset-0 rounded-full"
-                style={{
-                  border: '3px solid var(--color-brand-red)',
-                  animation: 'ringExpand 0.8s ease-out 0.2s',
-                  opacity: 0
-                }}
-              />
-            </div>
-            
-            {/* Mensaje */}
-            <h2
-              className="text-2xl font-bold mb-2"
-              style={{
-                color: '#ffffff',
-                animation: 'fadeInUp 0.5s ease-out 0.4s both'
-              }}
-            >
-              ¡Agente creado exitosamente!
-            </h2>
-            <p
-              className="text-base"
-              style={{
-                color: 'rgba(255, 255, 255, 0.8)',
-                animation: 'fadeInUp 0.5s ease-out 0.5s both'
-              }}
-            >
-              Redirigiendo a la gestión de agentes...
+      {/* Modal de credenciales */}
+      {showCredentialsModal && createdUserCredentials && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{backgroundColor: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(8px)'}}>
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 w-full max-w-md shadow-2xl border border-slate-200 dark:border-slate-700">
+            <h3 className="text-lg font-bold mb-2" style={{color: styles.text.primary}}>
+              Credenciales del Agente
+            </h3>
+            <p className="text-sm mb-4" style={{color: styles.text.secondary}}>
+              Las credenciales fueron creadas exitosamente. Compártelas con el agente.
             </p>
+            <div className="space-y-3 mb-6">
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{color: styles.text.secondary}}>Nombre</label>
+                <div className="px-3 py-2 rounded-lg border" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
+                  <span style={{color: styles.text.primary}}>{createdUserCredentials.nombre}</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{color: styles.text.secondary}}>Correo</label>
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
+                  <span style={{color: styles.text.primary}} className="flex-1 break-all">{createdUserCredentials.email}</span>
+                  <button onClick={() => navigator.clipboard.writeText(createdUserCredentials.email)} className="text-xs font-semibold px-2 py-1 rounded" style={{backgroundColor: 'rgba(16, 122, 180, 0.1)', color: '#107ab4'}}>Copiar</button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{color: styles.text.secondary}}>Contraseña Temporal</label>
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
+                  <span className="font-mono flex-1 break-all" style={{color: styles.text.primary}}>{createdUserCredentials.password}</span>
+                  <button onClick={() => navigator.clipboard.writeText(createdUserCredentials.password)} className="text-xs font-semibold px-2 py-1 rounded" style={{backgroundColor: 'rgba(16, 122, 180, 0.1)', color: '#107ab4'}}>Copiar</button>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setShowCredentialsModal(false);
+                window.dispatchEvent(new CustomEvent('agente-creado'));
+                navigate('/app/agentes');
+              }}
+              className="w-full px-4 py-2 text-white text-sm font-semibold rounded-lg"
+              style={{background: 'linear-gradient(to right, var(--color-brand-red), var(--color-accent-red))'}}
+            >
+              Entendido
+            </button>
           </div>
         </div>
       )}
-
-      {/* Estilos de animación inline */}
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        
-        @keyframes scaleInBounce {
-          0% {
-            transform: scale(0);
-            opacity: 0;
-          }
-          50% {
-            transform: scale(1.1);
-          }
-          100% {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-        
-        @keyframes checkMark {
-          0% {
-            transform: scale(0);
-            opacity: 0;
-          }
-          50% {
-            transform: scale(1.2);
-          }
-          100% {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-        
-        @keyframes ringExpand {
-          0% {
-            transform: scale(1);
-            opacity: 0.8;
-          }
-          100% {
-            transform: scale(1.5);
-            opacity: 0;
-          }
-        }
-        
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
     </div>
   );
 };

@@ -2890,7 +2890,7 @@ const CaseDetail: React.FC = () => {
                   Nuevo Agente <span className="text-red-500">*</span>
                 </label>
                 <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {agentes.filter(a => a.estado === 'Activo').map((agente) => {
+                  {agentes.filter(a => a.estado?.toUpperCase() === 'ACTIVO').map((agente) => {
                     const isSelected = selectedAgentId === agente.idAgente;
                     const isCurrent = (caso?.agentId || caso?.agenteAsignado?.idAgente) === agente.idAgente;
                     
