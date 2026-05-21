@@ -703,6 +703,7 @@ const filteredCasos = useMemo(() => {
             <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-all duration-200" style={{color: categoriaFilter === 'all' ? styles.text.tertiary : '#107ab4', transform: 'rotate(90deg)'}} />
           </div>
 
+          {!isAdmin && (
           <div className="relative group" style={{ animation: 'fadeInSlide 0.3s ease-out 0.1s both' }}>
             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-colors z-10" style={{color: agenteFilter === 'all' ? '#64748b' : '#107ab4'}} />
             <select
@@ -770,6 +771,7 @@ const filteredCasos = useMemo(() => {
             </select>
             <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-all duration-200" style={{color: agenteFilter === 'all' ? styles.text.tertiary : '#107ab4', transform: 'rotate(90deg)'}} />
           </div>
+          )}
 
           <div className="flex items-center gap-3">
             {/* Controles de vista */}
