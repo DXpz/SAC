@@ -265,10 +265,10 @@ const SupervisorPanel: React.FC = () => {
 
   const filteredCasos = useMemo(() => {
     let filtered = [...casos];
-    
+
     const now = new Date();
-    const startOfDay = new Date(now.setHours(0, 0, 0, 0));
-    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     if (periodFilter === 'hoy') {
