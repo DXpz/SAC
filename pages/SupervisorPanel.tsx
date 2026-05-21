@@ -772,8 +772,8 @@ const SupervisorPanel: React.FC = () => {
             ...(Array.isArray(agentes) ? agentes
               .filter(agente => agente && (agente.idAgente || agente.id_agente || agente.id)) // Filtrar solo agentes válidos
               .map((agente, index) => ({
-              key: agente?.idAgente || agente?.id_agente || agente?.id || `agente-${index}`,
-              value: agente?.idAgente || agente?.id_agente || agente?.id || '',
+              key: agente?.id_agente || agente?.idAgente || agente?.id || `agente-${index}`,
+              value: agente?.id_agente || agente?.idAgente || agente?.id || '',
               label: agente?.nombre || agente?.name || 'Sin nombre'
             })) : [])
           ].map(option => (
@@ -1454,7 +1454,7 @@ const SupervisorPanel: React.FC = () => {
           {agentes.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {(agentFilter !== 'todos' 
-                  ? agentes.filter(a => (a.idAgente || a.id_agente || a.id) === agentFilter)
+                  ? agentes.filter(a => (a.id_agente || a.idAgente || a.id) === agentFilter)
                   : agentes // Mostrar TODOS los agentes, sin filtros
                 ).map((agente, index) => {
                   // Log para debuggear
@@ -1484,7 +1484,7 @@ const SupervisorPanel: React.FC = () => {
                     }
                   };
                   const estado = estadoColors[agente.estado as keyof typeof estadoColors] || estadoColors.Inactivo;
-                  const stats = getAgenteStats(agente.idAgente);
+                  const stats = getAgenteStats(agente.id_agente || agente.idAgente);
                   
                   const isActivo = agente.estado === 'Activo';
                   const slaColor = stats.cumplimientoSLA === null ? '#94a3b8' :

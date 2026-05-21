@@ -197,7 +197,7 @@ const AdminBandejaCasos: React.FC = () => {
           };
 
           const agenteEncontrado = agentes.find(a => {
-            const aId = String(a.idAgente || '').trim();
+            const aId = String(a.id_agente || a.idAgente || '').trim();
             const searchId = String(agenteId).trim();
             if (aId === searchId) return true;
             if (aId.toLowerCase() === searchId.toLowerCase()) return true;
@@ -213,7 +213,7 @@ const AdminBandejaCasos: React.FC = () => {
           if (agenteEncontrado && (!caso.agenteAsignado || !caso.agentName)) {
             casoActualizado = {
               ...casoActualizado,
-              agentId: agenteEncontrado.idAgente,
+              agentId: agenteEncontrado.id_agente || agenteEncontrado.idAgente,
               agentName: agenteEncontrado.nombre,
               agenteAsignado: agenteEncontrado,
             };
@@ -678,7 +678,7 @@ const AdminBandejaCasos: React.FC = () => {
             >
               <option value="all">Todos los Agentes</option>
               {agentes.map(ag => (
-                <option key={ag.idAgente} value={ag.idAgente}>
+                <option key={ag.id_agente || ag.idAgente} value={ag.id_agente || ag.idAgente}>
                   {ag.nombre}
                 </option>
               ))}

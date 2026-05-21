@@ -767,8 +767,8 @@ const filteredCasos = useMemo(() => {
             >
               <option value="all">Todos los Agentes</option>
               {agentes.map(ag => (
-                <option key={ag.idAgente} value={ag.idAgente}>
-                  {ag.nombre || ag.email || ag.idAgente}
+                <option key={ag.id_agente || ag.idAgente} value={ag.id_agente || ag.idAgente}>
+                  {ag.nombre || ag.email || ag.id_agente || ag.idAgente}
                 </option>
               ))}
             </select>
