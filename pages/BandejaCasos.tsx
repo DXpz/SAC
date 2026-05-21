@@ -34,6 +34,8 @@ const BandejaCasos: React.FC = () => {
   const currentUser = api.getUser();
   const isAdmin = currentUser?.role?.toUpperCase() === 'ADMIN' || currentUser?.role?.toUpperCase() === 'ADMINISTRADOR';
   const isAgente = currentUser?.role === 'AGENTE';
+  const isGerente = currentUser?.role === 'GERENTE';
+  const isSupervisor = currentUser?.role === 'SUPERVISOR';
 
   const navigate = useNavigate();
 
@@ -795,7 +797,7 @@ const filteredCasos = useMemo(() => {
               </button>
             </div>
             
-            {!isAdmin && (
+            {!isAdmin && !isGerente && (
             <button 
               onClick={() => navigate('/app/casos/nuevo')}
               className="text-white px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all shadow-lg"
