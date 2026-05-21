@@ -1081,7 +1081,7 @@ const CaseDetail: React.FC = () => {
   // FUNCIONES DE REASIGNACIÓN DE AGENTE
   // ==================================================
   const handleReassignClick = () => {
-    setSelectedAgentId(caso?.agentId || caso?.agenteAsignado?.idAgente || '');
+    setSelectedAgentId(caso?.agentId || caso?.agenteAsignado?.id_agente || '');
     setReassignJustification('');
     setShowReassignModal(true);
   };
@@ -1097,7 +1097,7 @@ const CaseDetail: React.FC = () => {
       return;
     }
 
-    const currentAgentId = caso.agentId || caso.agenteAsignado?.idAgente || '';
+    const currentAgentId = caso.agentId || caso.agenteAsignado?.id_agente || '';
     if (selectedAgentId === currentAgentId) {
       alert('El agente seleccionado es el mismo que el actual');
       return;
@@ -1118,12 +1118,12 @@ const CaseDetail: React.FC = () => {
       // Forzar actualización del agente después de recargar
       // Buscar el agente seleccionado en la lista de agentes
       if (agentes.length > 0) {
-        const agenteReasignado = agentes.find(a => a.idAgente === selectedAgentId);
+        const agenteReasignado = agentes.find(a => a.id_agente === selectedAgentId);
         if (agenteReasignado && caso) {
           // Actualizar el caso con el nuevo agente
           setCaso({
             ...caso,
-            agentId: agenteReasignado.idAgente,
+            agentId: agenteReasignado.id_agente,
             agentName: agenteReasignado.nombre,
             agenteAsignado: agenteReasignado
           });
@@ -2891,13 +2891,13 @@ const CaseDetail: React.FC = () => {
                 </label>
                 <div className="space-y-2 max-h-60 overflow-y-auto">
                   {agentes.filter(a => a.estado?.toUpperCase() === 'ACTIVO').map((agente) => {
-                    const isSelected = selectedAgentId === agente.idAgente;
-                    const isCurrent = (caso?.agentId || caso?.agenteAsignado?.idAgente) === agente.idAgente;
+                    const isSelected = selectedAgentId === agente.id_agente;
+                    const isCurrent = (caso?.agentId || caso?.agenteAsignado?.id_agente) === agente.id_agente;
                     
                     return (
                       <div
-                        key={agente.idAgente}
-                        onClick={() => setSelectedAgentId(agente.idAgente)}
+                        key={agente.id_agente}
+                        onClick={() => setSelectedAgentId(agente.id_agente)}
                         className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${isSelected ? 'shadow-md' : ''}`}
                         style={{
                           backgroundColor: isSelected ? 'rgba(16, 122, 180, 0.1)' : styles.input.backgroundColor,
