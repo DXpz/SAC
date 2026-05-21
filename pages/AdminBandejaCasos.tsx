@@ -295,7 +295,7 @@ const AdminBandejaCasos: React.FC = () => {
     const term = searchTerm.toLowerCase();
     let result = casos.filter(c => {
       const id = (c.id || c.ticketNumber || '').toLowerCase();
-      const client = (c.clientName || '').toLowerCase();
+      const client = (c.clientName || (c.cliente as any)?.CardName || '').toLowerCase();
       const subject = (c.subject || '').toLowerCase();
       const agent = (c.agentName || c.agenteAsignado?.nombre || '').toLowerCase();
       

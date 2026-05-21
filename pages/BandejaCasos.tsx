@@ -448,7 +448,7 @@ const filteredCasos = useMemo(() => {
       const term = searchTerm.toLowerCase();
       casosParaFiltrar = casosParaFiltrar.filter(c => {
         const id = (c.id || c.ticketNumber || '').toLowerCase();
-        const client = (c.clientName || '').toLowerCase();
+        const client = (c.clientName || (c.cliente as any)?.CardName || '').toLowerCase();
         const subject = (c.subject || '').toLowerCase();
         return id.includes(term) || client.includes(term) || subject.includes(term);
       });
