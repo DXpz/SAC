@@ -175,10 +175,6 @@ const Register: React.FC = () => {
                 >
                   <option value="El Salvador">El Salvador</option>
                   <option value="Guatemala">Guatemala</option>
-                  <option value="Honduras">Honduras</option>
-                  <option value="Nicaragua">Nicaragua</option>
-                  <option value="Costa Rica">Costa Rica</option>
-                  <option value="Panamá">Panamá</option>
                 </select>
               </div>
             </div>

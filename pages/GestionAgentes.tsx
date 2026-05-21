@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../services/api';
+import { api, clearCache } from '../services/api';
 import { Agente } from '../types';
 import { 
   Users, 
@@ -51,10 +51,10 @@ const GestionAgentes: React.FC = () => {
     loadAgentes();
     
     const handleAgenteCreado = () => {
-      localStorage.removeItem('intelfon_agents');
+      clearCache('agentes');
       setTimeout(() => {
         loadAgentes();
-      }, 1000);
+      }, 500);
     };
     
     const handleCasoReasignado = () => {
