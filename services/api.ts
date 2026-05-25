@@ -670,7 +670,7 @@ export const api = {
 
   async getAgentes(): Promise<any[]> {
     return getCachedOrFetch('agentes', async () => {
-      const response = await fetch(`${API_CONFIG.WEBHOOK_AGENTES_URL}`, {
+      const response = await fetch(`${API_CONFIG.WEBHOOK_AGENTES_URL}?t=${Date.now()}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       });
@@ -687,7 +687,7 @@ export const api = {
   // Obtener lista de usuarios desde backend directo
   async getUsuarios(): Promise<any[]> {
     return getCachedOrFetch('usuarios', async () => {
-      const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/usuarios`, {
+      const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/usuarios?t=${Date.now()}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       });
