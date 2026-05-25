@@ -859,6 +859,12 @@ export const api = {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
     });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'No se pudo eliminar la categoría');
+    }
+
     return response.json();
   },
 
