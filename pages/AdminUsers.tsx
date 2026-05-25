@@ -1496,31 +1496,7 @@ const AdminUsers: React.FC = () => {
                             >
                               <Sun className="w-4 h-4" />
                             </button>
-                            <button
-                              onClick={() => {
-                                setSelectedUser(user);
-                                setShowDeleteModal(true);
-                              }}
-                              className="p-2 rounded-lg border transition-all hover:shadow-md"
-                              style={{
-                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                                borderColor: 'rgba(239, 68, 68, 0.3)',
-                                color: '#ef4444',
-                                transform: 'scale(1)',
-                                transition: 'all 0.2s ease-in-out'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'scale(1.1)';
-                                e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'scale(1)';
-                                e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
-                              }}
-                              title="Eliminar"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            
                           </div>
                         </td>
                       </tr>
