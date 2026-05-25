@@ -612,22 +612,11 @@ const AdminUsers: React.FC = () => {
     const user = users.find(u => u.id === userId);
     if (!user) return;
 
-    // Determinar siguiente estado: ACTIVO -> INACTIVO -> ACTIVO (sin VACACIONES)
-    let nuevoEstado = 'ACTIVO';
-    if (user.estado === 'ACTIVO') {
-      nuevoEstado = 'INACTIVO';
-    }
+    const currentEstado = (user.estado || '').toUpperCase();
+    const nuevoEstado = currentEstado === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
 
     try {
-      // Llamar al backend para actualizar el usuario
       await api.updateUser(userId, { estado: nuevoEstado });
-
-      // Actualizar estado local
-      setUsers(prevUsers => prevUsers.map(u =>
-        u.id === userId ? { ...u, estado: nuevoEstado, activo: nuevoEstado === 'ACTIVO' } : u
-      ));
-
-      // Recargar desde el servidor para asegurar consistencia
       clearCache('usuarios');
       await loadUsers();
     } catch (error: any) {
