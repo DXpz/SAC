@@ -1783,15 +1783,6 @@ const AdminUsers: React.FC = () => {
                   />
                   <span className="text-xs" style={{color: styles.text.secondary}}>Activo</span>
                 </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.enVacaciones}
-                    onChange={(e) => setFormData({...formData, enVacaciones: e.target.checked})}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-xs" style={{color: styles.text.secondary}}>En vacaciones</span>
-                </label>
               </div>
             </div>
             <div className="flex gap-3 mt-6">
