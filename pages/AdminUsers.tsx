@@ -614,8 +614,7 @@ const AdminUsers: React.FC = () => {
     const user = users.find(u => u.id === userId);
     if (!user) return;
 
-    const currentEstado = (user.estado || '').toUpperCase();
-    const nuevoEstado = currentEstado === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
+    const nuevoEstado = user.activo ? 'INACTIVO' : 'ACTIVO';
 
     try {
       await api.updateUser(userId, { estado: nuevoEstado });
@@ -1412,7 +1411,7 @@ const AdminUsers: React.FC = () => {
                                 toggleUserStatus(user.id);
                               }}
                               className="p-2 rounded-lg border transition-all hover:shadow-md"
-                              style={(user.estado || '').toUpperCase() === 'ACTIVO' ? {
+                              style={user.activo === true ? {
                                 backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
                                 borderColor: 'rgba(148, 163, 184, 0.2)',
                                 color: styles.text.secondary
@@ -1421,9 +1420,9 @@ const AdminUsers: React.FC = () => {
                                 borderColor: 'transparent',
                                 color: '#ffffff'
                               }}
-                              title={(user.estado || '').toUpperCase() === 'ACTIVO' ? 'Desactivar usuario' : 'Activar usuario'}
+                              title={user.activo === true ? 'Desactivar usuario' : 'Activar usuario'}
                             >
-                              {(user.estado || '').toUpperCase() === 'ACTIVO' ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                              {user.activo === true ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
                             </button>
                           </div>
                         </td>
