@@ -219,6 +219,7 @@ const toggleEstado = async (id: string, currentEstado: string) => {
     const nuevoEstado = currentEstado === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
     try {
       await api.updateAgente(id, { estado: nuevoEstado });
+      clearCache('agentes');
       await loadAgentes();
     } catch (error: any) {
       alert(error.message || 'Error al cambiar el estado del agente');
