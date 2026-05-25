@@ -1412,7 +1412,7 @@ const AdminUsers: React.FC = () => {
                                 toggleUserStatus(user.id);
                               }}
                               className="p-2 rounded-lg border transition-all hover:shadow-md"
-                              style={user.estado === 'ACTIVO' ? {
+                              style={(user.estado || '').toUpperCase() === 'ACTIVO' ? {
                                 backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
                                 borderColor: 'rgba(148, 163, 184, 0.2)',
                                 color: styles.text.secondary
@@ -1421,9 +1421,9 @@ const AdminUsers: React.FC = () => {
                                 borderColor: 'transparent',
                                 color: '#ffffff'
                               }}
-                              title={user.estado === 'ACTIVO' ? 'Desactivar usuario' : 'Activar usuario'}
+                              title={(user.estado || '').toUpperCase() === 'ACTIVO' ? 'Desactivar usuario' : 'Activar usuario'}
                             >
-                              {user.estado === 'ACTIVO' ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                              {(user.estado || '').toUpperCase() === 'ACTIVO' ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
                             </button>
                           </div>
                         </td>
