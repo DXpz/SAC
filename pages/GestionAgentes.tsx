@@ -225,6 +225,8 @@ const toggleEstado = async (id: string, currentEstado: string) => {
     }
   };
 
+  const getAgenteId = (agente: Agente): string => agente.id_agente || agente.idAgente || agente.id || '';
+
   const getEstadoRingColor = (estado: string) => {
     switch (estado) {
       case 'ACTIVO':
@@ -809,7 +811,7 @@ const toggleEstado = async (id: string, currentEstado: string) => {
 
                     return (
                       <tr 
-                        key={agente.idAgente}
+                        key={getAgenteId(agente)}
                         className="hover:opacity-90 transition-opacity"
                         style={{
                           backgroundColor: index % 2 === 0 
@@ -960,7 +962,7 @@ const toggleEstado = async (id: string, currentEstado: string) => {
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-center gap-2">
                             <button
-                              onClick={() => toggleEstado(agente.idAgente, agente.estado)}
+                              onClick={() => toggleEstado(getAgenteId(agente), agente.estado)}
                               className="p-2 rounded-lg border transition-all hover:shadow-md"
                               style={agente.estado === 'ACTIVO' ? {
                                 backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
