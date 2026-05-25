@@ -604,75 +604,38 @@ const AdminUsers: React.FC = () => {
     // await sendUserToWebhook('update', { id: userId, rol: newRole });
   };
 
-  const toggleUserStatus = (userId: string) => {
-    // Validar que userId no esté vacío o undefined
+  const toggleUserStatus = async (userId: string) => {
     if (!userId || userId === 'undefined' || userId === 'null') {
       return;
     }
-    
-    // Usar función de actualización para garantizar que usamos el estado más reciente
-    setUsers(prevUsers => {
-      // Buscar el usuario específico primero
-      const userToUpdate = prevUsers.find(u => {
-        const uId = String(u.id || '').trim();
-        const targetId = String(userId || '').trim();
-        return uId === targetId && uId !== '';
-      });
-      
-      if (!userToUpdate) {
-        return prevUsers;
-      }
-      return prevUsers.map(u => {
-        const uId = String(u.id || '').trim();
-        const targetId = String(userId || '').trim();
-        if (uId === targetId && uId !== '') {
-          return { ...u, activo: !u.activo, enVacaciones: false };
-        }
-        return u;
-      });
-    });
-    
-    // TODO: Preparar para webhook n8n
-    // const user = users.find(u => u.id === userId);
-    // if (user) {
-    //   await sendUserToWebhook('update', { id: userId, activo: !user.activo });
-    // }
+
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+
+    // Determinar siguiente estado: ACTIVO -> INACTIVO -> ACTIVO (sin VACACIONES)
+    let nuevoEstado = 'ACTIVO';
+    if (user.estado === 'ACTIVO') {
+      nuevoEstado = 'INACTIVO';
+    }
+
+    try {
+      // Llamar al backend para actualizar el usuario
+      await api.updateUser(userId, { estado: nuevoEstado });
+
+      // Actualizar estado local
+      setUsers(prevUsers => prevUsers.map(u =>
+        u.id === userId ? { ...u, estado: nuevoEstado, activo: nuevoEstado === 'ACTIVO' } : u
+      ));
+
+      // Recargar desde el servidor para asegurar consistencia
+      clearCache('usuarios');
+      await loadUsers();
+    } catch (error: any) {
+      setToast({ message: `Error al cambiar estado: ${error.message}`, type: 'error' });
+    }
   };
 
-  const toggleVacaciones = (userId: string) => {
-    // Validar que userId no esté vacío o undefined
-    if (!userId || userId === 'undefined' || userId === 'null') {
-      return;
-    }
-    
-    // Usar función de actualización para garantizar que usamos el estado más reciente
-    setUsers(prevUsers => {
-      // Buscar el usuario específico primero
-      const userToUpdate = prevUsers.find(u => {
-        const uId = String(u.id || '').trim();
-        const targetId = String(userId || '').trim();
-        return uId === targetId && uId !== '';
-      });
-      
-      if (!userToUpdate) {
-        return prevUsers;
-      }
-      return prevUsers.map(u => {
-        const uId = String(u.id || '').trim();
-        const targetId = String(userId || '').trim();
-        if (uId === targetId && uId !== '') {
-          return { ...u, enVacaciones: !u.enVacaciones, activo: u.enVacaciones ? true : u.activo };
-        }
-        return u;
-      });
-    });
-    
-    // TODO: Preparar para webhook n8n
-    // const user = users.find(u => u.id === userId);
-    // if (user) {
-    //   await sendUserToWebhook('update', { id: userId, enVacaciones: !user.enVacaciones });
-    // }
-  };
+  
 
   const deleteUser = async () => {
     if (!selectedUser) return;
@@ -1456,9 +1419,9 @@ const AdminUsers: React.FC = () => {
                               }}
                               className="p-2 rounded-lg border transition-all hover:shadow-md"
                               style={{
-                                backgroundColor: user.activo ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)',
-                                borderColor: user.activo ? 'rgba(239, 68, 68, 0.3)' : 'rgba(34, 197, 94, 0.3)',
-                                color: user.activo ? '#ef4444' : '#22c55e',
+                                backgroundColor: user.estado === 'ACTIVO' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+                                borderColor: user.estado === 'ACTIVO' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(34, 197, 94, 0.3)',
+                                color: user.estado === 'ACTIVO' ? '#ef4444' : '#22c55e',
                                 transform: 'scale(1)',
                                 transition: 'all 0.2s ease-in-out'
                               }}
@@ -1468,35 +1431,10 @@ const AdminUsers: React.FC = () => {
                               onMouseLeave={(e) => {
                                 e.currentTarget.style.transform = 'scale(1)';
                               }}
-                              title={user.activo ? 'Desactivar' : 'Activar'}
+                              title={user.estado === 'ACTIVO' ? 'Desactivar' : 'Activar'}
                             >
-                              {user.activo ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                              {user.estado === 'ACTIVO' ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
                             </button>
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                toggleVacaciones(user.id);
-                              }}
-                              className="p-2 rounded-lg border transition-all hover:shadow-md"
-                              style={{
-                                backgroundColor: user.enVacaciones ? 'rgba(245, 158, 11, 0.1)' : 'transparent',
-                                borderColor: user.enVacaciones ? 'rgba(245, 158, 11, 0.3)' : 'rgba(148, 163, 184, 0.3)',
-                                color: user.enVacaciones ? '#f59e0b' : styles.text.secondary,
-                                transform: 'scale(1)',
-                                transition: 'all 0.2s ease-in-out'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'scale(1.1) rotate(15deg)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
-                              }}
-                              title={user.enVacaciones ? 'Quitar vacaciones' : 'Marcar en vacaciones'}
-                            >
-                              <Sun className="w-4 h-4" />
-                            </button>
-                            
                           </div>
                         </td>
                       </tr>

@@ -816,6 +816,24 @@ export const api = {
     return response.json();
   },
 
+  async updateUser(id: string, data: any): Promise<any> {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/usuarios/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true"
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Error al actualizar el usuario");
+    }
+
+    return response.json();
+  },
+
   // Actualizar categoría existente mediante webhook
   async updateCategory(categoryData: {
     id: string;
@@ -835,12 +853,48 @@ export const api = {
     return response.json();
   },
 
+  async updateUser(id: string, data: any): Promise<any> {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/usuarios/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true"
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Error al actualizar el usuario");
+    }
+
+    return response.json();
+  },
+
   // Eliminar categoría mediante webhook
   async deleteCategory(categoryId: string): Promise<any> {
     const response = await fetch(`${API_CONFIG.WEBHOOK_CATEGORIAS_URL}/${categoryId}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
     });
+    return response.json();
+  },
+
+  async updateUser(id: string, data: any): Promise<any> {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/usuarios/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true"
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Error al actualizar el usuario");
+    }
+
     return response.json();
   },
 
@@ -911,6 +965,24 @@ export const api = {
     return response.json();
   },
 
+  async updateUser(id: string, data: any): Promise<any> {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/usuarios/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true"
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Error al actualizar el usuario");
+    }
+
+    return response.json();
+  },
+
   // Actualizar estado mediante backend directo
   async updateEstado(id: string, stateData: {
     nombre?: string;
@@ -932,6 +1004,24 @@ export const api = {
     return response.json();
   },
 
+  async updateUser(id: string, data: any): Promise<any> {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/usuarios/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true"
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Error al actualizar el usuario");
+    }
+
+    return response.json();
+  },
+
   // Actualizar orden de un estado
   async updateEstadoOrden(id: string, orden: number): Promise<any> {
     const response = await fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}/${id}`, {
@@ -943,6 +1033,24 @@ export const api = {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.message || 'Error al actualizar el orden');
+    }
+
+    return response.json();
+  },
+
+  async updateUser(id: string, data: any): Promise<any> {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/usuarios/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true"
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Error al actualizar el usuario");
     }
 
     return response.json();
@@ -963,6 +1071,24 @@ export const api = {
     return response.json();
   },
 
+  async updateUser(id: string, data: any): Promise<any> {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/usuarios/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true"
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Error al actualizar el usuario");
+    }
+
+    return response.json();
+  },
+
   // Leer transiciones de estados desde backend directo
   async readTransiciones(): Promise<any[]> {
     const response = await fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}/transiciones`, {
@@ -972,6 +1098,24 @@ export const api = {
 
     if (!response.ok) {
       throw new Error('Error al leer las transiciones');
+    }
+
+    return response.json();
+  },
+
+  async updateUser(id: string, data: any): Promise<any> {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/usuarios/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true"
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Error al actualizar el usuario");
     }
 
     return response.json();
@@ -1006,6 +1150,24 @@ export const api = {
     }
 
 return response.json();
+  },
+
+  async updateUser(id: string, data: any): Promise<any> {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/usuarios/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true"
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Error al actualizar el usuario");
+    }
+
+    return response.json();
   },
 
   async updateAgente(id: string, data: any): Promise<boolean> {
@@ -1348,6 +1510,24 @@ const result = await response.json();
     return response.json();
   },
 
+  async updateUser(id: string, data: any): Promise<any> {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/usuarios/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true"
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Error al actualizar el usuario");
+    }
+
+    return response.json();
+  },
+
   // Eliminar fecha de asueto mediante backend directo
   async deleteHoliday(date: Date): Promise<any> {
     const day = String(date.getDate()).padStart(2, '0');
@@ -1364,6 +1544,24 @@ const result = await response.json();
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.message || 'Error al eliminar el asueto');
+    }
+
+    return response.json();
+  },
+
+  async updateUser(id: string, data: any): Promise<any> {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/usuarios/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true"
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Error al actualizar el usuario");
     }
 
     return response.json();
@@ -1396,6 +1594,24 @@ const result = await response.json();
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.message || 'Error al crear asuetos masivos');
+    }
+
+    return response.json();
+  },
+
+  async updateUser(id: string, data: any): Promise<any> {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/usuarios/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true"
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Error al actualizar el usuario");
     }
 
     return response.json();
@@ -1496,6 +1712,24 @@ const result = await response.json();
     return response.json();
   },
 
+  async updateUser(id: string, data: any): Promise<any> {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/usuarios/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true"
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Error al actualizar el usuario");
+    }
+
+    return response.json();
+  },
+
   /**
    * Eliminar un parámetro de estado final
    */
@@ -1508,6 +1742,24 @@ const result = await response.json();
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.message || 'Error al eliminar el parámetro');
+    }
+
+    return response.json();
+  },
+
+  async updateUser(id: string, data: any): Promise<any> {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/usuarios/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true"
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Error al actualizar el usuario");
     }
 
     return response.json();
