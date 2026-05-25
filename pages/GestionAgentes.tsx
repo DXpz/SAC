@@ -30,8 +30,6 @@ type EstadoFilter = 'todos' | 'activos' | 'vacaciones' | 'inactivos';
 const GestionAgentes: React.FC = () => {
   const [agentes, setAgentes] = useState<Agente[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [agenteToDelete, setAgenteToDelete] = useState<Agente | null>(null);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   const { theme } = useTheme();
   const navigate = useNavigate();
@@ -199,14 +197,14 @@ const GestionAgentes: React.FC = () => {
     // Los agentes activos con orden 1, 2, 3... primero, luego los inactivos/vacaciones
     const sortedAgentes = [...agentesFiltrados].sort((a, b) => {
       // Agentes activos primero
-      if (a.estado === 'Activo' && b.estado !== 'Activo') return -1;
-      if (a.estado !== 'Activo' && b.estado === 'Activo') return 1;
-      
+      if (a.estado === 'ACTIVO' && b.estado !== 'ACTIVO') return -1;
+      if (a.estado !== 'ACTIVO' && b.estado === 'ACTIVO') return 1;
+
       // Si ambos son activos, ordenar por ordenRoundRobin
-      if (a.estado === 'Activo' && b.estado === 'Activo') {
+      if (a.estado === 'ACTIVO' && b.estado === 'ACTIVO') {
         return (a.ordenRoundRobin || 999) - (b.ordenRoundRobin || 999);
       }
-      
+
       // Si ambos no son activos, mantener orden original
       return 0;
     });
@@ -217,65 +215,23 @@ const GestionAgentes: React.FC = () => {
     setLoading(false);
   };
 
-  const toggleEstado = async (id: string, actual: string) => {
+const toggleEstado = async (id: string, currentEstado: string) => {
+    const nuevoEstado = currentEstado === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
     try {
-      // Si está activo, desactivar. Si está inactivo o en vacaciones, activar
-      const activo = actual !== 'Activo';
-      await api.updateAgente(id, { 
-        estado: activo ? 'Activo' : 'Inactivo',
-        activo: activo,
-        vacaciones: false
-      });
+      await api.updateAgente(id, { estado: nuevoEstado });
       await loadAgentes();
     } catch (error: any) {
       alert(error.message || 'Error al cambiar el estado del agente');
     }
   };
 
-  const setVacaciones = async (id: string) => {
-    try {
-      await api.updateAgente(id, { 
-        estado: 'Vacaciones',
-        activo: true,
-        vacaciones: true
-      });
-      await loadAgentes();
-    } catch (error: any) {
-      alert(error.message || 'Error al marcar el agente en vacaciones');
-    }
-  };
-
-  const handleDeleteClick = (agente: Agente) => {
-    setAgenteToDelete(agente);
-    setShowDeleteModal(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!agenteToDelete) return;
-    
-    try {
-      await api.deleteAgente(agenteToDelete.idAgente);
-      await loadAgentes();
-    } catch (error: any) {
-      alert(error.message || 'Error al eliminar el agente');
-    }
-    setShowDeleteModal(false);
-    setAgenteToDelete(null);
-  };
-
-  const handleDeleteCancel = () => {
-    setShowDeleteModal(false);
-    setAgenteToDelete(null);
-  };
-
-
   const getEstadoRingColor = (estado: string) => {
     switch (estado) {
-      case 'Activo':
+      case 'ACTIVO':
         return 'rgba(34, 197, 94, 0.5)';
-      case 'Vacaciones':
+      case 'VACACIONES':
         return 'rgba(245, 158, 11, 0.5)';
-      case 'Inactivo':
+      case 'INACTIVO':
         return 'rgba(239, 68, 68, 0.5)';
       default:
         return 'rgba(148, 163, 184, 0.5)';
@@ -284,27 +240,27 @@ const GestionAgentes: React.FC = () => {
 
   const getEstadoBadge = (estado: string) => {
     const styles = {
-      'Activo': {
+      'ACTIVO': {
         bg: 'rgba(34, 197, 94, 0.15)',
         text: '#22c55e',
         border: 'rgba(34, 197, 94, 0.3)'
       },
-      'Vacaciones': {
+      'VACACIONES': {
         bg: 'rgba(245, 158, 11, 0.15)',
         text: '#f59e0b',
         border: 'rgba(245, 158, 11, 0.3)'
       },
-      'Inactivo': {
+      'INACTIVO': {
         bg: 'rgba(239, 68, 68, 0.15)',
         text: '#ef4444',
         border: 'rgba(239, 68, 68, 0.3)'
       }
     };
-    return styles[estado as keyof typeof styles] || styles.Inactivo;
+    return styles[estado as keyof typeof styles] || styles.INACTIVO;
   };
 
   const getEstadoOperativo = (agente: Agente) => {
-    if (agente.estado !== 'Activo') return null;
+    if (agente.estado !== 'ACTIVO') return null;
     
     if (agente.casosActivos === 0) {
       return { texto: 'Sin casos', color: '#94a3b8', icon: CheckCircle2 };
@@ -396,9 +352,9 @@ const GestionAgentes: React.FC = () => {
   // Calcular resumen de agentes
   const resumenAgentes = {
     total: agentes.length,
-    activos: agentes.filter(a => a.estado === 'Activo').length,
-    vacaciones: agentes.filter(a => a.estado === 'Vacaciones').length,
-    inactivos: agentes.filter(a => a.estado === 'Inactivo').length
+    activos: agentes.filter(a => a.estado === 'ACTIVO').length,
+    vacaciones: agentes.filter(a => a.estado === 'VACACIONES').length,
+    inactivos: agentes.filter(a => a.estado === 'INACTIVO').length
   };
 
   // Filtrar agentes por término de búsqueda + estado
@@ -407,9 +363,9 @@ const GestionAgentes: React.FC = () => {
 
     if (estadoFilter !== 'todos') {
       resultado = resultado.filter(a => {
-        if (estadoFilter === 'activos') return a.estado === 'Activo';
-        if (estadoFilter === 'vacaciones') return a.estado === 'Vacaciones';
-        if (estadoFilter === 'inactivos') return a.estado === 'Inactivo';
+        if (estadoFilter === 'activos') return a.estado === 'ACTIVO';
+        if (estadoFilter === 'vacaciones') return a.estado === 'VACACIONES';
+        if (estadoFilter === 'inactivos') return a.estado === 'INACTIVO';
         return true;
       });
     }
@@ -825,8 +781,8 @@ const GestionAgentes: React.FC = () => {
                     const cargaColor = getCargaWorkloadColor(agente.casosActivos);
                     const estadoBadge = getEstadoBadge(agente.estado);
                     const ordenRoundRobin = agente.ordenRoundRobin || 999;
-                    const esSiguiente = ordenRoundRobin === 1 && agente.estado === 'Activo';
-                    const esActivo = agente.estado === 'Activo';
+                    const esSiguiente = ordenRoundRobin === 1 && agente.estado === 'ACTIVO';
+                    const esActivo = agente.estado === 'ACTIVO';
                     
                     // Formatear fecha del último caso
                     const formatFechaUltimoCaso = (fecha: string) => {
@@ -1006,7 +962,7 @@ const GestionAgentes: React.FC = () => {
                             <button
                               onClick={() => toggleEstado(agente.idAgente, agente.estado)}
                               className="p-2 rounded-lg border transition-all hover:shadow-md"
-                              style={agente.estado === 'Activo' ? {
+                              style={agente.estado === 'ACTIVO' ? {
                                 backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
                                 borderColor: 'rgba(148, 163, 184, 0.2)',
                                 color: styles.text.secondary
@@ -1015,40 +971,9 @@ const GestionAgentes: React.FC = () => {
                                 borderColor: 'transparent',
                                 color: '#ffffff'
                               }}
-                              title={agente.estado === 'Activo' ? 'Desactivar agente' : 'Activar agente'}
+                              title={agente.estado === 'ACTIVO' ? 'Desactivar agente' : 'Activar agente'}
                             >
-                              {agente.estado === 'Activo' ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
-                            </button>
-                            <button
-                              onClick={() => setVacaciones(agente.idAgente)}
-                              disabled={agente.estado === 'Vacaciones'}
-                              className="p-2 rounded-lg border transition-all hover:shadow-md"
-                              style={agente.estado === 'Vacaciones' ? {
-                                backgroundColor: 'rgba(245, 158, 11, 0.2)',
-                                color: '#f59e0b',
-                                borderColor: 'rgba(245, 158, 11, 0.3)',
-                                cursor: 'not-allowed',
-                                opacity: 0.5
-                              } : {
-                                backgroundColor: 'rgba(245, 158, 11, 0.15)',
-                                color: '#f59e0b',
-                                borderColor: 'rgba(245, 158, 11, 0.3)'
-                              }}
-                              title={agente.estado === 'Vacaciones' ? 'Ya está en vacaciones' : 'Marcar en vacaciones'}
-                            >
-                              <Sun className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteClick(agente)}
-                              className="p-2 rounded-lg border transition-all hover:shadow-md"
-                              style={{
-                                backgroundColor: 'rgba(220, 38, 38, 0.15)',
-                                color: '#f87171',
-                                borderColor: 'rgba(220, 38, 38, 0.3)'
-                              }}
-                              title="Eliminar agente permanentemente"
-                            >
-                              <Trash2 className="w-4 h-4" />
+                              {agente.estado === 'ACTIVO' ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
                             </button>
                           </div>
                         </td>
@@ -1060,84 +985,6 @@ const GestionAgentes: React.FC = () => {
             </div>
           </div>
         )}
-
-      {/* Modal de confirmación para eliminar agente */}
-      {showDeleteModal && agenteToDelete && (
-        <div className="fixed inset-0 backdrop-blur-xl z-50 flex items-center justify-center p-4 animate-in fade-in duration-300" style={{backgroundColor: 'rgba(20, 84, 120, 0.7)'}}>
-          <div className="rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform animate-in zoom-in-95 scale-in duration-300 border" style={{backgroundColor: '#ffffff', borderColor: 'rgba(148, 163, 184, 0.2)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'}}>
-            <div className="p-6 border-b flex justify-between items-center" style={{borderColor: 'rgba(200, 21, 27, 0.2)'}}>
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-2xl shadow-lg" style={{backgroundColor: 'rgba(200, 21, 27, 0.2)'}}>
-                  <AlertTriangle className="w-6 h-6" style={{color: '#f87171'}} />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold" style={{color: '#1e293b', letterSpacing: '-0.02em'}}>Confirmar Eliminación</h3>
-                  <p className="text-sm mt-1 font-medium" style={{color: '#94a3b8'}}>Esta acción no se puede deshacer</p>
-                </div>
-              </div>
-              <button 
-                onClick={handleDeleteCancel} 
-                className="p-2.5 rounded-xl transition-all"
-                style={{color: '#64748b'}}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = '#475569';
-                  e.currentTarget.style.backgroundColor = '#f8fafc';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = '#94a3b8';
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              <div className="border-2 rounded-2xl p-4" style={{backgroundColor: 'rgba(220, 38, 38, 0.1)', borderColor: 'rgba(220, 38, 38, 0.3)'}}>
-                <p className="text-sm font-semibold mb-2" style={{color: '#f87171'}}>
-                  ¿Estás seguro de que deseas eliminar al agente?
-                </p>
-                <div className="rounded-xl p-3 border" style={{backgroundColor: '#f8fafc', borderColor: 'rgba(220, 38, 38, 0.3)'}}>
-                  <p className="text-sm font-bold" style={{color: '#1e293b'}}>{agenteToDelete.nombre}</p>
-                  <p className="text-sm" style={{color: '#94a3b8'}}>{agenteToDelete.email}</p>
-                  <p className="text-xs mt-1" style={{color: '#64748b'}}>Estado: <span className="font-semibold" style={{color: '#94a3b8'}}>{agenteToDelete.estado}</span></p>
-                </div>
-              </div>
-              
-              <div className="flex gap-3 pt-2">
-                <button 
-                  type="button" 
-                  onClick={handleDeleteCancel} 
-                  className="flex-1 py-4 text-sm font-bold rounded-2xl transition-all border shadow-sm hover:shadow-md"
-                  style={{backgroundColor: '#f8fafc', color: '#475569', borderColor: 'rgba(148, 163, 184, 0.2)'}}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f1f5f9';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f8fafc';
-                  }}
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="button"
-                  onClick={handleDeleteConfirm} 
-                  className="flex-1 py-4 bg-gradient-to-r from-red-600 to-red-700 text-white text-sm font-bold rounded-2xl transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
-                  style={{background: 'linear-gradient(135deg, var(--color-brand-red), var(--color-accent-red))'}}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'linear-gradient(135deg, var(--color-accent-red), var(--color-brand-red))';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'linear-gradient(135deg, var(--color-brand-red), var(--color-accent-red))';
-                  }}
-                >
-                  Eliminar Agente
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
       </div>
 
     </div>
