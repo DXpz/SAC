@@ -343,8 +343,8 @@ const AdminPanel: React.FC = () => {
 
   const agentesSeguros = Array.isArray(agentes) ? agentes : [];
   const totalAgentes = agentesSeguros.length;
-  const agentesActivos = agentesSeguros.filter(a => a && a.estado === 'Activo').length;
-  const agentesInactivos = agentesSeguros.filter(a => a && a.estado !== 'Activo').length;
+  const agentesActivos = agentesSeguros.filter(a => a && a.estado === 'ACTIVO').length;
+  const agentesInactivos = agentesSeguros.filter(a => a && a.estado !== 'ACTIVO').length;
 
   const clientesSeguros = Array.isArray(clientes) ? clientes : [];
   const totalClientes = clientesSeguros.length;
