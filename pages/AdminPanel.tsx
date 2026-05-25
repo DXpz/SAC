@@ -409,7 +409,7 @@ const AdminPanel: React.FC = () => {
         const categoriaCounts: Record<string, number> = {};
         casosSeguros.forEach(caso => {
           if (!caso) return;
-          const categoriaNombre = caso.categoria?.nombre || caso.category || 'Sin categoría';
+          const categoriaNombre = getCategoriaNombre(caso);
           categoriaCounts[categoriaNombre] = (categoriaCounts[categoriaNombre] || 0) + 1;
         });
         
@@ -454,10 +454,18 @@ const AdminPanel: React.FC = () => {
           .trim();
       };
       
+      const getCategoriaNombre = (caso: any): string => {
+        if (!caso) return 'Sin categoría';
+        if (typeof caso.category === 'string') return caso.category;
+        if (typeof caso.categoria === 'string') return caso.categoria;
+        if (caso.categoria?.nombre) return caso.categoria.nombre;
+        if (caso.categoria?.name) return caso.categoria.name;
+        return 'Sin categoría';
+      };
+
       casosSeguros.forEach((caso, index) => {
         if (!caso) return;
-        // Los casos tienen category como string (nombre de la categoría)
-        const casoCategoriaNombre = String(caso.category || caso.categoria?.nombre || (caso as any).categoriaNombre || '').trim();
+        const casoCategoriaNombre = getCategoriaNombre(caso);
         
         if (casoCategoriaNombre && !casosCategorias.includes(casoCategoriaNombre)) {
           casosCategorias.push(casoCategoriaNombre);
