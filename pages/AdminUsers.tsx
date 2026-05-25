@@ -619,6 +619,7 @@ const AdminUsers: React.FC = () => {
     try {
       await api.updateUser(userId, { estado: nuevoEstado });
       clearCache('usuarios');
+      clearCache('agentes');
       await loadUsers();
     } catch (error: any) {
       setToast({ message: `Error al cambiar estado: ${error.message}`, type: 'error' });
