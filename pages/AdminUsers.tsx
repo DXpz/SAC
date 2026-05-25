@@ -717,12 +717,15 @@ const AdminUsers: React.FC = () => {
     if (formData.enVacaciones) {
       estado = 'Vacaciones';
     } else if (formData.activo) {
-      estado = 'Activo';
+      estado = 'ACTIVO';
+    } else {
+      estado = 'INACTIVO';
     }
+    // NOTE: No se usa VACACIONES en esta vista
 
     try {
-      // Llamar al API para actualizar el agente
-      await api.updateAgente(selectedUser.id, { estado });
+      // Llamar al backend para actualizar el usuario
+      await api.updateUser(selectedUser.id, { estado });
 
       // Actualizar estado local
       setUsers(users.map(u =>
@@ -731,8 +734,8 @@ const AdminUsers: React.FC = () => {
           nombre: formData.nombre.trim(),
           email: formData.email.trim(),
           rol: formData.rol,
-          activo: formData.activo,
-          enVacaciones: formData.enVacaciones
+          estado: estado,
+          activo: estado === 'ACTIVO'
         } : u
       ));
 
