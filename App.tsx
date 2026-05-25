@@ -123,7 +123,7 @@ const App: React.FC = () => {
                   </ProtectedRoute>
                 } />
                 <Route path="agentes" element={
-                  <ProtectedRoute allowedRoles={[UserRole.SUPERVISOR]}>
+                  <ProtectedRoute allowedRoles={[UserRole.SUPERVISOR, UserRole.ADMIN, UserRole.ADMINISTRADOR]}>
                     <GestionAgentes />
                   </ProtectedRoute>
                 } />

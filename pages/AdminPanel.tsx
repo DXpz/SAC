@@ -1217,7 +1217,7 @@ const AdminPanel: React.FC = () => {
             transform: 'scale(1)',
             transition: 'all 0.2s ease-in-out'
           }}
-          onClick={() => navigate('/app/admin/usuarios')}
+          onClick={() => navigate('/app/agentes')}
           onMouseEnter={(e) => {
             e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
@@ -1259,7 +1259,7 @@ const AdminPanel: React.FC = () => {
             transform: 'scale(1)',
             transition: 'all 0.2s ease-in-out'
           }}
-          onClick={() => navigate('/app/admin/usuarios')}
+          onClick={() => navigate('/app/agentes')}
           onMouseEnter={(e) => {
             e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
@@ -1986,7 +1986,7 @@ const AdminPanel: React.FC = () => {
             {agentesSobrecargados.length > 0 && (
               <div 
                 className="p-3 rounded-lg border cursor-pointer transition-all hover:scale-[1.02]"
-                onClick={() => navigate('/app/admin/usuarios')}
+                onClick={() => navigate('/app/agentes')}
                 style={{
                   backgroundColor: theme === 'dark' ? styles.card.backgroundColor : 'rgba(168, 85, 247, 0.05)',
                   borderColor: 'rgba(168, 85, 247, 0.3)'
@@ -2025,7 +2025,7 @@ const AdminPanel: React.FC = () => {
                 Top Agentes
               </h3>
               <button
-                onClick={() => navigate('/app/admin/usuarios')}
+                onClick={() => navigate('/app/agentes')}
                 className="text-xs font-semibold px-3 py-1 rounded-lg transition-all hover:scale-105"
                 style={{
                   backgroundColor: theme === 'dark' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
@@ -2042,7 +2042,7 @@ const AdminPanel: React.FC = () => {
                 <div 
                   key={index}
                   className="p-3 rounded-lg border transition-all hover:scale-[1.02] cursor-pointer"
-                  onClick={() => navigate('/app/admin/usuarios')}
+                  onClick={() => navigate('/app/agentes')}
                   style={{
                     backgroundColor: theme === 'dark' ? styles.card.backgroundColor : (index === 0 ? 'rgba(34, 197, 94, 0.05)' : '#ffffff'),
                     borderColor: index === 0 ? 'rgba(34, 197, 94, 0.3)' : styles.card.borderColor
