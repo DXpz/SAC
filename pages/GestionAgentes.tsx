@@ -25,7 +25,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import LoadingScreen from '../components/LoadingScreen';
 import Toast, { ToastType } from '../components/Toast';
 
-type EstadoFilter = 'todos' | 'activos' | 'vacaciones' | 'inactivos';
+type EstadoFilter = 'todos' | 'activos' | 'inactivos';
 
 const GestionAgentes: React.FC = () => {
   const [agentes, setAgentes] = useState<Agente[]>([]);
@@ -194,7 +194,7 @@ const GestionAgentes: React.FC = () => {
       }
     }
     // Ordenar agentes por ordenRoundRobin (1, 2, 3...) para mostrar el orden del round robin
-    // Los agentes activos con orden 1, 2, 3... primero, luego los inactivos/vacaciones
+    // Los agentes activos con orden 1, 2, 3... primero, luego los inactivos
     const sortedAgentes = [...agentesFiltrados].sort((a, b) => {
       // Agentes activos primero
       if (a.estado === 'ACTIVO' && b.estado !== 'ACTIVO') return -1;
@@ -355,7 +355,6 @@ const toggleEstado = async (id: string, currentEstado: string) => {
   const resumenAgentes = {
     total: agentes.length,
     activos: agentes.filter(a => a.estado === 'ACTIVO').length,
-    vacaciones: agentes.filter(a => a.estado === 'VACACIONES').length,
     inactivos: agentes.filter(a => a.estado === 'INACTIVO').length
   };
 
@@ -366,7 +365,6 @@ const toggleEstado = async (id: string, currentEstado: string) => {
     if (estadoFilter !== 'todos') {
       resultado = resultado.filter(a => {
         if (estadoFilter === 'activos') return a.estado === 'ACTIVO';
-        if (estadoFilter === 'vacaciones') return a.estado === 'VACACIONES';
         if (estadoFilter === 'inactivos') return a.estado === 'INACTIVO';
         return true;
       });
@@ -506,17 +504,9 @@ const toggleEstado = async (id: string, currentEstado: string) => {
              <div className="w-2 h-2 rounded-full" style={{backgroundColor: '#22c55e'}}></div>
              <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>
                {resumenAgentes.activos} <span style={{color: styles.text.tertiary}}>Activos</span>
-             </span>
-           </div>
-           {resumenAgentes.vacaciones > 0 && (
-             <div className="flex items-center gap-1.5">
-               <div className="w-2 h-2 rounded-full" style={{backgroundColor: '#f59e0b'}}></div>
-               <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>
-                 {resumenAgentes.vacaciones} <span style={{color: styles.text.tertiary}}>Vacaciones</span>
-               </span>
-             </div>
-           )}
-           {resumenAgentes.inactivos > 0 && (
+</span>
+            </div>
+            {resumenAgentes.inactivos > 0 && (
              <div className="flex items-center gap-1.5">
                <div className="w-2 h-2 rounded-full" style={{backgroundColor: '#991b1b'}}></div>
                <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>
@@ -633,12 +623,11 @@ const toggleEstado = async (id: string, currentEstado: string) => {
              <AlertTriangle className="w-4 h-4" style={{color: styles.text.tertiary}} />
              <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>Estado:</span>
              <div className="flex flex-wrap gap-2">
-               {([
-                 { id: 'todos', label: 'Todos' },
-                 { id: 'activos', label: 'Activos' },
-                 { id: 'vacaciones', label: 'Vacaciones' },
-                 { id: 'inactivos', label: 'Inactivos' },
-               ] as { id: EstadoFilter; label: string }[]).map((item, idx) => (
+{([
+                  { id: 'todos', label: 'Todos' },
+                  { id: 'activos', label: 'Activos' },
+                  { id: 'inactivos', label: 'Inactivos' },
+                ] as { id: EstadoFilter; label: string }[]).map((item, idx) => (
                  <button
                    key={item.id}
                    onClick={() => setEstadoFilter(item.id)}
