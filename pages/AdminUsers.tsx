@@ -14,7 +14,9 @@ import {
   Filter,
   Search,
   Download,
-  Copy
+  Copy,
+  UserX,
+  UserCheck
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { api, clearCache } from '../services/api';
@@ -1410,22 +1412,18 @@ const AdminUsers: React.FC = () => {
                                 toggleUserStatus(user.id);
                               }}
                               className="p-2 rounded-lg border transition-all hover:shadow-md"
-                              style={{
-                                backgroundColor: user.estado === 'ACTIVO' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)',
-                                borderColor: user.estado === 'ACTIVO' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(34, 197, 94, 0.3)',
-                                color: user.estado === 'ACTIVO' ? '#ef4444' : '#22c55e',
-                                transform: 'scale(1)',
-                                transition: 'all 0.2s ease-in-out'
+                              style={user.estado === 'ACTIVO' ? {
+                                backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                                borderColor: 'rgba(148, 163, 184, 0.2)',
+                                color: styles.text.secondary
+                              } : {
+                                background: 'linear-gradient(to right, var(--color-brand-red), var(--color-accent-red))',
+                                borderColor: 'transparent',
+                                color: '#ffffff'
                               }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'scale(1.1)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'scale(1)';
-                              }}
-                              title={user.estado === 'ACTIVO' ? 'Desactivar' : 'Activar'}
+                              title={user.estado === 'ACTIVO' ? 'Desactivar usuario' : 'Activar usuario'}
                             >
-                              {user.estado === 'ACTIVO' ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                              {user.estado === 'ACTIVO' ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
                             </button>
                           </div>
                         </td>
