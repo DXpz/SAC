@@ -811,29 +811,8 @@ export const getCases = async (): Promise<Case[]> => {
   const pais = await getUserCountry();
   const paisValue = pais === 'GT' ? 'Guatemala' : 'ElSalvador';
 
-// Si es AGENTE, obtener solo sus casos asignados
-  if (userRole === 'AGENTE') {
-    const agentesInfo = await getAgentesInfo();
-    const agenteId = agentesInfo.find(a => a.email === actor.email)?.id_agente || actor.email;
-    
-    const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/agent`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
-      body: JSON.stringify({
-        agent_id: agenteId,
-        pais: paisValue
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error('Error al obtener casos');
-    }
-
-    const result = await response.json();
-    return mapWebhookResponseToCases(result);
-  }
-
-  // Si es SUPERVISOR o GERENTE, obtener todos los casos del país
+// Si es AGENTE, obtener todos los casos del país y filtrar localmente por agente
+  // (el endpoint /agent del backend devuelve array vacío, mejor obtener todos)
   const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}?pais=${encodeURIComponent(paisValue)}`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
@@ -847,7 +826,19 @@ export const getCases = async (): Promise<Case[]> => {
 
   // El backend retorna { casos: [...], transiciones: [...] }
   // Extraer solo el array de casos
-  const casos = result.casos || result.cases || result;
+  let casos = result.casos || result.cases || result;
+  if (!Array.isArray(casos)) casos = [];
+
+  // Si es AGENTE, filtrar localmente por agente
+  if (userRole === 'AGENTE') {
+    const agentesInfo = await getAgentesInfo();
+    const agenteId = agentesInfo.find(a => a.email === actor.email)?.id_agente || actor.email;
+    casos = casos.filter((c: any) => {
+      return c.agente_user_id === agenteId ||
+             c.agentId === agenteId ||
+             c.agente_id === agenteId;
+    });
+  }
 
   return mapWebhookResponseToCases(casos);
 };
