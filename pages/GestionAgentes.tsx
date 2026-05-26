@@ -772,9 +772,10 @@ const toggleEstado = async (id: string, currentEstado: string) => {
                     const cargaPercent = getCargaWorkloadPercent(agente.casosActivos);
                     const cargaColor = getCargaWorkloadColor(agente.casosActivos);
                     const estadoBadge = getEstadoBadge(agente.estado);
-                    const ordenRoundRobin = agente.ordenRoundRobin || 999;
+                    const ordenRoundRobin = agente.round_robin_orden || agente.ordenRoundRobin || 999;
                     const esSiguiente = ordenRoundRobin === 1 && agente.estado === 'ACTIVO';
                     const esActivo = agente.estado === 'ACTIVO';
+                    const ultimoCasoId = agente.ultimo_caso_id;
                     
                     // Formatear fecha del último caso
                     const formatFechaUltimoCaso = (fecha: string) => {
@@ -928,7 +929,7 @@ const toggleEstado = async (id: string, currentEstado: string) => {
                             <div className="flex items-center gap-1">
                               <RotateCcw className="w-3 h-3" style={{color: esSiguiente ? '#22c55e' : esActivo ? '#3b82f6' : '#94a3b8'}} />
                               <span className="text-xs font-bold" style={{color: esSiguiente ? '#22c55e' : esActivo ? '#3b82f6' : '#94a3b8'}}>
-                                #{ordenRoundRobin === 999 ? '—' : ordenRoundRobin}
+                                #{ordenRoundRobin === 999 || !ordenRoundRobin || ordenRoundRobin === 0 ? '—' : ordenRoundRobin}
                               </span>
                               {esSiguiente && (
                                 <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold" style={{
@@ -942,7 +943,7 @@ const toggleEstado = async (id: string, currentEstado: string) => {
                             </div>
                             {esActivo && (
                               <div className="text-[10px]" style={{color: styles.text.tertiary}}>
-                                Último: {formatFechaUltimoCaso(agente.ultimoCasoAsignado)}
+                                Último: {ultimoCasoId ? `${ultimoCasoId} (${formatFechaUltimoCaso(agente.ultimo_caso_fecha)})` : 'Sin casos'}
                               </div>
                             )}
                           </div>
