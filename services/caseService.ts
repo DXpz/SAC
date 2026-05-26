@@ -448,7 +448,7 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
     const valorSlaHours = categoria?.valor_sla || 24;
     const categoriaMapped = categoria ? {
       idCategoria: categoria.categoria_id || categoria.idCategoria || categoria.id || categoriaId || '',
-      nombre: categoria.nombre || categoria.name || 'General',
+      nombre: categoria.categoria || categoria.nombre || categoria.name || 'General',
       slaDias: Math.ceil(valorSlaHours / 24),
       valorSla: valorSlaHours,
       activa: categoria.activa !== undefined ? categoria.activa : true
