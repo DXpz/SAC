@@ -407,10 +407,10 @@ const AdminPanel: React.FC = () => {
     try {
       if (!categorias || categorias.length === 0) {
         const categoriaCounts: Record<string, number> = {};
-        casosSeguros.forEach(caso => {
+        casosSeguros.forEach((caso: any) => {
           if (!caso) return;
-          const categoriaNombre = getCategoriaNombre(caso);
-          categoriaCounts[categoriaNombre] = (categoriaCounts[categoriaNombre] || 0) + 1;
+          const nombre = caso.categoria?.categoria || caso.categoria?.nombre || caso.category || 'Sin categoría';
+          categoriaCounts[nombre] = (categoriaCounts[nombre] || 0) + 1;
         });
         
         // Paleta de colores mejorada y más vibrante
@@ -433,94 +433,40 @@ const AdminPanel: React.FC = () => {
         })).sort((a, b) => b.value - a.value).slice(0, 8);
       }
 
-      // Usar las categorías del webhook (las creadas en Settings)
+// Usar las categorías del webhook (las creadas en Settings)
       const categoriaCounts: Record<string, number> = {};
       
       // Inicializar contadores con las categorías del webhook
       categorias.forEach((cat: any) => {
-        const categoriaNombre = cat.name || cat.nombre || cat.category_name || cat.caegoria || 'Sin nombre';
+        const categoriaNombre = cat.categoria || cat.name || cat.nombre || cat.category_name || 'Sin nombre';
         categoriaCounts[categoriaNombre] = 0;
       });
       
-      // Contar casos por cada categoría del webhook
-      const casosCategorias: string[] = [];
-      const categoriasNoEncontradas: Record<string, number> = {}; // Guardar también el conteo
-      
-      // Función para normalizar nombres para comparación
-      const normalizeString = (str: string) => {
-        return str.toLowerCase()
-          .replace(/\s+/g, ' ') // Múltiples espacios a uno solo
-          .replace(/[^\w\sáéíóúñü]/g, '') // Remover caracteres especiales (mantener acentos)
-          .trim();
-      };
-      
-      const getCategoriaNombre = (caso: any): string => {
-        if (!caso) return 'Sin categoría';
-        if (typeof caso.category === 'string') return caso.category;
-        if (typeof caso.categoria === 'string') return caso.categoria;
-        if (caso.categoria?.nombre) return caso.categoria.nombre;
-        if (caso.categoria?.name) return caso.categoria.name;
-        return 'Sin categoría';
-      };
-
-      casosSeguros.forEach((caso, index) => {
+      casosSeguros.forEach((caso: any) => {
         if (!caso) return;
-        const casoCategoriaNombre = getCategoriaNombre(caso);
-        
-        if (casoCategoriaNombre && !casosCategorias.includes(casoCategoriaNombre)) {
-          casosCategorias.push(casoCategoriaNombre);
-        }
+        const casoCategoriaNombre = caso.categoria?.categoria || caso.categoria?.nombre || caso.categoria?.name || caso.category || '';
         
         if (!casoCategoriaNombre || casoCategoriaNombre === 'Sin categoría') {
           return;
         }
         
-        // Buscar la categoría del caso en las categorías del webhook
-        let encontrada = false;
-        for (const cat of categorias) {
-          const catNombre = String(cat.name || cat.nombre || cat.category_name || cat.caegoria || '').trim();
-          const catId = String(cat.id || cat.idCategoria || cat.category_id || '').trim();
-          
-          const catNombreNormalized = normalizeString(catNombre);
-          const casoCategoriaNormalized = normalizeString(casoCategoriaNombre);
-          
-          // Comparar por nombre exacto, normalizado, o si contiene el nombre
-          if (catNombre === casoCategoriaNombre || 
-              catNombreNormalized === casoCategoriaNormalized ||
-              catNombre.toLowerCase() === casoCategoriaNombre.toLowerCase() ||
-              catNombreNormalized.includes(casoCategoriaNormalized) ||
-              casoCategoriaNormalized.includes(catNombreNormalized)) {
-            categoriaCounts[catNombre] = (categoriaCounts[catNombre] || 0) + 1;
-            encontrada = true;
-            break;
-          }
-        }
-        
-        // Si no se encontró en el webhook, agregarla igual para que aparezca en el gráfico
-        if (!encontrada) {
-          categoriasNoEncontradas[casoCategoriaNombre] = (categoriasNoEncontradas[casoCategoriaNombre] || 0) + 1;
+        // Buscar la categoría del caso
+        if (categoriaCounts[casoCategoriaNombre] !== undefined) {
+          categoriaCounts[casoCategoriaNombre]++;
+        } else {
+          // Si no existe, agregarla
+          categoriaCounts[casoCategoriaNombre] = 1;
         }
       });
-      
-      // Agregar categorías de casos que no están en el webhook al gráfico
-      Object.entries(categoriasNoEncontradas).forEach(([nombre, count]) => {
-        categoriaCounts[nombre] = count;
-      });
+
+      // Filtrar categorías sin casos para mostrarlas con 0
       const colors = ['#3b82f6', '#8b5cf6', '#22c55e', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#6366f1'];
       const result = Object.entries(categoriaCounts)
         .map(([name, value], index) => ({
           name: name.length > 15 ? name.substring(0, 15) + '...' : name,
           value,
           color: colors[index % colors.length]
-        }))
-        .sort((a, b) => {
-          // Primero ordenar por cantidad (mayor a menor)
-          if (b.value !== a.value) {
-            return b.value - a.value;
-          }
-          // Si tienen la misma cantidad, ordenar alfabéticamente
-          return a.name.localeCompare(b.name);
-        });
+        })).sort((a, b) => b.value - a.value).slice(0, 8);
       return result;
     } catch (error) {
       return [];
