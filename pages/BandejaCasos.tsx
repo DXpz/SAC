@@ -443,12 +443,15 @@ const filteredCasos = useMemo(() => {
     // Filtrar estados finales
     casosParaFiltrar = casosParaFiltrar.filter((caso) => !isEstadoFinal(caso as any));
 
-    // Aplicar búsqueda
+    // ENRIQUECER PRIMERO para que clientName esté disponible antes de filtrar/buscar
+    const casosEnriquecidos = enrichCases(casosParaFiltrar, clientes, categorias);
+
+    // Aplicar búsqueda DESPUÉS de enriquecer
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      casosParaFiltrar = casosParaFiltrar.filter(c => {
+      return casosEnriquecidos.filter(c => {
         const id = (c.id || c.ticketNumber || '').toLowerCase();
-        const client = (c.clientName || (c.cliente as any)?.CardName || '').toLowerCase();
+        const client = (c.clientName || '').toLowerCase();
         const subject = (c.subject || '').toLowerCase();
         return id.includes(term) || client.includes(term) || subject.includes(term);
       });
@@ -456,7 +459,7 @@ const filteredCasos = useMemo(() => {
 
     // Filtrar por estado
     if (statusFilter !== 'all') {
-      casosParaFiltrar = casosParaFiltrar.filter(c => {
+      return casosEnriquecidos.filter(c => {
         const rawStatus = c.status || (c as any).estado;
         if (!rawStatus) return false;
         const rawLower = String(rawStatus).toLowerCase().trim();
@@ -470,7 +473,7 @@ const filteredCasos = useMemo(() => {
 
     // Filtrar por categoría
     if (categoriaFilter !== 'all') {
-      casosParaFiltrar = casosParaFiltrar.filter(c => {
+      return casosEnriquecidos.filter(c => {
         const catId = c.categoria?.idCategoria || c.categoria?.id || (c as any).categoria_id || '';
         return String(catId) === String(categoriaFilter);
       });
@@ -478,18 +481,17 @@ const filteredCasos = useMemo(() => {
 
     // Filtrar por agente
     if (agenteFilter !== 'all') {
-      casosParaFiltrar = casosParaFiltrar.filter(c => {
+      return casosEnriquecidos.filter(c => {
         const agenteId = (c as any).agentId || (c as any).agente_user_id || '';
         const agenteIdStr = String(agenteId).trim();
         const filterIdStr = String(agenteFilter).trim();
         if (!agenteIdStr || agenteIdStr === 'undefined' || agenteIdStr === 'null') return false;
-
         return agenteIdStr === filterIdStr ||
                agenteIdStr.toLowerCase() === filterIdStr.toLowerCase();
       });
     }
 
-    return enrichCases(casosParaFiltrar, clientes, categorias);
+    return casosEnriquecidos
   }, [casos, clientes, categorias, searchTerm, statusFilter, categoriaFilter, agenteFilter, userCountry, isEstadoFinal]);
 
   // Paginación
