@@ -1219,15 +1219,13 @@ const [showUserModal, setShowUserModal] = useState(false);
     const estado = states.find(s => s.id === id);
     if (!estado) return;
 
-    setEditingStateId(null);
-    setEditingStateName('');
-
     try {
       await api.updateEstado(id, { nombre: editingStateName.trim(), descripcion: editingStateName.trim() });
       setStates(states.map(s => s.id === id ? { ...s, name: editingStateName.trim() } : s));
+      setEditingStateId(null);
+      setEditingStateName('');
     } catch (error: any) {
       alert(error.message || 'Error al actualizar el nombre del estado');
-      await loadEstados();
     }
   };
 
