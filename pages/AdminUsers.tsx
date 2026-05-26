@@ -715,8 +715,13 @@ const AdminUsers: React.FC = () => {
     // NOTE: No se usa VACACIONES en esta vista
 
     try {
-      // Llamar al backend para actualizar el usuario
-      await api.updateUser(selectedUser.id, { estado });
+      // Llamar al backend para actualizar el usuario con todos los campos
+      await api.updateUser(selectedUser.id, {
+        nombre: formData.nombre.trim(),
+        email: formData.email.trim(),
+        role: formData.rol,
+        estado
+      });
 
       // Actualizar estado local
       setUsers(users.map(u =>
