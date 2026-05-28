@@ -457,17 +457,14 @@ const filteredCasos = useMemo(() => {
       });
     }
 
-    // Filtrar por estado
+    // Filtrar por estado - solo comparación exacta
     if (statusFilter !== 'all') {
       return casosEnriquecidos.filter(c => {
         const rawStatus = c.status || (c as any).estado;
         if (!rawStatus) return false;
         const rawLower = String(rawStatus).toLowerCase().trim();
         const filterLower = String(statusFilter).toLowerCase().trim();
-        if (estados.length > 0) {
-          return rawLower === filterLower || normalizeStatus(rawStatus) === statusFilter;
-        }
-        return normalizeStatus(rawStatus) === statusFilter;
+        return rawLower === filterLower;
       });
     }
 
