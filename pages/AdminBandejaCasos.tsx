@@ -428,6 +428,12 @@ const AdminBandejaCasos: React.FC = () => {
   }), [theme]);
 
   const getSlaStatus = (caso: Case) => {
+    const estado = caso.status || (caso as any).estado || '';
+    const isClosedState = ['Cerrado', 'Resuelto', 'cerrado', 'resuelto'].includes(estado);
+    if (isClosedState) {
+      return { label: 'Normal', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)', icon: Clock };
+    }
+
     const slaDias = caso.categoria?.slaDias || 5;
     const diasRestantes = slaDias - caso.diasAbierto;
     
