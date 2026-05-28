@@ -109,10 +109,10 @@ const [showUserModal, setShowUserModal] = useState(false);
       tipo: 'correo',
       requerido: true,
       etiqueta: 'Correo del cliente'
-    }
+}
   ];
 
-  const [parametros, setParametros] = useState<Parametro[]>(initialParametros);
+  const [parametros, setParametros] = useState<Parametro[]>([]);
 
   const [showParametroModal, setShowParametroModal] = useState(false);
   const [isEditingParametro, setIsEditingParametro] = useState(false);
@@ -129,7 +129,7 @@ const [showUserModal, setShowUserModal] = useState(false);
   });
 
   const [parametroSearchTerm, setParametroSearchTerm] = useState('');
-  const [filteredParametros, setFilteredParametros] = useState<Parametro[]>(initialParametros);
+  const [filteredParametros, setFilteredParametros] = useState<Parametro[]>([]);
 
   const [deletingParametro, setDeletingParametro] = useState<{
     id: string;
@@ -623,9 +623,9 @@ const [showUserModal, setShowUserModal] = useState(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
-  // Cargar parámetros cuando se activa el tab de configuración
+  // Cargar parámetros cuando se activa el tab de parámetros finales
   useEffect(() => {
-    if (activeTab === 'configuracion') {
+    if (activeTab === 'parametros-finales') {
       loadParametros();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
