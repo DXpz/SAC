@@ -264,7 +264,7 @@ const GerenteDashboard: React.FC = () => {
       
       return isVencido || isEscalado || isEnRiesgo;
     });
-  }, [casosFiltradosPorPais]);
+  }, [filteredCasos]);
 
   const filteredCasos = useMemo(() => {
     const currentUser = api.getUser();
@@ -350,7 +350,7 @@ const GerenteDashboard: React.FC = () => {
       slaCompliance,
       csatScore: csatScore !== null ? Math.round(csatScore * 10) / 10 : null // Redondear a 1 decimal
     };
-  }, [casosFiltradosPorPais]);
+  }, [filteredCasos]);
 
   // Usar datos reales de casos críticos (basados en casos filtrados por país)
   const abiertos = casosFiltradosPorPais.filter(c => {
@@ -461,19 +461,19 @@ const GerenteDashboard: React.FC = () => {
   // Incluir TODOS los estados posibles del webhook
   const chartData = useMemo(() => {
     const data = [
-      { name: 'Nuevos', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.NUEVO).length },
-      { name: 'En Proceso', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.EN_PROCESO).length },
-      { name: 'Pendiente Cliente', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.PENDIENTE_CLIENTE).length },
-      { name: 'Escalados', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.ESCALADO).length },
-      { name: 'Resueltos', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.RESUELTO).length },
-      { name: 'Cerrados', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.CERRADO).length },
+      { name: 'Nuevos', value: casosFiltrados.filter(c => normalizeStatus(c.status) === CaseStatus.NUEVO).length },
+      { name: 'En Proceso', value: casosFiltrados.filter(c => normalizeStatus(c.status) === CaseStatus.EN_PROCESO).length },
+      { name: 'Pendiente Cliente', value: casosFiltrados.filter(c => normalizeStatus(c.status) === CaseStatus.PENDIENTE_CLIENTE).length },
+      { name: 'Escalados', value: casosFiltrados.filter(c => normalizeStatus(c.status) === CaseStatus.ESCALADO).length },
+      { name: 'Resueltos', value: casosFiltrados.filter(c => normalizeStatus(c.status) === CaseStatus.RESUELTO).length },
+      { name: 'Cerrados', value: casosFiltrados.filter(c => normalizeStatus(c.status) === CaseStatus.CERRADO).length },
     ];
     
     return data;
-  }, [casosFiltradosPorPais]);
+  }, [filteredCasos]);
 
   // El total debe ser TODOS los casos, no solo los del gráfico
-  const totalCasos = casosFiltradosPorPais.length;
+  const totalCasos = filteredCasos.length;
 
   const chartDataWithPercent = useMemo(() => chartData.map(item => ({
     ...item,
