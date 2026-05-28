@@ -461,12 +461,12 @@ const GerenteDashboard: React.FC = () => {
   // Incluir TODOS los estados posibles del webhook
   const chartData = useMemo(() => {
     const data = [
-      { name: 'Nuevos', value: casosFiltrados.filter(c => normalizeStatus(c.status) === CaseStatus.NUEVO).length },
-      { name: 'En Proceso', value: casosFiltrados.filter(c => normalizeStatus(c.status) === CaseStatus.EN_PROCESO).length },
-      { name: 'Pendiente Cliente', value: casosFiltrados.filter(c => normalizeStatus(c.status) === CaseStatus.PENDIENTE_CLIENTE).length },
-      { name: 'Escalados', value: casosFiltrados.filter(c => normalizeStatus(c.status) === CaseStatus.ESCALADO).length },
-      { name: 'Resueltos', value: casosFiltrados.filter(c => normalizeStatus(c.status) === CaseStatus.RESUELTO).length },
-      { name: 'Cerrados', value: casosFiltrados.filter(c => normalizeStatus(c.status) === CaseStatus.CERRADO).length },
+      { name: 'Nuevos', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.NUEVO).length },
+      { name: 'En Proceso', value: filteredCasos.filter(c => normalizeStatus(c.status) === CaseStatus.EN_PROCESO).length },
+      { name: 'Pendiente Cliente', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.PENDIENTE_CLIENTE).length },
+      { name: 'Escalados', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.ESCALADO).length },
+      { name: 'Resueltos', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.RESUELTO).length },
+      { name: 'Cerrados', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.CERRADO).length },
     ];
     
     return data;
