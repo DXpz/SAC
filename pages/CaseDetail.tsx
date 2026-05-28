@@ -167,52 +167,27 @@ const CaseDetail: React.FC = () => {
       }
       
       if (!isEstadoFinal) {
-        // Si NO es estado final, limpiar parámetros
         setParametrosEstadoFinal([]);
         setFormValues({});
         setAnexosEstadoFinal('');
         return;
       }
       
-      if (showJustificationModal && isEstadoFinal && estadoFinalParams) {
-        try {
-          const todosParametros = await api.readParametros();
-          
-          const normalizeId = (id: string) => {
-            if (!id) return '';
-            return id.toLowerCase().trim().replace(/\s+/g, '_').replace(/-/g, '_');
-          };
-          
-          const estadoFinalId = normalizeId(estadoFinalParams.id || estadoFinalParams.nombre || '');
-          
-          const parametrosFiltrados = todosParametros.filter((param: any) => {
-            const paramEstadoFinalId = normalizeId(param.id_estado_final || '');
-            return paramEstadoFinalId === estadoFinalId;
-          });
-          
-          // Eliminar duplicados basándose en nombre_parametro
-          // Mantener solo el primer registro de cada nombre_parametro
-          const parametrosSinDuplicados: any[] = [];
-          const nombresVistos = new Set<string>();
-          
-          parametrosFiltrados.forEach((param: any) => {
-            const nombre = param.nombre_parametro || param.id;
-            if (!nombresVistos.has(nombre)) {
-              nombresVistos.add(nombre);
-              parametrosSinDuplicados.push(param);
-            }
-          });
-          
-          setParametrosEstadoFinal(parametrosSinDuplicados);
-          
-          // Inicializar valores del formulario con parámetros sin duplicados
-          const initialValues: Record<string, any> = {};
-          parametrosSinDuplicados.forEach((param: any) => {
-            initialValues[param.nombre_parametro || param.id] = '';
-          });
-          setFormValues(initialValues);
-        } catch (error) {
-        }
+      if (showJustificationModal && isEstadoFinal && estadoFinalParams?.parametros) {
+        const params = estadoFinalParams.parametros || [];
+        setParametrosEstadoFinal(params);
+        
+        const initialValues: Record<string, any> = {};
+        params.forEach((param: any) => {
+          const key = param.nombre_parametro || param.id;
+          initialValues[key] = '';
+        });
+        setFormValues(initialValues);
+        setAnexosEstadoFinal('');
+      } else {
+        setParametrosEstadoFinal([]);
+        setFormValues({});
+        setAnexosEstadoFinal('');
       }
     };
     
@@ -816,7 +791,7 @@ const CaseDetail: React.FC = () => {
   };
 
   // Manejar clic en botón de acción
-  const handleActionClick = (newState: string) => {
+  const handleActionClick = async (newState: string) => {
     if (isCaseClosed) {
       return;
     }
@@ -861,22 +836,36 @@ const CaseDetail: React.FC = () => {
       return;
     }
 
-    // Verificar si el estado destino es un estado final
-    const estadosFinales = (caso as any)?.estadosFinales || [];
-    const estadoFinalEncontrado = estadosFinales.find((ef: any) => {
-      const estadoFinalNormalizado = normalizeEstadoName(ef.id || ef.nombre || '');
-      const newStateNorm = normalizeEstadoName(newState);
-      return estadoFinalNormalizado === newStateNorm && ef.estado_final === true;
-    });
+    // Obtener configuración de workflow desde el backend para saber si es estado final y sus parámetros
+    let esEstadoFinal = false;
+    let estadoFinalParams: any = null;
     
-    const esEstadoFinal = !!estadoFinalEncontrado;
+    try {
+      const workflowConfig = await api.getWorkflowConfig(estadoActual);
+      const transicionDestino = workflowConfig?.transiciones?.find(
+        (t: any) => t.nombre === newState
+      );
+      
+      if (transicionDestino) {
+        esEstadoFinal = transicionDestino.estado_final === true;
+        if (esEstadoFinal) {
+          estadoFinalParams = {
+            id: transicionDestino.id,
+            nombre: transicionDestino.nombre,
+            parametros: transicionDestino.parametros || []
+          };
+        }
+      }
+    } catch (error) {
+      console.error('Error al obtener configuración de workflow:', error);
+    }
 
     // Abrir modal de justificación (o formulario de cierre si es estado final)
     setPendingNewState(newState);
     setJustification('');
     setErrorMessage('');
     setIsEstadoFinal(esEstadoFinal); // Guardar si es estado final
-    setEstadoFinalParams(estadoFinalEncontrado || null); // Guardar los parámetros del estado final
+    setEstadoFinalParams(estadoFinalParams); // Guardar los parámetros del estado final
     setShowJustificationModal(true);
   };
 

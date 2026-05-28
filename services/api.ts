@@ -1032,6 +1032,20 @@ export const api = {
 return response.json();
   },
 
+  // Obtener configuración de workflow para un estado (transiciones + parámetros de estados finales)
+  async getWorkflowConfig(estado: string): Promise<any> {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}/workflow?estado=${encodeURIComponent(estado)}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al obtener configuración de workflow');
+    }
+
+    return response.json();
+  },
+
   async updateAgente(id: string, data: any): Promise<boolean> {
     try {
       const response = await fetch(`${API_CONFIG.WEBHOOK_AGENTES_URL}/${id}`, {
