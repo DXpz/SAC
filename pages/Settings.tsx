@@ -627,6 +627,7 @@ const [showUserModal, setShowUserModal] = useState(false);
   useEffect(() => {
     if (activeTab === 'parametros-finales') {
       loadParametros();
+      loadEstados(); // Cargar estados para el selector de estado final
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
