@@ -255,7 +255,7 @@ const SupervisorPanel: React.FC = () => {
   }, [casosAbiertos, periodFilter]);
 
   const casosCriticos = useMemo(() => {
-    const critcos = casosAbiertosFiltrados.filter(c => {
+    const criticos = casosAbiertosFiltrados.filter(c => {
       const normalizedStatus = normalizeStatus(c.status);
       if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
         return normalizedStatus === CaseStatus.ESCALADO;
