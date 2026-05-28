@@ -313,7 +313,7 @@ const GerenteDashboard: React.FC = () => {
 
   // Calcular KPIs basados en casos filtrados por país
   const kpisFiltrados = useMemo(() => {
-    const casosParaKPIs = casosFiltradosPorPais;
+    const casosParaKPIs = filteredCasos;
     
     // Calcular SLA Compliance basado en casos filtrados por país
     const casosConSLA = casosParaKPIs.filter(c => {
