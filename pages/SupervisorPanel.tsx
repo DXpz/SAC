@@ -338,7 +338,7 @@ const SupervisorPanel: React.FC = () => {
   }, [casosAbiertosFiltrados.length, casosDentroSLA.length]);
 
   // Memorizar valores de longitud para evitar recálculos durante hover
-  const casosAbiertosCount = useMemo(() => casosAbiertos.length, [casosAbiertos.length]);
+  const casosAbiertosCount = useMemo(() => casosAbiertosFiltrados.length, [casosAbiertosFiltrados.length]);
   const casosVencidosCount = useMemo(() => casosVencidos.length, [casosVencidos.length]);
   const casosCriticosCount = useMemo(() => casosCriticos.length, [casosCriticos.length]);
   const casosTotalesCount = useMemo(() => casosAbiertosFiltrados.length, [casosAbiertosFiltrados.length]);
