@@ -1238,7 +1238,7 @@ export const sendCaseCloseWebhook = async (
       return { success: false, message: 'Usuario no autenticado' };
     }
 
-    const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/close`, {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/${caseId}/close`, {
       method: 'POST',
       mode: 'cors',
       credentials: 'omit',
