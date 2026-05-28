@@ -237,31 +237,41 @@ const SupervisorPanel: React.FC = () => {
     const abiertos = casos.filter(c => c.status !== CaseStatus.RESUELTO && c.status !== CaseStatus.CERRADO);
     return filterByAgent(abiertos);
   }, [casos, filterByAgent]);
-  
+
+  // Casos abiertos filtrados por periodo
+  const casosAbiertosFiltrados = useMemo(() => {
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    return casosAbiertos.filter(c => {
+      const fecha = new Date(c.createdAt);
+      if (periodFilter === 'hoy') return fecha >= startOfDay;
+      if (periodFilter === 'semana') return fecha >= startOfWeek;
+      if (periodFilter === 'mes') return fecha >= startOfMonth;
+      return true;
+    });
+  }, [casosAbiertos, periodFilter]);
+
   const casosCriticos = useMemo(() => {
-    const criticos = casos.filter(c => {
-      // Excluir casos resueltos o cerrados (a menos que estén escalados)
+    const critcos = casosAbiertosFiltrados.filter(c => {
       const normalizedStatus = normalizeStatus(c.status);
       if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
-        // Solo incluir si está escalado
         return normalizedStatus === CaseStatus.ESCALADO;
       }
-      
+
       const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
       const diasAbierto = c.diasAbierto || 0;
-      
-      // Caso crítico si:
-      // 1. Los días abiertos son >= al SLA (vencido)
-      // 2. Está escalado
-      // 3. Le queda 1 día o menos para vencer (en riesgo)
+
       const isVencido = diasAbierto >= slaDias;
       const isEscalado = normalizedStatus === CaseStatus.ESCALADO;
       const isEnRiesgo = (slaDias - diasAbierto <= 1) && diasAbierto > 0 && diasAbierto < slaDias;
-      
+
       return isVencido || isEscalado || isEnRiesgo;
     });
-    return filterByAgent(criticos);
-  }, [casos, filterByAgent, normalizeStatus]);
+    return criticos;
+  }, [casosAbiertosFiltrados, normalizeStatus]);
 
   const filteredCasos = useMemo(() => {
     let filtered = [...casos];
@@ -299,41 +309,39 @@ const SupervisorPanel: React.FC = () => {
   }, [casos, periodFilter, typeFilter, agentFilter]);
   
   const casosVencidos = useMemo(() => {
-    const vencidos = casos.filter(c => {
+    return casosAbiertosFiltrados.filter(c => {
       const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-      return c.status !== CaseStatus.RESUELTO && c.status !== CaseStatus.CERRADO && c.diasAbierto > slaDias;
+      return c.diasAbierto > slaDias;
     });
-    return filterByAgent(vencidos);
-  }, [casos, filterByAgent]);
-  
+  }, [casosAbiertosFiltrados]);
+
   const casosEnRiesgo = useMemo(() => {
-    return casosAbiertos.filter(c => {
+    return casosAbiertosFiltrados.filter(c => {
       const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
       const diasRestantes = slaDias - c.diasAbierto;
       return diasRestantes > 0 && diasRestantes <= 1;
     });
-  }, [casosAbiertos]);
-  
+  }, [casosAbiertosFiltrados]);
+
   const casosDentroSLA = useMemo(() => {
-    return casosAbiertos.filter(c => {
+    return casosAbiertosFiltrados.filter(c => {
       const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
       const diasRestantes = slaDias - c.diasAbierto;
       return diasRestantes > 1;
     });
-  }, [casosAbiertos]);
+  }, [casosAbiertosFiltrados]);
 
-  // Si no hay casos abiertos, el SLA no puede ser 100%, debe ser null
   const slaPromedio = useMemo(() => {
-    return casosAbiertos.length > 0 
-      ? Math.round((casosDentroSLA.length / casosAbiertos.length) * 100)
+    return casosAbiertosFiltrados.length > 0
+      ? Math.round((casosDentroSLA.length / casosAbiertosFiltrados.length) * 100)
       : null;
-  }, [casosAbiertos.length, casosDentroSLA.length]);
+  }, [casosAbiertosFiltrados.length, casosDentroSLA.length]);
 
   // Memorizar valores de longitud para evitar recálculos durante hover
   const casosAbiertosCount = useMemo(() => casosAbiertos.length, [casosAbiertos.length]);
   const casosVencidosCount = useMemo(() => casosVencidos.length, [casosVencidos.length]);
   const casosCriticosCount = useMemo(() => casosCriticos.length, [casosCriticos.length]);
-  const casosTotalesCount = useMemo(() => casos.length, [casos.length]);
+  const casosTotalesCount = useMemo(() => casosAbiertosFiltrados.length, [casosAbiertosFiltrados.length]);
 
   const agentesActivos = useMemo(() => agentes.filter(a => a.estado === 'Activo').length, [agentes]);
   const totalAgentes = useMemo(() => agentes.length, [agentes.length]);
@@ -377,8 +385,8 @@ const SupervisorPanel: React.FC = () => {
     finAyer.setHours(23, 59, 59, 999);
 
     // Obtener casos que existían ayer (creados antes del final de ayer)
-    // Ya están filtrados por agente en casosAbiertos
-    const casosAyer = casosAbiertos.filter(c => {
+    // Ya filtrados por agente y periodo
+    const casosAyer = casosAbiertosFiltrados.filter(c => {
       const fechaCreacion = new Date(c.createdAt);
       return fechaCreacion <= finAyer;
     });
@@ -400,7 +408,7 @@ const SupervisorPanel: React.FC = () => {
     return casosAyer.length > 0 
       ? Math.round((casosDentroSLAAyer.length / casosAyer.length) * 100)
       : null;
-  }, [casosAbiertos, slaPromedio]);
+  }, [casosAbiertosFiltrados, slaPromedio]);
 
   // Calcular cambio de SLA solo si ambos valores existen
   const slaCambio = (slaPromedio !== null && slaAyer !== null) 
