@@ -512,19 +512,29 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
     let slaExpired = caseData.slaExpired;
 
     if (diasAbierto === undefined || diasAbierto === null) {
-      try {
-        diasAbierto = calculateBusinessDaysElapsed(new Date(createdAt));
-      } catch (error) {
-        diasAbierto = caseData.dias_abierto || 0;
-      }
+      const estado = caseData.estado || caseData.status || '';
+      const isClosedState = ['Cerrado', 'Resuelto', 'cerrado', 'resuelto'].includes(estado);
+      diasAbierto = isClosedState ? 0 : (() => {
+        try {
+          return calculateBusinessDaysElapsed(new Date(createdAt));
+        } catch (error) {
+          return caseData.dias_abierto || 0;
+        }
+      })();
     }
 
     if (slaExpired === undefined || slaExpired === null) {
-      try {
-        const delayDays = calculateSLADelayDays(new Date(createdAt), slaDays);
-        slaExpired = delayDays > 0;
-      } catch (error) {
-        slaExpired = caseData.sla_vencido || caseData.slaExpired || false;
+      const estado = caseData.estado || caseData.status || '';
+      const isClosedState = ['Cerrado', 'Resuelto', 'cerrado', 'resuelto'].includes(estado);
+      if (isClosedState) {
+        slaExpired = false;
+      } else {
+        try {
+          const delayDays = calculateSLADelayDays(new Date(createdAt), slaDays);
+          slaExpired = delayDays > 0;
+        } catch (error) {
+          slaExpired = caseData.sla_vencido || caseData.slaExpired || false;
+        }
       }
     }
     
