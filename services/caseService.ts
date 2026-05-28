@@ -508,27 +508,25 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
     const createdAtStr = caseData.fecha_creacion || caseData.createdAt || caseData.fechaCreacion;
     const createdAt = parseDate(createdAtStr);
     const slaDays = categoriaMapped.slaDias;
+    const estado = caseData.estado || caseData.status || '';
+    const isClosedState = ['Cerrado', 'Resuelto', 'cerrado', 'resuelto'].includes(estado);
+
     let diasAbierto = caseData.diasAbierto;
     let slaExpired = caseData.slaExpired;
 
-    if (diasAbierto === undefined || diasAbierto === null) {
-      const estado = caseData.estado || caseData.status || '';
-      const isClosedState = ['Cerrado', 'Resuelto', 'cerrado', 'resuelto'].includes(estado);
-      diasAbierto = isClosedState ? 0 : (() => {
+    if (isClosedState) {
+      diasAbierto = 0;
+      slaExpired = false;
+    } else {
+      if (diasAbierto === undefined || diasAbierto === null) {
         try {
-          return calculateBusinessDaysElapsed(new Date(createdAt));
+          diasAbierto = calculateBusinessDaysElapsed(new Date(createdAt));
         } catch (error) {
-          return caseData.dias_abierto || 0;
+          diasAbierto = caseData.dias_abierto || 0;
         }
-      })();
-    }
+      }
 
-    if (slaExpired === undefined || slaExpired === null) {
-      const estado = caseData.estado || caseData.status || '';
-      const isClosedState = ['Cerrado', 'Resuelto', 'cerrado', 'resuelto'].includes(estado);
-      if (isClosedState) {
-        slaExpired = false;
-      } else {
+      if (slaExpired === undefined || slaExpired === null) {
         try {
           const delayDays = calculateSLADelayDays(new Date(createdAt), slaDays);
           slaExpired = delayDays > 0;
