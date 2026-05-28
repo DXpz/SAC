@@ -1277,6 +1277,10 @@ export const sendCaseCloseWebhook = async (
       return { success: false, message: errorMessage };
     }
 
+    if (parsed?.success === true) {
+      return { success: true, message: parsed.message || 'Validacion exitosa' };
+    }
+
     if (messageFromBody) {
       const lower = messageFromBody.toLowerCase();
       const isValidAnexos =
