@@ -264,7 +264,7 @@ const GerenteDashboard: React.FC = () => {
       
       return isVencido || isEscalado || isEnRiesgo;
     });
-  }, [filteredCasos]);
+  }, [casosFiltradosPorPais]);
 
   const filteredCasos = useMemo(() => {
     const currentUser = api.getUser();
