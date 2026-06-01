@@ -435,7 +435,12 @@ const [showUserModal, setShowUserModal] = useState(false);
   // Cargar asuetos desde el webhook
   const loadHolidays = async () => {
     try {
-      const pais = adminCountry || 'SV';
+      let pais = adminCountry;
+      if (!pais) {
+        pais = await getAdminCountry();
+        if (pais) setAdminCountry(pais);
+      }
+      if (!pais) pais = 'SV';
       const fechasFromWebhook = await api.readHolidays(pais);
       setHolidays(fechasFromWebhook);
     } catch (error: any) {
