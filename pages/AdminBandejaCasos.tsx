@@ -115,26 +115,12 @@ const AdminBandejaCasos: React.FC = () => {
       
       if (clientes.length > 0 && getClientId(caso)) {
         console.log('[AdminBandejaCasos] looking for cliente_id:', getClientId(caso));
+        const clienteIdStr = String(getClientId(caso)).trim();
         const clienteCompleto = clientes.find(c => {
           if (!c?.CardCode) return false;
-          const normalizeId = (id: string) => {
-            if (!id) return '';
-            let normalized = id.trim().toUpperCase();
-            if (!normalized.startsWith('CL')) {
-              normalized = 'CL' + normalized.replace(/^CL/i, '');
-            }
-            const match = normalized.match(/^CL0*(\d+)$/);
-            if (match) {
-              const num = match[1];
-              normalized = 'CL' + num.padStart(6, '0');
-            }
-            return normalized;
-          };
-
-          const casoClientIdNormalized = normalizeId(getClientId(caso));
-          const cliIdNormalized = normalizeId(c.CardCode);
-          console.log('[AdminBandejaCasos] comparing caso:', casoClientIdNormalized, 'with cliente:', cliIdNormalized, 'match:', casoClientIdNormalized === cliIdNormalized);
-          return casoClientIdNormalized === cliIdNormalized;
+          const cardCodeStr = String(c.CardCode).trim();
+          console.log('[AdminBandejaCasos] comparing caso:', clienteIdStr, 'with cliente:', cardCodeStr, 'match:', cardCodeStr === clienteIdStr);
+          return cardCodeStr === clienteIdStr;
         });
 
         if (clienteCompleto) {
