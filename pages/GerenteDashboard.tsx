@@ -244,8 +244,8 @@ const GerenteDashboard: React.FC = () => {
         return casoPaisNormalizado === gerenteCountry;
       });
     } else if (isGerente && !gerenteCountry) {
-      // Si el gerente no tiene país, NO mostrar ningún caso
-      casosFiltrados = [];
+      // Si el gerente no tiene país, mostrar TODOS los casos (sin filtro de país)
+      casosFiltrados = casos;
     }
     
     return casosFiltrados;
@@ -299,8 +299,40 @@ const GerenteDashboard: React.FC = () => {
         return casoPaisNormalizado === gerenteCountry;
       });
     } else if (isGerente && !gerenteCountry) {
-      // Si el gerente no tiene país, NO mostrar ningún caso (más seguro)
-      casosFiltrados = [];
+      // Si el gerente no tiene país, mostrar TODOS los casos (sin filtro de país)
+      casosFiltrados = casos;
+    }
+    
+    return casosFiltrados;
+  }, [casos, gerenteCountry]);
+
+  // Filtrar casos para métricas y visualización
+  const filteredCasos = useMemo(() => {
+    const currentUser = api.getUser();
+    const isGerente = currentUser?.role === 'GERENTE';
+    
+    let casosFiltrados = casos;
+    
+    // Si es GERENTE, filtrar casos por país del gerente (OBLIGATORIO)
+    if (isGerente && gerenteCountry) {
+      casosFiltrados = casos.filter(caso => {
+        // Obtener el país del caso desde diferentes fuentes posibles
+        const casoPais = (caso as any).pais || 
+                        caso.cliente?.pais || 
+                        (caso as any).country ||
+                        '';
+        
+        const casoPaisNormalizado = normalizeCaseCountry(casoPais);
+        
+        // Si el caso no tiene país definido, NO mostrarlo al gerente
+        if (!casoPaisNormalizado) {
+          return false;
+        }
+        return casoPaisNormalizado === gerenteCountry;
+      });
+    } else if (isGerente && !gerenteCountry) {
+      // Si el gerente no tiene país, mostrar TODOS los casos (sin filtro de país)
+      casosFiltrados = casos;
     }
     
     // Aplicar filtro de fecha
