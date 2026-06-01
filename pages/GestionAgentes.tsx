@@ -177,13 +177,11 @@ const GestionAgentes: React.FC = () => {
     const currentUser = api.getUser();
     const isSupervisorOrAdmin = currentUser?.role === 'SUPERVISOR' || currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR';
     
-    let agentesData = await api.getUsuarios();
+    // Usar getAgentes() para tener acceso a orden_round_robin
+    let agentesData = await api.getAgentes();
     
-    // Filtrar solo usuarios con rol AGENTE
-    agentesData = agentesData.filter((u: any) => {
-      const rol = (u.rol || u.role || '').toString().toUpperCase();
-      return rol === 'AGENTE';
-    });
+    // Filtrar solo usuarios con rol AGENTE (ya que getAgentes puede devolver datos de tabla agente)
+    // y necesitamos enriqucier con datos de usuario para el orden round robin
     
     let agentesFiltrados = [...agentesData];
     if (isSupervisorOrAdmin) {
@@ -202,19 +200,16 @@ const GestionAgentes: React.FC = () => {
       }
     }
     // Ordenar agentes por ordenRoundRobin (1, 2, 3...) para mostrar el orden del round robin
-    // Los agentes activos con orden 1, 2, 3... primero, luego los inactivos
+    // Primero por round_robin_orden (ascendente), luego inactivos al final
     const sortedAgentes = [...agentesFiltrados].sort((a, b) => {
-      // Agentes activos primero
-      if (a.estado === 'ACTIVO' && b.estado !== 'ACTIVO') return -1;
+      // Inactivos siempre al final
       if (a.estado !== 'ACTIVO' && b.estado === 'ACTIVO') return 1;
-
-      // Si ambos son activos, ordenar por ordenRoundRobin
-      if (a.estado === 'ACTIVO' && b.estado === 'ACTIVO') {
-        return (a.ordenRoundRobin || 999) - (b.ordenRoundRobin || 999);
-      }
-
-      // Si ambos no son activos, mantener orden original
-      return 0;
+      if (a.estado === 'ACTIVO' && b.estado !== 'ACTIVO') return -1;
+      
+      // Ambos inactivos o ambos activos - ordenar por round_robin_orden
+      const ordenA = a.round_robin_orden || a.ordenRoundRobin || 999;
+      const ordenB = b.round_robin_orden || b.ordenRoundRobin || 999;
+      return ordenA - ordenB;
     });
     setAgentes(sortedAgentes);
     const updateTime = new Date();
