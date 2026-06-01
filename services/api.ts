@@ -507,17 +507,17 @@ export const api = {
     }
   },
 
-  async getCases(): Promise<Case[]> {
+  async getCases(forceRefresh = false): Promise<Case[]> {
+    if (forceRefresh) {
+      delete cache['cases'];
+    }
     return getCachedOrFetch('cases', async () => {
     const user = this.getUser();
     
-      // Intentar obtener casos usando el nuevo caseService (conecta con n8n)
       try {
         const cases = await caseService.getCases();
-        // Retornar incluso si está vacío, solo si no hay error
         return cases || [];
       } catch (err: any) {
-        // No usar localStorage como fallback, lanzar el error
         throw err;
           }
     });

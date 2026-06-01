@@ -816,11 +816,37 @@ export const getCases = async (): Promise<Case[]> => {
 
   await getAgentesInfo();
 
-  const pais = await getUserCountry();
-  const paisValue = pais === 'GT' ? 'Guatemala' : 'ElSalvador';
+  // Obtener país del usuario desde api.getUser() que tiene datos actualizados
+  const currentUser = api.getUser();
+  let paisValue = 'Guatemala'; // default
+  
+  if (currentUser?.pais) {
+    const paisNormalizado = String(currentUser.pais).trim().toUpperCase();
+    if (paisNormalizado === 'SV' || paisNormalizado.includes('SALVADOR')) {
+      paisValue = 'ElSalvador';
+    } else if (paisNormalizado === 'GT' || paisNormalizado.includes('GUATEMALA')) {
+      paisValue = 'Guatemala';
+    }
+  }
+  
+  // Si aún no se detectó, usar localStorage como fallback
+  if (!currentUser?.pais) {
+    const userStr = localStorage.getItem('intelfon_user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user.pais) {
+          const paisNormalizado = String(user.pais).trim().toUpperCase();
+          if (paisNormalizado === 'SV' || paisNormalizado.includes('SALVADOR')) {
+            paisValue = 'ElSalvador';
+          } else if (paisNormalizado === 'GT' || paisNormalizado.includes('GUATEMALA')) {
+            paisValue = 'Guatemala';
+          }
+        }
+      } catch (e) {}
+    }
+  }
 
-// Si es AGENTE, obtener todos los casos del país y filtrar localmente por agente
-  // (el endpoint /agent del backend devuelve array vacío, mejor obtener todos)
   const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}?pais=${encodeURIComponent(paisValue)}`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }

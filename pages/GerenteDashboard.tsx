@@ -187,7 +187,7 @@ const GerenteDashboard: React.FC = () => {
     setLoading(true);
     try {
       const [casosData, clientesList, estadosData] = await Promise.all([
-        api.getCases(),
+        api.getCases(true),
         loadClientes(),
         fetch(`${api.getBaseUrl()}/api/estados`).then(r => r.json()).catch(() => [])
       ]);
