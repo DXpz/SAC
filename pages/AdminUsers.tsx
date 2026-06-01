@@ -30,7 +30,7 @@ import Toast, { ToastType } from '../components/Toast';
 // ==================================================
 
 type UserRole = 'ADMIN' | 'AGENTE' | 'SUPERVISOR' | 'GERENTE';
-type UserStatus = 'activo' | 'inactivo' | 'vacaciones';
+type UserStatus = 'activo' | 'inactivo';
 
 interface DemoUser {
   id: string;
@@ -43,7 +43,7 @@ interface DemoUser {
 }
 
 type RoleFilter = 'todos' | 'AGENTE' | 'SUPERVISOR' | 'GERENTE' | 'ADMIN';
-type EstadoFilter = 'todos' | 'activos' | 'inactivos' | 'vacaciones';
+type EstadoFilter = 'todos' | 'activos' | 'inactivos';
 
 type SortField = 'nombre' | 'email' | 'rol' | 'pais' | 'estado';
 type SortDirection = 'asc' | 'desc';
@@ -88,8 +88,7 @@ const AdminUsers: React.FC = () => {
     email: '',
     rol: 'AGENTE' as UserRole,
     pais: 'El_Salvador',
-    activo: true,
-    enVacaciones: false
+    activo: true
   });
 
   // Función helper para obtener y normalizar el país del admin
@@ -387,11 +386,9 @@ const AdminUsers: React.FC = () => {
 
     if (estadoFilter !== 'todos') {
       filtered = filtered.filter(u => {
-        const esVacaciones = !!u.enVacaciones;
-        const esActivo = !!u.activo && !u.enVacaciones;
-        const esInactivo = !u.activo && !u.enVacaciones;
+        const esActivo = !!u.activo;
+        const esInactivo = !u.activo;
 
-        if (estadoFilter === 'vacaciones') return esVacaciones;
         if (estadoFilter === 'activos') return esActivo;
         if (estadoFilter === 'inactivos') return esInactivo;
         return true;
@@ -409,10 +406,8 @@ const AdminUsers: React.FC = () => {
           case 'pais':
             return (user.pais || '').toLowerCase();
           case 'estado':
-            // Priorizar vacaciones > activos > inactivos en orden lógico
-            if (user.enVacaciones) return '1';
-            if (user.activo) return '2';
-            return '3';
+            if (user.activo) return '1';
+            return '2';
           case 'nombre':
           default:
             return user.nombre.toLowerCase();
@@ -456,11 +451,7 @@ const AdminUsers: React.FC = () => {
 
     const headers = ['Nombre', 'Email', 'Rol', 'Pais', 'Estado'];
     const rows = filteredUsers.map(user => {
-      const estado = user.enVacaciones
-        ? 'Vacaciones'
-        : user.activo
-        ? 'Activo'
-        : 'Inactivo';
+      const estado = user.activo ? 'Activo' : 'Inactivo';
 
       return [
         user.nombre || '',
@@ -617,7 +608,7 @@ const AdminUsers: React.FC = () => {
       setCreatedUserCredentials(creds);
       setShowCreateModal(false);
       setShowCredentialsModal(true);
-      setFormData({ nombre: '', email: '', rol: 'AGENTE', pais: 'El_Salvador', activo: true, enVacaciones: false });
+      setFormData({ nombre: '', email: '', rol: 'AGENTE', pais: 'El_Salvador', activo: true });
     } catch (error: any) {
       console.error('[createUser] Error:', error);
       let errorMessage = error.message || 'Error desconocido al crear el usuario';
@@ -729,9 +720,8 @@ const AdminUsers: React.FC = () => {
       nombre: user.nombre,
       email: user.email,
       rol: user.rol,
-      pais: 'El_Salvador', // Por defecto, se puede agregar campo de país al usuario si es necesario
-      activo: user.activo,
-      enVacaciones: user.enVacaciones || false
+      pais: 'El_Salvador',
+      activo: user.activo
     });
     setShowEditModal(true);
   };
@@ -749,16 +739,7 @@ const AdminUsers: React.FC = () => {
       return;
     }
 
-    // Determinar el estado basado en activo y vacaciones
-    let estado = 'Inactivo';
-    if (formData.enVacaciones) {
-      estado = 'Vacaciones';
-    } else if (formData.activo) {
-      estado = 'ACTIVO';
-    } else {
-      estado = 'INACTIVO';
-    }
-    // NOTE: No se usa VACACIONES en esta vista
+    let estado = formData.activo ? 'ACTIVO' : 'INACTIVO';
 
     try {
       // Llamar al backend para actualizar el usuario con todos los campos
@@ -787,7 +768,7 @@ const AdminUsers: React.FC = () => {
 
       setShowEditModal(false);
       setSelectedUser(null);
-      setFormData({ nombre: '', email: '', rol: 'AGENTE', pais: 'El_Salvador', activo: true, enVacaciones: false });
+      setFormData({ nombre: '', email: '', rol: 'AGENTE', pais: 'El_Salvador', activo: true });
       setToast({ message: 'Usuario actualizado correctamente', type: 'success' });
     } catch (error: any) {
       setToast({ message: error.message || 'Error al actualizar el usuario', type: 'error' });
@@ -850,9 +831,6 @@ const AdminUsers: React.FC = () => {
   };
 
   const getStatusColor = (user: DemoUser) => {
-    if (user.enVacaciones) {
-      return { dot: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)', text: '#f59e0b', border: 'rgba(245, 158, 11, 0.3)' };
-    }
     if (user.activo) {
       return { dot: '#22c55e', bg: 'rgba(34, 197, 94, 0.15)', text: '#22c55e', border: 'rgba(34, 197, 94, 0.3)' };
     }
@@ -862,9 +840,8 @@ const AdminUsers: React.FC = () => {
   // Resumen de usuarios
   const resumenUsers = {
     total: users.length,
-    activos: users.filter(u => u.activo && !u.enVacaciones).length,
-    vacaciones: users.filter(u => u.enVacaciones).length,
-    inactivos: users.filter(u => !u.activo && !u.enVacaciones).length
+    activos: users.filter(u => u.activo).length,
+    inactivos: users.filter(u => !u.activo).length
   };
 
   if (loading && users.length === 0) {
@@ -906,14 +883,6 @@ const AdminUsers: React.FC = () => {
                   {resumenUsers.activos} <span style={{color: styles.text.tertiary}}>Activos</span>
                 </span>
               </div>
-              {resumenUsers.vacaciones > 0 && (
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full" style={{backgroundColor: '#f59e0b'}}></div>
-                  <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>
-                    {resumenUsers.vacaciones} <span style={{color: styles.text.tertiary}}>Vacaciones</span>
-                  </span>
-                </div>
-              )}
               {resumenUsers.inactivos > 0 && (
                 <div className="flex items-center gap-1.5">
                   <div className="w-2 h-2 rounded-full" style={{backgroundColor: '#94a3b8'}}></div>
@@ -1100,7 +1069,6 @@ const AdminUsers: React.FC = () => {
               {([
                 { id: 'todos', label: 'Todos' },
                 { id: 'activos', label: 'Activos' },
-                { id: 'vacaciones', label: 'Vacaciones' },
                 { id: 'inactivos', label: 'Inactivos' },
               ] as { id: EstadoFilter; label: string }[]).map((item, idx) => (
                 <button
@@ -1275,7 +1243,7 @@ const AdminUsers: React.FC = () => {
                   {paginatedUsers.map((user, index) => {
                     const roleBadge = getRoleBadgeColor(user.rol);
                     const statusColor = getStatusColor(user);
-                    const statusText = user.enVacaciones ? 'Vacaciones' : user.activo ? 'Activo' : 'Inactivo';
+                    const statusText = user.activo ? 'Activo' : 'Inactivo';
 
                     return (
                       <tr 
