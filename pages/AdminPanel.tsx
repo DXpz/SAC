@@ -372,9 +372,9 @@ const AdminPanel: React.FC = () => {
     });
   }, [agentesSeguros, userCountry]);
   
-  const totalAgentes = agentesFiltradosPorPais.length;
-  const agentesActivos = agentesFiltradosPorPais.filter(a => a && a.estado === 'ACTIVO').length;
-  const agentesInactivos = agentesFiltradosPorPais.filter(a => a && a.estado !== 'ACTIVO').length;
+  const totalAgentes = usuariosFiltradosPorPais.filter(u => u.rol === 'AGENTE').length;
+  const agentesActivos = usuariosFiltradosPorPais.filter(u => u.rol === 'AGENTE' && u.activo).length;
+  const agentesInactivos = usuariosFiltradosPorPais.filter(u => u.rol === 'AGENTE' && !u.activo).length;
 
   const clientesSeguros = Array.isArray(clientes) ? clientes : [];
   
