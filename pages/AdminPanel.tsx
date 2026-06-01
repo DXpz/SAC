@@ -357,13 +357,43 @@ const AdminPanel: React.FC = () => {
   };
 
   const agentesSeguros = Array.isArray(agentes) ? agentes : [];
-  const totalAgentes = agentesSeguros.length;
-  const agentesActivos = agentesSeguros.filter(a => a && a.estado === 'ACTIVO').length;
-  const agentesInactivos = agentesSeguros.filter(a => a && a.estado !== 'ACTIVO').length;
+  
+  // Filtrar agentes por país
+  const agentesFiltradosPorPais = useMemo(() => {
+    if (!userCountry) return agentesSeguros;
+    return agentesSeguros.filter(a => {
+      const agentePais = (a.pais || '').toString().trim().toUpperCase();
+      if (userCountry === 'SV') {
+        return agentePais === 'SV' || agentePais.includes('SALVADOR');
+      } else if (userCountry === 'GT') {
+        return agentePais === 'GT' || agentePais.includes('GUATEMALA');
+      }
+      return true;
+    });
+  }, [agentesSeguros, userCountry]);
+  
+  const totalAgentes = agentesFiltradosPorPais.length;
+  const agentesActivos = agentesFiltradosPorPais.filter(a => a && a.estado === 'ACTIVO').length;
+  const agentesInactivos = agentesFiltradosPorPais.filter(a => a && a.estado !== 'ACTIVO').length;
 
   const clientesSeguros = Array.isArray(clientes) ? clientes : [];
-  const totalClientes = clientesSeguros.length;
-  const clientesActivos = clientesSeguros.filter(c => c && c.estado === 'Activo').length;
+  
+  // Filtrar clientes por país
+  const clientesFiltradosPorPais = useMemo(() => {
+    if (!userCountry) return clientesSeguros;
+    return clientesSeguros.filter(c => {
+      const clientePais = (c.pais || c.CardCountry || '').toString().trim().toUpperCase();
+      if (userCountry === 'SV') {
+        return clientePais === 'SV' || clientePais.includes('SALVADOR');
+      } else if (userCountry === 'GT') {
+        return clientePais === 'GT' || clientePais.includes('GUATEMALA');
+      }
+      return true;
+    });
+  }, [clientesSeguros, userCountry]);
+  
+  const totalClientes = clientesFiltradosPorPais.length;
+  const clientesActivos = clientesFiltradosPorPais.filter(c => c && (c.estado === 'Activo' || c.estado === 'ACTIVO')).length;
 
   const categoriasSeguras = Array.isArray(categorias) ? categorias : [];
   const totalCategorias = categoriasSeguras.length;
