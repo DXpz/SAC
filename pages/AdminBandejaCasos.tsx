@@ -114,12 +114,12 @@ const AdminBandejaCasos: React.FC = () => {
       const getClientId = (caso: any): string => caso.cliente_id || '';
       
       if (clientes.length > 0 && getClientId(caso)) {
-        console.log('[AdminBandejaCasos] looking for cliente_id:', getClientId(caso));
         const clienteIdStr = String(getClientId(caso)).trim();
+        console.log('[AdminBandejaCasos] cliente_id to find:', clienteIdStr);
+        console.log('[AdminBandejaCasos] first 5 CardCodes in clientes:', clientes.slice(0, 5).map(c => c.CardCode));
         const clienteCompleto = clientes.find(c => {
           if (!c?.CardCode) return false;
           const cardCodeStr = String(c.CardCode).trim();
-          console.log('[AdminBandejaCasos] comparing caso:', clienteIdStr, 'with cliente:', cardCodeStr, 'match:', cardCodeStr === clienteIdStr);
           return cardCodeStr === clienteIdStr;
         });
 
@@ -134,8 +134,10 @@ const AdminBandejaCasos: React.FC = () => {
             clientPhone: caso.clientPhone || clienteCompleto.Telefono,
           };
         } else {
-          console.log('[AdminBandejaCasos] no match for cliente_id:', getClientId(caso), 'in', clientes.length, 'clientes');
+          console.log('[AdminBandejaCasos] no match for cliente_id:', clienteIdStr);
         }
+      } else {
+        console.log('[AdminBandejaCasos] skipping - clientes.length:', clientes.length, 'getClientId:', getClientId(caso));
       }
 
       // Enriquecer con categoría
