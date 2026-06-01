@@ -299,18 +299,17 @@ const [showUserModal, setShowUserModal] = useState(false);
   const loadUsers = async () => {
     setLoadingUsers(true);
     try {
-      // Cargar el país del admin si es necesario
+      let paisAdmin: 'SV' | 'GT' | null = adminCountry;
       const currentUser = api.getUser();
       if (currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR') {
-        if (!adminCountry) {
-          const country = await getAdminCountry();
-          setAdminCountry(country);
+        if (!paisAdmin) {
+          paisAdmin = await getAdminCountry();
+          setAdminCountry(paisAdmin);
         }
       }
       
       const usuariosWebhook = await api.getUsuarios();
       
-      // Mapear usuarios del webhook a la estructura de Settings
       let usuariosMapeados = usuariosWebhook.map((usuario: any, index: number) => {
         // Determinar el rol
         let rol: string = 'Agente';
@@ -380,6 +379,15 @@ const [showUserModal, setShowUserModal] = useState(false);
         };
       });
       
+      setSettingsUsers(usuariosMapeados);
+      
+      if (paisAdmin) {
+        usuariosMapeados = usuariosMapeados.filter((u: any) => {
+          const userPais = u.pais?.toUpperCase() || '';
+          return (paisAdmin === 'SV' && (userPais === 'SV' || userPais.includes('SALVADOR'))) ||
+                 (paisAdmin === 'GT' && (userPais === 'GT' || userPais.includes('GUATEMALA')));
+        });
+      }
       setSettingsUsers(usuariosMapeados);
     } catch (error) {
       setSettingsUsers([]);
