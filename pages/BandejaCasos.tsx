@@ -446,10 +446,13 @@ const filteredCasos = useMemo(() => {
     // ENRIQUECER PRIMERO para que clientName esté disponible antes de filtrar/buscar
     const casosEnriquecidos = enrichCases(casosParaFiltrar, clientes, categorias);
 
-    // Aplicar búsqueda DESPUÉS de enriquecer
+    // Aplicar TODOS los filtros de forma combinada
+    let result = casosEnriquecidos;
+
+    // Búsqueda
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      return casosEnriquecidos.filter(c => {
+      result = result.filter(c => {
         const id = (c.id || c.ticketNumber || '').toLowerCase();
         const client = (c.clientName || '').toLowerCase();
         const subject = (c.subject || '').toLowerCase();
@@ -457,9 +460,9 @@ const filteredCasos = useMemo(() => {
       });
     }
 
-    // Filtrar por estado - solo comparación exacta
+    // Filtrar por estado
     if (statusFilter !== 'all') {
-      return casosEnriquecidos.filter(c => {
+      result = result.filter(c => {
         const rawStatus = c.status || (c as any).estado;
         if (!rawStatus) return false;
         const rawLower = String(rawStatus).toLowerCase().trim();
@@ -470,7 +473,7 @@ const filteredCasos = useMemo(() => {
 
     // Filtrar por categoría
     if (categoriaFilter !== 'all') {
-      return casosEnriquecidos.filter(c => {
+      result = result.filter(c => {
         const catId = c.categoria?.idCategoria || c.categoria?.id || (c as any).categoria_id || '';
         return String(catId) === String(categoriaFilter);
       });
@@ -478,7 +481,7 @@ const filteredCasos = useMemo(() => {
 
     // Filtrar por agente
     if (agenteFilter !== 'all') {
-      return casosEnriquecidos.filter(c => {
+      result = result.filter(c => {
         const agenteId = (c as any).agentId || (c as any).agente_user_id || '';
         const agenteIdStr = String(agenteId).trim();
         const filterIdStr = String(agenteFilter).trim();
@@ -488,7 +491,7 @@ const filteredCasos = useMemo(() => {
       });
     }
 
-    return casosEnriquecidos
+    return result;
   }, [casos, clientes, categorias, searchTerm, statusFilter, categoriaFilter, agenteFilter, userCountry, isEstadoFinal]);
 
   // Paginación
