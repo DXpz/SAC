@@ -456,24 +456,27 @@ const GerenteDashboard: React.FC = () => {
     isNegative: false
   };
 
-  // Usar todos los casos, no solo los filtrados por período, para la distribución
+  // Usar todos los casos filtrados por país (sin filtro de fecha) para la distribución
   // Normalizar estados antes de comparar para que coincidan con los valores del webhook
   // Incluir TODOS los estados posibles del webhook
   const chartData = useMemo(() => {
+    const getRawEstado = (c: any) => c.estado || c.status || '';
+    
     const data = [
-      { name: 'Nuevos', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.NUEVO).length },
-      { name: 'En Proceso', value: filteredCasos.filter(c => normalizeStatus(c.status) === CaseStatus.EN_PROCESO).length },
+      { name: 'Nuevo', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.NUEVO && getRawEstado(c).toLowerCase() !== 'diagnostico').length },
+      { name: 'Diagnostico', value: casosFiltradosPorPais.filter(c => getRawEstado(c).toLowerCase() === 'diagnostico').length },
+      { name: 'En Proceso', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.EN_PROCESO).length },
       { name: 'Pendiente Cliente', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.PENDIENTE_CLIENTE).length },
       { name: 'Escalados', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.ESCALADO).length },
-      { name: 'Resueltos', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.RESUELTO).length },
-      { name: 'Cerrados', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.CERRADO).length },
+      { name: 'Resuelto', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.RESUELTO).length },
+      { name: 'Cerrado', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.CERRADO).length },
     ];
     
     return data;
-  }, [filteredCasos]);
+  }, [casosFiltradosPorPais]);
 
-  // El total debe ser TODOS los casos, no solo los del gráfico
-  const totalCasos = filteredCasos.length;
+  // El total debe ser TODOS los casos filtrados por pais (sin filtro de fecha)
+  const totalCasos = casosFiltradosPorPais.length;
 
   const chartDataWithPercent = useMemo(() => chartData.map(item => ({
     ...item,
@@ -481,7 +484,7 @@ const GerenteDashboard: React.FC = () => {
   })), [chartData, totalCasos]);
 
   // Colores para cada estado: paleta más minimalista y consistente (azules/violetas suaves)
-  const COLORS = ['#3b82f6', '#6366f1', '#0ea5e9', '#22c55e', '#a855f7', '#64748b'];
+  const COLORS = ['#3b82f6', '#6366f1', '#0ea5e9', '#22c55e', '#a855f7', '#64748b', '#f97316'];
 
   const slaObjective = 90;
   const slaStatus = kpisFiltrados.slaCompliance === null ? 'sin_datos' :
