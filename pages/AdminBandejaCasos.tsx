@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { sapService, ClienteListado } from '../services/sapService';
+import { getUserCountry } from '../services/caseService';
 import { Case, CaseStatus, Cliente, Categoria, Agente } from '../types';
 import { Search, Plus, Filter, ChevronRight, X, Calendar, User, Clock, AlertTriangle, Timer, HelpCircle } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
@@ -27,6 +28,16 @@ const AdminBandejaCasos: React.FC = () => {
   const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const [userCountry, setUserCountry] = useState<'SV' | 'GT' | null>(null);
+
+  // Cargar país del usuario
+  useEffect(() => {
+    const loadCountry = async () => {
+      const country = await getUserCountry();
+      setUserCountry(country);
+    };
+    loadCountry();
+  }, []);
 
   // Función para normalizar el estado del caso
   const normalizeStatus = (status: string | CaseStatus | undefined): CaseStatus => {
@@ -58,6 +69,7 @@ const AdminBandejaCasos: React.FC = () => {
 
   // Cargar datos iniciales y cuando cambia la vista
   useEffect(() => {
+    if (userCountry === null) return;
     const initializeData = async () => {
       try {
         await Promise.all([loadClientes(), loadCategorias(), loadAgentes()]);
@@ -67,7 +79,7 @@ const AdminBandejaCasos: React.FC = () => {
     };
     initializeData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]);
+  }, [location.pathname, userCountry]);
 
   // Cargar estados desde el webhook
   useEffect(() => {
@@ -244,7 +256,8 @@ const AdminBandejaCasos: React.FC = () => {
 
   const loadClientes = async () => {
     try {
-      const data = await sapService.getClientesListado('SV');
+      const pais = userCountry || 'SV';
+      const data = await sapService.getClientesListado(pais);
       setClientes(data);
       return data;
     } catch (err) {
