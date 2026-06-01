@@ -1,9 +1,10 @@
 import { API_CONFIG } from '../config';
 
-const SAP_API_URL = 'https://sapapi.red.com.sv/api/cliente/consultaactivo';
+const BACKEND_URL = API_CONFIG.WEBHOOK_URL;
 
 const headers = {
-  'Content-Type': 'application/json'
+  'Content-Type': 'application/json',
+  'ngrok-skip-browser-warning': 'true'
 };
 
 export interface ClienteListado {
@@ -32,7 +33,7 @@ export interface ClienteDetalle {
 
 export const sapService = {
   async getClientesListado(pais: 'SV' | 'GT' = 'SV'): Promise<ClienteListado[]> {
-    const url = `${SAP_API_URL}?var_pais=${pais}`;
+    const url = `${BACKEND_URL}/api/sap/clientes?var_pais=${pais}`;
 
     try {
       const controller = new AbortController();
@@ -64,7 +65,7 @@ export const sapService = {
   },
 
   async getClienteDetalle(codigo: string, pais: 'SV' | 'GT' = 'SV'): Promise<ClienteDetalle | null> {
-    const url = `${SAP_API_URL}?var_pais=${pais}&cardcode=${encodeURIComponent(codigo)}`;
+    const url = `${BACKEND_URL}/api/sap/clientes/${encodeURIComponent(codigo)}/${pais}`;
 
     try {
       const response = await fetch(url, { headers });
