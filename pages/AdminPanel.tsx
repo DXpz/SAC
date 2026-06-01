@@ -378,11 +378,13 @@ const AdminPanel: React.FC = () => {
     }).length;
   const agentesActivos = usuariosFiltradosPorPais.filter(u => {
       const rol = (u.rol || u.role || '').toString().toUpperCase();
-      return rol === 'AGENTE' && u.activo;
+      const estado = (u.estado || '').toString().toUpperCase();
+      return rol === 'AGENTE' && (estado === 'ACTIVO' || estado === 'ACTIVE');
     }).length;
   const agentesInactivos = usuariosFiltradosPorPais.filter(u => {
       const rol = (u.rol || u.role || '').toString().toUpperCase();
-      return rol === 'AGENTE' && !u.activo;
+      const estado = (u.estado || '').toString().toUpperCase();
+      return rol === 'AGENTE' && (estado !== 'ACTIVO' && estado !== 'ACTIVE');
     }).length;
 
   const clientesSeguros = Array.isArray(clientes) ? clientes : [];
