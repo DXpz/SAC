@@ -195,11 +195,9 @@ const GerenteDashboard: React.FC = () => {
       
       setCasos(enriched);
       
-      // Cargar estados dinámicamente
+      // Cargar estados dinámicamente (TODOS, incluyendo finales)
       if (estadosData && Array.isArray(estadosData)) {
-        const estadosOrdenados = estadosData
-          .filter((e: any) => !e.estado_final)
-          .sort((a: any, b: any) => (a.orden || 0) - (b.orden || 0));
+        const estadosOrdenados = [...estadosData].sort((a: any, b: any) => (a.orden || 0) - (b.orden || 0));
         setEstados(estadosOrdenados);
       }
       
@@ -467,10 +465,9 @@ const GerenteDashboard: React.FC = () => {
     isNegative: false
   };
 
-  // Usar todos los casos filtrados por país (sin filtro de fecha) para la distribución
-  // Distribución DINÁMICA basada en los estados del backend
+  // Distribución DINÁMICA basada en los estados REALES de los casos
   const chartData = useMemo(() => {
-    // Obtener estados únicos de los casos filtrados por país
+    // Contar casos por estado real (usando estado del caso, no labels hardcodeados)
     const estadoCounts: Record<string, number> = {};
     
     casosFiltradosPorPais.forEach(caso => {
@@ -478,18 +475,15 @@ const GerenteDashboard: React.FC = () => {
       estadoCounts[rawEstado] = (estadoCounts[rawEstado] || 0) + 1;
     });
     
-    // Si tenemos estados cargados del backend, usarlos como base
-    // Si no, usar los nombres únicos de los casos
-    if (estados.length > 0) {
-      return estados.map(estado => ({
-        name: estado.nombre,
-        value: estadoCounts[estado.nombre] || 0
-      }));
-    }
+    // Obtener todos los nombres de estado únicos de los casos
+    const estadoNames = Object.keys(estadoCounts).filter(name => estadoCounts[name] > 0);
     
-    // Fallback: usar estados únicos de los casos
-    return Object.entries(estadoCounts).map(([name, value]) => ({ name, value }));
-  }, [casosFiltradosPorPais, estados]);
+    // Crear datos dinámicamente basados en los estados que realmente existen en los casos
+    return estadoNames.map(name => ({
+      name: name,
+      value: estadoCounts[name]
+    }));
+  }, [casosFiltradosPorPais]);
 
   // El total debe ser TODOS los casos filtrados por pais (sin filtro de fecha)
   const totalCasos = casosFiltradosPorPais.length;
@@ -499,8 +493,12 @@ const GerenteDashboard: React.FC = () => {
     percent: totalCasos > 0 ? ((item.value / totalCasos) * 100).toFixed(1) : '0.0'
   })), [chartData, totalCasos]);
 
-  // Colores para cada estado: paleta más minimalista y consistente (azules/violetas suaves)
-  const COLORS = ['#3b82f6', '#6366f1', '#0ea5e9', '#22c55e', '#a855f7', '#64748b', '#f97316'];
+  // Colores dinámicos para cada estado - paleta más amplia para cubrir todos los estados posibles
+  const COLORS = [
+    '#3b82f6', '#6366f1', '#0ea5e9', '#22c55e', '#a855f7', 
+    '#64748b', '#f97316', '#ec4899', '#14b8a6', '#f59e0b',
+    '#8b5cf6', '#06b6d4', '#84cc16', '#e11d48', '#0d9488'
+  ];
 
   const slaObjective = 90;
   const slaStatus = kpisFiltrados.slaCompliance === null ? 'sin_datos' :
