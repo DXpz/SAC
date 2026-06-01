@@ -337,8 +337,8 @@ const GerenteDashboard: React.FC = () => {
     };
   }, [filteredCasos]);
 
-  // Usar datos reales de casos críticos (basados en casos filtrados por país)
-  const abiertos = casosFiltradosPorPais.filter(c => {
+  // DEBUG: Usar 'casos' directamente sin filtro de país para verificar que los datos llegan
+  const debugCasosCount = casos.length;
     const normalizedStatus = normalizeStatus(c.status);
     return normalizedStatus !== CaseStatus.CERRADO && normalizedStatus !== CaseStatus.RESUELTO;
   }).length;
@@ -442,14 +442,22 @@ const GerenteDashboard: React.FC = () => {
   };
 
   // Distribución DINÁMICA basada en los estados REALES de los casos
+  // NOTA: Para debug, usamos 'casos' directamente. Si funciona, el problema está en el filtro de gerenteCountry
   const chartData = useMemo(() => {
     // Contar casos por estado real (usando estado del caso, no labels hardcodeados)
     const estadoCounts: Record<string, number> = {};
     
-    casosFiltradosPorPais.forEach(caso => {
+    // Debug: ver qué llega en casos
+    console.log('[GerenteDashboard] Total casos:', casos.length);
+    console.log('[GerenteDashboard] gerenteCountry:', gerenteCountry);
+    
+    // Usar 'casos' directamente para debug, sin filtro de país
+    casos.forEach(caso => {
       const rawEstado = (caso as any).estado || caso.status || 'Unknown';
       estadoCounts[rawEstado] = (estadoCounts[rawEstado] || 0) + 1;
     });
+    
+    console.log('[GerenteDashboard] estadoCounts:', estadoCounts);
     
     // Obtener todos los nombres de estado únicos de los casos
     const estadoNames = Object.keys(estadoCounts).filter(name => estadoCounts[name] > 0);
@@ -459,10 +467,10 @@ const GerenteDashboard: React.FC = () => {
       name: name,
       value: estadoCounts[name]
     }));
-  }, [casosFiltradosPorPais]);
+  }, [casos, gerenteCountry]);
 
-  // El total debe ser TODOS los casos filtrados por pais (sin filtro de fecha)
-  const totalCasos = casosFiltradosPorPais.length;
+  // El total debe ser TODOS los casos (sin filtro de país para debug)
+  const totalCasos = casos.length;
 
   const chartDataWithPercent = useMemo(() => chartData.map(item => ({
     ...item,
