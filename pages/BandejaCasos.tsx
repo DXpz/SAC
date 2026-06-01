@@ -440,8 +440,7 @@ const filteredCasos = useMemo(() => {
       });
     }
     
-    // Filtrar estados finales
-    casosParaFiltrar = casosParaFiltrar.filter((caso) => !isEstadoFinal(caso as any));
+    // No filtrar estados finales - ahora supervisor y agentes pueden ver casos cerrados
 
     // ENRIQUECER PRIMERO para que clientName esté disponible antes de filtrar/buscar
     const casosEnriquecidos = enrichCases(casosParaFiltrar, clientes, categorias);
