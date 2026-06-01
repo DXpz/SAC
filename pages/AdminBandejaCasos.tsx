@@ -114,6 +114,7 @@ const AdminBandejaCasos: React.FC = () => {
       const getClientId = (caso: any): string => caso.cliente_id || '';
       
       if (clientes.length > 0 && getClientId(caso)) {
+        console.log('[AdminBandejaCasos] looking for cliente_id:', getClientId(caso));
         const clienteCompleto = clientes.find(c => {
           if (!c?.CardCode) return false;
           const normalizeId = (id: string) => {
@@ -132,11 +133,12 @@ const AdminBandejaCasos: React.FC = () => {
 
           const casoClientIdNormalized = normalizeId(getClientId(caso));
           const cliIdNormalized = normalizeId(c.CardCode);
-
+          console.log('[AdminBandejaCasos] comparing caso:', casoClientIdNormalized, 'with cliente:', cliIdNormalized, 'match:', casoClientIdNormalized === cliIdNormalized);
           return casoClientIdNormalized === cliIdNormalized;
         });
 
         if (clienteCompleto) {
+          console.log('[AdminBandejaCasos] FOUND cliente:', clienteCompleto.CardName);
           casoActualizado = {
             ...casoActualizado,
             clientName: clienteCompleto.CardName,
