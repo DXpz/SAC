@@ -67,18 +67,30 @@ const AdminBandejaCasos: React.FC = () => {
     return formatCountry(rawCountry);
   };
 
-  // Cargar datos iniciales y cuando cambia la vista
+// Cargar datos iniciales y cuando cambia la vista
   useEffect(() => {
-    if (userCountry === null) return;
     const initializeData = async () => {
       try {
-        await Promise.all([loadClientes(), loadCategorias(), loadAgentes()]);
-        await loadCasos();
+        const pais = userCountry || 'SV';
+        console.log('[AdminBandejaCasos] init with pais:', pais);
+        const [clientesData, categoriasData, agentesData, casosData] = await Promise.all([
+          sapService.getClientesListado(pais),
+          api.getCategorias(),
+          api.getAgentes(),
+          api.getCases()
+        ]);
+        setClientes(clientesData);
+        setCategorias(categoriasData);
+        setAgentes(agentesData);
+        setCasos(casosData);
       } catch (err) {
+        console.error('[AdminBandejaCasos] init error:', err);
       }
     };
-    initializeData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (userCountry !== null) {
+      initializeData();
+    }
+    // eslint-disable-next-line react-hooks-exhaustive-deps
   }, [location.pathname, userCountry]);
 
   // Cargar estados desde el webhook
@@ -123,6 +135,8 @@ const AdminBandejaCasos: React.FC = () => {
       return;
     }
 
+    console.log('[AdminBandejaCasos] enriching', casos.length, 'casos with', clientes.length, 'clientes');
+
     const casosEnriquecidos = casos.map(caso => {
       let casoActualizado = { ...caso };
 
@@ -149,25 +163,20 @@ const AdminBandejaCasos: React.FC = () => {
           const casoClientIdNormalized = normalizeId(getClientId(caso));
           const cliIdNormalized = normalizeId(c.CardCode);
 
-          if (casoClientIdNormalized === cliIdNormalized) return true;
-          if (c.CardCode === getClientId(caso)) return true;
-          const casoNum = getClientId(caso).replace(/\D/g, '');
-          const cliNum = c.CardCode.replace(/\D/g, '');
-          if (casoNum && cliNum && casoNum === cliNum) return true;
-          return false;
+          return casoClientIdNormalized === cliIdNormalized;
         });
 
         if (clienteCompleto) {
           casoActualizado = {
             ...casoActualizado,
-            clientName: caso.clientName && caso.clientName.trim() !== '' && caso.clientName !== 'Por definir'
-              ? caso.clientName
-              : clienteCompleto.CardName,
+            clientName: clienteCompleto.CardName,
             clientId: clienteCompleto.CardCode || getClientId(caso),
             cliente: clienteCompleto,
             clientEmail: caso.clientEmail || clienteCompleto.Email,
             clientPhone: caso.clientPhone || clienteCompleto.Telefono,
           };
+        } else {
+          console.log('[AdminBandejaCasos] no match for cliente_id:', getClientId(caso), 'in', clientes.length, 'clientes');
         }
       }
 
@@ -259,10 +268,13 @@ const AdminBandejaCasos: React.FC = () => {
   const loadClientes = async () => {
     try {
       const pais = userCountry || 'SV';
+      console.log('[AdminBandejaCasos] loadClientes pais:', pais);
       const data = await sapService.getClientesListado(pais);
+      console.log('[AdminBandejaCasos] loaded clientes:', data.length);
       setClientes(data);
       return data;
     } catch (err) {
+      console.error('[AdminBandejaCasos] loadClientes error:', err);
       return [];
     }
   };
