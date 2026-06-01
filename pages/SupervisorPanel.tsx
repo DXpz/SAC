@@ -1175,7 +1175,7 @@ const SupervisorPanel: React.FC = () => {
               Casos Críticos / Escalamientos
             </h3>
                 <p className="text-[10px] font-medium" style={{color: styles.text.tertiary}}>
-                  {casosFiltrados.length} caso{casosFiltrados.length !== 1 ? 's' : ''} en lista
+                  {casosCriticos.length} caso{casosCriticos.length !== 1 ? 's' : ''} en lista
                 </p>
               </div>
             </div>
@@ -1211,7 +1211,7 @@ const SupervisorPanel: React.FC = () => {
           </div>
 
           <div className="rounded-xl border shadow-sm overflow-hidden" style={{...styles.card}}>
-              {casosFiltrados.length > 0 ? (
+              {casosCriticos.length > 0 ? (
               <table className="w-full text-left">
                 <thead className="border-b" style={{
                   backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
@@ -1229,7 +1229,7 @@ const SupervisorPanel: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y" style={{borderColor: 'rgba(148, 163, 184, 0.15)'}}>
-                  {casosFiltrados.map((caso) => {
+                  {casosCriticos.map((caso) => {
                   const isEscalado = caso.status === CaseStatus.ESCALADO;
                     const slaDias = caso.categoria?.slaDias || (caso as any).categoria?.sla_dias || 5;
                     const isVencido = caso.diasAbierto >= slaDias;
