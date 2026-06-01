@@ -233,33 +233,64 @@ const SupervisorPanel: React.FC = () => {
     );
   }, [agentFilter]);
 
-  const casosAbiertos = useMemo(() => {
-    const abiertos = casos.filter(c => c.status !== CaseStatus.RESUELTO && c.status !== CaseStatus.CERRADO);
-    return filterByAgent(abiertos);
-  }, [casos, filterByAgent]);
+  const casosFiltrados = useMemo(() => {
+    // Empezar con TODOS los casos (incluye cerrados para supervisor)
+    let result = [...casos];
 
-  // Casos abiertos filtrados por periodo
-  const casosAbiertosFiltrados = useMemo(() => {
-    const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    // Aplicar filtros de forma combinada
+    // 1) Periodo
+    if (periodFilter !== 'todos') {
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    return casosAbiertos.filter(c => {
-      const fecha = new Date(c.createdAt);
-      if (periodFilter === 'hoy') return fecha >= startOfDay;
-      if (periodFilter === 'semana') return fecha >= startOfWeek;
-      if (periodFilter === 'mes') return fecha >= startOfMonth;
-      return true;
-    });
-  }, [casosAbiertos, periodFilter]);
-
-  const casosCriticos = useMemo(() => {
-    const criticos = casosAbiertosFiltrados.filter(c => {
-      const normalizedStatus = normalizeStatus(c.status);
-      if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
-        return normalizedStatus === CaseStatus.ESCALADO;
+      if (periodFilter === 'hoy') {
+        result = result.filter(c => new Date(c.createdAt) >= startOfDay);
+      } else if (periodFilter === 'semana') {
+        result = result.filter(c => new Date(c.createdAt) >= startOfWeek);
+      } else if (periodFilter === 'mes') {
+        result = result.filter(c => new Date(c.createdAt) >= startOfMonth);
       }
+    }
+
+    // 2) Tipo (criticos/vencidos)
+    if (typeFilter === 'criticos') {
+      result = result.filter(c => {
+        const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
+        return c.diasAbierto >= slaDias || c.status === CaseStatus.ESCALADO;
+      });
+    } else if (typeFilter === 'vencidos') {
+      result = result.filter(c => {
+        const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
+        return c.diasAbierto > slaDias;
+      });
+    }
+
+    // 3) Agente
+    if (agentFilter !== 'todos') {
+      result = result.filter(c => 
+        c.agenteAsignado?.idAgente === agentFilter || 
+        c.agentId === agentFilter
+      );
+    }
+
+    return result;
+  }, [casos, periodFilter, typeFilter, agentFilter]);
+
+  // Casos abiertos (sin cerrar) - para métricas específicas
+  const casosAbiertos = useMemo(() => {
+    const abiertos = casosFiltrados.filter(c => 
+      c.status !== CaseStatus.RESUELTO && 
+      c.status !== CaseStatus.CERRADO
+    );
+    return abiertos;
+  }, [casosFiltrados]);
+
+  // Casos críticos basados en casos abiertos filtrados
+  const casosCriticos = useMemo(() => {
+    return casosAbiertos.filter(c => {
+      const normalizedStatus = normalizeStatus(c.status);
 
       const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
       const diasAbierto = c.diasAbierto || 0;
@@ -270,72 +301,39 @@ const SupervisorPanel: React.FC = () => {
 
       return isVencido || isEscalado || isEnRiesgo;
     });
-    return criticos;
-  }, [casosAbiertosFiltrados, normalizeStatus]);
+  }, [casosAbiertos]);
 
-  const filteredCasos = useMemo(() => {
-    let filtered = [...casos];
-
-    const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    if (periodFilter === 'hoy') {
-      filtered = filtered.filter(c => new Date(c.createdAt) >= startOfDay);
-    } else if (periodFilter === 'semana') {
-      filtered = filtered.filter(c => new Date(c.createdAt) >= startOfWeek);
-    } else if (periodFilter === 'mes') {
-      filtered = filtered.filter(c => new Date(c.createdAt) >= startOfMonth);
-    }
-
-    if (typeFilter === 'criticos') {
-      filtered = filtered.filter(c => {
-        const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-        return c.diasAbierto >= slaDias || c.status === CaseStatus.ESCALADO;
-      });
-    } else if (typeFilter === 'vencidos') {
-      filtered = filtered.filter(c => {
-        const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-        return c.diasAbierto > slaDias;
-      });
-    }
-
-    if (agentFilter !== 'todos') {
-      filtered = filtered.filter(c => c.agenteAsignado?.idAgente === agentFilter || c.agentId === agentFilter);
-    }
-
-    return filtered;
-  }, [casos, periodFilter, typeFilter, agentFilter]);
-  
   const casosVencidos = useMemo(() => {
-    return casosAbiertosFiltrados.filter(c => {
+    return casosAbiertos.filter(c => {
       const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
       return c.diasAbierto > slaDias;
     });
-  }, [casosAbiertosFiltrados]);
+  }, [casosAbiertos]);
 
   const casosEnRiesgo = useMemo(() => {
-    return casosAbiertosFiltrados.filter(c => {
+    return casosAbiertos.filter(c => {
       const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
       const diasRestantes = slaDias - c.diasAbierto;
       return diasRestantes > 0 && diasRestantes <= 1;
     });
-  }, [casosAbiertosFiltrados]);
+  }, [casosAbiertos]);
 
   const casosDentroSLA = useMemo(() => {
-    return casosAbiertosFiltrados.filter(c => {
+    return casosAbiertos.filter(c => {
       const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
       const diasRestantes = slaDias - c.diasAbierto;
       return diasRestantes > 1;
     });
-  }, [casosAbiertosFiltrados]);
+  }, [casosAbiertos]);
 
   const slaPromedio = useMemo(() => {
-    return casosAbiertosFiltrados.length > 0
-      ? Math.round((casosDentroSLA.length / casosAbiertosFiltrados.length) * 100)
+    return casosAbiertos.length > 0
+      ? Math.round((casosDentroSLA.length / casosAbiertos.length) * 100)
       : null;
-  }, [casosAbiertosFiltrados.length, casosDentroSLA.length]);
+  }, [casosAbiertos.length, casosDentroSLA.length]);
+
+  // Para métricas: casos abiertos = casosFiltrados sin cerrados
+  const casosAbiertosFiltrados = casosAbiertos;
 
   // Memorizar valores de longitud para evitar recálculos durante hover
   const casosAbiertosCount = useMemo(() => casosAbiertosFiltrados.length, [casosAbiertosFiltrados.length]);
