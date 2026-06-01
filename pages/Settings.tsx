@@ -1767,7 +1767,8 @@ const [showUserModal, setShowUserModal] = useState(false);
       const addHolidayToWebhook = async () => {
         try {
           const motivo = holidayMotivo.trim() || pendingHolidayDate.holidayName || 'Asueto';
-          await api.addHoliday(date, motivo);
+          const pais = adminCountry || 'SV';
+          await api.addHoliday(date, motivo, pais);
           // Después de agregar, recargar las fechas desde el webhook
           await loadHolidays();
         } catch (error: any) {

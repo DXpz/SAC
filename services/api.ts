@@ -1362,11 +1362,13 @@ const result = await response.json();
   },
 
   // Agregar fecha de asueto mediante backend directo
-  async addHoliday(date: Date, holidayName?: string | null): Promise<any> {
+  async addHoliday(date: Date, holidayName?: string | null, pais?: string): Promise<any> {
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
     const dateStr = `${year}-${month}-${day}`;
+
+    const paisValue = pais === 'GT' ? 'Guatemala' : 'ElSalvador';
 
     const response = await fetch(`${API_CONFIG.WEBHOOK_ASUETOS_URL}`, {
       method: 'POST',
@@ -1374,7 +1376,7 @@ const result = await response.json();
       body: JSON.stringify({
         fecha: dateStr,
         motivo: holidayName || '',
-        pais: 'ElSalvador'
+        pais: paisValue
       })
     });
 
