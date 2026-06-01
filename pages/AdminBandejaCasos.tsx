@@ -111,7 +111,7 @@ const AdminBandejaCasos: React.FC = () => {
       let casoActualizado = { ...caso };
 
       // Enriquecer con cliente
-      const getClientId = (caso: any): string => caso.cliente_id || '';
+      const getClientId = (caso: any): string => caso.clientId || '';
       
       if (clientes.length > 0 && getClientId(caso)) {
         const clienteIdStr = String(getClientId(caso)).trim();
