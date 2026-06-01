@@ -335,6 +335,20 @@ const AdminUsers: React.FC = () => {
   // Filtrar usuarios por rol (aplicado después de la búsqueda)
   const filteredUsers = useMemo(() => {
     let filtered = filteredUsersBySearch;
+    
+    // Filtrar por país del admin (si está configurado)
+    if (adminCountry) {
+      filtered = filtered.filter(u => {
+        const userPais = (u.pais || '').toString().trim().toUpperCase();
+        if (adminCountry === 'SV') {
+          return userPais === 'SV' || userPais.includes('SALVADOR');
+        } else if (adminCountry === 'GT') {
+          return userPais === 'GT' || userPais.includes('GUATEMALA');
+        }
+        return true;
+      });
+    }
+    
     if (roleFilter !== 'todos') {
       filtered = filtered.filter(u => u.rol === roleFilter);
     }
@@ -379,7 +393,7 @@ const AdminUsers: React.FC = () => {
       return 0;
     });
     return sorted;
-  }, [filteredUsersBySearch, roleFilter, estadoFilter, sortField, sortDirection]);
+  }, [filteredUsersBySearch, roleFilter, estadoFilter, sortField, sortDirection, adminCountry]);
 
   const totalPages = useMemo(() => {
     return Math.max(1, Math.ceil(filteredUsers.length / pageSize));

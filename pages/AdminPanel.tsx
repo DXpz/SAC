@@ -1171,7 +1171,7 @@ const AdminPanel: React.FC = () => {
             transform: 'scale(1)',
             transition: 'all 0.2s ease-in-out'
           }}
-          onClick={() => navigate('/app/agentes')}
+          onClick={() => navigate('/app/admin/usuarios')}
           onMouseEnter={(e) => {
             e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
