@@ -431,8 +431,8 @@ const filteredCasos = useMemo(() => {
     
     let casosParaFiltrar = casos;
     
-    // Filtrar por país del agente si aplica
-    if (isAgente && userCountry) {
+    // Filtrar por país si el usuario tiene country configurado (AGENTE, SUPERVISOR, GERENTE, ADMIN)
+    if (userCountry) {
       casosParaFiltrar = casos.filter(caso => {
         const casoPais = (caso as any).pais || (caso as any).country || '';
         const casoPaisNormalizado = normalizeCaseCountry(casoPais);
