@@ -68,6 +68,8 @@ const AdminBandejaCasos: React.FC = () => {
   };
 
 // Cargar datos iniciales y cuando cambia la vista
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  
   useEffect(() => {
     const initializeData = async () => {
       try {
@@ -85,6 +87,9 @@ const AdminBandejaCasos: React.FC = () => {
         setCasos(casosData);
       } catch (err) {
         console.error('[AdminBandejaCasos] init error:', err);
+      } finally {
+        setLoading(false);
+        setInitialLoadComplete(true);
       }
     };
     if (userCountry !== null) {
@@ -93,44 +98,9 @@ const AdminBandejaCasos: React.FC = () => {
     // eslint-disable-next-line react-hooks-exhaustive-deps
   }, [location.pathname, userCountry]);
 
-  // Cargar estados desde el webhook
+  // Enriquecer casos con clientes y categorías - SOLO UNA VEZ
   useEffect(() => {
-    let isMounted = true;
-    const loadEstados = async () => {
-      try {
-        const estadosResponse = await api.readEstados();
-        if (isMounted && Array.isArray(estadosResponse)) {
-          const estadosMapeados = estadosResponse.map((e: any) => ({
-            id: String(e.id),
-            name: e.nombre,
-            order: e.orden,
-            isFinal: e.estado_final
-          }));
-          setEstados(estadosMapeados);
-        }
-      } catch (e) {
-        // Si falla, usar fallback vacío para usar CaseStatus
-      }
-    };
-    loadEstados();
-    return () => { isMounted = false; };
-  }, []);
-
-  // Actualizar casos cuando cambian los filtros (con debounce para evitar demasiadas llamadas)
-  useEffect(() => {
-    // Solo actualizar si no es la carga inicial
-    if (!loading && casos.length > 0) {
-      const timeoutId = setTimeout(() => {
-        loadCasos();
-      }, 500); // Debounce de 500ms
-      
-      return () => clearTimeout(timeoutId);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, categoriaFilter, clienteFilter, agenteFilter, slaFilter, fechaFilter]);
-
-  // Enriquecer casos con clientes y categorías
-  useEffect(() => {
+    if (!initialLoadComplete) return;
     if (casos.length === 0 || (clientes.length === 0 && categorias.length === 0)) {
       return;
     }
