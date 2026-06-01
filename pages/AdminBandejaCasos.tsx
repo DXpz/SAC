@@ -127,7 +127,9 @@ const AdminBandejaCasos: React.FC = () => {
       let casoActualizado = { ...caso };
 
       // Enriquecer con cliente
-      if (clientes.length > 0 && caso.clientId) {
+      const getClientId = (caso: any): string => caso.clientId || caso.cliente_id || '';
+      
+      if (clientes.length > 0 && getClientId(caso)) {
         const clienteCompleto = clientes.find(c => {
           if (!c?.CardCode) return false;
           const normalizeId = (id: string) => {
@@ -144,12 +146,12 @@ const AdminBandejaCasos: React.FC = () => {
             return normalized;
           };
 
-          const casoClientIdNormalized = normalizeId(caso.clientId);
+          const casoClientIdNormalized = normalizeId(getClientId(caso));
           const cliIdNormalized = normalizeId(c.CardCode);
 
           if (casoClientIdNormalized === cliIdNormalized) return true;
-          if (c.CardCode === caso.clientId) return true;
-          const casoNum = caso.clientId.replace(/\D/g, '');
+          if (c.CardCode === getClientId(caso)) return true;
+          const casoNum = getClientId(caso).replace(/\D/g, '');
           const cliNum = c.CardCode.replace(/\D/g, '');
           if (casoNum && cliNum && casoNum === cliNum) return true;
           return false;
@@ -161,7 +163,7 @@ const AdminBandejaCasos: React.FC = () => {
             clientName: caso.clientName && caso.clientName.trim() !== '' && caso.clientName !== 'Por definir'
               ? caso.clientName
               : clienteCompleto.CardName,
-            clientId: clienteCompleto.CardCode || caso.clientId,
+            clientId: clienteCompleto.CardCode || getClientId(caso),
             cliente: clienteCompleto,
             clientEmail: caso.clientEmail || clienteCompleto.Email,
             clientPhone: caso.clientPhone || clienteCompleto.Telefono,
@@ -240,7 +242,7 @@ const AdminBandejaCasos: React.FC = () => {
       const original = casos[idx];
       return (
         caso.clientName !== original.clientName ||
-        caso.clientId !== original.clientId ||
+        (caso.clientId || caso.cliente_id) !== (original.clientId || original.cliente_id) ||
         caso.cliente?.CardCode !== original.cliente?.CardCode ||
         caso.category !== original.category ||
         caso.categoria?.idCategoria !== original.categoria?.idCategoria ||
@@ -867,7 +869,7 @@ const AdminBandejaCasos: React.FC = () => {
                             color: theme === 'dark' ? '#60a5fa' : '#1d4ed8',
                             borderColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.3)' : '#93c5fd'
                           }}>
-                            {caso.clientId || caso.cliente?.CardCode || 'N/A'}
+                            {caso.clientId || caso.cliente_id || caso.cliente?.CardCode || 'N/A'}
                           </span>
                           <span className="text-xs font-semibold max-w-[150px] truncate" style={{color: styles.text.primary}}>
                             {caso.clientName || caso.cliente?.CardName || 'Por definir'}
