@@ -160,7 +160,7 @@ const GerenteDashboard: React.FC = () => {
     if (gerenteCountryDetected) {
       loadData();
     }
-  }, [location.pathname, gerenteCountryDetected]);
+  }, [location.pathname, gerenteCountryDetected, gerenteCountry]);
 
   const loadClientes = async () => {
     try {
