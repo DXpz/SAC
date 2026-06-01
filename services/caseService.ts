@@ -626,10 +626,13 @@ const mapWebhookResponseToCases = (webhookData: any): Case[] => {
       .map((caseData, index) => {
         const mapped = mapWebhookResponseToCase(caseData);
         if (!mapped) {
+          console.log('[caseService] case mapping returned null for:', JSON.stringify(caseData)?.slice(0, 100));
         }
         return mapped;
       })
       .filter((c): c is Case => c !== null);
+    
+    console.log('[caseService] mapped cases count:', mappedCases.length);
     
     
     return mappedCases;
@@ -862,6 +865,9 @@ export const getCases = async (): Promise<Case[]> => {
   // Extraer solo el array de casos
   let casos = result.casos || result.cases || result;
   if (!Array.isArray(casos)) casos = [];
+  
+  console.log('[caseService] raw casos from backend:', casos.length, 'pais:', paisValue);
+  console.log('[caseService] first caso sample:', JSON.stringify(casos[0])?.slice(0, 200));
 
   // Si es AGENTE, filtrar localmente por agente
   if (userRole === 'AGENTE') {
