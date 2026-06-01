@@ -339,6 +339,9 @@ const GerenteDashboard: React.FC = () => {
 
   // DEBUG: Usar 'casos' directamente sin filtro de país para verificar que los datos llegan
   const debugCasosCount = casos.length;
+
+  // Calcular métricas basadas en casos (sin filtro de país)
+  const abiertos = casos.filter(c => {
     const normalizedStatus = normalizeStatus(c.status);
     return normalizedStatus !== CaseStatus.CERRADO && normalizedStatus !== CaseStatus.RESUELTO;
   }).length;
