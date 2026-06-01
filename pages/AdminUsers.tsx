@@ -316,8 +316,31 @@ const AdminUsers: React.FC = () => {
   // Cargar usuarios al montar el componente o cuando cambia la vista
   useEffect(() => {
     loadUsers();
-    // Ya no usamos setInterval, solo actualizamos cuando cambia la vista
   }, [location.pathname]);
+  
+  // Recargar usuarios cuando adminCountry cambia para aplicar filtro
+  useEffect(() => {
+    if (adminCountry) {
+      console.log('[AdminUsers] adminCountry changed to:', adminCountry, 'reloading users');
+      loadUsers();
+    }
+  }, [adminCountry]);
+  
+  // Efecto separado para cuando se detecta el país pero aún no se ha establecido
+  useEffect(() => {
+    const init = async () => {
+      const currentUser = api.getUser();
+      console.log('[AdminUsers] init - currentUser:', currentUser?.email, 'adminCountry:', adminCountry);
+      if ((currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR') && !adminCountry) {
+        const country = await getAdminCountry();
+        console.log('[AdminUsers] init - country detected:', country);
+        if (country) {
+          setAdminCountry(country);
+        }
+      }
+    };
+    init();
+  }, []);
 
 
   // Filtrar usuarios por término de búsqueda
