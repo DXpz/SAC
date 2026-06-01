@@ -339,9 +339,9 @@ const SupervisorPanel: React.FC = () => {
   const casosAbiertosCount = useMemo(() => casosAbiertosFiltrados.length, [casosAbiertosFiltrados.length]);
   const casosVencidosCount = useMemo(() => casosVencidos.length, [casosVencidos.length]);
   const casosCriticosCount = useMemo(() => casosCriticos.length, [casosCriticos.length]);
-  const casosTotalesCount = useMemo(() => casosAbiertosFiltrados.length, [casosAbiertosFiltrados.length]);
+  const casosTotalesCount = useMemo(() => casos.length, [casos.length]);
 
-  const agentesActivos = useMemo(() => agentes.filter(a => a.estado === 'Activo').length, [agentes]);
+  const agentesActivos = useMemo(() => agentes.filter(a => a.estado === 'ACTIVO').length, [agentes]);
   const totalAgentes = useMemo(() => agentes.length, [agentes.length]);
 
   const casosCriticosOrdenados = useMemo(() => {
