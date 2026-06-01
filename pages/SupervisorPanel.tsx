@@ -291,13 +291,12 @@ const SupervisorPanel: React.FC = () => {
   const casosCriticos = useMemo(() => {
     return casosAbiertos.filter(c => {
       const normalizedStatus = normalizeStatus(c.status);
-
+      
+      const isVencido = c.slaExpired || false;
+      const isEscalado = normalizedStatus === CaseStatus.ESCALADO;
       const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
       const diasAbierto = c.diasAbierto || 0;
-
-      const isVencido = diasAbierto >= slaDias;
-      const isEscalado = normalizedStatus === CaseStatus.ESCALADO;
-      const isEnRiesgo = (slaDias - diasAbierto <= 1) && diasAbierto > 0 && diasAbierto < slaDias;
+      const isEnRiesgo = !isVencido && !isEscalado && (slaDias - diasAbierto <= 1) && diasAbierto > 0 && diasAbierto < slaDias;
 
       return isVencido || isEscalado || isEnRiesgo;
     });
