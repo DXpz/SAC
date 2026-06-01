@@ -1440,8 +1440,9 @@ const result = await response.json();
   },
 
   // Leer fechas de asuetos desde backend directo
-  async readHolidays(): Promise<Array<{ fecha: string; motivo: string; pais: string; row_number: number; fechaDate?: Date }>> {
-    const response = await fetch(`${API_CONFIG.WEBHOOK_ASUETOS_URL}`, {
+  async readHolidays(pais?: string): Promise<Array<{ fecha: string; motivo: string; pais: string; row_number: number; fechaDate?: Date }>> {
+    const url = pais ? `${API_CONFIG.WEBHOOK_ASUETOS_URL}?pais=${pais}` : API_CONFIG.WEBHOOK_ASUETOS_URL;
+    const response = await fetch(url, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
     });

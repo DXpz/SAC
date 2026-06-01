@@ -435,7 +435,8 @@ const [showUserModal, setShowUserModal] = useState(false);
   // Cargar asuetos desde el webhook
   const loadHolidays = async () => {
     try {
-      const fechasFromWebhook = await api.readHolidays();
+      const pais = adminCountry || 'SV';
+      const fechasFromWebhook = await api.readHolidays(pais);
       setHolidays(fechasFromWebhook);
     } catch (error: any) {
     }
@@ -444,13 +445,13 @@ const [showUserModal, setShowUserModal] = useState(false);
   // Cargar asuetos al montar el componente y cuando se activa el tab de asuetos
   useEffect(() => {
     loadHolidays();
-  }, []); // Cargar al montar el componente
+  }, [adminCountry]); // Cargar al montar el componente
 
   useEffect(() => {
     if (activeTab === 'asuetos') {
       loadHolidays();
     }
-  }, [activeTab]);
+  }, [activeTab, adminCountry]);
 
   // Cargar estados desde el webhook
   // Estado para evitar múltiples chamadas simultáneas de loadEstados
