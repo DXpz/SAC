@@ -3421,24 +3421,6 @@ const [showUserModal, setShowUserModal] = useState(false);
                         borderBottom: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
                       }}
                     >
-                      EMAIL
-                    </th>
-                    <th 
-                      className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider"
-                      style={{ 
-                        color: styles.text.secondary,
-                        borderBottom: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
-                      }}
-                    >
-                      ORDEN R.R.
-                    </th>
-                    <th 
-                      className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider"
-                      style={{ 
-                        color: styles.text.secondary,
-                        borderBottom: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.3)'}`
-                      }}
-                    >
                       ESTADO
                     </th>
                     <th 
@@ -3455,13 +3437,13 @@ const [showUserModal, setShowUserModal] = useState(false);
                 <tbody>
                   {loadingUsers ? (
                     <tr>
-                      <td colSpan={9} className="px-4 py-8 text-center text-sm" style={{ color: styles.text.tertiary }}>
+                      <td colSpan={8} className="px-4 py-8 text-center text-sm" style={{ color: styles.text.tertiary }}>
                         Cargando usuarios...
                       </td>
                     </tr>
                   ) : settingsUsers.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="px-4 py-8 text-center text-sm" style={{ color: styles.text.tertiary }}>
+                      <td colSpan={8} className="px-4 py-8 text-center text-sm" style={{ color: styles.text.tertiary }}>
                         No hay usuarios registrados
                       </td>
                     </tr>
@@ -3578,20 +3560,6 @@ const [showUserModal, setShowUserModal] = useState(false);
                               </span>
                             );
                           })()}
-                        </td>
-                        
-                        {/* EMAIL */}
-                        <td className="px-4 py-3">
-                          <span className="text-sm" style={{ color: styles.text.secondary }}>
-                            {user.email}
-                          </span>
-                        </td>
-                        
-                        {/* ORDEN R.R. */}
-                        <td className="px-4 py-3">
-                          <span className="text-sm" style={{ color: styles.text.secondary }}>
-                            {user.roundRobinOrder}
-                          </span>
                         </td>
                         
                         {/* ESTADO */}
