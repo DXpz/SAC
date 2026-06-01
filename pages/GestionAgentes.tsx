@@ -176,9 +176,9 @@ const GestionAgentes: React.FC = () => {
     setLoading(true);
     const data = await api.getAgentes();
     const currentUser = api.getUser();
-    const isSupervisor = currentUser?.role === 'SUPERVISOR';
+    const isSupervisorOrAdmin = currentUser?.role === 'SUPERVISOR' || currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR';
     let agentesFiltrados = [...data];
-    if (isSupervisor) {
+    if (isSupervisorOrAdmin) {
       const supervisorCountry = await getSupervisorCountry();
       if (supervisorCountry) {
         agentesFiltrados = data.filter(agente => {
