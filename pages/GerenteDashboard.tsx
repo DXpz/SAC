@@ -205,7 +205,19 @@ const GerenteDashboard: React.FC = () => {
       console.log('[GerenteDashboard] loadClientes returned:', clientesList.length, 'clientes');
       
       console.log('[GerenteDashboard] calling estados...');
-      const estadosData = await fetch(`${api.getBaseUrl()}/api/estados`).then(r => r.json()).catch(() => []);
+      let estadosData: any[] = [];
+      try {
+        const response = await fetch(`${api.getBaseUrl()}/api/estados`, {
+          headers: { 'ngrok-skip-browser-warning': 'true' }
+        });
+        console.log('[GerenteDashboard] estados response status:', response.status);
+        const text = await response.text();
+        console.log('[GerenteDashboard] estados response text length:', text.length);
+        estadosData = JSON.parse(text);
+        console.log('[GerenteDashboard] estados returned:', estadosData.length, 'estados');
+      } catch (error) {
+        console.log('[GerenteDashboard] estados error:', error);
+      }
       console.log('[GerenteDashboard] estados returned:', estadosData.length, 'estados');
       
       console.log('[GerenteDashboard] api.getCases returned:', casosData.length, 'cases');
