@@ -389,22 +389,8 @@ const AdminPanel: React.FC = () => {
 
   const clientesSeguros = Array.isArray(clientes) ? clientes : [];
   
-  // Filtrar clientes por país
-  const clientesFiltradosPorPais = useMemo(() => {
-    if (!userCountry) return clientesSeguros;
-    return clientesSeguros.filter(c => {
-      const clientePais = (c.pais || c.CardCountry || '').toString().trim().toUpperCase();
-      if (userCountry === 'SV') {
-        return clientePais === 'SV' || clientePais.includes('SALVADOR');
-      } else if (userCountry === 'GT') {
-        return clientePais === 'GT' || clientePais.includes('GUATEMALA');
-      }
-      return true;
-    });
-  }, [clientesSeguros, userCountry]);
-  
-  const totalClientes = clientesFiltradosPorPais.length;
-  const clientesActivos = clientesFiltradosPorPais.filter(c => c && (c.estado === 'Activo' || c.estado === 'ACTIVO')).length;
+  const totalClientes = clientesSeguros.length;
+  const clientesActivos = clientesSeguros.filter(c => c && (c.estado === 'Activo' || c.estado === 'ACTIVO')).length;
 
   const categoriasSeguras = Array.isArray(categorias) ? categorias : [];
   const totalCategorias = categoriasSeguras.length;
@@ -1038,50 +1024,6 @@ const AdminPanel: React.FC = () => {
       .filter(a => a.casos > 10)
       .sort((a, b) => b.casos - a.casos);
   }, [casosSeguros, estados, agentesSeguros]);
-  
-  // Clientes más activos
-  const clientesMasActivos = useMemo(() => {
-    const clienteStats: Record<string, { nombre: string; casos: number; casosAbiertos: number }> = {};
-    
-    casosSeguros.forEach(caso => {
-      if (!caso) return;
-      
-      // Buscar cliente en múltiples campos posibles
-      const clienteId = caso.clientId ||
-                       (caso as any).cliente?.CardCode ||
-                       (caso as any).cliente_id ||
-                       '';
-
-      const clienteNombre = caso.clientName ||
-                           (caso as any).cliente?.CardName ||
-                           (caso as any).cliente_nombre ||
-                           (caso as any).nombre_cliente ||
-                           (caso as any).nombreEmpresa ||
-                           'Sin cliente';
-      
-      if (clienteId && clienteId.trim() !== '') {
-        if (!clienteStats[clienteId]) {
-          clienteStats[clienteId] = {
-            nombre: clienteNombre || 'Sin nombre',
-            casos: 0,
-            casosAbiertos: 0
-          };
-        }
-        
-        clienteStats[clienteId].casos++;
-        
-        const casoStatus = String(caso.status || (caso as any).estado || '').trim();
-        if (!isEstadoFinal(casoStatus)) {
-          clienteStats[clienteId].casosAbiertos++;
-        }
-      }
-    });
-    
-    return Object.values(clienteStats)
-      .filter(c => c.casos > 0) // Solo clientes con casos
-      .sort((a, b) => b.casos - a.casos)
-      .slice(0, 5);
-  }, [casosSeguros, estados]);
   
   // Nuevos clientes (creados en el último mes)
   const nuevosClientes = useMemo(() => {
@@ -2088,78 +2030,6 @@ const AdminPanel: React.FC = () => {
             ) : (
               <div className="text-center py-4 text-sm" style={{color: styles.text.tertiary}}>
                 No hay datos de agentes disponibles
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Clientes Más Activos - fondo contenedor oscuro */}
-      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
-        <div 
-          className="rounded-3xl shadow-xl border overflow-hidden"
-          style={{
-            ...styles.card,
-            backgroundColor: theme === 'dark' ? styles.card.backgroundColor : styles.card.backgroundColor,
-            animation: 'fadeInSlide 0.3s ease-out 0.85s both'
-          }}
-        >
-          <div className="p-4 border-b" style={{
-            backgroundColor: theme === 'dark' ? styles.card.backgroundColor : '#f8fafc',
-            borderColor: 'rgba(148, 163, 184, 0.2)'
-          }}>
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold uppercase tracking-wide flex items-center gap-2" style={{color: styles.text.secondary}}>
-                <Building2 className="w-4 h-4" />
-                Clientes Más Activos
-              </h3>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold px-2 py-1 rounded" style={{
-                  backgroundColor: theme === 'dark' ? 'rgba(168, 85, 247, 0.1)' : 'rgba(168, 85, 247, 0.05)',
-                  color: '#a855f7'
-                }}>
-                  {nuevosClientes} nuevos
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="p-4 space-y-2" style={{ backgroundColor: theme === 'dark' ? styles.card.backgroundColor : '#f8fafc' }}>
-            {clientesMasActivos.length > 0 ? (
-              clientesMasActivos.map((cliente, index) => (
-                <div 
-                  key={index}
-                  className="p-3 rounded-lg border transition-all hover:scale-[1.02] cursor-pointer"
-                  onClick={() => navigate(`/app/admin/casos?cliente=${cliente.nombre}`)}
-                  style={{
-                    backgroundColor: theme === 'dark' ? styles.card.backgroundColor : '#ffffff',
-                    borderColor: styles.card.borderColor
-                  }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold truncate" style={{color: styles.text.primary}}>
-                        {cliente.nombre}
-                      </div>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-xs" style={{color: styles.text.secondary}}>
-                          {cliente.casos} casos
-                        </span>
-                        {cliente.casosAbiertos > 0 && (
-                          <span className="text-xs px-2 py-0.5 rounded" style={{
-                            backgroundColor: theme === 'dark' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
-                            color: '#ef4444'
-                          }}>
-                            {cliente.casosAbiertos} abiertos
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-4 text-sm" style={{color: styles.text.tertiary}}>
-                No hay datos de clientes disponibles
               </div>
             )}
           </div>
