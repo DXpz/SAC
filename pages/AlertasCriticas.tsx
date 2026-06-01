@@ -210,8 +210,25 @@ const AlertasCriticas: React.FC = () => {
       const clientesList = await sapService.getClientesListado(userCountry);
       setClientes(clientesList);
       const list = await api.getCases();
-      console.log('[DEBUG] Casos recibidos:', list.length, list.map(c => ({ id: c.id, status: c.status, diasAbierto: c.diasAbierto, slaDias: c.categoria?.slaDias })));
-      const enriched = enrichCasesWithClients(list, clientesList);
+      
+      // Filtrar casos por país del usuario
+      const filteredByCountry = list.filter((c: any) => {
+        const casoPais = (c as any).pais || c.cliente?.pais || '';
+        const casoPaisNormalizado = String(casoPais).trim().toUpperCase();
+        
+        if (userCountry === 'SV') {
+          return casoPaisNormalizado === 'SV' || 
+                 casoPaisNormalizado === 'EL_SALVADOR' || 
+                 casoPaisNormalizado.includes('SALVADOR');
+        } else if (userCountry === 'GT') {
+          return casoPaisNormalizado === 'GT' || 
+                 casoPaisNormalizado.includes('GUATEMALA');
+        }
+        return false;
+      });
+      
+      console.log('[DEBUG] Casos recibidos:', list.length, 'filtrados por pais:', filteredByCountry.length);
+      const enriched = enrichCasesWithClients(filteredByCountry, clientesList);
       const filtered = enriched.filter(c => {
         const estadoFinal = isEstadoFinal(c as any);
         if (estadoFinal) {
