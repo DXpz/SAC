@@ -306,51 +306,21 @@ const GerenteDashboard: React.FC = () => {
     return casosFiltrados;
   }, [casos, gerenteCountry]);
 
-  // Filtrar casos para métricas y visualización
+  // Aplicar filtro de fecha a casosFiltradosPorPais
   const filteredCasos = useMemo(() => {
-    const currentUser = api.getUser();
-    const isGerente = currentUser?.role === 'GERENTE';
-    
-    let casosFiltrados = casos;
-    
-    // Si es GERENTE, filtrar casos por país del gerente (OBLIGATORIO)
-    if (isGerente && gerenteCountry) {
-      casosFiltrados = casos.filter(caso => {
-        // Obtener el país del caso desde diferentes fuentes posibles
-        const casoPais = (caso as any).pais || 
-                        caso.cliente?.pais || 
-                        (caso as any).country ||
-                        '';
-        
-        const casoPaisNormalizado = normalizeCaseCountry(casoPais);
-        
-        // Si el caso no tiene país definido, NO mostrarlo al gerente
-        if (!casoPaisNormalizado) {
-          return false;
-        }
-        return casoPaisNormalizado === gerenteCountry;
-      });
-    } else if (isGerente && !gerenteCountry) {
-      // Si el gerente no tiene país, mostrar TODOS los casos (sin filtro de país)
-      casosFiltrados = casos;
-    }
-    
-    // Aplicar filtro de fecha
     const now = new Date();
     let startDate = new Date();
 
     if (periodFilter === 'hoy') {
-      startDate = new Date(now.setHours(0, 0, 0, 0));
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
     } else if (periodFilter === 'semana') {
-      const dayOfWeek = now.getDay();
-      startDate = new Date(now.setDate(now.getDate() - dayOfWeek));
-      startDate.setHours(0, 0, 0, 0);
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
     } else if (periodFilter === 'mes') {
       startDate = new Date(now.getFullYear(), now.getMonth(), 1);
     }
 
-    return casosFiltrados.filter(c => new Date(c.createdAt) >= startDate);
-  }, [casos, periodFilter, gerenteCountry]);
+    return casosFiltradosPorPais.filter(c => new Date(c.createdAt) >= startDate);
+  }, [casosFiltradosPorPais, periodFilter]);
 
   // Calcular KPIs basados en casos filtrados por país
   const kpisFiltrados = useMemo(() => {
