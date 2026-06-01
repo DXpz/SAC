@@ -174,14 +174,22 @@ const GestionAgentes: React.FC = () => {
 
   const loadAgentes = async () => {
     setLoading(true);
-    const data = await api.getAgentes();
     const currentUser = api.getUser();
     const isSupervisorOrAdmin = currentUser?.role === 'SUPERVISOR' || currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR';
-    let agentesFiltrados = [...data];
+    
+    let agentesData = await api.getUsuarios();
+    
+    // Filtrar solo usuarios con rol AGENTE
+    agentesData = agentesData.filter((u: any) => {
+      const rol = (u.rol || u.role || '').toString().toUpperCase();
+      return rol === 'AGENTE';
+    });
+    
+    let agentesFiltrados = [...agentesData];
     if (isSupervisorOrAdmin) {
       const supervisorCountry = await getSupervisorCountry();
       if (supervisorCountry) {
-        agentesFiltrados = data.filter(agente => {
+        agentesFiltrados = agentesData.filter(agente => {
           const agentePais = agente.pais || (agente as any).country || '';
           const agentePaisNormalizado = normalizeAgentCountry(agentePais);
           if (!agentePaisNormalizado) {
