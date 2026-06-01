@@ -217,6 +217,8 @@ const AdminBandejaCasos: React.FC = () => {
       return casoActualizado;
     });
 
+    console.log('[AdminBandejaCasos] sample enriched caso:', JSON.stringify(casosEnriquecidos[0]).slice(0, 300));
+
     const hasChanges = casosEnriquecidos.some((caso, idx) => {
       const original = casos[idx];
       return (
@@ -229,6 +231,8 @@ const AdminBandejaCasos: React.FC = () => {
         caso.agenteAsignado?.idAgente !== original.agenteAsignado?.idAgente
       );
     });
+
+    console.log('[AdminBandejaCasos] hasChanges:', hasChanges);
 
     if (hasChanges) {
       setCasos(casosEnriquecidos);
