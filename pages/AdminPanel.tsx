@@ -1241,7 +1241,7 @@ const AdminPanel: React.FC = () => {
                 <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Total Usuarios</p>
               </div>
               <p className="text-[10px] mt-1" style={{color: styles.text.tertiary}}>
-                {usuariosPorRol.agente} agentes • {usuariosPorRol.supervisor} supervisores • {usuariosPorRol.admin + usuariosPorRol.gerente} admin/gerentes
+                {usuariosPorRol.agente} agentes • {usuariosPorRol.supervisor} supervisores{usuariosPorRol.admin > 0 ? ` • ${usuariosPorRol.admin} admin` : ''}{usuariosPorRol.gerente > 0 ? ` • ${usuariosPorRol.gerente} gerentes` : ''}
               </p>
             </div>
           </div>
