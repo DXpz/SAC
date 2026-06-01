@@ -203,9 +203,11 @@ const AdminUsers: React.FC = () => {
     try {
       // Cargar el país del admin si es necesario
       const currentUser = api.getUser();
+      console.log('[AdminUsers] currentUser:', currentUser?.email, 'role:', currentUser?.role, 'pais:', currentUser?.pais);
       if (currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR') {
         if (!adminCountry) {
           const country = await getAdminCountry();
+          console.log('[AdminUsers] country detected:', country);
           setAdminCountry(country);
         }
       }
@@ -338,8 +340,10 @@ const AdminUsers: React.FC = () => {
     
     // Filtrar por país del admin (si está configurado)
     if (adminCountry) {
+      console.log('[AdminUsers] Filtrando por país:', adminCountry);
       filtered = filtered.filter(u => {
         const userPais = (u.pais || '').toString().trim().toUpperCase();
+        console.log('[AdminUsers] Usuario:', u.nombre, 'pais:', userPais, 'filtro:', adminCountry);
         if (adminCountry === 'SV') {
           return userPais === 'SV' || userPais.includes('SALVADOR');
         } else if (adminCountry === 'GT') {
@@ -347,6 +351,8 @@ const AdminUsers: React.FC = () => {
         }
         return true;
       });
+    } else {
+      console.log('[AdminUsers] adminCountry es null, no se filtra por país');
     }
     
     if (roleFilter !== 'todos') {
