@@ -143,12 +143,15 @@ const GerenteDashboard: React.FC = () => {
 
   useEffect(() => {
     const init = async () => {
+      console.log('[GerenteDashboard] init started');
       const currentUser = api.getUser();
       if (currentUser?.role === 'GERENTE') {
         const country = await getGerenteCountry();
+        console.log('[GerenteDashboard] country detected:', country);
         setGerenteCountry(country);
         setGerenteCountryDetected(true);
       } else {
+        console.log('[GerenteDashboard] not a gerente, setting detected');
         setGerenteCountryDetected(true);
       }
     };
@@ -157,7 +160,9 @@ const GerenteDashboard: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    console.log('[GerenteDashboard] effect running, gerenteCountryDetected:', gerenteCountryDetected, 'gerenteCountry:', gerenteCountry);
     if (gerenteCountryDetected) {
+      console.log('[GerenteDashboard] calling loadData');
       loadData();
     }
   }, [location.pathname, gerenteCountryDetected, gerenteCountry]);
