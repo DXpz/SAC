@@ -1426,6 +1426,7 @@ const [showUserModal, setShowUserModal] = useState(false);
   const [showYearPicker, setShowYearPicker] = useState(false);
   // Estado para el modal de confirmación de fecha
   const [pendingHolidayDate, setPendingHolidayDate] = useState<{ date: Date; holidayName: string | null } | null>(null);
+  const [holidayMotivo, setHolidayMotivo] = useState('');
   // Estado para animación de eliminación
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -1765,7 +1766,8 @@ const [showUserModal, setShowUserModal] = useState(false);
       // Agregar la fecha y enviar al webhook
       const addHolidayToWebhook = async () => {
         try {
-          await api.addHoliday(date, pendingHolidayDate.holidayName);
+          const motivo = holidayMotivo.trim() || pendingHolidayDate.holidayName || 'Asueto';
+          await api.addHoliday(date, motivo);
           // Después de agregar, recargar las fechas desde el webhook
           await loadHolidays();
         } catch (error: any) {
@@ -1774,6 +1776,7 @@ const [showUserModal, setShowUserModal] = useState(false);
       };
       
       setPendingHolidayDate(null);
+      setHolidayMotivo('');
       
       // Enviar al webhook (loadHolidays se llamará dentro de addHolidayToWebhook)
       addHolidayToWebhook();
@@ -1784,6 +1787,7 @@ const [showUserModal, setShowUserModal] = useState(false);
   const handleCancelAddHoliday = () => {
     setIsDeleting(false);
     setPendingHolidayDate(null);
+    setHolidayMotivo('');
   };
 
 
@@ -5986,6 +5990,23 @@ const [showUserModal, setShowUserModal] = useState(false);
                     {formatDateToSpanish(pendingHolidayDate.date)}
                   </p>
                 )}
+                <div className="w-full mb-3">
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: styles.text.secondary }}>
+                    Motivo (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    value={holidayMotivo}
+                    onChange={(e) => setHolidayMotivo(e.target.value)}
+                    placeholder="Ej: Día de la Independencia"
+                    className="w-full px-3 py-2 rounded-lg border text-sm"
+                    style={{
+                      backgroundColor: theme === 'dark' ? 'rgba(30, 41, 59, 0.5)' : '#ffffff',
+                      borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+                      color: styles.text.primary
+                    }}
+                  />
+                </div>
                 {pendingHolidayDate && pendingHolidayDate.holidayName && (
                   <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{
                     backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)',
