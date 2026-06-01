@@ -1,10 +1,9 @@
 import { API_CONFIG } from '../config';
 
-const BACKEND_URL = API_CONFIG.WEBHOOK_URL; // https://kailee-chorial-toshiko.ngrok-free.dev
+const SAP_API_URL = 'https://sapapi.red.com.sv/api/cliente/consultaactivo';
 
 const headers = {
-  'Content-Type': 'application/json',
-  'ngrok-skip-browser-warning': 'true'
+  'Content-Type': 'application/json'
 };
 
 export interface ClienteListado {
@@ -33,7 +32,7 @@ export interface ClienteDetalle {
 
 export const sapService = {
   async getClientesListado(pais: 'SV' | 'GT' = 'SV'): Promise<ClienteListado[]> {
-    const url = `${BACKEND_URL}/api/sap/clientes?var_pais=${pais}`;
+    const url = `${SAP_API_URL}?var_pais=${pais}`;
 
     try {
       const controller = new AbortController();
@@ -65,7 +64,7 @@ export const sapService = {
   },
 
   async getClienteDetalle(codigo: string, pais: 'SV' | 'GT' = 'SV'): Promise<ClienteDetalle | null> {
-    const url = `${BACKEND_URL}/api/sap/clientes/${encodeURIComponent(codigo)}/${pais}`;
+    const url = `${SAP_API_URL}?var_pais=${pais}&cardcode=${encodeURIComponent(codigo)}`;
 
     try {
       const response = await fetch(url, { headers });
