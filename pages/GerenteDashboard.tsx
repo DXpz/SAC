@@ -168,11 +168,14 @@ const GerenteDashboard: React.FC = () => {
   }, [location.pathname, gerenteCountryDetected, gerenteCountry]);
 
   const loadClientes = async () => {
+    console.log('[GerenteDashboard] loadClientes started, pais:', gerenteCountry);
     try {
       const pais = gerenteCountry || 'SV';
       const clientesList = await sapService.getClientesListado(pais);
+      console.log('[GerenteDashboard] loadClientes completed, count:', clientesList.length);
       return clientesList;
     } catch (error) {
+      console.log('[GerenteDashboard] loadClientes error:', error);
       return [];
     }
   };
@@ -193,11 +196,17 @@ const GerenteDashboard: React.FC = () => {
     try {
       console.log('[GerenteDashboard] loadData started, gerenteCountry:', gerenteCountry);
       
-      const [casosData, clientesList, estadosData] = await Promise.all([
-        api.getCases(true),
-        loadClientes(),
-        fetch(`${api.getBaseUrl()}/api/estados`).then(r => r.json()).catch(() => [])
-      ]);
+      console.log('[GerenteDashboard] calling api.getCases...');
+      const casosData = await api.getCases(true);
+      console.log('[GerenteDashboard] api.getCases returned:', casosData.length, 'cases');
+      
+      console.log('[GerenteDashboard] calling loadClientes...');
+      const clientesList = await loadClientes();
+      console.log('[GerenteDashboard] loadClientes returned:', clientesList.length, 'clientes');
+      
+      console.log('[GerenteDashboard] calling estados...');
+      const estadosData = await fetch(`${api.getBaseUrl()}/api/estados`).then(r => r.json()).catch(() => []);
+      console.log('[GerenteDashboard] estados returned:', estadosData.length, 'estados');
       
       console.log('[GerenteDashboard] api.getCases returned:', casosData.length, 'cases');
       
