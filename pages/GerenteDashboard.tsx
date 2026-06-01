@@ -18,6 +18,7 @@ const GerenteDashboard: React.FC = () => {
   const [hoveredKPI, setHoveredKPI] = useState<string | null>(null);
   const [gerenteCountry, setGerenteCountry] = useState<'SV' | 'GT' | null>(null);
   const [showInsights, setShowInsights] = useState(true);
+  const [estados, setEstados] = useState<Array<{id: number, nombre: string, orden: number, estado_final: boolean}>>([]);
   const { theme } = useTheme();
   const location = useLocation();
 
@@ -180,9 +181,10 @@ const GerenteDashboard: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [casosData, clientesList] = await Promise.all([
+      const [casosData, clientesList, estadosData] = await Promise.all([
         api.getCases(),
-        loadClientes()
+        loadClientes(),
+        fetch(`${api.getBaseUrl()}/api/estados`).then(r => r.json()).catch(() => [])
       ]);
       
       // Verificar que los casos tengan datos válidos
@@ -192,6 +194,15 @@ const GerenteDashboard: React.FC = () => {
       const enriched = enrichCasesWithClients(casosValidos, clientesList);
       
       setCasos(enriched);
+      
+      // Cargar estados dinámicamente
+      if (estadosData && Array.isArray(estadosData)) {
+        const estadosOrdenados = estadosData
+          .filter((e: any) => !e.estado_final)
+          .sort((a: any, b: any) => (a.orden || 0) - (b.orden || 0));
+        setEstados(estadosOrdenados);
+      }
+      
       // Los KPIs se calcularán en useMemo basados en casos filtrados por país
       // No necesitamos setKpis aquí, se calculará automáticamente
       
@@ -457,23 +468,28 @@ const GerenteDashboard: React.FC = () => {
   };
 
   // Usar todos los casos filtrados por país (sin filtro de fecha) para la distribución
-  // Normalizar estados antes de comparar para que coincidan con los valores del webhook
-  // Incluir TODOS los estados posibles del webhook
+  // Distribución DINÁMICA basada en los estados del backend
   const chartData = useMemo(() => {
-    const getRawEstado = (c: any) => c.estado || c.status || '';
+    // Obtener estados únicos de los casos filtrados por país
+    const estadoCounts: Record<string, number> = {};
     
-    const data = [
-      { name: 'Nuevo', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.NUEVO && getRawEstado(c).toLowerCase() !== 'diagnostico').length },
-      { name: 'Diagnostico', value: casosFiltradosPorPais.filter(c => getRawEstado(c).toLowerCase() === 'diagnostico').length },
-      { name: 'En Proceso', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.EN_PROCESO).length },
-      { name: 'Pendiente Cliente', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.PENDIENTE_CLIENTE).length },
-      { name: 'Escalados', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.ESCALADO).length },
-      { name: 'Resuelto', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.RESUELTO).length },
-      { name: 'Cerrado', value: casosFiltradosPorPais.filter(c => normalizeStatus(c.status) === CaseStatus.CERRADO).length },
-    ];
+    casosFiltradosPorPais.forEach(caso => {
+      const rawEstado = (caso as any).estado || caso.status || 'Unknown';
+      estadoCounts[rawEstado] = (estadoCounts[rawEstado] || 0) + 1;
+    });
     
-    return data;
-  }, [casosFiltradosPorPais]);
+    // Si tenemos estados cargados del backend, usarlos como base
+    // Si no, usar los nombres únicos de los casos
+    if (estados.length > 0) {
+      return estados.map(estado => ({
+        name: estado.nombre,
+        value: estadoCounts[estado.nombre] || 0
+      }));
+    }
+    
+    // Fallback: usar estados únicos de los casos
+    return Object.entries(estadoCounts).map(([name, value]) => ({ name, value }));
+  }, [casosFiltradosPorPais, estados]);
 
   // El total debe ser TODOS los casos filtrados por pais (sin filtro de fecha)
   const totalCasos = casosFiltradosPorPais.length;
