@@ -317,24 +317,39 @@ const AdminPanel: React.FC = () => {
   }, [casosSeguros, estados]);
 
   const usuariosSeguros = Array.isArray(usuarios) ? usuarios : [];
-  const totalUsuarios = usuariosSeguros.length;
+  
+  // Filtrar usuarios por país del admin
+  const usuariosFiltradosPorPais = useMemo(() => {
+    if (!userCountry) return usuariosSeguros;
+    return usuariosSeguros.filter(u => {
+      const userPais = (u.pais || '').toString().trim().toUpperCase();
+      if (userCountry === 'SV') {
+        return userPais === 'SV' || userPais.includes('SALVADOR');
+      } else if (userCountry === 'GT') {
+        return userPais === 'GT' || userPais.includes('GUATEMALA');
+      }
+      return true;
+    });
+  }, [usuariosSeguros, userCountry]);
+  
+  const totalUsuarios = usuariosFiltradosPorPais.length;
   const usuariosPorRol = {
-    admin: usuariosSeguros.filter((u: any) => {
+    admin: usuariosFiltradosPorPais.filter((u: any) => {
       if (!u) return false;
       const rol = u.rol || u.role || '';
       return String(rol).toUpperCase().includes('ADMIN');
     }).length,
-    agente: usuariosSeguros.filter((u: any) => {
+    agente: usuariosFiltradosPorPais.filter((u: any) => {
       if (!u) return false;
       const rol = u.rol || u.role || '';
       return String(rol).toUpperCase().includes('AGENTE');
     }).length,
-    supervisor: usuariosSeguros.filter((u: any) => {
+    supervisor: usuariosFiltradosPorPais.filter((u: any) => {
       if (!u) return false;
       const rol = u.rol || u.role || '';
       return String(rol).toUpperCase().includes('SUPERVISOR');
     }).length,
-    gerente: usuariosSeguros.filter((u: any) => {
+    gerente: usuariosFiltradosPorPais.filter((u: any) => {
       if (!u) return false;
       const rol = u.rol || u.role || '';
       return String(rol).toUpperCase().includes('GERENTE');

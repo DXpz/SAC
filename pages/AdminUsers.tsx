@@ -351,9 +351,12 @@ const AdminUsers: React.FC = () => {
         }
         return true;
       });
+      console.log('[AdminUsers] Después filtro país, filtered.length:', filtered.length);
     } else {
       console.log('[AdminUsers] adminCountry es null, no se filtra por país');
     }
+    
+    console.log('[AdminUsers] filteredUsers final length:', filtered.length);
     
     if (roleFilter !== 'todos') {
       filtered = filtered.filter(u => u.rol === roleFilter);
