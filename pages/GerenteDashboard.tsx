@@ -186,11 +186,15 @@ const GerenteDashboard: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
+      console.log('[GerenteDashboard] loadData started, gerenteCountry:', gerenteCountry);
+      
       const [casosData, clientesList, estadosData] = await Promise.all([
         api.getCases(true),
         loadClientes(),
         fetch(`${api.getBaseUrl()}/api/estados`).then(r => r.json()).catch(() => [])
       ]);
+      
+      console.log('[GerenteDashboard] api.getCases returned:', casosData.length, 'cases');
       
       // Verificar que los casos tengan datos válidos
       const casosValidos = casosData.filter(c => c && c.id);
@@ -199,6 +203,7 @@ const GerenteDashboard: React.FC = () => {
       const enriched = enrichCasesWithClients(casosValidos, clientesList);
       
       setCasos(enriched);
+      console.log('[GerenteDashboard] setCasos called with:', enriched.length, 'cases');
       
       // Cargar estados dinámicamente (TODOS, incluyendo finales)
       if (estadosData && Array.isArray(estadosData)) {
