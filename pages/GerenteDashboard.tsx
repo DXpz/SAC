@@ -17,6 +17,7 @@ const GerenteDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [hoveredKPI, setHoveredKPI] = useState<string | null>(null);
   const [gerenteCountry, setGerenteCountry] = useState<'SV' | 'GT' | null>(null);
+  const [gerenteCountryDetected, setGerenteCountryDetected] = useState(false);
   const [showInsights, setShowInsights] = useState(true);
   const [estados, setEstados] = useState<Array<{id: number, nombre: string, orden: number, estado_final: boolean}>>([]);
   const { theme } = useTheme();
@@ -146,6 +147,9 @@ const GerenteDashboard: React.FC = () => {
       if (currentUser?.role === 'GERENTE') {
         const country = await getGerenteCountry();
         setGerenteCountry(country);
+        setGerenteCountryDetected(true);
+      } else {
+        setGerenteCountryDetected(true);
       }
     };
 
@@ -153,9 +157,10 @@ const GerenteDashboard: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Siempre cargar datos, gerenteCountry null se maneja internamente con default 'SV'
-    loadData();
-  }, [location.pathname, gerenteCountry]);
+    if (gerenteCountryDetected) {
+      loadData();
+    }
+  }, [location.pathname, gerenteCountryDetected]);
 
   const loadClientes = async () => {
     try {
