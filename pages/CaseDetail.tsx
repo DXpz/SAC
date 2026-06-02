@@ -608,7 +608,6 @@ const CaseDetail: React.FC = () => {
         data.history = historialInicial;
       }
       
-      console.log('contacto_principal:', data.contacto_principal);
       setCaso(data);
     } catch (error) {
       throw error; // Lanzar el error en lugar de usar fallback local
