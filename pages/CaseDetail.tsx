@@ -2282,11 +2282,6 @@ const CaseDetail: React.FC = () => {
                       ID: {caso.clienteId || caso.clientId}
                     </p>
                   )}
-                  {(caso.contacto_principal || caso.contactoPrincipal) && (
-                    <p className="text-xs mt-1" style={{color: styles.text.secondary}}>
-                      {caso.contacto_principal || caso.contactoPrincipal}
-                    </p>
-                  )}
                 </div>
                 <div 
                   className="flex items-center gap-3 p-3 rounded-lg border transition-all hover:scale-[1.02]" 
@@ -2299,6 +2294,19 @@ const CaseDetail: React.FC = () => {
                   <Mail className="w-4 h-4" style={{color: '#64748b'}}/>
                   <p className="text-xs font-medium" style={{color: styles.text.secondary}}>{caso.clientEmail || 'No disponible'}</p>
                 </div>
+                {(caso.contacto_principal || caso.contactoPrincipal) && (
+                  <div 
+                    className="flex items-center gap-3 p-3 rounded-lg border transition-all hover:scale-[1.02]" 
+                    style={{
+                      backgroundColor: styles.input.backgroundColor, 
+                      borderColor: styles.input.borderColor,
+                      animation: 'fadeInSlide 0.3s ease-out 0.42s both'
+                    }}
+                  >
+                    <User className="w-4 h-4" style={{color: '#64748b'}}/>
+                    <p className="text-xs font-medium" style={{color: styles.text.secondary}}>{caso.contacto_principal || caso.contactoPrincipal}</p>
+                  </div>
+                )}
                 <div 
                   className="flex items-center gap-3 p-3 rounded-lg border transition-all hover:scale-[1.02]" 
                   style={{
