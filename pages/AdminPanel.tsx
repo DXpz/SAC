@@ -232,9 +232,7 @@ const AdminPanel: React.FC = () => {
     if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
       return false;
     }
-    const slaDias = c.categoria?.slaDias || 5;
-    const diasAbierto = c.diasAbierto || 0;
-    return diasAbierto > slaDias;
+    return (c as any).slaExpired === true;
   }).length;
   
   // Calcular casos por estado usando los estados dinámicos del webhook
