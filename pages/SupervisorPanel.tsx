@@ -289,25 +289,10 @@ const SupervisorPanel: React.FC = () => {
 
   // Casos críticos basados en casos abiertos filtrados
   const casosCriticos = useMemo(() => {
-    const criticos = casosAbiertos.filter(c => {
-      const normalizedStatus = normalizeStatus(c.status);
-      
-      const slaDiasRaw = (c as any).slaDias || c.categoria?.slaDias || 1;
-      const diasAbiertoRaw = (c as any).diasAbierto || 0;
-      const isVencido = diasAbiertoRaw >= slaDiasRaw;
-      const isEscalado = normalizedStatus === CaseStatus.ESCALADO;
-      const isEnRiesgo = !isVencido && !isEscalado && diasAbiertoRaw > 0 && (slaDiasRaw - diasAbiertoRaw <= 1);
-
-      // DEBUG
-      if (c.case_id === 'GT-TEST-001' || c.id === 'GT-TEST-001') {
-        console.log('[DEBUG] GT-TEST-001:', { slaDiasRaw, diasAbiertoRaw, isVencido, isEscalado, isEnRiesgo });
-      }
-
-      return isVencido || isEscalado || isEnRiesgo;
+    return casosAbiertos.filter(c => {
+      // Simple: usar slaExpired directo del backend
+      return (c as any).slaExpired === true || c.status === CaseStatus.ESCALADO;
     });
-    
-    console.log('[DEBUG] casosCriticos result:', criticos.map(c => c.case_id || c.id));
-    return criticos;
   }, [casosAbiertos]);
 
   const casosVencidos = useMemo(() => {
