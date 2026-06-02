@@ -888,6 +888,7 @@ export const api = {
       throw new Error(error.message || "Error al actualizar el usuario");
     }
 
+    clearCache('usuarios');
     return response.json();
   },
 
