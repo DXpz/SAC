@@ -292,11 +292,14 @@ const SupervisorPanel: React.FC = () => {
     return casosAbiertos.filter(c => {
       const normalizedStatus = normalizeStatus(c.status);
       
-      const isVencido = c.slaExpired || false;
+      // Use el campo slaExpired del backend directo, sin recalcular
+      const isVencido = (c as any).slaExpired === true;
       const isEscalado = normalizedStatus === CaseStatus.ESCALADO;
-      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-      const diasAbierto = c.diasAbierto || 0;
-      const isEnRiesgo = !isVencido && !isEscalado && (slaDias - diasAbierto <= 1) && diasAbierto > 0 && diasAbierto < slaDias;
+      
+      // Calcular en riesgo basado en slaDias
+      const slaDias = c.categoria?.slaDias || (c as any).slaDias || (c as any).categoria?.valor_sla ? Math.ceil(((c as any).categoria?.valor_sla || 24) / 24) : 5;
+      const diasAbierto = c.diasAbierto || (c as any).diasAbierto || 0;
+      const isEnRiesgo = !isVencido && !isEscalado && diasAbierto > 0 && (slaDias - diasAbierto <= 1);
 
       return isVencido || isEscalado || isEnRiesgo;
     });
