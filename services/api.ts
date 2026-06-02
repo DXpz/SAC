@@ -547,7 +547,8 @@ export const api = {
     
     const data = await response.json();
     const now = new Date();
-    return (data.casos || []).map((c: any) => {
+    const casosArray = Array.isArray(data) ? data : (data.casos || []);
+    return casosArray.map((c: any) => {
       const valorSlaHours = c.categoria?.valor_sla || 24;
       const slaDias = Math.max(1, Math.ceil(valorSlaHours / 24));
       const diasAbierto = c.diasAbierto || Math.floor((now.getTime() - new Date(c.fecha_creacion).getTime()) / (1000 * 60 * 60 * 24));
@@ -567,9 +568,11 @@ export const api = {
         agentId: c.agente?.id_agente || c.agente?.idAgente || c.agentId || '',
         agentName: c.agente?.nombre || c.agente?.name || c.agentName || '',
         createdAt: c.fecha_creacion || c.createdAt || '',
-        diasAbierto,
+        diasAbierto: c.diasAbierto,
         slaDias,
-        slaExpired,
+        slaExpired: c.slaExpired || slaExpired,
+        businessHoursElapsed: c.businessHoursElapsed || 0,
+        businessHoursRemaining: c.businessHoursRemaining || 0,
         agenteAsignado: c.agente,
         categoria: { ...c.categoria, slaDias },
         cliente: c.cliente,
