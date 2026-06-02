@@ -1223,7 +1223,7 @@ const SupervisorPanel: React.FC = () => {
             </div>
           </div>
 
-          <div className="rounded-xl border shadow-sm overflow-hidden" style={{...styles.card}}>
+          <div className="rounded-xl border shadow-sm overflow-hidden" style={{...styles.card, borderColor: 'rgba(148, 163, 184, 0.2)'}}>
               {(() => {
                 const casosAMostrar = typeFilter === 'vencidos' ? casosVencidos : casosCriticos;
                 return casosAMostrar.length > 0 ? (
