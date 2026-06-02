@@ -721,9 +721,11 @@ export const api = {
     return true;
   },
 
-  async getAgentes(): Promise<any[]> {
+  async getAgentes(pais?: 'SV' | 'GT'): Promise<any[]> {
+    delete cache['agentes'];
+    const url = pais ? `${API_CONFIG.WEBHOOK_AGENTES_URL}?pais=${pais}&t=${Date.now()}` : `${API_CONFIG.WEBHOOK_AGENTES_URL}?t=${Date.now()}`;
     return getCachedOrFetch('agentes', async () => {
-      const response = await fetch(`${API_CONFIG.WEBHOOK_AGENTES_URL}?t=${Date.now()}`, {
+      const response = await fetch(url, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       });

@@ -79,23 +79,13 @@ const AdminBandejaCasos: React.FC = () => {
         const [clientesData, categoriasData, allAgentesData, casosData, estadosData] = await Promise.all([
           sapService.getClientesListado(pais),
           api.getCategorias(),
-          api.getAgentes(),
+          api.getAgentes(pais),
           api.getCases(),
           fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}`, {
             headers: { 'ngrok-skip-browser-warning': 'true' }
           }).then(r => r.json()).catch(() => [])
         ]);
-        // Filtrar agentes por país del usuario
-        const agentesFiltrados = allAgentesData.filter((a: any) => {
-          const agentePais = a.pais || '';
-          const agentePaisNorm = agentePais.toUpperCase().trim();
-          if (pais === 'GT') return agentePaisNorm === 'GT' || agentePaisNorm.includes('GUATEMALA');
-          if (pais === 'SV') return agentePaisNorm === 'SV' || agentePaisNorm.includes('SALVADOR');
-          return true;
-        });
-        setClientes(clientesData);
-        setCategorias(categoriasData);
-        setAgentes(agentesFiltrados);
+setAgentes(allAgentesData);
         setCasos(casosData);
         setEstados(estadosData.map((e: any) => ({ id: String(e.id), name: e.nombre, order: e.orden, isFinal: e.estado_final })));
       } catch (err) {
@@ -266,20 +256,12 @@ const AdminBandejaCasos: React.FC = () => {
     }
   };
 
-  const loadAgentes = async () => {
+const loadAgentes = async () => {
     try {
       const pais = userCountry || 'SV';
-      const allAgentes = await api.getAgentes();
-      // Filtrar agentes por país del usuario
-      const agentesFiltrados = allAgentes.filter((a: any) => {
-        const agentePais = a.pais || '';
-        const agentePaisNorm = agentePais.toUpperCase().trim();
-        if (pais === 'GT') return agentePaisNorm === 'GT' || agentePaisNorm.includes('GUATEMALA');
-        if (pais === 'SV') return agentePaisNorm === 'SV' || agentePaisNorm.includes('SALVADOR');
-        return true;
-      });
-      setAgentes(agentesFiltrados);
-      return agentesFiltrados;
+      const agentesData = await api.getAgentes(pais);
+      setAgentes(agentesData);
+      return agentesData;
     } catch (err) {
       return [];
     }
