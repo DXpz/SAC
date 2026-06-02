@@ -188,7 +188,6 @@ const SupervisorPanel: React.FC = () => {
         : [];
       
       // Filtrar agentes por país del supervisor (OBLIGATORIO para supervisores)
-      const supervisorCountry = await getSupervisorCountry();
       const currentUser = api.getUser();
       if (currentUser?.role === 'SUPERVISOR') {
         if (supervisorCountry) {
