@@ -87,6 +87,7 @@ const AdminBandejaCasos: React.FC = () => {
         ]);
 setAgentes(allAgentesData);
         setCasos(casosData);
+        setClientes(clientesData);
         setEstados(estadosData.map((e: any) => ({ id: String(e.id), name: e.nombre, order: e.orden, isFinal: e.estado_final })));
       } catch (err) {
         console.error('[AdminBandejaCasos] init error:', err);
