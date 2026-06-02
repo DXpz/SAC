@@ -1223,7 +1223,7 @@ const SupervisorPanel: React.FC = () => {
             </div>
           </div>
 
-          <div className="rounded-xl border shadow-sm overflow-hidden" style={{...styles.card, borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+          <div className="rounded-xl border shadow-sm overflow-hidden" style={{...styles.card}}>
               {(() => {
                 const casosAMostrar = typeFilter === 'vencidos' ? casosVencidos : casosCriticos;
                 return casosAMostrar.length > 0 ? (
@@ -1410,12 +1410,22 @@ const SupervisorPanel: React.FC = () => {
                         </td>
                       </tr>
                   );
-                })}
-              </tbody>
-            </table>
-            )}
-              </div>
-            </div>
+                  })}
+                </tbody>
+              </table>
+              ) : (
+              <div className="p-12 text-center">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4" style={{backgroundColor: 'rgba(34, 197, 94, 0.1)'}}>
+                  <CheckCircle2 className="w-8 h-8" style={{color: '#22c55e'}} />
+                </div>
+<p className="text-sm font-semibold mb-1" style={{color: styles.text.primary}}>
+                    {typeFilter === 'vencidos' ? 'No hay casos vencidos' : typeFilter === 'criticos' ? 'No hay casos críticos' : 'No hay casos críticos'}
+                  </p>
+                  <p className="text-xs font-medium" style={{color: styles.text.tertiary}}>¡Buen trabajo! Todo está bajo control.</p>
+                </div>
+              )}
+          </div>
+        </div>
 
         <div className="space-y-5">
           <div className="flex justify-between items-center">
