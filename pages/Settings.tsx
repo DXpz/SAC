@@ -1785,7 +1785,12 @@ const [showUserModal, setShowUserModal] = useState(false);
       // Después de eliminar, recargar las fechas desde el webhook
       await loadHolidays();
     } catch (error: any) {
-      alert(`Error al eliminar la fecha: ${error.message || 'Error desconocido'}`);
+      const errorMsg = error.message || '';
+      if (errorMsg.includes('no encontrado') || errorMsg.includes('Asueto no encontrado')) {
+        setErrorMessage('Este asueto no existe o ya fue eliminado.');
+      } else {
+        setErrorMessage(`Error al eliminar el asueto: ${errorMsg}`);
+      }
     }
   };
 
@@ -1817,7 +1822,7 @@ const [showUserModal, setShowUserModal] = useState(false);
           // Después de agregar, recargar las fechas desde el webhook
           await loadHolidays();
         } catch (error: any) {
-          alert(`Error al guardar la fecha: ${error.message || 'Error desconocido'}`);
+          setErrorMessage(`Error al guardar la fecha: ${error.message || 'Error desconocido'}`);
         }
       };
       
@@ -4870,13 +4875,14 @@ const [showUserModal, setShowUserModal] = useState(false);
                                           await handleDeleteHoliday(holidayDate, true);
                                         }
                                       }}
-                                      className="p-2.5 rounded-lg transition-all opacity-70 group-hover:opacity-100"
+                                      className="p-2.5 rounded-lg transition-all"
                                       style={{
                                         backgroundColor: 'transparent',
-                                        color: theme === 'dark' ? 'rgba(148, 163, 184, 0.5)' : 'rgba(107, 114, 128, 0.5)'
+                                        color: theme === 'dark' ? 'rgba(148, 163, 184, 0.7)' : 'rgba(107, 114, 128, 0.7)'
                                       }}
                                       onMouseEnter={(e) => {
                                         e.currentTarget.style.backgroundColor = 'rgba(153, 27, 27, 0.15)';
+                                        e.currentTarget.style.color = '#ef4444';
                                         e.currentTarget.style.color = '#991b1b';
                                         e.currentTarget.style.transform = 'scale(1.1)';
                                       }}
