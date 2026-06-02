@@ -86,15 +86,16 @@ const AlertasCriticas: React.FC = () => {
 
   const enrichCasesWithClients = (cases: Caso[], clientesList: any[]): Caso[] => {
     return cases.map(caso => {
-      const normalizedClientId = normalizeClienteId(caso.clientId);
+      const clientIdToFind = (caso as any).clientId || (caso as any).cliente_id || caso.clientId || '';
+      const normalizedClientId = normalizeClienteId(clientIdToFind);
       const cliente = clientesList.find(c => {
         const cliNorm = normalizeClienteId(c.CardCode);
-        return cliNorm === normalizedClientId || c.CardCode === caso.clientId;
+        return cliNorm === normalizedClientId || c.CardCode === clientIdToFind;
       });
       return {
         ...caso,
-        clientName: cliente?.CardName || caso.clientName || 'Sin nombre',
-        cliente: cliente || caso.cliente
+        clientName: cliente?.CardName || caso.clientName || (caso as any).cliente?.CardName || 'Sin nombre',
+        cliente: cliente || caso.cliente || (caso as any).cliente
       };
     });
   };
