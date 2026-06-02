@@ -76,7 +76,7 @@ const AdminBandejaCasos: React.FC = () => {
       try {
         const pais = userCountry || 'SV';
         console.log('[AdminBandejaCasos] init with pais:', pais);
-        const [clientesData, categoriasData, agentesData, casosData, estadosData] = await Promise.all([
+        const [clientesData, categoriasData, allAgentesData, casosData, estadosData] = await Promise.all([
           sapService.getClientesListado(pais),
           api.getCategorias(),
           api.getAgentes(),
@@ -85,9 +85,17 @@ const AdminBandejaCasos: React.FC = () => {
             headers: { 'ngrok-skip-browser-warning': 'true' }
           }).then(r => r.json()).catch(() => [])
         ]);
+        // Filtrar agentes por país del usuario
+        const agentesFiltrados = allAgentesData.filter((a: any) => {
+          const agentePais = a.pais || '';
+          const agentePaisNorm = agentePais.toUpperCase().trim();
+          if (pais === 'GT') return agentePaisNorm === 'GT' || agentePaisNorm.includes('GUATEMALA');
+          if (pais === 'SV') return agentePaisNorm === 'SV' || agentePaisNorm.includes('SALVADOR');
+          return true;
+        });
         setClientes(clientesData);
         setCategorias(categoriasData);
-        setAgentes(agentesData);
+        setAgentes(agentesFiltrados);
         setCasos(casosData);
         setEstados(estadosData.map((e: any) => ({ id: String(e.id), name: e.nombre, order: e.orden, isFinal: e.estado_final })));
       } catch (err) {
@@ -260,9 +268,18 @@ const AdminBandejaCasos: React.FC = () => {
 
   const loadAgentes = async () => {
     try {
-      const data = await api.getAgentes();
-      setAgentes(data);
-      return data;
+      const pais = userCountry || 'SV';
+      const allAgentes = await api.getAgentes();
+      // Filtrar agentes por país del usuario
+      const agentesFiltrados = allAgentes.filter((a: any) => {
+        const agentePais = a.pais || '';
+        const agentePaisNorm = agentePais.toUpperCase().trim();
+        if (pais === 'GT') return agentePaisNorm === 'GT' || agentePaisNorm.includes('GUATEMALA');
+        if (pais === 'SV') return agentePaisNorm === 'SV' || agentePaisNorm.includes('SALVADOR');
+        return true;
+      });
+      setAgentes(agentesFiltrados);
+      return agentesFiltrados;
     } catch (err) {
       return [];
     }
