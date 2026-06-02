@@ -434,14 +434,14 @@ const loadAgentes = async () => {
       return { label: 'Normal', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)', icon: Clock };
     }
 
-    const slaDias = caso.categoria?.slaDias || 5;
-    const diasRestantes = slaDias - caso.diasAbierto;
+    const slaExpired = (caso as any).slaExpired === true;
+    const businessHoursRemaining = (caso as any).businessHoursRemaining || 0;
     
-    if (caso.diasAbierto >= slaDias) {
+    if (slaExpired) {
       return { label: 'Vencido', color: '#dc2626', bg: 'rgba(220, 38, 38, 0.1)', icon: Timer };
-    } else if (diasRestantes <= 1 && caso.diasAbierto > 0) {
+    } else if (businessHoursRemaining <= 4 && businessHoursRemaining > 0) {
       return { label: 'Crítico', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)', icon: AlertTriangle };
-    } else if (diasRestantes <= 3) {
+    } else if (businessHoursRemaining <= 8) {
       return { label: 'Alto', color: '#64748b', bg: 'rgba(100, 116, 139, 0.1)', icon: Clock };
     }
     return { label: 'Normal', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)', icon: Clock };
@@ -959,7 +959,7 @@ const loadAgentes = async () => {
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>
-                          {caso.diasAbierto || 0} días
+                          {(caso as any).businessHoursRemaining || 0}h
                         </span>
                       </td>
                       <td className="px-4 py-3">
