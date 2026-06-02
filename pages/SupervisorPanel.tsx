@@ -289,18 +289,25 @@ const SupervisorPanel: React.FC = () => {
 
   // Casos críticos basados en casos abiertos filtrados
   const casosCriticos = useMemo(() => {
-    return casosAbiertos.filter(c => {
+    const criticos = casosAbiertos.filter(c => {
       const normalizedStatus = normalizeStatus(c.status);
       
-      // Calcular isVencido directamente desde diasAbierto y slaDias del backend
       const slaDiasRaw = (c as any).slaDias || c.categoria?.slaDias || 1;
       const diasAbiertoRaw = (c as any).diasAbierto || 0;
       const isVencido = diasAbiertoRaw >= slaDiasRaw;
       const isEscalado = normalizedStatus === CaseStatus.ESCALADO;
       const isEnRiesgo = !isVencido && !isEscalado && diasAbiertoRaw > 0 && (slaDiasRaw - diasAbiertoRaw <= 1);
 
+      // DEBUG
+      if (c.case_id === 'GT-TEST-001' || c.id === 'GT-TEST-001') {
+        console.log('[DEBUG] GT-TEST-001:', { slaDiasRaw, diasAbiertoRaw, isVencido, isEscalado, isEnRiesgo });
+      }
+
       return isVencido || isEscalado || isEnRiesgo;
     });
+    
+    console.log('[DEBUG] casosCriticos result:', criticos.map(c => c.case_id || c.id));
+    return criticos;
   }, [casosAbiertos]);
 
   const casosVencidos = useMemo(() => {
