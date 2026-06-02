@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
+import { API_CONFIG } from '../config';
 import { sapService, ClienteListado } from '../services/sapService';
 import { getUserCountry } from '../services/caseService';
 import { Case, CaseStatus, Cliente, Categoria, Agente } from '../types';
@@ -75,16 +76,20 @@ const AdminBandejaCasos: React.FC = () => {
       try {
         const pais = userCountry || 'SV';
         console.log('[AdminBandejaCasos] init with pais:', pais);
-        const [clientesData, categoriasData, agentesData, casosData] = await Promise.all([
+        const [clientesData, categoriasData, agentesData, casosData, estadosData] = await Promise.all([
           sapService.getClientesListado(pais),
           api.getCategorias(),
           api.getAgentes(),
-          api.getCases()
+          api.getCases(),
+          fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}`, {
+            headers: { 'ngrok-skip-browser-warning': 'true' }
+          }).then(r => r.json()).catch(() => [])
         ]);
         setClientes(clientesData);
         setCategorias(categoriasData);
         setAgentes(agentesData);
         setCasos(casosData);
+        setEstados(estadosData.map((e: any) => ({ id: String(e.id), name: e.nombre, order: e.orden, isFinal: e.estado_final })));
       } catch (err) {
         console.error('[AdminBandejaCasos] init error:', err);
       } finally {
