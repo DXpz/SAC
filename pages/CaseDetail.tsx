@@ -1194,6 +1194,11 @@ const CaseDetail: React.FC = () => {
         updates.client_phone = editedCase.clientPhone || '';
       }
       
+      // Solo enviar contacto_principal si fue editado
+      if (editedCase.hasOwnProperty('contactoPrincipal')) {
+        updates.contacto_principal = editedCase.contactoPrincipal || '';
+      }
+      
       // Llamar a updateCaseData - puede retornar null si no se puede obtener el caso inmediatamente
       // pero eso está bien, el webhook ya procesó el cambio
       await updateCaseData(id, updates);

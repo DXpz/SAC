@@ -1361,13 +1361,16 @@ export const updateCaseData = async (
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
     body: JSON.stringify({
-      case_id: caseId,
-      asunto: (updates.asunto !== undefined ? updates.asunto : (currentCase?.subject || '')) || '',
-      descripcion: (updates.descripcion !== undefined ? updates.descripcion : (currentCase?.description || '')) || '',
-      cliente_id: (updates.cliente_id !== undefined ? updates.cliente_id : (currentCase?.clientId || '')) || '',
-      cliente_nombre: updates.client_name !== undefined ? (updates.client_name || '') : (currentClientName || ''),
-      email_cliente: (updates.client_email !== undefined ? String(updates.client_email || '') : String(currentClientEmail || '')) || '',
-      telefono_cliente: (updates.client_phone !== undefined ? String(updates.client_phone || '') : String(currentClientPhone || '')) || ''
+      data: {
+        case_id: caseId,
+        asunto: (updates.asunto !== undefined ? updates.asunto : (currentCase?.subject || '')) || '',
+        descripcion: (updates.descripcion !== undefined ? updates.descripcion : (currentCase?.description || '')) || '',
+        cliente_id: (updates.cliente_id !== undefined ? updates.cliente_id : (currentCase?.clientId || '')) || '',
+        cliente_nombre: updates.client_name !== undefined ? (updates.client_name || '') : (currentClientName || ''),
+        email_cliente: (updates.client_email !== undefined ? String(updates.client_email || '') : String(currentClientEmail || '')) || '',
+        telefono_cliente: (updates.client_phone !== undefined ? String(updates.client_phone || '') : String(currentClientPhone || '')) || '',
+        contacto_principal: (updates.contacto_principal !== undefined ? updates.contacto_principal : (currentCase?.contacto_principal || '')) || ''
+      }
     })
   });
 
