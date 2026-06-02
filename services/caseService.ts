@@ -765,6 +765,7 @@ export const createCase = async (caseData: {
     pais: pais,
     cliente: {
       cliente_id: caseData.clienteId || 'N/A',
+      contacto_principal: caseData.contactName || caseData.contactoPrincipal || '',
       email: caseData.clientEmail || '',
       telefono: caseData.clientPhone || caseData.phone || ''
     },

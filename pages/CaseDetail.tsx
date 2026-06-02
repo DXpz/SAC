@@ -993,6 +993,7 @@ const CaseDetail: React.FC = () => {
     const clientName = caso?.clientName || caso?.cliente?.CardName || '';
     const clientEmail = caso?.clientEmail || caso?.cliente?.email || '';
     const clientPhone = caso?.clientPhone || caso?.cliente?.telefono || '';
+    const contactoPrincipal = caso?.contacto_principal || caso?.contactoPrincipal || '';
     
     // Inicializar con los valores actuales del caso
     setEditedCase({
@@ -1001,7 +1002,8 @@ const CaseDetail: React.FC = () => {
       clienteId: caso?.clienteId || caso?.clientId,
       clientName: clientName,
       clientEmail: clientEmail,
-      clientPhone: clientPhone
+      clientPhone: clientPhone,
+      contactoPrincipal: contactoPrincipal
     });
     // Inicializar el término de búsqueda con el ID y nombre del cliente actual
     const clienteActual = clientes.find(c => c.CardCode === (caso?.clienteId || caso?.clientId));
@@ -2162,9 +2164,12 @@ const CaseDetail: React.FC = () => {
                 {/* Información del cliente seleccionado */}
                 {editedCase.clienteId && (
                   <div className="p-3 rounded-lg border" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
-                    <p className="text-xs font-semibold mb-1" style={{color: styles.text.secondary}}>Cliente Seleccionado</p>
+                    <p className="text-xs font-semibold mb-1" style={{color: styles.text.secondary}}>Cliente</p>
                     <p className="text-sm font-bold" style={{color: styles.text.primary}}>{editedCase.clientName}</p>
                     <p className="text-xs mt-1" style={{color: styles.text.tertiary}}>ID: {editedCase.clienteId}</p>
+                    {editedCase.contactoPrincipal && (
+                      <p className="text-xs mt-1" style={{color: styles.text.secondary}}>{editedCase.contactoPrincipal}</p>
+                    )}
                   </div>
                 )}
 
