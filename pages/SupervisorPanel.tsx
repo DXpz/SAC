@@ -297,11 +297,16 @@ const SupervisorPanel: React.FC = () => {
   }, [criticalCases]);
 
   const casosVencidos = useMemo(() => {
-    return casosAbiertos.filter(c => {
+    const allCases = [...casos, ...criticalCases];
+    const abiertos = allCases.filter(c => 
+      c.status !== CaseStatus.RESUELTO && 
+      c.status !== CaseStatus.CERRADO
+    );
+    return abiertos.filter(c => {
       const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
       return c.diasAbierto > slaDias;
     });
-  }, [casosAbiertos]);
+  }, [casos, criticalCases]);
 
   const casosEnRiesgo = useMemo(() => {
     return casosAbiertos.filter(c => {
