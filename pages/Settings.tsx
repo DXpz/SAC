@@ -1394,7 +1394,7 @@ const [showUserModal, setShowUserModal] = useState(false);
       }
       
       if (transitions && Object.keys(transitions).length > 0) {
-        await api.saveTransitions(transitions);
+        await api.updateTransiciones(transitions);
       }
       
       await loadEstados();
