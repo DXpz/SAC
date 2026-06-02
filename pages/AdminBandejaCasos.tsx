@@ -300,7 +300,8 @@ const AdminBandejaCasos: React.FC = () => {
         if (!rawStatus) return false;
         const rawLower = String(rawStatus).toLowerCase().trim();
         const filterLower = String(statusFilter).toLowerCase().trim();
-        return rawLower === filterLower || normalizeStatus(rawStatus) === statusFilter;
+        // Solo hacer comparación exacta, no usar normalizeStatus que mapea desconocidos a NUEVO
+        return rawLower === filterLower;
       });
     }
 
