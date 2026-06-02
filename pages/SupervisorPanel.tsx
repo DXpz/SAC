@@ -429,8 +429,16 @@ const SupervisorPanel: React.FC = () => {
   };
 
   const getAgenteStats = (agenteId: string) => {
-    // Filtrar casos abiertos del agente para estadísticas de casos activos
-    const casosAgente = casosAbiertos.filter(c => c.agenteAsignado?.idAgente === agenteId || c.agentId === agenteId);
+    // Usar TODOS los casos del agente, no solo los filtrados por período
+    const casosAgenteAll = casos.filter(c => 
+      (c.agenteAsignado?.idAgente === agenteId || c.agentId === agenteId)
+    );
+    
+    // Casos abiertos (no resueltos, no cerrados)
+    const casosAgente = casosAgenteAll.filter(c => 
+      c.status !== CaseStatus.RESUELTO && 
+      c.status !== CaseStatus.CERRADO
+    );
     const criticosAgente = casosAgente.filter(c => {
       const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
       return c.diasAbierto >= slaDias || c.status === CaseStatus.ESCALADO;
@@ -446,10 +454,9 @@ const SupervisorPanel: React.FC = () => {
       : null;
     
     // Calcular tiempo promedio de resolución basado en casos resueltos del agente
-    // Usar TODOS los casos, no solo los abiertos
-    const casosResueltosAgente = casos.filter(c => 
-      (c.agenteAsignado?.idAgente === agenteId || c.agentId === agenteId) &&
-      (c.status === CaseStatus.RESUELTO || c.status === CaseStatus.CERRADO)
+    // Usar TODOS los casos resueltos
+    const casosResueltosAgente = casosAgenteAll.filter(c => 
+      c.status === CaseStatus.RESUELTO || c.status === CaseStatus.CERRADO
     );
     
     let tiempoPromedio = 'N/A';
