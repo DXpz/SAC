@@ -552,9 +552,10 @@ export const api = {
       const slaDias = Math.max(1, Math.ceil(valorSlaHours / 24));
       const diasAbierto = c.diasAbierto || Math.floor((now.getTime() - new Date(c.fecha_creacion).getTime()) / (1000 * 60 * 60 * 24));
       const slaExpired = diasAbierto >= slaDias;
+      const caseId = c.case_id || c.caseId || String(c.id);
       return {
-        id: String(c.id),
-        ticketNumber: c.case_id || c.caseId || String(c.id),
+        id: caseId,
+        ticketNumber: caseId,
         clientId: c.cliente_id || c.clientId || '',
         clientName: c.cliente?.CardName || c.cliente?.cardName || c.clientName || '',
         category: c.categoria?.categoria || c.category || '',
