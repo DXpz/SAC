@@ -210,20 +210,24 @@ const AdminPanel: React.FC = () => {
   }).length;
   
   // Calcular casos críticos usando la misma lógica que AlertasCriticas
-  const casosCriticos = casosSeguros.filter(c => {
+const casosCriticos = casosSeguros.filter(c => {
+      if (!c) return false;
+      const normalizedStatus = normalizeStatus(c.status);
+      if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
+        return false;
+      }
+      const slaExpired = (c as any).slaExpired === true;
+      const businessHoursRemaining = (c as any).businessHoursRemaining || 0;
+      return slaExpired || businessHoursRemaining <= 4;
+    }).length;
+
+  const casosVencidos = casosSeguros.filter(c => {
     if (!c) return false;
     const normalizedStatus = normalizeStatus(c.status);
     if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
       return false;
     }
-
-    const slaDias = c.categoria?.slaDias || 5;
-    const diasAbierto = c.diasAbierto || 0;
-    const isVencido = diasAbierto >= slaDias;
-    const isEscalado = normalizedStatus === CaseStatus.ESCALADO;
-    const isEnRiesgo = (slaDias - diasAbierto <= 1) && diasAbierto > 0 && diasAbierto < slaDias;
-
-    return isVencido || isEscalado || isEnRiesgo;
+    return (c as any).slaExpired === true;
   }).length;
 
   const casosVencidos = casosSeguros.filter(c => {
