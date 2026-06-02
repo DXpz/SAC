@@ -445,13 +445,14 @@ const SupervisorPanel: React.FC = () => {
       c.status !== CaseStatus.CERRADO
     );
     const criticosAgente = casosAgente.filter(c => {
-      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-      return c.diasAbierto >= slaDias || c.status === CaseStatus.ESCALADO;
+      const slaExpired = (c as any).slaExpired === true;
+      const businessHoursRemaining = (c as any).businessHoursRemaining || 0;
+      return slaExpired || businessHoursRemaining <= 4;
     });
     const dentroSLA = casosAgente.filter(c => {
-      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-      const diasRestantes = slaDias - c.diasAbierto;
-      return diasRestantes > 0;
+      const slaExpired = (c as any).slaExpired === true;
+      const businessHoursRemaining = (c as any).businessHoursRemaining || 0;
+      return !slaExpired && businessHoursRemaining > 4;
     });
     // Si no hay casos, el SLA no puede ser 100%, debe ser null para mostrar "N/A"
     const cumplimientoSLA = casosAgente.length > 0 
