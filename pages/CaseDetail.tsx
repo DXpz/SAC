@@ -1343,8 +1343,8 @@ const CaseDetail: React.FC = () => {
   const daysRemaining = !isSLAExpired ? daysRemainingRaw : 0;
   const hoursRemaining = !isSLAExpired ? hoursRemainingRaw : 0;
 
-  // Usar progreso del backend (caso.progreso), no hardcoded
-  const caseProgress = caso?.progreso ?? 0;
+  // Usar progreso dinámico del backend, fallback al estático
+  const caseProgress = caso?.dynamicProgress ?? caso?.progreso ?? 0;
 
   const isEscalated = caso.status === CaseStatus.ESCALADO;
   const showAlert = isEscalated && caso.slaExpired;
