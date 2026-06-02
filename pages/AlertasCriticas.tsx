@@ -209,46 +209,10 @@ const AlertasCriticas: React.FC = () => {
     try {
       const clientesList = await sapService.getClientesListado(userCountry);
       setClientes(clientesList);
-      const list = await api.getCases();
+      const list = await api.getCriticalCases();
       
-      // Filtrar casos por país del usuario
-      const filteredByCountry = list.filter((c: any) => {
-        const casoPais = (c as any).pais || c.cliente?.pais || '';
-        const casoPaisNormalizado = String(casoPais).trim().toUpperCase();
-        
-        if (userCountry === 'SV') {
-          return casoPaisNormalizado === 'SV' || 
-                 casoPaisNormalizado === 'EL_SALVADOR' || 
-                 casoPaisNormalizado.includes('SALVADOR');
-        } else if (userCountry === 'GT') {
-          return casoPaisNormalizado === 'GT' || 
-                 casoPaisNormalizado.includes('GUATEMALA');
-        }
-        return false;
-      });
-      
-      console.log('[DEBUG] Casos recibidos:', list.length, 'filtrados por pais:', filteredByCountry.length);
-      const enriched = enrichCasesWithClients(filteredByCountry, clientesList);
-      const filtered = enriched.filter(c => {
-        const estadoFinal = isEstadoFinal(c as any);
-        if (estadoFinal) {
-          console.log('[DEBUG] Caso excluido por ser estado final:', c.id, c.status);
-          return false;
-        }
-
-        const normalizedStatus = normalizeStatus(c.status);
-        const slaDias = c.slaDias || c.categoria?.slaDias || 5;
-        const diasAbierto = c.diasAbierto || 0;
-        const slaExpired = c.slaExpired || false;
-        console.log('[DEBUG] Caso evaluado:', c.id, 'status:', c.status, 'diasAbierto:', diasAbierto, 'slaDias:', slaDias, 'slaExpired:', slaExpired);
-
-        const isVencido = slaExpired;
-        const isEscalado = normalizedStatus === CaseStatus.ESCALADO;
-        const isEnRiesgo = !slaExpired && diasAbierto >= slaDias - 1 && diasAbierto < slaDias;
-        return isVencido || isEscalado || isEnRiesgo;
-      });
-      
-      const prioritized = prioritizeCases(filtered);
+      const enriched = enrichCasesWithClients(list, clientesList);
+      const prioritized = prioritizeCases(enriched);
       setCriticos(prioritized);
     } catch (error) {
     } finally {
