@@ -1459,22 +1459,22 @@ const SupervisorPanel: React.FC = () => {
                   // Log para debuggear
                   if (index === 0) {
                   }
-                  const estadoColors = {
-                    'Activo': { 
+                  const estadoColors: Record<string, { dotColor: string; bgColor: string; borderColor: string; textColor: string; status: string }> = {
+                    'ACTIVO': { 
                       dotColor: '#22c55e', 
                       bgColor: 'rgba(34, 197, 94, 0.15)', 
                       borderColor: 'rgba(34, 197, 94, 0.4)',
                       textColor: '#16a34a',
                       status: 'Activo' 
                     },
-                    'Vacaciones': { 
+                    'VACACIONES': { 
                       dotColor: '#f59e0b', 
                       bgColor: 'rgba(245, 158, 11, 0.15)', 
                       borderColor: 'rgba(245, 158, 11, 0.4)',
                       textColor: '#d97706',
                       status: 'Vacaciones' 
                     },
-                    'Inactivo': { 
+                    'INACTIVO': { 
                       dotColor: '#94a3b8', 
                       bgColor: 'rgba(148, 163, 184, 0.15)', 
                       borderColor: 'rgba(148, 163, 184, 0.4)',
@@ -1482,10 +1482,10 @@ const SupervisorPanel: React.FC = () => {
                       status: 'Inactivo' 
                     }
                   };
-                  const estado = estadoColors[agente.estado as keyof typeof estadoColors] || estadoColors.Inactivo;
+                  const estado = estadoColors[(agente.estado || '').toUpperCase()] || estadoColors['INACTIVO'];
                   const stats = getAgenteStats(agente.id_agente || agente.idAgente);
                   
-                  const isActivo = agente.estado === 'Activo';
+                  const isActivo = agente.estado?.toUpperCase() === 'ACTIVO';
                   const slaColor = stats.cumplimientoSLA === null ? '#94a3b8' :
                     stats.cumplimientoSLA >= 90 ? '#22c55e' :
                     stats.cumplimientoSLA >= 70 ? '#f59e0b' :
