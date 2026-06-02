@@ -572,7 +572,8 @@ export const api = {
         slaExpired,
         agenteAsignado: c.agente,
         categoria: { ...c.categoria, slaDias },
-        cliente: c.cliente
+        cliente: c.cliente,
+        pais: c.pais || ''
       };
     });
   },
