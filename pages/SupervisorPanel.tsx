@@ -1177,18 +1177,10 @@ const SupervisorPanel: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-sm font-bold" style={{color: styles.text.primary}}>
-              {typeFilter === 'vencidos' ? 'Casos Vencidos' : typeFilter === 'criticos' ? 'Casos Críticos / Escalamientos' : 'Casos Críticos / Escalamientos'}
+              Casos Críticos / Escalamientos
             </h3>
                 <p className="text-[10px] font-medium" style={{color: styles.text.tertiary}}>
-                  {typeFilter === 'vencidos' ? (
-                    <>
-                      {casosVencidos.length} caso{casosVencidos.length !== 1 ? 's' : ''} vencido{slaPromedio !== null ? ` • SLA: ${slaPromedio}%` : ''}
-                    </>
-                  ) : (
-                    <>
-                      {casosCriticos.length} caso{casosCriticos.length !== 1 ? 's' : ''} en lista
-                    </>
-                  )}
+                  {casosCriticos.length} caso{casosCriticos.length !== 1 ? 's' : ''} en lista
                 </p>
               </div>
             </div>
@@ -1224,9 +1216,7 @@ const SupervisorPanel: React.FC = () => {
           </div>
 
           <div className="rounded-xl border shadow-sm overflow-hidden" style={{...styles.card}}>
-              {(() => {
-                const casosAMostrar = typeFilter === 'vencidos' ? casosVencidos : casosCriticos;
-                return casosAMostrar.length > 0 ? (
+              {casosCriticos.length > 0 ? (
               <table className="w-full text-left">
                 <thead className="border-b" style={{
                   backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
@@ -1244,9 +1234,7 @@ const SupervisorPanel: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y" style={{borderColor: 'rgba(148, 163, 184, 0.15)'}}>
-                  {(() => {
-                    const casosAMostrar = typeFilter === 'vencidos' ? casosVencidos : casosCriticos;
-                    return casosAMostrar.map((caso) => {
+                  {casosCriticos.map((caso) => {
                   const isEscalado = caso.status === CaseStatus.ESCALADO;
                     const slaDias = caso.categoria?.slaDias || (caso as any).categoria?.sla_dias || 5;
                     const isVencido = caso.diasAbierto >= slaDias;
@@ -1418,10 +1406,8 @@ const SupervisorPanel: React.FC = () => {
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4" style={{backgroundColor: 'rgba(34, 197, 94, 0.1)'}}>
                   <CheckCircle2 className="w-8 h-8" style={{color: '#22c55e'}} />
                 </div>
-<p className="text-sm font-semibold mb-1" style={{color: styles.text.primary}}>
-                    {typeFilter === 'vencidos' ? 'No hay casos vencidos' : typeFilter === 'criticos' ? 'No hay casos críticos' : 'No hay casos críticos'}
-                  </p>
-                  <p className="text-xs font-medium" style={{color: styles.text.tertiary}}>¡Buen trabajo! Todo está bajo control.</p>
+                <p className="text-sm font-semibold mb-1" style={{color: styles.text.primary}}>No hay casos críticos</p>
+                <p className="text-xs font-medium" style={{color: styles.text.tertiary}}>¡Buen trabajo! Todo está bajo control.</p>
                 </div>
               )}
           </div>
