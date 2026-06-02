@@ -23,7 +23,8 @@ import {
   Search,
   FileText,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Check
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { api, clearCache } from '../services/api';
@@ -33,6 +34,8 @@ const Settings: React.FC = () => {
   const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState('configuracion');
   const [hasChanges, setHasChanges] = useState(false);
+  const [savingStates, setSavingStates] = useState(false);
+  const [successSave, setSuccessSave] = useState(false);
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
   const [adminCountry, setAdminCountry] = useState<'SV' | 'GT' | null>(null);
@@ -1374,6 +1377,34 @@ const [showUserModal, setShowUserModal] = useState(false);
       setHasChanges(false);
     } catch (error: any) {
       alert(error.message || 'Error al guardar los estados. Por favor, intenta nuevamente.');
+    }
+  };
+
+  const handleSaveAll = async () => {
+    setSavingStates(true);
+    setSuccessSave(false);
+    try {
+      for (const state of states) {
+        await api.updateEstado(state.id, {
+          nombre: state.name,
+          descripcion: state.name,
+          orden: state.order,
+          estado_final: state.isFinal
+        });
+      }
+      
+      if (transitions && Object.keys(transitions).length > 0) {
+        await api.saveTransitions(transitions);
+      }
+      
+      await loadEstados();
+      setHasChanges(false);
+      setSuccessSave(true);
+      setTimeout(() => setSuccessSave(false), 3000);
+    } catch (error: any) {
+      alert(error.message || 'Error al guardar. Por favor, intenta nuevamente.');
+    } finally {
+      setSavingStates(false);
     }
   };
 
@@ -2761,26 +2792,42 @@ const [showUserModal, setShowUserModal] = useState(false);
                   Defina qué cambios de estado están permitidos y el orden del flujo.
                 </p>
               </div>
-              {hasChanges && (
+              {hasChanges && !savingStates && (
                   <button
-                    onClick={handleSaveStates}
+                    onClick={handleSaveAll}
                     className="px-6 py-3 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
                     style={{
-                backgroundColor: theme === 'dark' ? '#991b1b' : '#7a1a1a',
+                backgroundColor: theme === 'dark' ? '#166534' : '#14532d',
                 boxShadow: theme === 'dark' 
-                  ? '0 4px 12px rgba(153, 27, 27, 0.3)' 
-                  : '0 4px 12px rgba(122, 26, 26, 0.3)'
+                  ? '0 4px 12px rgba(22, 101, 52, 0.3)' 
+                  : '0 4px 12px rgba(20, 83, 45, 0.3)'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#dc2626' : '#b91c1c';
+                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#15803d' : '#166534';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#991b1b' : '#7a1a1a';
+                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#166534' : '#14532d';
                     }}
                   >
                     <Save className="w-4 h-4" />
-                    Guardar Cambios
+                    Guardar
                   </button>
+                )}
+                {savingStates && (
+                  <button
+                    disabled
+                    className="px-6 py-3 text-white text-sm font-semibold rounded-lg flex items-center gap-2 opacity-70"
+                    style={{ backgroundColor: theme === 'dark' ? '#166534' : '#14532d' }}
+                  >
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Guardando...
+                  </button>
+                )}
+                {successSave && !savingStates && (
+                  <div className="px-6 py-3 text-white text-sm font-semibold rounded-lg flex items-center gap-2" style={{ backgroundColor: '#22c55e' }}>
+                    <Check className="w-4 h-4" />
+                    Guardado
+                  </div>
                 )}
             </div>
 
@@ -2904,17 +2951,9 @@ const [showUserModal, setShowUserModal] = useState(false);
                 <h3 className="text-sm font-bold uppercase" style={{ color: styles.text.primary }}>
                   Gestión de Estados
                 </h3>
-                {hasChanges && (
-                  <button
-                    onClick={handleSaveOrden}
-                    className="px-4 py-1.5 text-xs font-semibold rounded-lg text-white transition-all"
-                    style={{ backgroundColor: '#166534' }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#14532d'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#166534'}
-                  >
-                    Guardar Orden
-                  </button>
-                )}
+                <span className="text-xs" style={{ color: styles.text.tertiary }}>
+                  Usa las flechas para reordenar • Los cambios se guardan con el botón "Guardar"
+                </span>
               </div>
               <div className="space-y-2">
                 {states
