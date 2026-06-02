@@ -1445,13 +1445,18 @@ const result = await response.json();
     return response.json();
   },
 
-  // Eliminar fecha de asueto mediante backend directo
-async deleteHoliday(holidayId: string): Promise<any> {
-    const response = await fetch(`${API_CONFIG.WEBHOOK_ASUETOS_URL}`, {
+// Eliminar fecha de asueto mediante backend directo
+  async deleteHoliday(holidayId: string): Promise<any> {
+    const url = API_CONFIG.WEBHOOK_ASUETOS_URL;
+    const options = {
       method: 'DELETE',
-      headers: { 'Content-Type: application/json', 'ngrok-skip-browser-warning: true' },
+      headers: {
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true'
+      },
       body: JSON.stringify({ id: holidayId })
-    });
+    };
+    const response = await fetch(url, options);
 
     if (!response.ok) {
       const error = await response.json();
