@@ -229,15 +229,6 @@ const casosCriticos = casosSeguros.filter(c => {
     }
     return (c as any).slaExpired === true;
   }).length;
-
-  const casosVencidos = casosSeguros.filter(c => {
-    if (!c) return false;
-    const normalizedStatus = normalizeStatus(c.status);
-    if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
-      return false;
-    }
-    return (c as any).slaExpired === true;
-  }).length;
   
   // Calcular casos por estado usando los estados dinámicos del webhook
   const casosPorEstado = useMemo(() => {
