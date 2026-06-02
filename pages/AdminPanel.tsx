@@ -79,7 +79,7 @@ const AdminPanel: React.FC = () => {
       const [clientesList, casosList, agentesList, categoriasList, usuariosList, kpisData, estadosList] = await Promise.allSettled([
         loadClientes(),
         api.getCases(),
-        api.getAgentes(),
+        api.getAgentes(userCountry || undefined),
         api.readCategories(), // Usar readCategories para obtener las categorías creadas en Settings
         api.getUsuarios(),
         api.getKPIs(),

@@ -324,7 +324,7 @@ const BandejaCasos: React.FC = () => {
           loadCasos(),
           sapService.getClientesListado(userCountry).then(data => { setClientes(data); return data; }),
           api.getCategorias().then(data => { setCategorias(data); return data; }),
-          api.getAgentes().then(data => { setAgentes(data); return data; })
+          api.getAgentes(userCountry).then(data => { setAgentes(data); return data; })
         ]);
       } catch (err) {
         console.error('Error loading initial data:', err);
@@ -397,7 +397,7 @@ const loadCategorias = async () => {
 
   const loadAgentes = async () => {
   try {
-    const data = await api.getAgentes();
+    const data = await api.getAgentes(userCountry);
     setAgentes(data);
     return data;
   } catch (err) {

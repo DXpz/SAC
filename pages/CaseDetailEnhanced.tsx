@@ -39,7 +39,7 @@ const CaseDetail: React.FC = () => {
 
   const loadAgentes = async () => {
     try {
-      const ags = await api.getAgentes();
+      const ags = await api.getAgentes(userCountry || undefined);
       setAgentes(ags.filter(a => a.estado === 'Activo'));
     } catch (err) {
     }

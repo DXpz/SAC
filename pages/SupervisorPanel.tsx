@@ -175,7 +175,7 @@ const SupervisorPanel: React.FC = () => {
       const [casosData, criticalCasesData, agentesData, clientesList] = await Promise.all([
         api.getCases(),
         api.getCriticalCases(),
-        api.getAgentes(),
+        api.getAgentes(supervisorCountry),
         loadClientes()
       ]);
       const enriched = enrichCasesWithClients(casosData, clientesList);

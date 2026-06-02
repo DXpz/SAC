@@ -236,7 +236,7 @@ const CaseDetail: React.FC = () => {
 
   const loadAgentes = async () => {
     try {
-      const data = await api.getAgentes();
+      const data = await api.getAgentes(userCountry || undefined);
       setAgentes(data);
     } catch (err) {
     }
@@ -547,7 +547,7 @@ const CaseDetail: React.FC = () => {
         } else {
           // Si no hay agentes en memoria, cargarlos ahora
           try {
-            const agentesDesdeAPI = await api.getAgentes();
+            const agentesDesdeAPI = await api.getAgentes(userCountry || undefined);
             setAgentes(agentesDesdeAPI);
             
             const agenteEncontrado = agentesDesdeAPI.find(a => {
