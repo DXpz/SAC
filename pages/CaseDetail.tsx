@@ -2201,6 +2201,35 @@ const CaseDetail: React.FC = () => {
 
                   <div>
                     <label className="block text-xs font-semibold mb-1.5" style={{color: styles.text.secondary}}>
+                      Nombre de Contacto
+                    </label>
+                    <div className="flex items-center gap-3 p-3 rounded-lg border" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
+                      <User className="w-4 h-4 flex-shrink-0" style={{color: '#64748b'}}/>
+                      <input
+                        type="text"
+                        value={editedCase.contactoPrincipal || ''}
+                        onChange={(e) => setEditedCase({ ...editedCase, contactoPrincipal: e.target.value })}
+                        className="flex-1 text-xs font-medium px-2 py-1 border rounded outline-none focus:ring-2 transition-all"
+                        style={{
+                          backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
+                          borderColor: 'rgba(148, 163, 184, 0.2)',
+                          color: styles.text.secondary
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = '#107ab4';
+                          e.target.style.boxShadow = '0 0 0 2px rgba(16, 122, 180, 0.1)';
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = 'rgba(148, 163, 184, 0.2)';
+                          e.target.style.boxShadow = 'none';
+                        }}
+                        placeholder="Nombre del contacto"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold mb-1.5" style={{color: styles.text.secondary}}>
                       Teléfono de Contacto
                     </label>
                     <div className="flex items-center gap-3 p-3 rounded-lg border" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
