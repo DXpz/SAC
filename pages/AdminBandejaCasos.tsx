@@ -369,13 +369,15 @@ const loadAgentes = async () => {
       result = result.filter(c => {
         const slaDias = c.categoria?.slaDias || 5;
         const diasRestantes = slaDias - c.diasAbierto;
+        const slaExpired = (c as any).slaExpired === true;
+        const businessHoursRemaining = (c as any).businessHoursRemaining || 0;
         
         if (slaFilter === 'vencido') {
-          return c.diasAbierto >= slaDias;
+          return slaExpired;
         } else if (slaFilter === 'en-riesgo') {
-          return diasRestantes > 0 && diasRestantes <= 1 && c.diasAbierto < slaDias;
+          return !slaExpired && businessHoursRemaining > 0 && businessHoursRemaining <= 4;
         } else if (slaFilter === 'dentro-sla') {
-          return c.diasAbierto < slaDias && diasRestantes > 1;
+          return !slaExpired && businessHoursRemaining > 4;
         }
         return true;
       });
