@@ -1474,6 +1474,8 @@ const [showUserModal, setShowUserModal] = useState(false);
   const [holidayMotivo, setHolidayMotivo] = useState('');
   // Estado para animación de eliminación
   const [isDeleting, setIsDeleting] = useState(false);
+  // Estado para el modal de confirmación de eliminación de asueto
+  const [holidayToDelete, setHolidayToDelete] = useState<{id: string, fecha: string, motivo: string} | null>(null);
 
   const formatDateToSpanish = (date: Date): string => {
     const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
@@ -4872,14 +4874,12 @@ const [showUserModal, setShowUserModal] = useState(false);
                                 <td className="px-5 py-4">
                                   <div className="flex justify-center">
                                     <button
-                                      onClick={async () => {
+                                      onClick={() => {
                                         if (!holiday.id) {
                                           setErrorMessage('No se puede eliminar: ID del asueto no disponible.');
                                           return;
                                         }
-                                        if (window.confirm(`¿Está seguro de que desea eliminar la fecha ${formatDateFromDDMMYYYY(holiday.fecha)}?`)) {
-                                          await handleDeleteHoliday(holiday.id, true);
-                                        }
+                                        setHolidayToDelete({ id: holiday.id, fecha: holiday.fecha, motivo: holiday.motivo || '' });
                                       }}
                                       className="p-2.5 rounded-lg transition-all"
                                       style={{
@@ -4911,6 +4911,94 @@ const [showUserModal, setShowUserModal] = useState(false);
                     )}
 </tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {holidayToDelete && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+            style={{
+              backgroundColor: 'rgba(0, 0, 0, 0.5)'
+            }}
+            onClick={() => setHolidayToDelete(null)}
+          >
+            <div 
+              className="rounded-xl border p-6 w-full max-w-md animate-in zoom-in-95 duration-200"
+              style={{
+                ...styles.card,
+                boxShadow: theme === 'dark' 
+                  ? '0 8px 24px rgba(0, 0, 0, 0.5)' 
+                  : '0 8px 24px rgba(0, 0, 0, 0.2)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex flex-col items-center mb-4">
+                <div 
+                  className="w-16 h-16 rounded-full flex items-center justify-center mb-4 animate-in zoom-in duration-300"
+                  style={{
+                    backgroundColor: theme === 'dark' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)'
+                  }}
+                >
+                  <AlertTriangle 
+                    className="w-8 h-8 animate-in zoom-in duration-300" 
+                    style={{ color: '#ef4444' }}
+                  />
+                </div>
+                <h3 className="text-lg font-bold mb-2" style={{ color: styles.text.primary }}>
+                  ¿Eliminar asueto?
+                </h3>
+                <p className="text-sm text-center" style={{ color: styles.text.secondary }}>
+                  ¿Está seguro de que desea eliminar el asueto del <strong style={{ color: styles.text.primary }}>{formatDateFromDDMMYYYY(holidayToDelete.fecha)}</strong>?
+                </p>
+                {holidayToDelete.motivo && (
+                  <p className="text-xs mt-1" style={{ color: styles.text.tertiary }}>
+                    "{holidayToDelete.motivo}"
+                  </p>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  onClick={() => setHolidayToDelete(null)}
+                  className="px-4 py-2 text-sm font-semibold rounded-lg transition-all"
+                  style={{
+                    backgroundColor: 'transparent',
+                    color: styles.text.secondary,
+                    border: `1px solid ${theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)'}`
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.15)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={async () => {
+                    await handleDeleteHoliday(holidayToDelete.id, true);
+                    setHolidayToDelete(null);
+                  }}
+                  className="px-6 py-2 text-white text-sm font-semibold rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
+                  style={{
+                    backgroundColor: theme === 'dark' ? '#991b1b' : '#7a1a1a',
+                    boxShadow: theme === 'dark' 
+                      ? '0 4px 12px rgba(153, 27, 27, 0.3)' 
+                      : '0 4px 12px rgba(122, 26, 26, 0.3)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = theme === 'dark' ? '#dc2626' : '#b91c1c';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = theme === 'dark' ? '#991b1b' : '#7a1a1a';
+                  }}
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Eliminar
+                </button>
               </div>
             </div>
           </div>
