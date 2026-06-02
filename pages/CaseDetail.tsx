@@ -608,6 +608,7 @@ const CaseDetail: React.FC = () => {
         data.history = historialInicial;
       }
       
+      console.log('contacto_principal:', data.contacto_principal);
       setCaso(data);
     } catch (error) {
       throw error; // Lanzar el error en lugar de usar fallback local
@@ -2280,6 +2281,11 @@ const CaseDetail: React.FC = () => {
                   {(caso.clienteId || caso.clientId) && (
                     <p className="text-xs mt-1" style={{color: styles.text.tertiary}}>
                       ID: {caso.clienteId || caso.clientId}
+                    </p>
+                  )}
+                  {(caso.contacto_principal || caso.contactoPrincipal) && (
+                    <p className="text-xs mt-1" style={{color: styles.text.secondary}}>
+                      {caso.contacto_principal || caso.contactoPrincipal}
                     </p>
                   )}
                 </div>
