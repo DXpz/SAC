@@ -1200,7 +1200,12 @@ const [showUserModal, setShowUserModal] = useState(false);
       setDeletingState(null);
       setHasChanges(true);
     } catch (error: any) {
-      alert(error.message || 'Error al eliminar el estado. Por favor, intenta nuevamente.');
+      const errorMsg = error.message || '';
+      if (errorMsg.includes('Foreign key') || errorMsg.includes('casos_estado') || errorMsg.includes('constraint')) {
+        alert('Este estado no se puede eliminar porque tiene casos asignados. Reasigna los casos a otro estado primero.');
+      } else {
+        alert(errorMsg || 'Error al eliminar el estado. Por favor, intenta nuevamente.');
+      }
       setDeletingState(null);
     }
   };
