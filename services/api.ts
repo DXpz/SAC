@@ -1446,16 +1446,11 @@ const result = await response.json();
   },
 
   // Eliminar fecha de asueto mediante backend directo
-  async deleteHoliday(date: Date): Promise<any> {
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    const fechaStr = `${year}-${month}-${day}`;
-
+async deleteHoliday(holidayId: string): Promise<any> {
     const response = await fetch(`${API_CONFIG.WEBHOOK_ASUETOS_URL}`, {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
-      body: JSON.stringify({ fecha: fechaStr })
+      headers: { 'Content-Type: application/json', 'ngrok-skip-browser-warning: true' },
+      body: JSON.stringify({ id: holidayId })
     });
 
     if (!response.ok) {
@@ -1529,6 +1524,7 @@ const result = await response.json();
       }
 
       return {
+        id: asueto.id || '',
         fecha: fechaStr,
         motivo: asueto.motivo || 'Indefinido',
         pais: asueto.pais || 'Indefinido',

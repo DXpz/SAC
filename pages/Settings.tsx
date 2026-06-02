@@ -1775,14 +1775,9 @@ const [showUserModal, setShowUserModal] = useState(false);
     return date.toDateString() === today.toDateString();
   };
 
-  const handleDeleteHoliday = async (date: Date, skipConfirm: boolean = false) => {
-    // Esta función ahora solo se usa internamente después de la animación
-    // No debe mostrar window.confirm nunca
-    
-    // Eliminar del webhook
+  const handleDeleteHoliday = async (holidayId: string, skipConfirm: boolean = false) => {
     try {
-      await api.deleteHoliday(date);
-      // Después de eliminar, recargar las fechas desde el webhook
+      await api.deleteHoliday(holidayId);
       await loadHolidays();
     } catch (error: any) {
       const errorMsg = error.message || '';
@@ -1803,15 +1798,23 @@ const [showUserModal, setShowUserModal] = useState(false);
     // Verificar si la fecha ya existe
     const exists = isDateInHolidays(date);
     if (exists) {
-      // Si ya existe, mostrar animación antes de eliminar
-      setIsDeleting(true);
+      // Encontrar el id del asueto existente
+      const dateStr = getDateOnly(date);
+      const existingHoliday = holidays.find(h => {
+        if (h.fechaDate) {
+          return getDateOnly(h.fechaDate) === dateStr;
+        }
+        return convertDateStrToISO(h.fecha) === dateStr;
+      });
       
-      // Esperar a que termine la animación antes de eliminar
-      setTimeout(async () => {
-        await handleDeleteHoliday(date, true); // skipConfirm = true porque ya confirmamos en el modal
-        setIsDeleting(false);
-        setPendingHolidayDate(null);
-      }, 500); // Duración de la animación (500ms para que se vea mejor)
+      if (existingHoliday && existingHoliday.id) {
+        setIsDeleting(true);
+        setTimeout(async () => {
+          await handleDeleteHoliday(existingHoliday.id, true);
+          setIsDeleting(false);
+          setPendingHolidayDate(null);
+        }, 500);
+      }
     } else {
       // Agregar la fecha y enviar al webhook
       const addHolidayToWebhook = async () => {
@@ -4870,9 +4873,12 @@ const [showUserModal, setShowUserModal] = useState(false);
                                   <div className="flex justify-center">
                                     <button
                                       onClick={async () => {
-                                        // Confirmar antes de eliminar
+                                        if (!holiday.id) {
+                                          setErrorMessage('No se puede eliminar: ID del asueto no disponible.');
+                                          return;
+                                        }
                                         if (window.confirm(`¿Está seguro de que desea eliminar la fecha ${formatDateFromDDMMYYYY(holiday.fecha)}?`)) {
-                                          await handleDeleteHoliday(holidayDate, true);
+                                          await handleDeleteHoliday(holiday.id, true);
                                         }
                                       }}
                                       className="p-2.5 rounded-lg transition-all"
