@@ -149,7 +149,7 @@ const NuevoCaso: React.FC = () => {
 
   useEffect(() => {
     if (newCase.pais) {
-      loadClientes();
+      loadClientes(newCase.pais as 'SV' | 'GT');
     }
   }, [newCase.pais]);
 
@@ -173,11 +173,11 @@ const NuevoCaso: React.FC = () => {
     }
   }, [showClienteDropdown, showCategoriaDropdown]);
 
-  const loadClientes = async () => {
+  const loadClientes = async (pais?: 'SV' | 'GT') => {
     try {
-      const pais = (userCountry as 'SV' | 'GT') || 'SV';
-      console.log('[NuevoCaso] Loading clientes for country:', pais);
-      const data = await sapService.getClientesListado(pais);
+      const paisToUse = pais || (userCountry as 'SV' | 'GT') || 'SV';
+      console.log('[NuevoCaso] Loading clientes for country:', paisToUse);
+      const data = await sapService.getClientesListado(paisToUse);
       console.log('[NuevoCaso] Loaded clientes:', data.length);
       setClientes(data);
     } catch (err) {
