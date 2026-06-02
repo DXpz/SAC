@@ -133,10 +133,12 @@ const NuevoCaso: React.FC = () => {
   };
 
   useEffect(() => {
-    if (userCountry === null) return;
     const initializeData = async () => {
-      const country = userCountry || (await getUserCountry());
-      setUserCountry(country);
+      let country = userCountry;
+      if (!country) {
+        country = await getUserCountry();
+        setUserCountry(country);
+      }
       if (!newCase.pais && country) {
         setNewCase(prev => ({ ...prev, pais: country }));
       }
