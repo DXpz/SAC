@@ -334,7 +334,7 @@ const SupervisorPanel: React.FC = () => {
   const casosCriticosCount = useMemo(() => casosCriticos.length, [casosCriticos.length]);
   const casosTotalesCount = useMemo(() => casos.length, [casos.length]);
 
-  const agentesActivos = useMemo(() => agentes.filter(a => a.estado === 'ACTIVO').length, [agentes]);
+  const agentesActivos = useMemo(() => agentes.filter(a => a.estado?.toUpperCase() === 'ACTIVO').length, [agentes]);
   const totalAgentes = useMemo(() => agentes.length, [agentes.length]);
 
   const casosCriticosOrdenados = useMemo(() => {
@@ -776,7 +776,7 @@ const SupervisorPanel: React.FC = () => {
           {[
             { key: 'todos', value: 'todos', label: 'Todos los agentes' },
             ...(Array.isArray(agentes) ? agentes
-              .filter(agente => agente && (agente.idAgente || agente.id_agente || agente.id)) // Filtrar solo agentes válidos
+              .filter(agente => agente && (agente.idAgente || agente.id_agente || agente.id) && agente.estado?.toUpperCase() === 'ACTIVO') // Solo activos
               .map((agente, index) => ({
               key: agente?.id_agente || agente?.idAgente || agente?.id || `agente-${index}`,
               value: agente?.id_agente || agente?.idAgente || agente?.id || '',
@@ -1461,7 +1461,7 @@ const SupervisorPanel: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {(agentFilter !== 'todos' 
                   ? agentes.filter(a => (a.id_agente || a.idAgente || a.id) === agentFilter)
-                  : agentes // Mostrar TODOS los agentes, sin filtros
+                  : agentes.filter(a => a.estado?.toUpperCase() === 'ACTIVO') // Solo activos
                 ).map((agente, index) => {
                   // Log para debuggear
                   if (index === 0) {
