@@ -36,6 +36,7 @@ const Settings: React.FC = () => {
   const [hasChanges, setHasChanges] = useState(false);
   const [savingStates, setSavingStates] = useState(false);
   const [successSave, setSuccessSave] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
   const [adminCountry, setAdminCountry] = useState<'SV' | 'GT' | null>(null);
@@ -1202,9 +1203,9 @@ const [showUserModal, setShowUserModal] = useState(false);
     } catch (error: any) {
       const errorMsg = error.message || '';
       if (errorMsg.includes('Foreign key') || errorMsg.includes('casos_estado') || errorMsg.includes('constraint')) {
-        alert('Este estado no se puede eliminar porque tiene casos asignados. Reasigna los casos a otro estado primero.');
+        setErrorMessage('Este estado no se puede eliminar porque tiene casos asignados.');
       } else {
-        alert(errorMsg || 'Error al eliminar el estado. Por favor, intenta nuevamente.');
+        setErrorMessage(errorMsg || 'Error al eliminar el estado.');
       }
       setDeletingState(null);
     }
@@ -1407,7 +1408,7 @@ const [showUserModal, setShowUserModal] = useState(false);
       setSuccessSave(true);
       setTimeout(() => setSuccessSave(false), 3000);
     } catch (error: any) {
-      alert(error.message || 'Error al guardar. Por favor, intenta nuevamente.');
+      setErrorMessage(error.message || 'Error al guardar. Por favor, intenta nuevamente.');
     } finally {
       setSavingStates(false);
     }
@@ -2832,6 +2833,13 @@ const [showUserModal, setShowUserModal] = useState(false);
                   <div className="px-6 py-3 text-white text-sm font-semibold rounded-lg flex items-center gap-2" style={{ backgroundColor: '#22c55e' }}>
                     <Check className="w-4 h-4" />
                     Guardado
+                  </div>
+                )}
+                {errorMessage && (
+                  <div className="px-4 py-3 text-white text-sm font-semibold rounded-lg flex items-center gap-2 animate-in fade-in duration-200" style={{ backgroundColor: '#ef4444' }}>
+                    <AlertCircle className="w-4 h-4" />
+                    {errorMessage}
+                    <button onClick={() => setErrorMessage(null)} className="ml-2 hover:opacity-80">×</button>
                   </div>
                 )}
             </div>
