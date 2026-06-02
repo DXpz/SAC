@@ -14,6 +14,7 @@ type FilterType = 'todos' | 'criticos' | 'vencidos' | string;
 
 const SupervisorPanel: React.FC = () => {
   const [casos, setCasos] = useState<Caso[]>([]);
+  const [criticalCases, setCriticalCases] = useState<Caso[]>([]);
   const [agentes, setAgentes] = useState<Agente[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -170,13 +171,17 @@ const SupervisorPanel: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [casosData, agentesData, clientesList] = await Promise.all([
+      const supervisorCountry = await getSupervisorCountry();
+      const [casosData, criticalCasesData, agentesData, clientesList] = await Promise.all([
         api.getCases(),
+        api.getCriticalCases(),
         api.getAgentes(),
         loadClientes()
       ]);
       const enriched = enrichCasesWithClients(casosData, clientesList);
+      const criticalEnriched = enrichCasesWithClients(criticalCasesData, clientesList);
       setCasos(enriched);
+      setCriticalCases(criticalEnriched);
       // Filtrar agentes que tengan idAgente válido
       let agentesValidos = Array.isArray(agentesData) 
         ? agentesData.filter(a => a && (a.idAgente || a.id_agente || a.id))
@@ -287,13 +292,10 @@ const SupervisorPanel: React.FC = () => {
     return abiertos;
   }, [casosFiltrados]);
 
-  // Casos críticos basados en casos abiertos filtrados
+  // Casos críticos del backend
   const casosCriticos = useMemo(() => {
-    return casosAbiertos.filter(c => {
-      // Simple: usar slaExpired directo del backend
-      return (c as any).slaExpired === true || c.status === CaseStatus.ESCALADO;
-    });
-  }, [casosAbiertos]);
+    return criticalCases;
+  }, [criticalCases]);
 
   const casosVencidos = useMemo(() => {
     return casosAbiertos.filter(c => {

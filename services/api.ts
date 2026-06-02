@@ -512,15 +512,41 @@ export const api = {
       delete cache['cases'];
     }
     return getCachedOrFetch('cases', async () => {
-    const user = this.getUser();
-    
+      const user = this.getUser();
+      
       try {
         const cases = await caseService.getCases();
         return cases || [];
       } catch (err: any) {
         throw err;
-          }
+      }
     });
+  },
+
+  async getCriticalCases(): Promise<Case[]> {
+    const user = this.getUser();
+    let paisValue = 'Guatemala';
+    
+    if (user?.pais) {
+      const paisNormalizado = String(user.pais).trim().toUpperCase();
+      if (paisNormalizado === 'SV' || paisNormalizado.includes('SALVADOR')) {
+        paisValue = 'SV';
+      } else if (paisNormalizado === 'GT' || paisNormalizado.includes('GUATEMALA')) {
+        paisValue = 'GT';
+      }
+    }
+    
+    const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/critical?pais=${paisValue}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Error al obtener casos críticos');
+    }
+    
+    const data = await response.json();
+    return data.casos || [];
   },
 
   async getCasoById(id: string): Promise<Case | undefined> {
