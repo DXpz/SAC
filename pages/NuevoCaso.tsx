@@ -133,13 +133,14 @@ const NuevoCaso: React.FC = () => {
   };
 
   useEffect(() => {
+    if (userCountry === null) return;
     const initializeData = async () => {
-      const country = await getUserCountry();
+      const country = userCountry || (await getUserCountry());
       setUserCountry(country);
       if (!newCase.pais && country) {
         setNewCase(prev => ({ ...prev, pais: country }));
       }
-      await loadClientes();
+      await loadClientes(country as 'SV' | 'GT');
       await loadCategorias();
       const updateTime = new Date();
       localStorage.setItem('bandeja_last_update', updateTime.toISOString());
@@ -147,11 +148,7 @@ const NuevoCaso: React.FC = () => {
     initializeData();
   }, []);
 
-  useEffect(() => {
-    if (newCase.pais) {
-      loadClientes(newCase.pais as 'SV' | 'GT');
-    }
-  }, [newCase.pais]);
+  
 
   // Cerrar dropdown al hacer clic fuera
   useEffect(() => {
