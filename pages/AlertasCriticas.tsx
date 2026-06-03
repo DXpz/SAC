@@ -228,16 +228,12 @@ const AlertasCriticas: React.FC = () => {
 
   const prioritizeCases = (cases: Caso[]): CaseWithPriority[] => {
     return cases.map(caso => {
-      let priority: Priority = 'Media';
+      let priority: Priority = 'Alta';
 
       const slaDias = caso.slaDias || caso.categoria?.slaDias || 5;
       const slaExpired = caso.slaExpired || false;
-      if (caso.status === CaseStatus.ESCALADO) {
+      if (caso.status === CaseStatus.ESCALADO || slaExpired) {
         priority = 'Critica';
-      } else if (slaExpired) {
-        priority = 'Alta';
-      } else if (caso.status === CaseStatus.EN_PROCESO) {
-        priority = 'Alta';
       }
 
       const diasRestantes = caso.diasRestantes ?? Math.max(0, slaDias - caso.diasAbierto);

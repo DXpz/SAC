@@ -1149,10 +1149,11 @@ const SupervisorPanel: React.FC = () => {
                 </thead>
                 <tbody className="divide-y" style={{borderColor: 'rgba(148, 163, 184, 0.15)'}}>
                   {casosCriticos.map((caso) => {
-                  const isEscalado = caso.status === CaseStatus.ESCALADO;
-                    const slaDias = caso.categoria?.slaDias || (caso as any).categoria?.sla_dias || 5;
-                    const isVencido = caso.diasAbierto >= slaDias;
-                    const priority = isEscalado ? 'Critica' : isVencido ? 'Alta' : 'Media';
+                  const slaExpired = (caso as any).slaExpired === true;
+                    const diasRestantes = (caso as any).diasRestantes ?? Math.max(0, slaDias - caso.diasAbierto);
+                    const isEscalado = caso.status === CaseStatus.ESCALADO;
+                    const isVencido = slaExpired || diasRestantes <= 0;
+                    const priority = isEscalado || isVencido ? 'Critica' : 'Alta';
                     const rawStatus = caso.status || (caso as any).estado;
                     const normalizedStatus = normalizeStatus(rawStatus);
                     const statusColors = getStatusColors(normalizedStatus);
