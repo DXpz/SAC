@@ -1626,7 +1626,7 @@ const CaseDetail: React.FC = () => {
                   >
                     <p className="text-xs mb-1 text-green-600 font-semibold">Tiempo Restante</p>
                     <p className="text-sm font-bold text-green-600">
-                      {formatRemainingHours(businessHoursRemaining)}
+                      {slaDias} días hábiles ({slaDias * 24}h)
                     </p>
                   </div>
                 )}
