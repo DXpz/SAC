@@ -232,6 +232,7 @@ const SupervisorPanel: React.FC = () => {
       return casosList;
     }
     return casosList.filter(c => 
+      c.agenteAsignado?.id_agente === agentFilter || 
       c.agenteAsignado?.idAgente === agentFilter || 
       c.agentId === agentFilter
     );
@@ -274,6 +275,7 @@ const SupervisorPanel: React.FC = () => {
     // 3) Agente
     if (agentFilter !== 'todos') {
       result = result.filter(c => 
+        c.agenteAsignado?.id_agente === agentFilter || 
         c.agenteAsignado?.idAgente === agentFilter || 
         c.agentId === agentFilter
       );
@@ -436,7 +438,7 @@ const SupervisorPanel: React.FC = () => {
   const getAgenteStats = (agenteId: string) => {
     // Usar TODOS los casos del agente, no solo los filtrados por período
     const casosAgenteAll = casos.filter(c => 
-      (c.agenteAsignado?.idAgente === agenteId || c.agentId === agenteId)
+      (c.agenteAsignado?.id_agente === agenteId || c.agenteAsignado?.idAgente === agenteId || c.agentId === agenteId)
     );
     
     // Casos abiertos (no resueltos, no cerrados)
