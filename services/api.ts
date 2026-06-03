@@ -665,8 +665,7 @@ export const api = {
     });
     
     const casosCumplenSLA = casosConSLA.filter(c => {
-      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-      return c.diasAbierto < slaDias;
+      return !(c.slaExpired || false);
     });
     
     // Si no hay casos con SLA, no puede ser 100%, debe ser null o 0
