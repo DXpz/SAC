@@ -359,10 +359,6 @@ const AlertasCriticas: React.FC = () => {
         if (!caso.slaExpired) return false;
       } else if (filterStatus === 'en-riesgo') {
         if (caso.slaExpired || diasRestantes > 0) return false;
-      } else if (filterStatus === 'escalado') {
-        if (normalizedStatus !== CaseStatus.ESCALADO) return false;
-      } else if (normalizedStatus !== filterStatus) {
-        return false;
       }
     }
     
@@ -677,7 +673,6 @@ const AlertasCriticas: React.FC = () => {
               <option value="all">Todos los tipos</option>
               <option value="vencido">Vencidos</option>
               <option value="en-riesgo">En riesgo (&lt;24h)</option>
-              <option value="escalado">Dentro del SLA</option>
             </select>
             
             {/* Contador de resultados */}
