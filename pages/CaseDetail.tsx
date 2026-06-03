@@ -1300,7 +1300,7 @@ const CaseDetail: React.FC = () => {
   const diasAbierto = caso.diasAbierto ?? 0;
   const slaDias = caso.slaDias ?? 1;
   const slaDeadline = caso.fechaFinSla ? new Date(caso.fechaFinSla) : null;
-  const createdDate = caso.createdAt ? new Date(caso.createdAt) : new Date();
+  const createdDate = caso.fecha_creacion ? new Date(caso.fecha_creacion) : new Date();
   
   // Calcular días de atraso
   const now = new Date();
@@ -1575,7 +1575,7 @@ const CaseDetail: React.FC = () => {
                 >
                   <p className="text-xs mb-1" style={{color: styles.text.tertiary}}>Fecha Límite SLA</p>
                   <p className="text-sm font-bold" style={{color: styles.text.primary}}>
-                    {slaDeadline.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                    {slaDeadline ? slaDeadline.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
                   </p>
                 </div>
                 <div 
@@ -1587,9 +1587,9 @@ const CaseDetail: React.FC = () => {
                 >
                   <p className="text-xs mb-1" style={{color: styles.text.tertiary}}>SLA Comprometido</p>
                   <p className="text-sm font-bold" style={{color: styles.text.primary}}>
-                    {slaDays} días hábiles
+                    {slaDias} días hábiles
                   </p>
-                  <p className="text-xs" style={{color: styles.text.tertiary}}>{slaDays * 24} horas hábiles</p>
+                  <p className="text-xs" style={{color: styles.text.tertiary}}>{slaDias * 24} horas hábiles</p>
                 </div>
                 {isSLAExpired ? (
                   <div 
