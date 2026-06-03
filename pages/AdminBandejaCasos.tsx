@@ -959,7 +959,7 @@ const loadAgentes = async () => {
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>
-                          {(caso as any).businessHoursRemaining || 0}h
+                          {caso.diasAbierto ?? 0}d
                         </span>
                       </td>
                       <td className="px-4 py-3">
