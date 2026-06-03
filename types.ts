@@ -124,6 +124,7 @@ export interface Case {
   slaExpired: boolean;
   slaDeadline?: string; // Fecha final del SLA que viene del webhook
   fechaFinSla?: string; // Fecha límite SLA directamente del backend
+  slaDias?: number; // Días SLA de la categoría (viene del backend)
   history?: HistorialEntry[] | any[]; // Compatibilidad con formato anterior
   historial?: HistorialEntry[]; // Formato nuevo oficial
   clientEmail?: string;

@@ -445,18 +445,20 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
     
     const categoriaId = caseData.categoria_id || caseData.categoriaId || null;
     const categoria = caseData.categoria || caseData.category || null;
-    const valorSlaHours = categoria?.valor_sla || 24;
+    // Usar slaDias directamente del backend, no recalcular de valor_sla
+    const slaDiasFromBackend = caseData.slaDias || caso.categoria?.valor_sla || 1;
+    const valorSlaHours = slaDiasFromBackend * 24; // Convertir dias a horas para cálculos internos
     const categoriaMapped = categoria ? {
       idCategoria: categoria.categoria_id || categoria.idCategoria || categoria.id || categoriaId || '',
       nombre: categoria.categoria || categoria.nombre || categoria.name || 'General',
-      slaDias: Math.ceil(valorSlaHours / 24),
+      slaDias: slaDiasFromBackend,
       valorSla: valorSlaHours,
       activa: categoria.activa !== undefined ? categoria.activa : true
     } : {
       idCategoria: categoriaId?.toString() || '',
       nombre: 'General',
-      slaDias: 1,
-      valorSla: 24,
+      slaDias: slaDiasFromBackend,
+      valorSla: valorSlaHours,
       activa: true
     };
     
@@ -583,6 +585,7 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
       categoria: categoriaMapped as any,
       cliente: clienteMapped as any,
       diasAbierto: diasAbierto,
+      slaDias: caseData.slaDias ?? slaDiasFromBackend,
       slaExpired: slaExpired,
       progreso: caseData.progreso ?? 0,
       contacto_principal: caseData.contacto_principal || caseData.contactoPrincipal || ''
