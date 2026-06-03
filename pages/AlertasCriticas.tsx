@@ -724,11 +724,9 @@ const AlertasCriticas: React.FC = () => {
                     {casosFiltrados.map((caso, idx) => {
                       const priorityConfig = getPriorityConfig(caso.priority);
                       const slaDias = caso.categoria?.slaDias || 5;
-                      const timeStatus = getTimeStatus(caso.diasAbierto, slaDias);
-                      const TimeIcon = timeStatus.icon;
-                      const isVencido = caso.diasAbierto >= slaDias;
-                      const diasRestantes = slaDias - caso.diasAbierto;
-                      const horasRestantes = Math.max(0, diasRestantes * 24);
+                      const slaExpired = caso.slaExpired || false;
+                      const diasRestantes = caso.diasRestantes ?? 0;
+                      const isVencido = slaExpired || diasRestantes <= 0;
 
                   return (
                     <tr 
@@ -880,40 +878,20 @@ const AlertasCriticas: React.FC = () => {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
-                          <TimeIcon className="w-3.5 h-3.5" style={{color: isVencido ? '#c8151b' : (slaDias - caso.diasAbierto) <= 1 ? '#f97316' : styles.text.tertiary}} />
-                          {(() => {
-                            const diasRestantes = slaDias - caso.diasAbierto;
-                            const horasRestantes = Math.max(0, diasRestantes * 24);
-                            if (isVencido) {
-                              const diasVencido = caso.diasAbierto - slaDias;
-                              return (
-                                <span 
-                                  className="text-[10px] font-semibold"
-                                  style={{color: '#c8151b'}}
-                                >
-                                  +{diasVencido}d vencido
-                                </span>
-                              );
-                            } else if (diasRestantes <= 1) {
-                              return (
-                                <span 
-                                  className="text-[10px] font-semibold"
-                                  style={{color: '#f97316'}}
-                                >
-                                  {horasRestantes}h restantes
-                                </span>
-                              );
-                            } else {
-                              return (
-                                <span 
-                                  className="text-[10px] font-semibold"
-                                  style={{color: styles.text.tertiary}}
-                                >
-                                  {diasRestantes}d restantes
-                                </span>
-                              );
-                            }
-                          })()}
+                          <Timer className="w-3.5 h-3.5" style={{color: isVencido ? '#c8151b' : diasRestantes <= 1 ? '#f97316' : styles.text.tertiary}} />
+                          {isVencido ? (
+                            <span className="text-[10px] font-semibold" style={{color: '#c8151b'}}>
+                              Vencido
+                            </span>
+                          ) : diasRestantes <= 1 ? (
+                            <span className="text-[10px] font-semibold" style={{color: '#f97316'}}>
+                              &lt; 1 día
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-semibold" style={{color: styles.text.tertiary}}>
+                              {diasRestantes}d
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -963,11 +941,9 @@ const AlertasCriticas: React.FC = () => {
               {casosFiltrados.map((caso, idx) => {
                 const priorityConfig = getPriorityConfig(caso.priority);
                 const slaDias = caso.categoria?.slaDias || 5;
-                const timeStatus = getTimeStatus(caso.diasAbierto, slaDias);
-                const TimeIcon = timeStatus.icon;
-                const isVencido = caso.diasAbierto >= slaDias;
-                const diasRestantes = slaDias - caso.diasAbierto;
-                const horasRestantes = Math.max(0, diasRestantes * 24);
+                const slaExpired = caso.slaExpired || false;
+                const diasRestantes = caso.diasRestantes ?? 0;
+                const isVencido = slaExpired || diasRestantes <= 0;
                 
                 return (
                   <div
@@ -1115,14 +1091,14 @@ const AlertasCriticas: React.FC = () => {
                           );
                         })()}
                         <div className="flex items-center gap-1.5">
-                          <TimeIcon className="w-3.5 h-3.5" style={{color: isVencido ? '#c8151b' : (diasRestantes <= 1) ? '#f97316' : styles.text.tertiary}} />
+                          <Timer className="w-3.5 h-3.5" style={{color: isVencido ? '#c8151b' : diasRestantes <= 1 ? '#f97316' : styles.text.tertiary}} />
                           {isVencido ? (
                             <span className="text-[10px] font-semibold" style={{color: '#c8151b'}}>
-                              +{caso.diasAbierto - slaDias}d
+                              Vencido
                             </span>
                           ) : diasRestantes <= 1 ? (
                             <span className="text-[10px] font-semibold" style={{color: '#f97316'}}>
-                              {horasRestantes}h
+                              &lt; 1 día
                             </span>
                           ) : (
                             <span className="text-[10px] font-semibold" style={{color: styles.text.tertiary}}>
