@@ -620,7 +620,7 @@ const AlertasCriticas: React.FC = () => {
                 <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{
                   color: casosEscalados > 0 ? '#dc2626' : styles.text.secondary
                 }} />
-                <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Escalados</p>
+                <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Dentro del SLA</p>
               </div>
             </div>
           </div>
@@ -740,7 +740,7 @@ const AlertasCriticas: React.FC = () => {
               <option value="all">Todos los tipos</option>
               <option value="vencido">Vencidos</option>
               <option value="en-riesgo">En riesgo (&lt;24h)</option>
-              <option value="escalado">Escalados</option>
+              <option value="escalado">Dentro del SLA</option>
               {estadosUnicos.map(estado => (
                 <option key={estado} value={estado}>{estado}</option>
               ))}
