@@ -365,9 +365,9 @@ const AlertasCriticas: React.FC = () => {
       const diasRestantes = caso.diasRestantes ?? 0;
       
       if (filterStatus === 'vencido') {
-        if (!caso.slaExpired && diasRestantes > 0) return false;
+        if (!caso.slaExpired) return false;
       } else if (filterStatus === 'en-riesgo') {
-        if (caso.slaExpired || diasRestantes > 2) return false;
+        if (caso.slaExpired || diasRestantes > 0) return false;
       } else if (filterStatus === 'escalado') {
         if (normalizedStatus !== CaseStatus.ESCALADO) return false;
       } else if (normalizedStatus !== filterStatus) {
