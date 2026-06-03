@@ -1149,11 +1149,7 @@ const SupervisorPanel: React.FC = () => {
                 </thead>
                 <tbody className="divide-y" style={{borderColor: 'rgba(148, 163, 184, 0.15)'}}>
                   {casosCriticos.map((caso) => {
-                  const slaExpired = (caso as any).slaExpired === true;
-                    const diasRestantes = (caso as any).diasRestantes ?? Math.max(0, slaDias - caso.diasAbierto);
-                    const isEscalado = caso.status === CaseStatus.ESCALADO;
-                    const isVencido = slaExpired || diasRestantes <= 0;
-                    const priority = isEscalado || isVencido ? 'Critica' : 'Alta';
+                    const prioridad = (caso as any).prioridad || 'Alta';
                     const rawStatus = caso.status || (caso as any).estado;
                     const normalizedStatus = normalizeStatus(rawStatus);
                     const statusColors = getStatusColors(normalizedStatus);
@@ -1164,7 +1160,7 @@ const SupervisorPanel: React.FC = () => {
                         className="transition-all duration-200 cursor-pointer group relative"
                       style={{
                           backgroundColor: 'transparent',
-                          borderLeft: priority === 'Critica' ? '4px solid #c8151b' : 'none'
+                          borderLeft: prioridad === 'Critica' ? '4px solid #c8151b' : 'none'
                       }}
                       onMouseEnter={(e) => {
                           e.currentTarget.style.backgroundColor = theme === 'dark' ? '#0f172a' : '#f1f5f9';
@@ -1213,15 +1209,15 @@ const SupervisorPanel: React.FC = () => {
                           <span 
                             className="text-[10px] font-semibold uppercase tracking-wide px-2 py-1 rounded"
                             style={{
-                              color: priority === 'Critica' ? '#c8151b' : priority === 'Alta' ? '#f59e0b' : '#64748b',
-                              backgroundColor: priority === 'Critica' 
+                              color: prioridad === 'Critica' ? '#c8151b' : prioridad === 'Alta' ? '#f59e0b' : '#64748b',
+                              backgroundColor: prioridad === 'Critica' 
                                 ? (theme === 'dark' ? 'rgba(200, 21, 27, 0.1)' : 'rgba(200, 21, 27, 0.05)')
-                                : priority === 'Alta'
+                                : prioridad === 'Alta'
                                 ? (theme === 'dark' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.05)')
                                 : 'transparent'
                             }}
                           >
-                            {priority}
+                            {prioridad}
                           </span>
                         </td>
                         <td className="px-4 py-3">

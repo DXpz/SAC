@@ -228,20 +228,12 @@ const AlertasCriticas: React.FC = () => {
 
   const prioritizeCases = (cases: Caso[]): CaseWithPriority[] => {
     return cases.map(caso => {
-      let priority: Priority = 'Alta';
-
-      const slaDias = caso.slaDias || caso.categoria?.slaDias || 5;
-      const slaExpired = caso.slaExpired || false;
-      if (caso.status === CaseStatus.ESCALADO || slaExpired) {
-        priority = 'Critica';
-      }
-
-      const diasRestantes = caso.diasRestantes ?? Math.max(0, slaDias - caso.diasAbierto);
-      const horasParaVencimiento = diasRestantes > 0 ? diasRestantes * 24 : 0;
+      const prioridad = (caso as any).prioridad || 'Alta';
+      const horasParaVencimiento = (caso as any).diasRestantes > 0 ? (caso as any).diasRestantes * 24 : 0;
 
       return {
         ...caso,
-        priority,
+        priority: prioridad as Priority,
         horasParaVencimiento
       };
     }).sort((a, b) => {
