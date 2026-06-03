@@ -741,9 +741,6 @@ const AlertasCriticas: React.FC = () => {
               <option value="vencido">Vencidos</option>
               <option value="en-riesgo">En riesgo (&lt;24h)</option>
               <option value="escalado">Dentro del SLA</option>
-              {estadosUnicos.map(estado => (
-                <option key={estado} value={estado}>{estado}</option>
-              ))}
             </select>
             
             {/* Contador de resultados */}
