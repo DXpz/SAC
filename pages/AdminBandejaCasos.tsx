@@ -370,14 +370,14 @@ const loadAgentes = async () => {
         const slaDias = c.categoria?.slaDias || 5;
         const diasRestantes = slaDias - c.diasAbierto;
         const slaExpired = (c as any).slaExpired === true;
-        const businessHoursRemaining = (c as any).businessHoursRemaining || 0;
+        const diasRestantes = (c as any).diasRestantes ?? 0;
         
         if (slaFilter === 'vencido') {
-          return slaExpired;
+          return slaExpired || diasRestantes <= 0;
         } else if (slaFilter === 'en-riesgo') {
-          return !slaExpired && businessHoursRemaining > 0 && businessHoursRemaining <= 4;
+          return !slaExpired && diasRestantes > 0 && diasRestantes <= 2;
         } else if (slaFilter === 'dentro-sla') {
-          return !slaExpired && businessHoursRemaining > 4;
+          return !slaExpired && diasRestantes > 2;
         }
         return true;
       });
@@ -435,16 +435,14 @@ const loadAgentes = async () => {
     }
 
     const slaExpired = (caso as any).slaExpired === true;
-    const businessHoursRemaining = (caso as any).businessHoursRemaining || 0;
+    const diasRestantes = (caso as any).diasRestantes ?? 0;
     
-    if (slaExpired) {
+    if (slaExpired || diasRestantes <= 0) {
       return { label: 'Vencido', color: '#dc2626', bg: 'rgba(220, 38, 38, 0.1)', icon: Timer };
-    } else if (businessHoursRemaining <= 4 && businessHoursRemaining > 0) {
-      return { label: 'Crítico', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)', icon: AlertTriangle };
-    } else if (businessHoursRemaining <= 8) {
-      return { label: 'Alto', color: '#64748b', bg: 'rgba(100, 116, 139, 0.1)', icon: Clock };
+    } else if (diasRestantes <= 2) {
+      return { label: 'En Riesgo', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)', icon: AlertTriangle };
     }
-    return { label: 'Normal', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)', icon: Clock };
+    return { label: 'Dentro SLA', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)', icon: Clock };
   };
 
   const formatDate = (dateString: string) => {

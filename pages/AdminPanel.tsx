@@ -217,8 +217,8 @@ const casosCriticos = casosSeguros.filter(c => {
         return false;
       }
       const slaExpired = (c as any).slaExpired === true;
-      const businessHoursRemaining = (c as any).businessHoursRemaining || 0;
-      return slaExpired || businessHoursRemaining <= 4;
+      const diasRestantes = (c as any).diasRestantes ?? 0;
+      return slaExpired || diasRestantes <= 0;
     }).length;
 
   const casosVencidos = casosSeguros.filter(c => {
@@ -227,7 +227,9 @@ const casosCriticos = casosSeguros.filter(c => {
     if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
       return false;
     }
-    return (c as any).slaExpired === true;
+    const slaExpired = (c as any).slaExpired === true;
+    const diasRestantes = (c as any).diasRestantes ?? 0;
+    return slaExpired || diasRestantes <= 0;
   }).length;
   
   // Calcular casos por estado usando los estados dinámicos del webhook

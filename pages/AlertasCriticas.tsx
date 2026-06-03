@@ -240,7 +240,7 @@ const AlertasCriticas: React.FC = () => {
         priority = 'Alta';
       }
 
-      const diasRestantes = caso.businessHoursRemaining || Math.max(0, slaDias - caso.diasAbierto);
+      const diasRestantes = caso.diasRestantes ?? Math.max(0, slaDias - caso.diasAbierto);
       const horasParaVencimiento = diasRestantes > 0 ? diasRestantes * 24 : 0;
 
       return {
@@ -362,11 +362,12 @@ const AlertasCriticas: React.FC = () => {
     // Filtro de estado
     if (filterStatus !== 'all') {
       const normalizedStatus = normalizeStatus(caso.status);
+      const diasRestantes = caso.diasRestantes ?? 0;
+      
       if (filterStatus === 'vencido') {
-        if (!caso.slaExpired) return false;
+        if (!caso.slaExpired && diasRestantes > 0) return false;
       } else if (filterStatus === 'en-riesgo') {
-        const slaDias = caso.categoria?.slaDias || 5;
-        if (caso.slaExpired || (slaDias - caso.diasAbierto) > 1) return false;
+        if (caso.slaExpired || diasRestantes > 2) return false;
       } else if (filterStatus === 'escalado') {
         if (normalizedStatus !== CaseStatus.ESCALADO) return false;
       } else if (normalizedStatus !== filterStatus) {
