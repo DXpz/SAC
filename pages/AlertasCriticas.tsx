@@ -334,11 +334,14 @@ const AlertasCriticas: React.FC = () => {
   const casosFueraSLA = criticos.filter(c => c.slaExpired).length;
 
   const casosVencen24h = criticos.filter(c => {
-    const slaDias = c.categoria?.slaDias || 5;
-    return !c.slaExpired && slaDias - c.diasAbierto <= 1 && c.diasAbierto < slaDias;
+    const diasRestantes = c.diasRestantes ?? 0;
+    return !c.slaExpired && diasRestantes <= 0;
   }).length;
 
-  const casosEscalados = criticos.filter(c => c.status === CaseStatus.ESCALADO).length;
+  const casosEscalados = criticos.filter(c => {
+    const diasRestantes = c.diasRestantes ?? 0;
+    return !c.slaExpired && diasRestantes > 0;
+  }).length;
 
   // Filtrar casos según búsqueda y filtros
   const casosFiltrados = criticos.filter(caso => {
