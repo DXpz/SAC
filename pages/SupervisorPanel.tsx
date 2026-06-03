@@ -1241,7 +1241,7 @@ const SupervisorPanel: React.FC = () => {
                               <Clock className="w-3.5 h-3.5" style={{color: diasRestantes <= 1 ? '#f97316' : '#64748b'}} />
                             )}
                             {(() => {
-                              if (isVencido) {
+                              if (slaExpired) {
                                 return (
                                   <span className="text-[10px] font-semibold" style={{color: '#c8151b'}}>
                                     Vencido
@@ -1250,7 +1250,7 @@ const SupervisorPanel: React.FC = () => {
                               } else if (diasRestantes <= 1) {
                                 return (
                                   <span className="text-[10px] font-semibold" style={{color: '#f97316'}}>
-                                    &lt; 1 día
+                                    En riesgo
                                   </span>
                                 );
                               } else {

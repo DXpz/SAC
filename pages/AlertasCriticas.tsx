@@ -877,14 +877,14 @@ const AlertasCriticas: React.FC = () => {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
-                          <Timer className="w-3.5 h-3.5" style={{color: (slaExpired || diasRestantes <= 0) ? '#c8151b' : diasRestantes <= 1 ? '#f97316' : styles.text.tertiary}} />
-                          {(slaExpired || diasRestantes <= 0) ? (
+                          <Timer className="w-3.5 h-3.5" style={{color: slaExpired ? '#c8151b' : diasRestantes <= 1 ? '#f97316' : styles.text.tertiary}} />
+                          {slaExpired ? (
                             <span className="text-[10px] font-semibold" style={{color: '#c8151b'}}>
                               Vencido
                             </span>
                           ) : diasRestantes <= 1 ? (
                             <span className="text-[10px] font-semibold" style={{color: '#f97316'}}>
-                              &lt; 1 día
+                              En riesgo
                             </span>
                           ) : (
                             <span className="text-[10px] font-semibold" style={{color: styles.text.tertiary}}>
@@ -1089,14 +1089,14 @@ const AlertasCriticas: React.FC = () => {
                           );
                         })()}
                         <div className="flex items-center gap-1.5">
-                          <Timer className="w-3.5 h-3.5" style={{color: (slaExpired || diasRestantes <= 0) ? '#c8151b' : diasRestantes <= 1 ? '#f97316' : styles.text.tertiary}} />
-                          {(slaExpired || diasRestantes <= 0) ? (
+                          <Timer className="w-3.5 h-3.5" style={{color: slaExpired ? '#c8151b' : diasRestantes <= 1 ? '#f97316' : styles.text.tertiary}} />
+                          {slaExpired ? (
                             <span className="text-[10px] font-semibold" style={{color: '#c8151b'}}>
                               Vencido
                             </span>
                           ) : diasRestantes <= 1 ? (
                             <span className="text-[10px] font-semibold" style={{color: '#f97316'}}>
-                              &lt; 1 día
+                              En riesgo
                             </span>
                           ) : (
                             <span className="text-[10px] font-semibold" style={{color: styles.text.tertiary}}>
