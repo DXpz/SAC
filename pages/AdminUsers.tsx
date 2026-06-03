@@ -876,22 +876,6 @@ const AdminUsers: React.FC = () => {
               </h1>
               <p className="text-xs" style={{color: styles.text.tertiary}}>Gestiona usuarios del sistema</p>
             </div>
-            <div className="hidden md:flex items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full" style={{backgroundColor: '#22c55e'}}></div>
-                <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>
-                  {resumenUsers.activos} <span style={{color: styles.text.tertiary}}>Activos</span>
-                </span>
-              </div>
-              {resumenUsers.inactivos > 0 && (
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full" style={{backgroundColor: '#94a3b8'}}></div>
-                  <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>
-                    {resumenUsers.inactivos} <span style={{color: styles.text.tertiary}}>Inactivos</span>
-                  </span>
-                </div>
-              )}
-            </div>
           </div>
           <div className="flex items-center gap-3">
             {/* Campo de búsqueda */}
