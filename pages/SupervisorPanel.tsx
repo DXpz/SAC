@@ -1247,17 +1247,16 @@ const SupervisorPanel: React.FC = () => {
                                     Vencido
                                   </span>
                                 );
-                                );
                               } else if (diasRestantes <= 1) {
                                 return (
                                   <span className="text-[10px] font-semibold" style={{color: '#f97316'}}>
-                                    {horasRestantes}h restantes
+                                    &lt; 1 día
                                   </span>
                                 );
                               } else {
                                 return (
                                   <span className="text-[10px] font-semibold" style={{color: '#64748b'}}>
-                                    {diasRestantes}d restantes
+                                    {diasRestantes}d
                                   </span>
                                 );
                               }
