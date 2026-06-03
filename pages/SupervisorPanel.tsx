@@ -320,9 +320,7 @@ const SupervisorPanel: React.FC = () => {
 
   const casosDentroSLA = useMemo(() => {
     return casosAbiertos.filter(c => {
-      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-      const diasRestantes = slaDias - c.diasAbierto;
-      return diasRestantes > 1;
+      return !(c as any).slaExpired;
     });
   }, [casosAbiertos]);
 
