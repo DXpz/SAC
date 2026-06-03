@@ -726,7 +726,6 @@ const AlertasCriticas: React.FC = () => {
                       const slaDias = caso.categoria?.slaDias || 5;
                       const slaExpired = caso.slaExpired || false;
                       const diasRestantes = caso.diasRestantes ?? 0;
-                      const isVencido = slaExpired || diasRestantes <= 0;
 
                   return (
                     <tr 
@@ -878,8 +877,8 @@ const AlertasCriticas: React.FC = () => {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
-                          <Timer className="w-3.5 h-3.5" style={{color: isVencido ? '#c8151b' : diasRestantes <= 1 ? '#f97316' : styles.text.tertiary}} />
-                          {isVencido ? (
+                          <Timer className="w-3.5 h-3.5" style={{color: (slaExpired || diasRestantes <= 0) ? '#c8151b' : diasRestantes <= 1 ? '#f97316' : styles.text.tertiary}} />
+                          {(slaExpired || diasRestantes <= 0) ? (
                             <span className="text-[10px] font-semibold" style={{color: '#c8151b'}}>
                               Vencido
                             </span>
@@ -943,7 +942,6 @@ const AlertasCriticas: React.FC = () => {
                 const slaDias = caso.categoria?.slaDias || 5;
                 const slaExpired = caso.slaExpired || false;
                 const diasRestantes = caso.diasRestantes ?? 0;
-                const isVencido = slaExpired || diasRestantes <= 0;
                 
                 return (
                   <div
@@ -1091,8 +1089,8 @@ const AlertasCriticas: React.FC = () => {
                           );
                         })()}
                         <div className="flex items-center gap-1.5">
-                          <Timer className="w-3.5 h-3.5" style={{color: isVencido ? '#c8151b' : diasRestantes <= 1 ? '#f97316' : styles.text.tertiary}} />
-                          {isVencido ? (
+                          <Timer className="w-3.5 h-3.5" style={{color: (slaExpired || diasRestantes <= 0) ? '#c8151b' : diasRestantes <= 1 ? '#f97316' : styles.text.tertiary}} />
+                          {(slaExpired || diasRestantes <= 0) ? (
                             <span className="text-[10px] font-semibold" style={{color: '#c8151b'}}>
                               Vencido
                             </span>
