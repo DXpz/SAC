@@ -811,7 +811,6 @@ const loadAgentes = async () => {
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Estado</th>
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Agente</th>
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>SLA</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Días</th>
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Fecha</th>
                   <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Acción</th>
                 </tr>
@@ -956,11 +955,6 @@ const loadAgentes = async () => {
                             {slaStatus.label}
                           </span>
                         </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>
-                          {caso.diasAbierto ?? 0}d
-                        </span>
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-xs font-medium" style={{color: styles.text.tertiary}}>
