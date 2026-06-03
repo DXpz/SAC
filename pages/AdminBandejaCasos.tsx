@@ -367,8 +367,6 @@ const loadAgentes = async () => {
     // Filtro por SLA
     if (slaFilter !== 'all') {
       result = result.filter(c => {
-        const slaDias = c.categoria?.slaDias || 5;
-        const diasRestantes = slaDias - c.diasAbierto;
         const slaExpired = (c as any).slaExpired === true;
         const diasRestantes = (c as any).diasRestantes ?? 0;
         
