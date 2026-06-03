@@ -227,9 +227,7 @@ const casosCriticos = casosSeguros.filter(c => {
     if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
       return false;
     }
-    const slaExpired = (c as any).slaExpired === true;
-    const diasRestantes = (c as any).diasRestantes ?? 0;
-    return slaExpired || diasRestantes <= 0;
+    return (c as any).slaExpired === true;
   }).length;
   
   // Calcular casos por estado usando los estados dinámicos del webhook
