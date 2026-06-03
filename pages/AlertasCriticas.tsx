@@ -415,7 +415,7 @@ const AlertasCriticas: React.FC = () => {
       }}
     >
       {/* Header con Métricas Destacadas - Alertas Críticas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Total Críticos */}
         <div 
           className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden"
@@ -570,57 +570,6 @@ const AlertasCriticas: React.FC = () => {
                   color: casosVencen24h > 0 ? '#f97316' : styles.text.secondary
                 }} />
                 <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Vencen &lt;24h</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Escalados */}
-        <div 
-          className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden"
-          style={{
-            ...styles.card,
-            borderColor: casosEscalados > 0 ? 'rgba(220, 38, 38, 0.35)' : 'rgba(148, 163, 184, 0.2)'
-          }}
-          onClick={() => navigate('/app/casos')}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = casosEscalados > 0 ? 'rgba(220, 38, 38, 0.5)' : 'rgba(148, 163, 184, 0.4)';
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = casosEscalados > 0 ? 'rgba(220, 38, 38, 0.35)' : 'rgba(148, 163, 184, 0.2)';
-            e.currentTarget.style.boxShadow = '';
-          }}
-        >
-          {/* Icono con glow en esquina superior derecha */}
-          {casosEscalados > 0 && (
-            <div className="absolute top-3 right-3">
-              <div className="icon-glow-escalados">
-                <AlertTriangle className="w-6 h-6" style={{
-                  color: '#dc2626'
-                }} />
-              </div>
-            </div>
-          )}
-          {casosEscalados === 0 && (
-            <div className="absolute top-3 right-3">
-              <AlertTriangle className="w-6 h-6" style={{
-                color: styles.text.secondary
-              }} />
-            </div>
-          )}
-          <div className="flex items-start justify-between mb-2 pr-8">
-            <div className="flex-1">
-              <p className="text-4xl font-black leading-none mb-1.5" style={{
-                color: casosEscalados > 0 ? '#dc2626' : styles.text.primary
-              }}>
-                <AnimatedNumber value={casosEscalados} />
-              </p>
-              <div className="flex items-center gap-1.5">
-                <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{
-                  color: casosEscalados > 0 ? '#dc2626' : styles.text.secondary
-                }} />
-                <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Dentro del SLA</p>
               </div>
             </div>
           </div>
