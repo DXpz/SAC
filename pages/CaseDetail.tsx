@@ -1295,53 +1295,23 @@ const CaseDetail: React.FC = () => {
     }
   }
 
-  // Calcular información SLA
-  const createdDate = new Date(caso.createdAt);
-  // Usar los días SLA de la categoría del webhook si está disponible
-  const categoriaWebhook = getCategoriaFromWebhook;
-  const slaDays = categoriaWebhook 
-    ? (categoriaWebhook.slaDays || categoriaWebhook.slaDias || categoriaWebhook.sla || categoriaWebhook['valor SLA'] || 2)
-    : (caso.categoria?.slaDias || 2);
+  // Usar información SLA del backend (días calendario)
+  const isSLAExpired = caso.slaExpired === true || caso.slaExpired === 'true';
+  const diasAbierto = caso.diasAbierto ?? 0;
+  const slaDias = caso.slaDias ?? 1;
+  const slaDeadline = caso.fechaFinSla ? new Date(caso.fechaFinSla) : null;
   
-  // Usar la fecha final del SLA del webhook si está disponible, sino calcularla
-  let slaDeadline: Date;
-  if (caso.slaDeadline) {
-    // Parsear la fecha del webhook
-    try {
-      slaDeadline = new Date(caso.slaDeadline);
-      // Si la fecha es inválida, calcularla
-      if (isNaN(slaDeadline.getTime())) {
-        slaDeadline = new Date(createdDate);
-        slaDeadline.setDate(slaDeadline.getDate() + slaDays);
-      }
-    } catch (error) {
-      slaDeadline = new Date(createdDate);
-      slaDeadline.setDate(slaDeadline.getDate() + slaDays);
-    }
-  } else {
-    // Calcular la fecha si no viene del webhook
-    slaDeadline = new Date(createdDate);
-    slaDeadline.setDate(slaDeadline.getDate() + slaDays);
+  // Calcular días de atraso
+  const now = new Date();
+  let daysOverdue = 0;
+  if (slaDeadline) {
+    const diffMs = now.getTime() - slaDeadline.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    daysOverdue = Math.max(0, diffDays);
   }
   
-  const now = new Date();
-  const totalMs = slaDeadline.getTime() - createdDate.getTime();
-  const elapsedMs = now.getTime() - createdDate.getTime();
-  
-  // Calcular días restantes (puede ser negativo si ya pasó el SLA)
-  const daysRemainingRaw = Math.floor((slaDeadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  const hoursRemainingRaw = Math.floor(((slaDeadline.getTime() - now.getTime()) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  
-  // Determinar si el SLA está vencido
-  const isSLAExpired = daysRemainingRaw < 0 || (daysRemainingRaw === 0 && hoursRemainingRaw < 0);
-  
-  // Calcular días y horas de atraso si está vencido
-  const daysOverdue = isSLAExpired ? Math.abs(daysRemainingRaw) : 0;
-  const hoursOverdue = isSLAExpired ? Math.abs(hoursRemainingRaw) : 0;
-  
-  // Calcular días y horas restantes si no está vencido
-  const daysRemaining = !isSLAExpired ? daysRemainingRaw : 0;
-  const hoursRemaining = !isSLAExpired ? hoursRemainingRaw : 0;
+  // Días restantes (pueden ser 0 si está vencido)
+  const daysRemaining = Math.max(0, slaDias - diasAbierto);
 
   // Usar progreso dinámico del backend, NO usar el progreso de la DB (que puede estar desactualizado)
   const caseProgress = caso?.dynamicProgress ?? 0;
@@ -1633,12 +1603,6 @@ const CaseDetail: React.FC = () => {
                     <p className="text-sm font-bold" style={{color: '#fca5a5'}}>
                       {daysOverdue === 1 ? '1 día de atraso' : `${daysOverdue} días de atraso`}
                     </p>
-                    <p className="text-xs" style={{color: '#f87171'}}>
-                      {hoursOverdue > 0 
-                        ? `${daysOverdue * 24 + hoursOverdue} horas hábiles de retraso`
-                        : `${daysOverdue * 24} horas hábiles de retraso`
-                      }
-                    </p>
                   </div>
                 ) : (
                   <div 
@@ -1652,9 +1616,8 @@ const CaseDetail: React.FC = () => {
                   >
                     <p className="text-xs mb-1 text-green-600 font-semibold">Tiempo Restante</p>
                     <p className="text-sm font-bold text-green-600">
-                      {daysRemaining} días hábiles
+                      {daysRemaining} días
                     </p>
-                    <p className="text-xs text-green-600">{daysRemaining * 24 + hoursRemaining} horas hábiles restantes</p>
                   </div>
                 )}
               </div>
