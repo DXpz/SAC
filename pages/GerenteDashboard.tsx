@@ -338,8 +338,7 @@ const GerenteDashboard: React.FC = () => {
     });
     
     const casosCumplenSLA = casosConSLA.filter(c => {
-      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-      return c.diasAbierto < slaDias;
+      return !(c.slaExpired || false);
     });
     
     // Si no hay casos con SLA, no puede ser 100%, debe ser null o 0
@@ -554,13 +553,11 @@ const GerenteDashboard: React.FC = () => {
     }> = [];
     
     const casosFueraSLA = casosCriticos.filter(c => {
-      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-      return c.diasAbierto >= slaDias;
+      return c.slaExpired === true;
     });
     const casosVencen24h = casosCriticos.filter(c => {
-      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-      const diasRestantes = slaDias - c.diasAbierto;
-      return diasRestantes > 0 && diasRestantes <= 1;
+      const diasRestantes = (c as any).diasRestantes ?? 0;
+      return !c.slaExpired && diasRestantes <= 1;
     });
     
     // Casos fuera de SLA - Crítico
