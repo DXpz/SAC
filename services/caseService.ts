@@ -588,7 +588,11 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
       slaDias: caseData.slaDias ?? slaDiasFromBackend,
       slaExpired: slaExpired,
       progreso: caseData.progreso ?? 0,
-      contacto_principal: caseData.contacto_principal || caseData.contactoPrincipal || ''
+      contacto_principal: caseData.contacto_principal || caseData.contactoPrincipal || '',
+      // Preserve business hours from backend SLA calculation
+      businessHoursRemaining: caseData.businessHoursRemaining,
+      businessHoursElapsed: caseData.businessHoursElapsed,
+      businessHoursTotal: caseData.businessHoursTotal
     };
     
     // Preservar agente_user_id del webhook en el objeto Case para comparación
