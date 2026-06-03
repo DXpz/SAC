@@ -1295,31 +1295,20 @@ const CaseDetail: React.FC = () => {
     }
   }
 
-  // Usar información SLA del backend en horas hábiles
+  // Usar información SLA del backend en días hábiles
   const isSLAExpired = caso.slaExpired === true || caso.slaExpired === 'true';
-  const businessHoursElapsed = caso.businessHoursElapsed ?? 0;
-  const businessHoursRemaining = caso.businessHoursRemaining ?? 0;
-  const businessHoursTotal = caso.businessHoursTotal ?? 96;
+  const diasAbierto = caso.diasAbierto ?? 0;
+  const diasRestantes = caso.diasRestantes ?? caso.slaDias ?? 1;
   const slaDeadline = caso.fechaFinSla ? new Date(caso.fechaFinSla) : null;
   const createdDate = caso.fecha_creacion ? new Date(caso.fecha_creacion) : new Date();
   
-  // Calcular horas de atraso (si el SLA ya venció)
+  // Calcular días de atraso (si el SLA ya venció)
   const now = new Date();
-  let hoursOverdue = 0;
+  let daysOverdue = 0;
   if (slaDeadline && now > slaDeadline) {
     const diffMs = now.getTime() - slaDeadline.getTime();
-    hoursOverdue = Math.floor(diffMs / (1000 * 60 * 60));
+    daysOverdue = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   }
-  
-  // Formatear horas restantes en formato legible
-  const formatRemainingHours = (hours: number) => {
-    if (hours <= 0) return '0h';
-    if (hours < 8) return `${hours}h`;
-    const days = Math.floor(hours / 8);
-    const remainingHours = hours % 8;
-    if (remainingHours === 0) return `${days}d ${hours / 8}d`;
-    return `${days}d ${remainingHours}h`;
-  };
   
   const slaDias = caso.slaDias ?? 1;
 
@@ -1611,7 +1600,7 @@ const CaseDetail: React.FC = () => {
                   >
                     <p className="text-xs mb-1 font-semibold" style={{color: '#f87171'}}>SLA Vencido</p>
                     <p className="text-sm font-bold" style={{color: '#fca5a5'}}>
-                      {hoursOverdue}h en atraso
+                      {daysOverdue} días de atraso
                     </p>
                   </div>
                 ) : (
@@ -1626,7 +1615,7 @@ const CaseDetail: React.FC = () => {
                   >
                     <p className="text-xs mb-1 text-green-600 font-semibold">Tiempo Restante</p>
                     <p className="text-sm font-bold text-green-600">
-                      {slaDias} días hábiles ({slaDias * 24}h)
+                      {diasRestantes} días hábiles
                     </p>
                   </div>
                 )}
