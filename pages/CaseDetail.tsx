@@ -1300,7 +1300,7 @@ const CaseDetail: React.FC = () => {
   const diasAbierto = caso.diasAbierto ?? 0;
   const slaDias = caso.slaDias ?? 1;
   const slaDeadline = caso.fechaFinSla ? new Date(caso.fechaFinSla) : null;
-  const createdDate = new Date(caso.createdAt);
+  const createdDate = caso.createdAt ? new Date(caso.createdAt) : new Date();
   
   // Calcular días de atraso
   const now = new Date();
