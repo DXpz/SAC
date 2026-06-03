@@ -1510,24 +1510,7 @@ const SupervisorPanel: React.FC = () => {
                         </div>
                       </div>
                       
-                      {/* Footer: Tiempo promedio con divisoria tenue */}
-                      <div 
-                        className="pt-3 -mx-4 -mb-4 px-4 pb-3 rounded-b-[8px]"
-                        style={{
-                          borderTop: `1px solid ${styles.card.borderColor}`,
-                          backgroundColor: theme === 'dark' ? 'rgba(15, 23, 42, 0.5)' : 'rgba(148, 163, 184, 0.08)'
-                        }}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-3.5 h-3.5 flex-shrink-0" style={{color: styles.text.tertiary}} />
-                          <span className="text-xs font-bold" style={{
-                            color: stats.tiempoPromedio === 'N/A' ? '#94a3b8' : styles.text.primary
-                          }}>
-                            {stats.tiempoPromedio}
-                          </span>
-                        </div>
-                        <p className="text-[9px] font-medium mt-0.5" style={{color: styles.text.tertiary}}>Tiempo promedio</p>
-                      </div>
+                      
                     </div>
                   );
                 })}
