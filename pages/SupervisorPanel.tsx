@@ -1150,6 +1150,9 @@ const SupervisorPanel: React.FC = () => {
                 <tbody className="divide-y" style={{borderColor: 'rgba(148, 163, 184, 0.15)'}}>
                   {casosCriticos.map((caso) => {
                     const prioridad = (caso as any).prioridad || 'Alta';
+                    const slaExpired = (caso as any).slaExpired || false;
+                    const diasRestantes = (caso as any).diasRestantes ?? 0;
+                    const isVencido = slaExpired || diasRestantes <= 0;
                     const rawStatus = caso.status || (caso as any).estado;
                     const normalizedStatus = normalizeStatus(rawStatus);
                     const statusColors = getStatusColors(normalizedStatus);
@@ -1235,17 +1238,15 @@ const SupervisorPanel: React.FC = () => {
                             {isVencido ? (
                               <AlertCircle className="w-3.5 h-3.5" style={{color: '#c8151b'}} />
                             ) : (
-                              <Clock className="w-3.5 h-3.5" style={{color: (slaDias - caso.diasAbierto) <= 1 ? '#f97316' : '#64748b'}} />
+                              <Clock className="w-3.5 h-3.5" style={{color: diasRestantes <= 1 ? '#f97316' : '#64748b'}} />
                             )}
                             {(() => {
-                              const diasRestantes = slaDias - caso.diasAbierto;
-                              const horasRestantes = Math.max(0, diasRestantes * 24);
                               if (isVencido) {
-                                const diasVencido = caso.diasAbierto - slaDias;
                                 return (
                                   <span className="text-[10px] font-semibold" style={{color: '#c8151b'}}>
-                                    +{diasVencido}d vencido
+                                    Vencido
                                   </span>
+                                );
                                 );
                               } else if (diasRestantes <= 1) {
                                 return (
