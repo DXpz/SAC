@@ -537,14 +537,20 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
     }
     
     // Capturar fecha final del SLA del webhook si está disponible
+    // Preservar tanto fechaFinSla (para compatibilidad directa) como slaDeadline (para el interface Case)
     const slaDeadlineFromWebhook = caseData.fecha_final_sla || 
                                    caseData.fechaFinalSLA || 
-                                   caseData.sla_fecha_final || 
+                                   caseData.fecha_fin_sla ||
+                                   caseData.fechaFinSla ||
+                                   caseData.sla_fecha_final ||
                                    caseData.slaDeadline || 
                                    caseData.fecha_limite_sla ||
                                    caseData.fechaLimiteSLA ||
                                    caseData.sla_fecha_limite ||
                                    null;
+    
+    // preserve fechaFinSla directamente para CaseDetail que usa caso.fechaFinSla
+    const fechaFinSlaDirecto = caseData.fechaFinSla || caseData.fecha_fin_sla || null;
     
     // Preservar agente_user_id del webhook para comparación
     const agenteUserIdFromWebhook = caseData.agente_user_id || '';
@@ -567,6 +573,8 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
       createdAt: createdAt,
       pais: caseData.pais || caseData.country || clienteMapped?.pais || '',
       slaDeadline: slaDeadlineFromWebhook || undefined, // Fecha final del SLA del webhook
+      // Preservar fechaFinSla directamente para CaseDetail que usa este campo específico
+      fechaFinSla: fechaFinSlaDirecto,
       history: caseData.historial || caseData.history || [],
       historial: caseData.historial || caseData.history || [],
       clientEmail: clienteMapped?.email || caseData.email_cliente || caseData.clientEmail || '',
@@ -582,6 +590,9 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
     
     // Preservar agente_user_id del webhook en el objeto Case para comparación
     (mappedCase as any).agente_user_id = agenteUserIdFromWebhook;
+    
+    // Preserve dynamicProgress del backend para la barra de progreso
+    (mappedCase as any).dynamicProgress = caseData.dynamicProgress ?? caseData.progreso ?? 0;
     
     return mappedCase;
   } catch (error) {
