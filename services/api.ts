@@ -982,7 +982,7 @@ export const api = {
       body: JSON.stringify({
         nombre: stateData.nombre,
         descripcion: stateData.descripcion || null,
-        orden: stateData.orden || 1,
+        orden: stateData.orden || 0,  // 0 = el backend calcula el siguiente
         estado_final: stateData.estado_final || false
       })
     });
