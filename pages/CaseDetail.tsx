@@ -2755,7 +2755,7 @@ const CaseDetail: React.FC = () => {
                     </div>
                   )}
                 </div>
-              ) : null
+              ) : null}
               <div className="flex gap-2.5 pt-2">
                 <button 
                   type="button"
