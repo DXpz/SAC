@@ -1137,7 +1137,8 @@ export const updateCaseStatus = async (
   caseId: string,
   newStatus: string,
   detail?: string,
-  clienteId?: string
+  clienteId?: string,
+  equipoCorrecto?: boolean
 ): Promise<Case> => {
   const actor = getActor();
 
@@ -1149,18 +1150,25 @@ export const updateCaseStatus = async (
     throw new Error('ID de caso y nuevo estado son requeridos.');
   }
 
+  const body: any = {
+    data: {
+      estado: newStatus,
+      comentario: detail || `Cambio de estado a ${newStatus}`
+    },
+    actor: {
+      email: actor.email
+    }
+  };
+
+  // Si es Ejecucion y viene el flag de equipo_correcto, incluirlo
+  if (newStatus === 'Ejecucion' && typeof equipoCorrecto === 'boolean') {
+    body.data.equipo_correcto = equipoCorrecto;
+  }
+
   const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/${caseId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
-    body: JSON.stringify({
-      data: {
-        estado: newStatus,
-        comentario: detail || `Cambio de estado a ${newStatus}`
-      },
-      actor: {
-        email: actor.email
-      }
-    })
+    body: JSON.stringify(body)
   });
 
   if (!response.ok) {

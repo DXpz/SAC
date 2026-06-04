@@ -33,6 +33,7 @@ const CaseDetail: React.FC = () => {
   const [estadoFinalParams, setEstadoFinalParams] = useState<any>(null); // Parámetros del estado final
   const [parametrosEstadoFinal, setParametrosEstadoFinal] = useState<any[]>([]); // Parámetros dinámicos del formulario
   const [requiereEquipo, setRequiereEquipo] = useState(false); // Para Diagnostico
+  const [equipoCorrecto, setEquipoCorrecto] = useState(false); // Para Ejecucion
   const [formValues, setFormValues] = useState<Record<string, any>>({}); // Valores del formulario dinámico
   const [anexosEstadoFinal, setAnexosEstadoFinal] = useState(''); // Campo de anexos para estado final
   
@@ -628,7 +629,7 @@ const CaseDetail: React.FC = () => {
   // ==================================================
   // FUNCIÓN CENTRAL DE CAMBIO DE ESTADO
   // ==================================================
-  const handleStateChange = async (newState: string, justificacion: string) => {
+  const handleStateChange = async (newState: string, justificacion: string, equipoCorrectoVal?: boolean) => {
     if (!caso || !id) return;
     
     if (isCaseClosed) {
@@ -674,7 +675,8 @@ const CaseDetail: React.FC = () => {
         caso.id || caso.ticketNumber || caso.idCaso || id,
         newState,
         justificacion,
-        clienteId
+        clienteId,
+        newState === 'Ejecucion' ? equipoCorrectoVal : undefined
       );
       
       setShowInvalidCommentAnimation(false);
@@ -957,6 +959,15 @@ const CaseDetail: React.FC = () => {
         }
         const justificacionDiagnostico = `Diagnostico - Requiere equipo. Anexos: ${anexosValor}.`;
         handleStateChange(pendingNewState, justificacionDiagnostico);
+        return;
+      }
+
+      // Caso especial: Ejecucion con equipoCorrecto
+      if (pendingNewState === 'Ejecucion') {
+        const justificacionEjecucion = equipoCorrecto
+          ? `Ejecucion - Equipo verificado y funciona correctamente`
+          : `Ejecucion - Equipo requiere revisión/falla`;
+        handleStateChange(pendingNewState, justificacionEjecucion, equipoCorrecto);
         return;
       }
 
@@ -2400,7 +2411,7 @@ const CaseDetail: React.FC = () => {
               <h3 className="font-bold text-sm" style={{color: styles.text.primary}}>
                 Cambiar estado a {pendingNewState}
               </h3>
-              <button 
+<button 
                 onClick={() => {
                   setShowJustificationModal(false);
                   setPendingNewState(null);
@@ -2412,6 +2423,7 @@ const CaseDetail: React.FC = () => {
                   setFormValues({});
                   setAnexosEstadoFinal('');
                   setRequiereEquipo(false);
+                  setEquipoCorrecto(false);
                 }}
                 className="p-1.5 rounded-lg transition-colors"
                 style={{color: '#64748b'}}
@@ -2448,6 +2460,28 @@ const CaseDetail: React.FC = () => {
                       </span>
                       <p className="text-xs mt-0.5" style={{color: styles.text.tertiary}}>
                         Marcar si se necesita solicitar equipo para este caso
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              )}
+
+              {/* Si es Ejecucion, mostrar checkbox para validar equipo */}
+              {pendingNewState === 'Ejecucion' && (
+                <div className="border rounded-lg p-4" style={{borderColor: 'rgba(148, 163, 184, 0.3)'}}>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={equipoCorrecto}
+                      onChange={(e) => setEquipoCorrecto(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <div>
+                      <span className="text-sm font-medium" style={{color: styles.text.primary}}>
+                        ¿Equipo funciona correctamente?
+                      </span>
+                      <p className="text-xs mt-0.5" style={{color: styles.text.tertiary}}>
+                        Marcar si el equipo fue verificado y funciona antes del envío/entrega
                       </p>
                     </div>
                   </label>
