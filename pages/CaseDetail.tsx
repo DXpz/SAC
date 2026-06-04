@@ -2703,11 +2703,9 @@ const CaseDetail: React.FC = () => {
                   )}
                 </div>
               ) : (
-                /* Si NO es estado final, ni Diagnostico con equipo, ni Ejecucion, mostrar el textarea normal de justificación */
-                !isEstadoFinal && !(pendingNewState === 'Diagnostico' && requiereEquipo) && pendingNewState !== 'Ejecucion' ? (
-                  <div>
-                    <label className="block text-xs font-bold mb-2" style={{color: styles.text.secondary}}>
-                      Justificación del cambio <span className="text-red-500">*</span>
+                <div>
+                  <label className="block text-xs font-bold mb-2" style={{color: styles.text.secondary}}>
+                    Justificación del cambio <span className="text-red-500">*</span>
                   </label>
                   <textarea 
                     className="w-full h-24 p-3 rounded-lg border outline-none focus:ring-2 transition-all text-xs resize-none"
@@ -2755,8 +2753,9 @@ const CaseDetail: React.FC = () => {
                     </div>
                   )}
                 </div>
-              ) : null}
-              <div className="flex gap-2.5 pt-2">
+              )}
+            </div>
+            <div className="flex gap-2.5 pt-2">
                 <button 
                   type="button"
                   onClick={() => {
