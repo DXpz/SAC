@@ -1160,8 +1160,8 @@ export const updateCaseStatus = async (
     }
   };
 
-  // Si es Ejecucion y viene el flag de equipo_correcto, incluirlo
-  if (newStatus === 'Ejecucion' && typeof equipoCorrecto === 'boolean') {
+  // Si es Ejecucion/Ejecución y viene el flag de equipo_correcto, incluirlo
+  if ((newStatus === 'Ejecucion' || newStatus === 'Ejecución') && typeof equipoCorrecto === 'boolean') {
     body.data.equipo_correcto = equipoCorrecto;
   }
 

@@ -676,7 +676,7 @@ const CaseDetail: React.FC = () => {
         newState,
         justificacion,
         clienteId,
-        newState === 'Ejecucion' ? equipoCorrectoVal : undefined
+        newState === 'Ejecucion' || newState === 'Ejecución' ? equipoCorrectoVal : undefined
       );
       
       setShowInvalidCommentAnimation(false);
@@ -962,8 +962,8 @@ const CaseDetail: React.FC = () => {
         return;
       }
 
-      // Caso especial: Ejecucion con equipoCorrecto
-      if (pendingNewState === 'Ejecucion') {
+      // Caso especial: Ejecucion/Ejecución con equipoCorrecto
+      if (pendingNewState === 'Ejecucion' || pendingNewState === 'Ejecución') {
         const justificacionEjecucion = equipoCorrecto
           ? `Ejecucion - Equipo verificado y funciona correctamente`
           : `Ejecucion - Equipo requiere revisión/falla`;
@@ -2466,8 +2466,8 @@ const CaseDetail: React.FC = () => {
                 </div>
               )}
 
-              {/* Si es Ejecucion, mostrar checkbox para validar equipo */}
-              {pendingNewState === 'Ejecucion' && (
+              {/* Si es Ejecucion/Ejecución, mostrar checkbox para validar equipo */}
+              {(pendingNewState === 'Ejecucion' || pendingNewState === 'Ejecución') && (
                 <div className="border rounded-lg p-4" style={{borderColor: 'rgba(148, 163, 184, 0.3)'}}>
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
