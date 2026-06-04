@@ -2453,7 +2453,10 @@ const CaseDetail: React.FC = () => {
                           </p>
                           <textarea
                             value={anexosEstadoFinal}
-                            onChange={(e) => setAnexosEstadoFinal(e.target.value)}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/[^0-9,]/g, '');
+                              setAnexosEstadoFinal(value);
+                            }}
                             placeholder="111111, 222222, 333333"
                             className="w-full h-20 p-3 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs resize-none"
                             style={{
@@ -2490,8 +2493,11 @@ const CaseDetail: React.FC = () => {
                         inputEl = (
                           <textarea
                             value={valor}
-                            onChange={(e) => handleChange(e.target.value)}
-                            placeholder={placeholder || 'Ingrese los anexos separados por comas'}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/[^0-9,]/g, '');
+                              handleChange(value);
+                            }}
+                            placeholder={placeholder || 'Ingrese los anexos separados por comas (solo números)'}
                             className="w-full h-20 p-3 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs resize-none"
                             style={inputBase}
                           />
