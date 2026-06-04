@@ -445,7 +445,7 @@ const SupervisorPanel: React.FC = () => {
       c.status !== CaseStatus.CERRADO
     );
     const criticosAgente = casosAgente.filter(c => {
-      return (c as any).slaExpired === true || ((c as any).diasRestantes ?? 0) <= 0;
+      return (c as any).slaExpired === true || ((c as any).diasRestantes != null && (c as any).diasRestantes <= 0);
     });
     const dentroSLA = casosAgente.filter(c => {
       return !(c as any).slaExpired;
