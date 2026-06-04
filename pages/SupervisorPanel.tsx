@@ -300,16 +300,11 @@ const SupervisorPanel: React.FC = () => {
   }, [criticalCases]);
 
   const casosVencidos = useMemo(() => {
-    const allCases = [...casos, ...criticalCases];
-    const abiertos = allCases.filter(c => 
-      c.status !== CaseStatus.RESUELTO && 
-      c.status !== CaseStatus.CERRADO &&
-      c.status !== 'Finalizado'
-    );
-    return abiertos.filter(c => {
-      return (c as any).slaExpired === true;
-    });
-  }, [casos, criticalCases]);
+    // Usar criticalCases del backend que ya tiene los criterios correctos
+    return criticalCases.filter(c => {
+      return c.status !== 'Finalizado' && c.status !== CaseStatus.RESUELTO && c.status !== CaseStatus.CERRADO;
+    }).filter(c => (c as any).slaExpired === true);
+  }, [criticalCases]);
 
   const casosEnRiesgo = useMemo(() => {
     return casosAbiertos.filter(c => {
