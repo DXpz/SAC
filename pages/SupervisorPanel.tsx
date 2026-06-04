@@ -439,10 +439,11 @@ const SupervisorPanel: React.FC = () => {
       (c.agenteAsignado?.id_agente === agenteId || c.agenteAsignado?.idAgente === agenteId || c.agentId === agenteId)
     );
     
-    // Casos abiertos (no resueltos, no cerrados)
+    // Casos abiertos (no resueltos, no cerrados, no finalizados)
     const casosAgente = casosAgenteAll.filter(c => 
       c.status !== CaseStatus.RESUELTO && 
-      c.status !== CaseStatus.CERRADO
+      c.status !== CaseStatus.CERRADO &&
+      c.status !== 'Finalizado'
     );
     const criticosAgente = casosAgente.filter(c => {
       return (c as any).slaExpired === true || ((c as any).diasRestantes != null && (c as any).diasRestantes <= 0);
