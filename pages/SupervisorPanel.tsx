@@ -288,7 +288,8 @@ const SupervisorPanel: React.FC = () => {
   const casosAbiertos = useMemo(() => {
     const abiertos = casosFiltrados.filter(c => 
       c.status !== CaseStatus.RESUELTO && 
-      c.status !== CaseStatus.CERRADO
+      c.status !== CaseStatus.CERRADO &&
+      c.status !== 'Finalizado'
     );
     return abiertos;
   }, [casosFiltrados]);
