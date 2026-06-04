@@ -2939,7 +2939,7 @@ const CaseDetail: React.FC = () => {
                               )}
                             </div>
                             <p className="text-xs mt-0.5" style={{color: styles.text.tertiary}}>
-                              {agente.casosActivos || 0} casos activos
+                              {agente.casos_activos || 0} casos activos
                             </p>
                           </div>
                           {isSelected && (
