@@ -1300,9 +1300,10 @@ const CaseDetail: React.FC = () => {
   const diasAbierto = caso.diasAbierto ?? 0;
   const diasRestantes = caso.diasRestantes ?? caso.slaDias ?? 1;
   const slaDeadline = caso.fechaFinSla ? new Date(caso.fechaFinSla) : null;
-  const createdDate = caso.fechaCreacionFormateada 
-    ? { toLocaleString: () => caso.fechaCreacionFormateada } as Date
-    : (caso.fecha_creacion ? new Date(caso.fecha_creacion) : new Date());
+  const createdDateDisplay = caso.fechaCreacionFormateada 
+    ? caso.fechaCreacionFormateada
+    : (caso.fecha_creacion ? new Date(caso.fecha_creacion).toLocaleString('es-ES', { timeZone: 'America/Guatemala', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : new Date().toLocaleString('es-ES', { timeZone: 'America/Guatemala', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
+  const createdDate = caso.fecha_creacion ? new Date(caso.fecha_creacion) : new Date();
   
   // Calcular días de atraso (si el SLA ya venció)
   const now = new Date();
@@ -1563,7 +1564,7 @@ const CaseDetail: React.FC = () => {
                 >
                   <p className="text-xs mb-1" style={{color: styles.text.tertiary}}>Fecha de Creación</p>
                   <p className="text-sm font-bold" style={{color: styles.text.primary}}>
-                    {createdDate.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                    {createdDateDisplay}
                   </p>
                 </div>
                 <div 
