@@ -302,19 +302,17 @@ const SupervisorPanel: React.FC = () => {
     const allCases = [...casos, ...criticalCases];
     const abiertos = allCases.filter(c => 
       c.status !== CaseStatus.RESUELTO && 
-      c.status !== CaseStatus.CERRADO
+      c.status !== CaseStatus.CERRADO &&
+      c.status !== 'Finalizado'
     );
     return abiertos.filter(c => {
-      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-      return c.diasAbierto > slaDias;
+      return (c as any).slaExpired === true;
     });
   }, [casos, criticalCases]);
 
   const casosEnRiesgo = useMemo(() => {
     return casosAbiertos.filter(c => {
-      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-      const diasRestantes = slaDias - c.diasAbierto;
-      return diasRestantes > 0 && diasRestantes <= 1;
+      return !(c as any).slaExpired && ((c as any).diasRestantes != null && (c as any).diasRestantes <= 1);
     });
   }, [casosAbiertos]);
 
@@ -1147,7 +1145,7 @@ const SupervisorPanel: React.FC = () => {
                     const prioridad = (caso as any).prioridad || 'Alta';
                     const slaExpired = (caso as any).slaExpired || false;
                     const diasRestantes = (caso as any).diasRestantes ?? 0;
-                    const isVencido = slaExpired || diasRestantes <= 0;
+                    const isVencido = slaExpired === true && diasRestantes <= 0;
                     const rawStatus = caso.status || (caso as any).estado;
                     const normalizedStatus = normalizeStatus(rawStatus);
                     const statusColors = getStatusColors(normalizedStatus);
