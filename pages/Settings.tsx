@@ -1343,7 +1343,8 @@ const [showUserModal, setShowUserModal] = useState(false);
         const destinoKey = estadoDestino.id; // ID del estado destino
         if (
           origenKey !== destinoKey &&
-          transitions[origenKey]?.[destinoKey] === true
+          transitions[origenKey] !== undefined &&
+          transitions[origenKey][destinoKey] === true
         ) {
           transicionesPermitidas.push(destinoKey);
         }
