@@ -2522,8 +2522,8 @@ const CaseDetail: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                /* Si NO es Diagnóstico con equipo, ni estado final, ni Ejecucion, mostrar campo de justificación */
-                !isEstadoFinal && pendingNewState !== 'Diagnostico' && pendingNewState !== 'Ejecucion' && (
+                /* Si NO es estado final, ni Diagnostico con equipo, ni Ejecucion, mostrar campo de justificación */
+                !isEstadoFinal && !(pendingNewState === 'Diagnostico' && requiereEquipo) && pendingNewState !== 'Ejecucion' && (
                   <div>
                     <label className="block text-xs font-bold mb-1.5" style={{color: styles.text.secondary}}>
                       Justificación <span className="text-red-500">*</span>
