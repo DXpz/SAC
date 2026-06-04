@@ -954,7 +954,7 @@ const loadAgentes = async () => {
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-xs font-medium" style={{color: styles.text.tertiary}}>
-                          {formatDate(caso.createdAt)}
+                          {caso.fechaCreacionFormateada || formatDate(caso.createdAt)}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">

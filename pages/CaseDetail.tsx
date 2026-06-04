@@ -1300,7 +1300,9 @@ const CaseDetail: React.FC = () => {
   const diasAbierto = caso.diasAbierto ?? 0;
   const diasRestantes = caso.diasRestantes ?? caso.slaDias ?? 1;
   const slaDeadline = caso.fechaFinSla ? new Date(caso.fechaFinSla) : null;
-  const createdDate = caso.fecha_creacion ? new Date(caso.fecha_creacion) : new Date();
+  const createdDate = caso.fechaCreacionFormateada 
+    ? { toLocaleString: () => caso.fechaCreacionFormateada } as Date
+    : (caso.fecha_creacion ? new Date(caso.fecha_creacion) : new Date());
   
   // Calcular días de atraso (si el SLA ya venció)
   const now = new Date();
