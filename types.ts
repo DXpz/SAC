@@ -124,6 +124,7 @@ export interface Case {
   slaExpired: boolean;
   slaDeadline?: string; // Fecha final del SLA que viene del webhook
   fechaFinSla?: string; // Fecha límite SLA directamente del backend
+  fechaCreacionFormateada?: string; // Fecha formateada en timezone local desde backend
   slaDias?: number; // Días SLA de la categoría (viene del backend)
   diasRestantes?: number; // Días hábiles restantes para SLA
   businessHoursRemaining?: number;

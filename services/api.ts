@@ -575,7 +575,8 @@ export const api = {
         agenteAsignado: c.agente,
         categoria: { ...c.categoria, slaDias },
         cliente: c.cliente,
-        pais: c.pais || ''
+        pais: c.pais || '',
+        fechaCreacionFormateada: c.fechaCreacionFormateada || null
       };
     });
   },
