@@ -430,7 +430,7 @@ const SupervisorPanel: React.FC = () => {
   const getAgenteStats = (agenteId: string) => {
     // Usar TODOS los casos del agente, no solo los filtrados por período
     const casosAgenteAll = casos.filter(c => 
-      (c.agenteAsignado?.id_agente === agenteId || c.agenteAsignado?.idAgente === agenteId || c.agentId === agenteId)
+      (c.agente_user_id === agenteId || c.agente?.id_agente === agenteId)
     );
     
     // Casos abiertos (no resueltos, no cerrados, no finalizados)
