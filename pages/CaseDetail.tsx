@@ -32,6 +32,7 @@ const CaseDetail: React.FC = () => {
   const [isEstadoFinal, setIsEstadoFinal] = useState(false); // Nuevo estado para detectar si es un estado final
   const [estadoFinalParams, setEstadoFinalParams] = useState<any>(null); // Parámetros del estado final
   const [parametrosEstadoFinal, setParametrosEstadoFinal] = useState<any[]>([]); // Parámetros dinámicos del formulario
+  const [requiereEquipo, setRequiereEquipo] = useState(false); // Para Diagnostico
   const [formValues, setFormValues] = useState<Record<string, any>>({}); // Valores del formulario dinámico
   const [anexosEstadoFinal, setAnexosEstadoFinal] = useState(''); // Campo de anexos para estado final
   
@@ -696,6 +697,7 @@ const CaseDetail: React.FC = () => {
       setParametrosEstadoFinal([]);
       setFormValues({});
       setAnexosEstadoFinal('');
+      setRequiereEquipo(false);
       
       // Mostrar animación de éxito SOLO si llegamos aquí (webhook aceptó y NO hubo error)
       // IMPORTANTE: Solo mostrar si NO hubo error (esto se verifica porque estamos en el try)
@@ -946,6 +948,18 @@ const CaseDetail: React.FC = () => {
       }
       return;
     } else {
+      // Caso especial: Diagnostico con requiereEquipo
+      if (pendingNewState === 'Diagnostico' && requiereEquipo) {
+        const anexosValor = anexosEstadoFinal.trim();
+        if (!anexosValor) {
+          setErrorMessage('Por favor, ingrese los anexos');
+          return;
+        }
+        const justificacionDiagnostico = `Diagnostico - Requiere equipo. Anexos: ${anexosValor}.`;
+        handleStateChange(pendingNewState, justificacionDiagnostico);
+        return;
+      }
+
       // Validar justificación
       const justificacionTrim = justification.trim();
       if (!justificacionTrim) {
@@ -2397,6 +2411,7 @@ const CaseDetail: React.FC = () => {
                   setParametrosEstadoFinal([]);
                   setFormValues({});
                   setAnexosEstadoFinal('');
+                  setRequiereEquipo(false);
                 }}
                 className="p-1.5 rounded-lg transition-colors"
                 style={{color: '#64748b'}}
@@ -2416,7 +2431,84 @@ const CaseDetail: React.FC = () => {
               <p className="text-xs font-medium leading-relaxed" style={{color: styles.text.tertiary}}>
                 Se cambiará el estado del caso de <strong>{caso?.estado || caso?.status || 'Nuevo'}</strong> a <strong>{pendingNewState}</strong>.
               </p>
-              
+
+              {/* Si es Diagnostico, mostrar checkbox para requerir equipo */}
+              {pendingNewState === 'Diagnostico' && (
+                <div className="border rounded-lg p-4" style={{borderColor: 'rgba(148, 163, 184, 0.3)'}}>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={requiereEquipo}
+                      onChange={(e) => setRequiereEquipo(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <div>
+                      <span className="text-sm font-medium" style={{color: styles.text.primary}}>
+                        ¿Requiere equipo?
+                      </span>
+                      <p className="text-xs mt-0.5" style={{color: styles.text.tertiary}}>
+                        Marcar si se necesita solicitar equipo para este caso
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              )}
+
+              {/* Si requiere equipo en Diagnostico, mostrar formulario de parámetros */}
+              {pendingNewState === 'Diagnostico' && requiereEquipo ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 pb-3 border-b" style={{
+                    borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(226, 232, 240, 1)'
+                  }}>
+                    <CheckCircle2 className="w-4 h-4" style={{color: '#107ab4'}} />
+                    <p className="text-sm font-bold" style={{color: styles.text.primary}}>
+                      Formulario de Equipo
+                    </p>
+                  </div>
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                    <div>
+                      <label className="block text-xs font-bold mb-1.5" style={{color: styles.text.secondary}}>
+                        Anexos <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        value={anexosEstadoFinal}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^0-9,]/g, '');
+                          setAnexosEstadoFinal(value);
+                        }}
+                        placeholder="111111, 222222, 333333"
+                        className="w-full h-20 p-3 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs resize-none"
+                        style={{
+                          backgroundColor: styles.input.backgroundColor,
+                          borderColor: styles.input.borderColor,
+                          color: styles.text.primary
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Si NO es Diagnóstico con equipo, ni es estado final, mostrar campo de justificación */
+                !isEstadoFinal && pendingNewState !== 'Diagnostico' && (
+                  <div>
+                    <label className="block text-xs font-bold mb-1.5" style={{color: styles.text.secondary}}>
+                      Justificación <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      value={justification}
+                      onChange={(e) => setJustification(e.target.value)}
+                      placeholder="Describa el motivo del cambio de estado..."
+                      className="w-full h-24 p-3 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs resize-none"
+                      style={{
+                        backgroundColor: styles.input.backgroundColor,
+                        borderColor: styles.input.borderColor,
+                        color: styles.text.primary
+                      }}
+                    />
+                  </div>
+                )
+              )}
+
               {/* Si es estado final, mostrar formulario especial */}
               {isEstadoFinal && estadoFinalParams ? (
                 <div className="space-y-4">
