@@ -2521,27 +2521,7 @@ const CaseDetail: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              ) : (
-                /* Si NO es estado final, ni Diagnostico con equipo, ni Ejecucion, mostrar campo de justificación */
-                !isEstadoFinal && !(pendingNewState === 'Diagnostico' && requiereEquipo) && pendingNewState !== 'Ejecucion' && (
-                  <div>
-                    <label className="block text-xs font-bold mb-1.5" style={{color: styles.text.secondary}}>
-                      Justificación <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      value={justification}
-                      onChange={(e) => setJustification(e.target.value)}
-                      placeholder="Describa el motivo del cambio de estado..."
-                      className="w-full h-24 p-3 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs resize-none"
-                      style={{
-                        backgroundColor: styles.input.backgroundColor,
-                        borderColor: styles.input.borderColor,
-                        color: styles.text.primary
-                      }}
-                    />
-                  </div>
-                )
-              )}
+              ) : null}
 
               {/* Si es estado final, mostrar formulario especial */}
               {isEstadoFinal && estadoFinalParams ? (
@@ -2723,10 +2703,11 @@ const CaseDetail: React.FC = () => {
                   )}
                 </div>
               ) : (
-                /* Si NO es estado final, mostrar el textarea normal de justificación */
-                <div>
-                  <label className="block text-xs font-bold mb-2" style={{color: styles.text.secondary}}>
-                    Justificación del cambio <span className="text-red-500">*</span>
+                /* Si NO es estado final, ni Diagnostico con equipo, ni Ejecucion, mostrar el textarea normal de justificación */
+                !isEstadoFinal && !(pendingNewState === 'Diagnostico' && requiereEquipo) && pendingNewState !== 'Ejecucion' ? (
+                  <div>
+                    <label className="block text-xs font-bold mb-2" style={{color: styles.text.secondary}}>
+                      Justificación del cambio <span className="text-red-500">*</span>
                   </label>
                   <textarea 
                     className="w-full h-24 p-3 rounded-lg border outline-none focus:ring-2 transition-all text-xs resize-none"
@@ -2773,8 +2754,7 @@ const CaseDetail: React.FC = () => {
                       </div>
                     </div>
                   )}
-                </div>
-              )}
+              ) : null}
               <div className="flex gap-2.5 pt-2">
                 <button 
                   type="button"
