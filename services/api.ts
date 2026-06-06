@@ -1143,6 +1143,25 @@ return response.json();
     }
   },
 
+  async deleteUser(id: string): Promise<boolean> {
+    try {
+      const response = await fetch(`${API_CONFIG.WEBHOOK_CREAR_USUARIO_URL}/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || `Error ${response.status}`);
+      }
+
+      clearCache('usuarios');
+      return true;
+    } catch (error: any) {
+      throw new Error(error.message || 'Error al eliminar usuario');
+    }
+  },
+
   logout() {
     localStorage.removeItem('intelfon_user');
     localStorage.removeItem('intelfon_token');

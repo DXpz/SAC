@@ -671,42 +671,16 @@ const AdminUsers: React.FC = () => {
     try {
       setLoading(true);
 
-      // Llamar al webhook para eliminar usuario
-      const currentUser = api.getUser();
-      if (currentUser) {
-        const actor = {
-          user_id: Number((currentUser as any).user_id ?? currentUser.id) || 0,
-          email: (currentUser as any).email || currentUser.email || '',
-          role: currentUser.role,
-        };
+      // Llamar al endpoint Express del backend para eliminar usuario
+      await api.deleteUser(selectedUser.id);
 
-        const payload = {
-          action: 'user.delete',
-          actor: actor,
-          data: {
-            id: selectedUser.id
-          }
-        };
-
-        // Llamar directamente al webhook de n8n
-        await fetch('https://n8n.red.com.sv/webhook/usuarios-workflow', {
-          method: 'POST',
-          mode: 'cors',
-          credentials: 'omit',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        });
-      }
-
-      // Recargar la lista de usuarios desde el webhook
+      // Recargar la lista de usuarios desde el backend
       clearCache('usuarios');
       await loadUsers();
 
       setShowDeleteModal(false);
       setSelectedUser(null);
+      setToast({ message: 'Usuario eliminado correctamente', type: 'success' });
     } catch (error: any) {
       setToast({ message: `Error al eliminar usuario: ${error.message}`, type: 'error' });
     } finally {
