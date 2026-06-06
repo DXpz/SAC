@@ -36,6 +36,7 @@ const Settings: React.FC = () => {
   const [hasChanges, setHasChanges] = useState(false);
   const [savingStates, setSavingStates] = useState(false);
   const [successSave, setSuccessSave] = useState(false);
+  const [successDelete, setSuccessDelete] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
@@ -1188,6 +1189,7 @@ const [showUserModal, setShowUserModal] = useState(false);
 
   const handleConfirmDeleteState = async () => {
     if (!deletingState) return;
+    const deletedName = deletingState.name;
     try {
       // Enviar webhook para eliminar el estado
       await api.deleteState(deletingState.id);
@@ -1200,6 +1202,10 @@ const [showUserModal, setShowUserModal] = useState(false);
       await loadTransiciones();
       setDeletingState(null);
       setHasChanges(true);
+
+      // Mostrar animación/toast de éxito
+      setSuccessDelete(true);
+      setTimeout(() => setSuccessDelete(false), 3000);
     } catch (error: any) {
       const errorMsg = error.message || '';
       if (errorMsg.includes('Foreign key') || errorMsg.includes('casos_estado') || errorMsg.includes('constraint')) {
@@ -2851,6 +2857,17 @@ const [showUserModal, setShowUserModal] = useState(false);
                     <AlertCircle className="w-4 h-4" />
                     {errorMessage}
                     <button onClick={() => setErrorMessage(null)} className="ml-2 hover:opacity-80">×</button>
+                  </div>
+                )}
+                {successDelete && (
+                  <div className="fixed top-4 right-4 z-50 px-6 py-4 text-white text-sm font-semibold rounded-lg flex items-center gap-3 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-300" style={{ backgroundColor: '#22c55e' }}>
+                    <div className="w-8 h-8 rounded-full bg-white bg-opacity-20 flex items-center justify-center">
+                      <Check className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="font-bold">Estado eliminado correctamente</div>
+                      <div className="text-xs opacity-90">El flujo ha sido reconectado</div>
+                    </div>
                   </div>
                 )}
             </div>
