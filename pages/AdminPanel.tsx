@@ -350,7 +350,37 @@ const casosCriticos = casosSeguros.filter(c => {
   };
 
   const agentesSeguros = Array.isArray(agentes) ? agentes : [];
-  
+
+  const getAgenteId = (agente: any): string => String(agente?.idAgente || agente?.id_agente || agente?.id || '').trim();
+
+  const isAgenteActivoConRolAgente = (agente: any): boolean => {
+    const estado = String(agente?.estado || '').trim().toUpperCase();
+    const role = String(agente?.usuario?.role || agente?.role || agente?.rol || '').trim().toUpperCase();
+    return estado === 'ACTIVO' && role === 'AGENTE';
+  };
+
+  const findAgenteActivoById = (agenteId: string) => {
+    if (!agenteId || agenteId.trim() === '') return null;
+
+    const searchId = String(agenteId).trim();
+    return agentesSeguros.find(a => {
+      if (!isAgenteActivoConRolAgente(a)) return false;
+
+      const aId = getAgenteId(a);
+      if (!aId) return false;
+
+      if (aId === searchId) return true;
+
+      const aIdNum = aId.replace(/^AG-?/i, '').replace(/^0+/, '');
+      const searchIdNum = searchId.replace(/^AG-?/i, '').replace(/^0+/, '');
+      if (aIdNum && searchIdNum && aIdNum === searchIdNum) return true;
+
+      const aIdPure = aId.replace(/\D/g, '');
+      const searchIdPure = searchId.replace(/\D/g, '');
+      return !!(aIdPure && searchIdPure && aIdPure === searchIdPure);
+    }) || null;
+  };
+   
   // Filtrar agentes por país
   const agentesFiltradosPorPais = useMemo(() => {
     if (!userCountry) return agentesSeguros;
@@ -842,39 +872,6 @@ const casosCriticos = casosSeguros.filter(c => {
   const topAgentes = useMemo(() => {
     const agenteStats: Record<string, { nombre: string; casosResueltos: number; casosAsignados: number; tiempoPromedio: number }> = {};
     
-    // Función helper para encontrar el nombre del agente desde la lista de agentes
-    const obtenerNombreAgente = (agenteId: string): string => {
-      if (!agenteId || agenteId.trim() === '') return '';
-      
-      // Buscar en la lista de agentes cargada
-      const agenteEncontrado = agentesSeguros.find(a => {
-        if (!a) return false;
-        const aId = String(a.idAgente || a.id || '').trim();
-        const searchId = String(agenteId).trim();
-        
-        // Comparación exacta
-        if (aId === searchId) return true;
-        
-        // Comparación sin prefijos
-        const aIdNum = aId.replace(/^AG-?/i, '').replace(/^0+/, '');
-        const searchIdNum = searchId.replace(/^AG-?/i, '').replace(/^0+/, '');
-        if (aIdNum && searchIdNum && aIdNum === searchIdNum) return true;
-        
-        // Comparación numérica pura
-        const aIdPure = aId.replace(/\D/g, '');
-        const searchIdPure = searchId.replace(/\D/g, '');
-        if (aIdPure && searchIdPure && aIdPure === searchIdPure) return true;
-        
-        return false;
-      });
-      
-      if (agenteEncontrado) {
-        return agenteEncontrado.nombre || agenteEncontrado.name || '';
-      }
-      
-      return '';
-    };
-    
     casosSeguros.forEach(caso => {
       if (!caso) return;
       
@@ -884,25 +881,13 @@ const casosCriticos = casosSeguros.filter(c => {
                       (caso as any).agente_user_id ||
                       (caso as any).agente_id ||
                       '';
-      
+       
       if (!agenteId || agenteId.trim() === '') return; // Saltar casos sin agente
-      
-      // Intentar obtener el nombre desde la lista de agentes primero
-      let agenteNombre = obtenerNombreAgente(agenteId);
-      
-      // Si no se encuentra en la lista, usar el nombre del caso como fallback
-      if (!agenteNombre || agenteNombre.trim() === '') {
-        agenteNombre = caso.agentName || 
-                      (caso as any).agenteAsignado?.nombre || 
-                      (caso as any).agente_nombre ||
-                      (caso as any).nombre_agente ||
-                      '';
-      }
-      
-      // Si aún no hay nombre, usar el ID del agente en lugar de "Sin asignar"
-      if (!agenteNombre || agenteNombre.trim() === '') {
-        agenteNombre = `Agente ${agenteId}`;
-      }
+
+      const agenteValido = findAgenteActivoById(agenteId);
+      if (!agenteValido) return;
+       
+      const agenteNombre = agenteValido.nombre || (agenteValido as any).name || `Agente ${agenteId}`;
       
       if (!agenteStats[agenteId]) {
         agenteStats[agenteId] = {
@@ -937,39 +922,6 @@ const casosCriticos = casosSeguros.filter(c => {
   const agentesSobrecargados = useMemo(() => {
     const agenteCarga: Record<string, { nombre: string; casos: number }> = {};
     
-    // Función helper para encontrar el nombre del agente desde la lista de agentes
-    const obtenerNombreAgente = (agenteId: string): string => {
-      if (!agenteId || agenteId.trim() === '') return '';
-      
-      // Buscar en la lista de agentes cargada
-      const agenteEncontrado = agentesSeguros.find(a => {
-        if (!a) return false;
-        const aId = String(a.idAgente || a.id || '').trim();
-        const searchId = String(agenteId).trim();
-        
-        // Comparación exacta
-        if (aId === searchId) return true;
-        
-        // Comparación sin prefijos
-        const aIdNum = aId.replace(/^AG-?/i, '').replace(/^0+/, '');
-        const searchIdNum = searchId.replace(/^AG-?/i, '').replace(/^0+/, '');
-        if (aIdNum && searchIdNum && aIdNum === searchIdNum) return true;
-        
-        // Comparación numérica pura
-        const aIdPure = aId.replace(/\D/g, '');
-        const searchIdPure = searchId.replace(/\D/g, '');
-        if (aIdPure && searchIdPure && aIdPure === searchIdPure) return true;
-        
-        return false;
-      });
-      
-      if (agenteEncontrado) {
-        return agenteEncontrado.nombre || agenteEncontrado.name || '';
-      }
-      
-      return '';
-    };
-    
     casosSeguros.forEach(caso => {
       if (!caso) return;
       
@@ -981,25 +933,13 @@ const casosCriticos = casosSeguros.filter(c => {
                         (caso as any).agente_user_id ||
                         (caso as any).agente_id ||
                         '';
-        
+         
         if (!agenteId || agenteId.trim() === '') return; // Saltar casos sin agente
-        
-        // Intentar obtener el nombre desde la lista de agentes primero
-        let agenteNombre = obtenerNombreAgente(agenteId);
-        
-        // Si no se encuentra en la lista, usar el nombre del caso como fallback
-        if (!agenteNombre || agenteNombre.trim() === '') {
-          agenteNombre = caso.agentName || 
-                        (caso as any).agenteAsignado?.nombre || 
-                        (caso as any).agente_nombre ||
-                        (caso as any).nombre_agente ||
-                        '';
-        }
-        
-        // Si aún no hay nombre, usar el ID del agente en lugar de "Sin asignar"
-        if (!agenteNombre || agenteNombre.trim() === '') {
-          agenteNombre = `Agente ${agenteId}`;
-        }
+
+        const agenteValido = findAgenteActivoById(agenteId);
+        if (!agenteValido) return;
+         
+        const agenteNombre = agenteValido.nombre || (agenteValido as any).name || `Agente ${agenteId}`;
         
         if (!agenteCarga[agenteId]) {
           agenteCarga[agenteId] = { nombre: agenteNombre, casos: 0 };
@@ -2028,4 +1968,3 @@ const casosCriticos = casosSeguros.filter(c => {
 };
 
 export default AdminPanel;
-

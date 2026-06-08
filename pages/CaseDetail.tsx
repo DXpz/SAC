@@ -36,6 +36,12 @@ const CaseDetail: React.FC = () => {
   const [equipoCorrecto, setEquipoCorrecto] = useState(false); // Para Ejecucion
   const [formValues, setFormValues] = useState<Record<string, any>>({}); // Valores del formulario dinámico
   const [anexosEstadoFinal, setAnexosEstadoFinal] = useState(''); // Campo de anexos para estado final
+
+  const isAnexoParam = (param: any) => {
+    const nombre = String(param?.nombre_parametro || param?.name || '').toLowerCase();
+    const tipo = String(param?.tipo || param?.type || '').toLowerCase();
+    return nombre.includes('anexo') || tipo === 'adjuntar_archivo' || tipo === 'file';
+  };
   
   // Estados para modo de edición
   const [isEditing, setIsEditing] = useState(false);
@@ -881,38 +887,23 @@ const CaseDetail: React.FC = () => {
     
     // Si es estado final, pedir anexos/parámetros dinámicos y enviar al webhook de cierre
     if (isEstadoFinal) {
-      // Verificar si hay parámetros dinámicos con tipo "anexo" que reemplacen el campo fijo
-      const tieneAnexosDinamico = parametrosEstadoFinal.some((p: any) => {
-        const nombre = (p.nombre_parametro || p.name || '').toLowerCase();
-        return nombre.includes('anexo');
-      });
-
-      // Obtener el valor de anexos: desde el campo dinámico si existe, o del campo fijo
-      let anexosValor = anexosEstadoFinal.trim();
-      if (tieneAnexosDinamico) {
-        const paramAnexo = parametrosEstadoFinal.find((p: any) =>
-          (p.nombre_parametro || p.name || '').toLowerCase().includes('anexo')
-        );
-        if (paramAnexo) {
-          const key = paramAnexo.nombre_parametro || paramAnexo.id || '';
-          anexosValor = String(formValues[key] || '').trim();
-        }
-      }
+      const parametrosSinAnexos = parametrosEstadoFinal.filter((p: any) => !isAnexoParam(p));
+      const formValuesSinAnexos = Object.fromEntries(
+        Object.entries(formValues).filter(([key]) => {
+          const param = parametrosEstadoFinal.find((p: any) => (p.nombre_parametro || p.id || '') === key);
+          return param ? !isAnexoParam(param) : true;
+        })
+      );
 
       // Validar parámetros requeridos
-      for (const param of parametrosEstadoFinal) {
+      for (const param of parametrosSinAnexos) {
         if (param.requerido === true) {
           const key = param.nombre_parametro || param.id || '';
-          if (!formValues[key] && formValues[key] !== false) {
+          if (!formValuesSinAnexos[key] && formValuesSinAnexos[key] !== false) {
             setErrorMessage(`El campo "${param.etiqueta || param.nombre_parametro}" es obligatorio`);
             return;
           }
         }
-      }
-
-      if (!tieneAnexosDinamico && !anexosValor) {
-        setErrorMessage('Por favor, ingrese los anexos');
-        return;
       }
       
       setErrorMessage('');
@@ -925,7 +916,7 @@ const CaseDetail: React.FC = () => {
       
       let webhookResponse;
       try {
-        webhookResponse = await sendCaseCloseWebhook(caseId, clienteId, anexosValor, formValues);
+        webhookResponse = await sendCaseCloseWebhook(caseId, clienteId, '', formValuesSinAnexos);
       } catch (error) {
         setErrorMessage('Error de conexión. Intente nuevamente.');
         setTransitionLoading(false);
@@ -938,11 +929,11 @@ const CaseDetail: React.FC = () => {
         return;
       }
       
-      const paramsResumen = Object.entries(formValues)
+      const paramsResumen = Object.entries(formValuesSinAnexos)
         .filter(([, v]) => v !== '' && v !== undefined)
         .map(([k, v]) => `${k}: ${v}`)
         .join(', ');
-      const justificacionCierre = `Cierre de caso. Anexos: ${anexosValor}${paramsResumen ? `. Parámetros adicionales: ${paramsResumen}` : ''}. Resolución completada.`;
+      const justificacionCierre = `Cierre de caso.${paramsResumen ? ` Parámetros adicionales: ${paramsResumen}.` : ''} Resolución completada.`;
       try {
         await handleStateChange(pendingNewState, justificacionCierre);
       } catch (err) {
@@ -2543,40 +2534,8 @@ const CaseDetail: React.FC = () => {
                   
                   <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
                     {/* Campo fijo de Anexos */}
-                    {(() => {
-                      const tieneAnexosDinamico = parametrosEstadoFinal.some((p: any) => {
-                        const nombre = (p.nombre_parametro || p.name || '').toLowerCase();
-                        return nombre.includes('anexo');
-                      });
-                      if (tieneAnexosDinamico) return null;
-                      return (
-                        <div>
-                          <label className="block text-xs font-bold mb-1.5" style={{color: styles.text.secondary}}>
-                            Anexos <span className="text-red-500">*</span>
-                          </label>
-                          <p className="text-xs mb-1.5" style={{color: styles.text.tertiary}}>
-                            Ingrese los anexos separados por comas (ej: 111111, 222222)
-                          </p>
-                          <textarea
-                            value={anexosEstadoFinal}
-                            onChange={(e) => {
-                              const value = e.target.value.replace(/[^0-9,]/g, '');
-                              setAnexosEstadoFinal(value);
-                            }}
-                            placeholder="111111, 222222, 333333"
-                            className="w-full h-20 p-3 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs resize-none"
-                            style={{
-                              backgroundColor: styles.input.backgroundColor,
-                              borderColor: styles.input.borderColor,
-                              color: styles.text.primary
-                            }}
-                          />
-                        </div>
-                      );
-                    })()}
-
                     {/* Parámetros dinámicos del webhook, renderizados según tipo */}
-                    {parametrosEstadoFinal.map((param: any) => {
+                    {parametrosEstadoFinal.filter((param: any) => !isAnexoParam(param)).map((param: any) => {
                       const key = param.nombre_parametro || param.id || '';
                       const label = param.etiqueta || param.label || param.nombre_parametro || key;
                       const tipo = (param.tipo || param.type || 'texto').toLowerCase();
@@ -3435,4 +3394,3 @@ const CaseDetail: React.FC = () => {
 };
 
 export default CaseDetail;
-
