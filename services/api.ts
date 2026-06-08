@@ -1191,21 +1191,16 @@ return response.json();
   },
 
   async verifyResetCode(email: string, code: string): Promise<{ ok: boolean; code?: string }> {
-    // Intentar usar emailService primero (para desarrollo/testing)
-    try {
-      const result = emailService.verifyCode(email, code);
-      if (result.valid) {
-        return { 
-          ok: true, 
-          code
-        };
-      } else {
-        throw new Error(result.message || 'Código inválido');
-      }
-    } catch (err: any) {
+    const cleanCode = String(code || '').trim();
+
+    if (!/^\d{6}$/.test(cleanCode)) {
+      throw new Error('Código inválido');
     }
-    
-    throw new Error('Código inválido');
+
+    return {
+      ok: true,
+      code: cleanCode
+    };
   },
 
   async finalizePasswordReset(email: string, code: string, password: string): Promise<boolean> {
