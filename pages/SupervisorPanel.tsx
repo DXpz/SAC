@@ -323,6 +323,7 @@ const SupervisorPanel: React.FC = () => {
 
   const metricsSummary = dashboardMetrics?.summary || {};
   const metricsKpis = dashboardMetrics?.kpis || {};
+  const metricsAgents = dashboardMetrics?.agents || {};
   const slaPromedio = metricsKpis.slaCompliance ?? null;
 
   // Para métricas: casos abiertos = casosFiltrados sin cerrados
@@ -429,6 +430,19 @@ const SupervisorPanel: React.FC = () => {
   };
 
   const getAgenteStats = (agenteId: string) => {
+    const statsFromBackend = Array.isArray(metricsAgents.all)
+      ? metricsAgents.all.find((a: any) => a.id === agenteId || a.id_agente === agenteId)
+      : null;
+
+    if (statsFromBackend) {
+      return {
+        casos: statsFromBackend.casosAsignados ?? 0,
+        criticos: statsFromBackend.casosCriticos ?? 0,
+        cumplimientoSLA: statsFromBackend.cumplimientoSLA ?? null,
+        tiempoPromedio: statsFromBackend.tiempoPromedio ?? 'N/A'
+      };
+    }
+
     // Usar TODOS los casos del agente, no solo los filtrados por período
     const casosAgenteAll = casos.filter(c => 
       (c.agente_user_id === agenteId || c.agente?.id_agente === agenteId)
