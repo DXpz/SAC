@@ -373,7 +373,7 @@ const loadAgentes = async () => {
         if (slaFilter === 'vencido') {
           return slaExpired;
         } else if (slaFilter === 'en-riesgo') {
-          return !slaExpired && diasRestantes <= 0;
+          return !slaExpired && diasRestantes <= 1;
         } else if (slaFilter === 'dentro-sla') {
           return !slaExpired && diasRestantes > 0;
         }
@@ -437,7 +437,7 @@ const loadAgentes = async () => {
     
     if (slaExpired) {
       return { label: 'Vencido', color: '#dc2626', bg: 'rgba(220, 38, 38, 0.1)', icon: Timer };
-    } else if (diasRestantes <= 0) {
+    } else if (diasRestantes <= 1) {
       return { label: 'En Riesgo', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)', icon: AlertTriangle };
     }
     return { label: 'Dentro SLA', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)', icon: Clock };
@@ -979,4 +979,3 @@ const loadAgentes = async () => {
 };
 
 export default AdminBandejaCasos;
-
