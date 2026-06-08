@@ -176,7 +176,8 @@ const SupervisorPanel: React.FC = () => {
       const [casosData, criticalCasesData, metricsData, agentesData, clientesList] = await Promise.all([
         api.getCases(),
         api.getCriticalCases(),
-        api.getDashboardMetrics({ pais: supervisorCountry || undefined, period: periodFilter, agentId: agentFilter }),
+        // Las tarjetas resumen deben venir globales; el período se usa en listados/gráficas locales.
+        api.getDashboardMetrics({ pais: supervisorCountry || undefined, period: 'todos', agentId: agentFilter }),
         api.getAgentes(supervisorCountry),
         loadClientes()
       ]);

@@ -202,7 +202,8 @@ const GerenteDashboard: React.FC = () => {
       const [casosData, criticalCasesData, metricsData] = await Promise.all([
         api.getCases(true),
         api.getCriticalCases(),
-        api.getDashboardMetrics({ pais: gerenteCountry || undefined, period: periodFilter })
+        // Las tarjetas principales deben reflejar el estado global, no solo el período seleccionado.
+        api.getDashboardMetrics({ pais: gerenteCountry || undefined, period: 'todos' })
       ]);
       console.log('[GerenteDashboard] api.getCases returned:', casosData.length, 'cases');
       
