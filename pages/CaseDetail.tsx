@@ -874,6 +874,12 @@ const CaseDetail: React.FC = () => {
     
     // Si es estado final, pedir anexos/parámetros dinámicos y enviar al webhook de cierre
     if (isEstadoFinal) {
+      const justificacionTrim = justification.trim();
+      if (!justificacionTrim) {
+        setErrorMessage('La justificación es obligatoria');
+        return;
+      }
+
       setErrorMessage('');
       
       const clienteId = caso?.clientId || caso?.clienteId || caso?.cliente?.CardCode || '';
@@ -897,7 +903,7 @@ const CaseDetail: React.FC = () => {
         return;
       }
       
-      const justificacionCierre = 'Cierre de caso. Resolución completada.';
+      const justificacionCierre = justificacionTrim;
       try {
         await handleStateChange(pendingNewState, justificacionCierre);
       } catch (err) {
@@ -2479,7 +2485,7 @@ const CaseDetail: React.FC = () => {
               ) : null}
 
               {/* Si es estado final, mostrar formulario especial */}
-              {isEstadoFinal ? (
+              {false ? (
                 <div className="space-y-4">
                   {/* Header compacto */}
                   <div className="flex items-center gap-2 pb-3 border-b" style={{
@@ -2597,7 +2603,7 @@ const CaseDetail: React.FC = () => {
                 </button>
                 <button 
                   onClick={confirmStateChange}
-                  disabled={transitionLoading || (!isEstadoFinal && !justification.trim())}
+                  disabled={transitionLoading || !justification.trim()}
                   className="flex-1 py-2.5 text-xs font-semibold text-white rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{backgroundColor: '#c8151b'}}
                   onMouseEnter={(e) => {
@@ -2611,7 +2617,7 @@ const CaseDetail: React.FC = () => {
                     e.currentTarget.style.transform = 'translateY(0)';
                   }}
                 >
-                  {transitionLoading ? 'Procesando...' : isEstadoFinal ? 'Completar Formulario' : 'Confirmar'}
+                  {transitionLoading ? 'Procesando...' : isEstadoFinal ? 'Finalizar' : 'Confirmar'}
                 </button>
               </div>
             </div>
