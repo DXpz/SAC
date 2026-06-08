@@ -21,7 +21,7 @@ const VerifyCode: React.FC = () => {
     try {
       const response = await api.verifyResetCode(email, code);
       if (response.ok) {
-        navigate(`/reset-password?email=${encodeURIComponent(email)}&tempToken=${response.tempToken || 'demo'}`);
+        navigate(`/reset-password?email=${encodeURIComponent(email)}&code=${encodeURIComponent(response.code || code)}`);
       } else {
         setError('Código inválido o expirado.');
       }

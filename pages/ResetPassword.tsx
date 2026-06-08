@@ -9,7 +9,7 @@ import LoadingLogo from '../components/LoadingLogo';
 const ResetPassword: React.FC = () => {
   const [searchParams] = useSearchParams();
   const email = searchParams.get('email') || '';
-  const tempToken = searchParams.get('tempToken') || '';
+  const code = searchParams.get('code') || '';
   
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -29,7 +29,7 @@ const ResetPassword: React.FC = () => {
     setLoading(true);
     setStatus('idle');
     try {
-      await api.finalizePasswordReset(email, tempToken, password);
+      await api.finalizePasswordReset(email, code, password);
       setStatus('success');
       setTimeout(() => navigate('/login'), 3000);
     } catch (err: any) {

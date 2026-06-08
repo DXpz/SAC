@@ -1180,29 +1180,14 @@ return response.json();
     return true;
   },
 
-  async verifyResetCode(email: string, code: string): Promise<{ ok: boolean; tempToken?: string }> {
+  async verifyResetCode(email: string, code: string): Promise<{ ok: boolean; code?: string }> {
     // Intentar usar emailService primero (para desarrollo/testing)
     try {
       const result = emailService.verifyCode(email, code);
-      if (result.valid && result.tempToken) {
-        // También intentar verificar en el webhook si está disponible
-        try {
-          const webhookData = await callWebhook('reset_password', {
-            email,
-            code,
-            action: 'verify_code'
-          });
-          if (webhookData.tempToken) {
-            return { 
-              ok: true, 
-              tempToken: webhookData.tempToken 
-            };
-          }
-        } catch (webhookErr) {
-        }
+      if (result.valid) {
         return { 
           ok: true, 
-          tempToken: result.tempToken 
+          code
         };
       } else {
         throw new Error(result.message || 'Código inválido');
@@ -1210,34 +1195,14 @@ return response.json();
     } catch (err: any) {
     }
     
-    // Fallback: solo webhook
+    throw new Error('Código inválido');
+  },
+
+  async finalizePasswordReset(email: string, code: string, password: string): Promise<boolean> {
     const data = await callWebhook('reset_password', {
       email,
       code,
-      action: 'verify_code'
-    });
-    
-    // El webhook debe retornar: { success: boolean, tempToken?: string, message?: string }
-    if (data.success === false) {
-      throw new Error(data.message || 'Código de verificación inválido');
-    }
-    
-    if (!data.tempToken) {
-      throw new Error('Token temporal no recibido del servidor');
-    }
-    
-    return { 
-      ok: true, 
-      tempToken: data.tempToken 
-    };
-  },
-
-  async finalizePasswordReset(email: string, token: string, password: string): Promise<boolean> {
-    const data = await callWebhook('reset_password', {
-      email,
-      tempToken: token,
-      password,
-      action: 'finalize_reset'
+      newPassword: password
     });
     
     // El webhook debe retornar: { success: boolean, message?: string }
