@@ -421,7 +421,7 @@ const AdminPanel: React.FC = () => {
   const clientesSeguros = Array.isArray(clientes) ? clientes : [];
   
   const totalClientes = metricsSummary.totalClientes ?? clientesSeguros.length;
-  const clientesActivos = clientesSeguros.filter(c => c && (c.estado === 'Activo' || c.estado === 'ACTIVO')).length;
+  const clientesActivos = metricsSummary.clientesActivos ?? totalClientes;
 
   const categoriasSeguras = Array.isArray(categorias) ? categorias : [];
   const totalCategorias = metricsSummary.totalCategorias ?? categoriasSeguras.length;
