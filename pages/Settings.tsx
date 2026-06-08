@@ -36,7 +36,7 @@ const Settings: React.FC = () => {
   const [hasChanges, setHasChanges] = useState(false);
   const [savingStates, setSavingStates] = useState(false);
   const [successSave, setSuccessSave] = useState(false);
-  const [successDelete, setSuccessDelete] = useState(false);
+  const [successDelete, setSuccessDelete] = useState<{ message: string; subtitle: string } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
   const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
@@ -1204,8 +1204,8 @@ const [showUserModal, setShowUserModal] = useState(false);
       setHasChanges(true);
 
       // Mostrar animación/toast de éxito
-      setSuccessDelete(true);
-      setTimeout(() => setSuccessDelete(false), 3000);
+      setSuccessDelete({ message: 'Estado eliminado correctamente', subtitle: 'El flujo ha sido reconectado' });
+      setTimeout(() => setSuccessDelete(null), 3000);
     } catch (error: any) {
       const errorMsg = error.message || '';
       if (errorMsg.includes('Foreign key') || errorMsg.includes('casos_estado') || errorMsg.includes('constraint')) {
@@ -1426,8 +1426,8 @@ const [showUserModal, setShowUserModal] = useState(false);
       await api.deleteUser(id);
       setSettingsUsers(settingsUsers.filter(u => u.id !== id));
       // Mostrar animación/toast de éxito
-      setSuccessDelete(true);
-      setTimeout(() => setSuccessDelete(false), 3000);
+      setSuccessDelete({ message: 'Usuario eliminado correctamente', subtitle: 'Eliminado del sistema' });
+      setTimeout(() => setSuccessDelete(null), 3000);
     } catch (error: any) {
       setErrorMessage(error.message || 'Error al eliminar el usuario');
     }
@@ -2866,8 +2866,8 @@ const [showUserModal, setShowUserModal] = useState(false);
                       <Check className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="font-bold">Estado eliminado correctamente</div>
-                      <div className="text-xs opacity-90">El flujo ha sido reconectado</div>
+                      <div className="font-bold">{successDelete.message}</div>
+                      <div className="text-xs opacity-90">{successDelete.subtitle}</div>
                     </div>
                   </div>
                 )}
