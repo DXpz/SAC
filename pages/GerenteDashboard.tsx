@@ -508,21 +508,19 @@ const GerenteDashboard: React.FC = () => {
       color: string;
     }> = [];
     
-    const casosFueraSLA = casosCriticos.filter(c => {
-      return c.slaExpired === true;
-    });
-    const casosVencen24h = casosCriticos.filter(c => {
+    const casosFueraSLA = metricsSummary.casosVencidos ?? casosCriticos.filter(c => c.slaExpired === true).length;
+    const casosVencen24h = metricsSummary.casosEnRiesgo ?? casosCriticos.filter(c => {
       const diasRestantes = (c as any).diasRestantes ?? 0;
       return !c.slaExpired && diasRestantes <= 1;
-    });
+    }).length;
     
     // Casos fuera de SLA - Crítico
-    if (casosFueraSLA.length > 0) {
+    if (casosFueraSLA > 0) {
       insightsList.push({
         type: 'critical',
         title: 'Casos Fuera de SLA',
-        description: `${casosFueraSLA.length} caso${casosFueraSLA.length !== 1 ? 's' : ''} han excedido el tiempo de resolución comprometido`,
-        value: casosFueraSLA.length,
+        description: `${casosFueraSLA} caso${casosFueraSLA !== 1 ? 's' : ''} han excedido el tiempo de resolución comprometido`,
+        value: casosFueraSLA,
         icon: AlertTriangle,
         color: '#ef4444'
       });
@@ -541,12 +539,12 @@ const GerenteDashboard: React.FC = () => {
     }
     
     // Casos que vencen en 24h - Advertencia
-    if (casosVencen24h.length > 0) {
+    if (casosVencen24h > 0) {
       insightsList.push({
         type: 'warning',
         title: 'Vencimiento Inminente',
-        description: `${casosVencen24h.length} caso${casosVencen24h.length !== 1 ? 's' : ''} vence${casosVencen24h.length !== 1 ? 'n' : ''} en las próximas 24 horas`,
-        value: casosVencen24h.length,
+        description: `${casosVencen24h} caso${casosVencen24h !== 1 ? 's' : ''} vence${casosVencen24h !== 1 ? 'n' : ''} en las próximas 24 horas`,
+        value: casosVencen24h,
         icon: Clock,
         color: '#f59e0b'
       });

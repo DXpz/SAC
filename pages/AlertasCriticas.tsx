@@ -49,6 +49,7 @@ const normalizeStatus = (status: string | CaseStatus | undefined): CaseStatus =>
 const AlertasCriticas: React.FC = () => {
   const [criticos, setCriticos] = useState<CaseWithPriority[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dashboardMetrics, setDashboardMetrics] = useState<any>(null);
   const [clientes, setClientes] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPriority, setFilterPriority] = useState<'all' | 'Critica' | 'Alta' | 'Media'>('all');
@@ -210,7 +211,11 @@ const AlertasCriticas: React.FC = () => {
     try {
       const clientesList = await sapService.getClientesListado(userCountry);
       setClientes(clientesList);
-      const list = await api.getCriticalCases();
+      const [list, metricsData] = await Promise.all([
+        api.getCriticalCases(),
+        api.getDashboardMetrics({ pais: userCountry || undefined, period: 'todos' })
+      ]);
+      setDashboardMetrics(metricsData);
       
       const enriched = enrichCasesWithClients(list, clientesList);
       const prioritized = prioritizeCases(enriched);
@@ -319,9 +324,11 @@ const AlertasCriticas: React.FC = () => {
     };
   };
 
-  const casosFueraSLA = criticos.filter(c => c.slaExpired).length;
+  const metricsSummary = dashboardMetrics?.summary || {};
 
-  const casosVencen24h = criticos.filter(c => {
+  const casosFueraSLA = metricsSummary.casosVencidos ?? criticos.filter(c => c.slaExpired).length;
+
+  const casosVencen24h = metricsSummary.casosEnRiesgo ?? criticos.filter(c => {
     const diasRestantes = c.diasRestantes ?? 0;
     return !c.slaExpired && diasRestantes <= 1;
   }).length;
