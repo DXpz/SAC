@@ -1145,6 +1145,7 @@ return response.json();
 
   async deleteUser(id: string): Promise<boolean> {
     try {
+      // deleteUser usa WEBHOOK_CREAR_USUARIO_URL (/api/usuarios) - fix a16a9c3
       const response = await fetch(`${API_CONFIG.WEBHOOK_CREAR_USUARIO_URL}/${id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
