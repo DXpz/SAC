@@ -1106,9 +1106,14 @@ return response.json();
 
   async updateAgente(id: string, data: any): Promise<boolean> {
     try {
+      const token = this.getToken();
       const response = await fetch(`${API_CONFIG.WEBHOOK_AGENTES_URL}/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ estado: data.estado })
       });
 
@@ -1125,9 +1130,14 @@ return response.json();
 
   async deleteAgente(id: string): Promise<boolean> {
     try {
+      const token = this.getToken();
       const response = await fetch(`${API_CONFIG.WEBHOOK_AGENTES_URL}/${id}`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       });
 
       if (!response.ok) {
