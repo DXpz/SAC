@@ -337,7 +337,7 @@ try {
                              (result as any).country_user || (result as any).user_pais;
       
       return {
-        token: `token-${result.id}-${Date.now()}`, // Generar token local basado en el ID
+        token: result.token || `token-${result.id}-${Date.now()}`, // Preferir JWT real del backend
         user: {
           id: result.id,
           name: result.name,
