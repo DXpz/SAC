@@ -323,12 +323,7 @@ const AlertasCriticas: React.FC = () => {
 
   const casosVencen24h = criticos.filter(c => {
     const diasRestantes = c.diasRestantes ?? 0;
-    return !c.slaExpired && diasRestantes <= 0;
-  }).length;
-
-  const casosEscalados = criticos.filter(c => {
-    const diasRestantes = c.diasRestantes ?? 0;
-    return !c.slaExpired && diasRestantes > 0;
+    return !c.slaExpired && diasRestantes <= 1;
   }).length;
 
   // Filtrar casos según búsqueda y filtros
