@@ -181,22 +181,9 @@ const CaseDetail: React.FC = () => {
         return;
       }
       
-      if (showJustificationModal && isEstadoFinal && estadoFinalParams?.parametros) {
-        const params = estadoFinalParams.parametros || [];
-        setParametrosEstadoFinal(params);
-        
-        const initialValues: Record<string, any> = {};
-        params.forEach((param: any) => {
-          const key = param.nombre_parametro || param.id;
-          initialValues[key] = '';
-        });
-        setFormValues(initialValues);
-        setAnexosEstadoFinal('');
-      } else {
-        setParametrosEstadoFinal([]);
-        setFormValues({});
-        setAnexosEstadoFinal('');
-      }
+      setParametrosEstadoFinal([]);
+      setFormValues({});
+      setAnexosEstadoFinal('');
     };
     
     loadParametrosEstadoFinal();
@@ -887,25 +874,6 @@ const CaseDetail: React.FC = () => {
     
     // Si es estado final, pedir anexos/parámetros dinámicos y enviar al webhook de cierre
     if (isEstadoFinal) {
-      const parametrosSinAnexos = parametrosEstadoFinal.filter((p: any) => !isAnexoParam(p));
-      const formValuesSinAnexos = Object.fromEntries(
-        Object.entries(formValues).filter(([key]) => {
-          const param = parametrosEstadoFinal.find((p: any) => (p.nombre_parametro || p.id || '') === key);
-          return param ? !isAnexoParam(param) : true;
-        })
-      );
-
-      // Validar parámetros requeridos
-      for (const param of parametrosSinAnexos) {
-        if (param.requerido === true) {
-          const key = param.nombre_parametro || param.id || '';
-          if (!formValuesSinAnexos[key] && formValuesSinAnexos[key] !== false) {
-            setErrorMessage(`El campo "${param.etiqueta || param.nombre_parametro}" es obligatorio`);
-            return;
-          }
-        }
-      }
-      
       setErrorMessage('');
       
       const clienteId = caso?.clientId || caso?.clienteId || caso?.cliente?.CardCode || '';
@@ -916,7 +884,7 @@ const CaseDetail: React.FC = () => {
       
       let webhookResponse;
       try {
-        webhookResponse = await sendCaseCloseWebhook(caseId, clienteId, '', formValuesSinAnexos);
+        webhookResponse = await sendCaseCloseWebhook(caseId, clienteId, '', {});
       } catch (error) {
         setErrorMessage('Error de conexión. Intente nuevamente.');
         setTransitionLoading(false);
@@ -929,11 +897,7 @@ const CaseDetail: React.FC = () => {
         return;
       }
       
-      const paramsResumen = Object.entries(formValuesSinAnexos)
-        .filter(([, v]) => v !== '' && v !== undefined)
-        .map(([k, v]) => `${k}: ${v}`)
-        .join(', ');
-      const justificacionCierre = `Cierre de caso.${paramsResumen ? ` Parámetros adicionales: ${paramsResumen}.` : ''} Resolución completada.`;
+      const justificacionCierre = 'Cierre de caso. Resolución completada.';
       try {
         await handleStateChange(pendingNewState, justificacionCierre);
       } catch (err) {
@@ -2515,7 +2479,7 @@ const CaseDetail: React.FC = () => {
               ) : null}
 
               {/* Si es estado final, mostrar formulario especial */}
-              {isEstadoFinal && estadoFinalParams ? (
+              {isEstadoFinal ? (
                 <div className="space-y-4">
                   {/* Header compacto */}
                   <div className="flex items-center gap-2 pb-3 border-b" style={{
@@ -2524,128 +2488,16 @@ const CaseDetail: React.FC = () => {
                     <CheckCircle2 className="w-4 h-4" style={{color: '#107ab4'}} />
                     <div>
                       <p className="text-sm font-bold" style={{color: styles.text.primary}}>
-                        Formulario de {estadoFinalParams.nombre || 'Estado Final'}
+                        Finalización de caso
                       </p>
                       <p className="text-xs" style={{color: styles.text.tertiary}}>
-                        Complete los campos requeridos para continuar
+                        No requiere anexos ni parámetros adicionales
                       </p>
                     </div>
                   </div>
                   
-                  <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
-                    {/* Campo fijo de Anexos */}
-                    {/* Parámetros dinámicos del webhook, renderizados según tipo */}
-                    {parametrosEstadoFinal.filter((param: any) => !isAnexoParam(param)).map((param: any) => {
-                      const key = param.nombre_parametro || param.id || '';
-                      const label = param.etiqueta || param.label || param.nombre_parametro || key;
-                      const tipo = (param.tipo || param.type || 'texto').toLowerCase();
-                      const requerido = param.requerido === true;
-                      const placeholder = param.placeholder || '';
-                      const valor = formValues[key] ?? '';
-
-                      const inputBase = {
-                        backgroundColor: styles.input.backgroundColor,
-                        borderColor: styles.input.borderColor,
-                        color: styles.text.primary,
-                      };
-
-                      const handleChange = (val: any) =>
-                        setFormValues((prev) => ({ ...prev, [key]: val }));
-
-                      let inputEl: React.ReactNode;
-
-                      if (tipo === 'adjuntar_archivo' || tipo === 'file') {
-                        inputEl = (
-                          <textarea
-                            value={valor}
-                            onChange={(e) => {
-                              const value = e.target.value.replace(/[^0-9,]/g, '');
-                              handleChange(value);
-                            }}
-                            placeholder={placeholder || 'Ingrese los anexos separados por comas (solo números)'}
-                            className="w-full h-20 p-3 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs resize-none"
-                            style={inputBase}
-                          />
-                        );
-                      } else if (tipo === 'fecha' || tipo === 'date') {
-                        inputEl = (
-                          <input
-                            type="date"
-                            value={valor}
-                            onChange={(e) => handleChange(e.target.value)}
-                            className="w-full p-2.5 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs"
-                            style={inputBase}
-                          />
-                        );
-                      } else if (tipo === 'correo' || tipo === 'email') {
-                        inputEl = (
-                          <input
-                            type="email"
-                            value={valor}
-                            onChange={(e) => handleChange(e.target.value)}
-                            placeholder={placeholder || 'correo@ejemplo.com'}
-                            className="w-full p-2.5 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs"
-                            style={inputBase}
-                          />
-                        );
-                      } else if (tipo === 'telefono' || tipo === 'phone') {
-                        inputEl = (
-                          <input
-                            type="tel"
-                            value={valor}
-                            onChange={(e) => handleChange(e.target.value)}
-                            placeholder={placeholder || '+503 0000-0000'}
-                            className="w-full p-2.5 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs"
-                            style={inputBase}
-                          />
-                        );
-                      } else if (tipo === 'numero' || tipo === 'number') {
-                        inputEl = (
-                          <input
-                            type="number"
-                            value={valor}
-                            onChange={(e) => handleChange(e.target.value)}
-                            placeholder={placeholder || '0'}
-                            className="w-full p-2.5 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs"
-                            style={inputBase}
-                          />
-                        );
-                      } else if (tipo === 'checkbox') {
-                        inputEl = (
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={!!valor}
-                              onChange={(e) => handleChange(e.target.checked)}
-                              className="w-4 h-4 rounded"
-                            />
-                            <span className="text-xs" style={{color: styles.text.secondary}}>{label}</span>
-                          </div>
-                        );
-                      } else {
-                        inputEl = (
-                          <input
-                            type="text"
-                            value={valor}
-                            onChange={(e) => handleChange(e.target.value)}
-                            placeholder={placeholder}
-                            className="w-full p-2.5 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs"
-                            style={inputBase}
-                          />
-                        );
-                      }
-
-                      return (
-                        <div key={key}>
-                          {tipo !== 'checkbox' && (
-                            <label className="block text-xs font-bold mb-1.5" style={{color: styles.text.secondary}}>
-                              {label} {requerido && <span className="text-red-500">*</span>}
-                            </label>
-                          )}
-                          {inputEl}
-                        </div>
-                      );
-                    })}
+                  <div className="text-xs" style={{color: styles.text.tertiary}}>
+                    Finalización sin datos adicionales.
                   </div>
                   
                   {/* Mensaje de error */}
