@@ -48,6 +48,7 @@ const normalizeStatus = (status: string | CaseStatus | undefined): CaseStatus =>
 
 const AlertasCriticas: React.FC = () => {
   const [criticos, setCriticos] = useState<CaseWithPriority[]>([]);
+  const [casosAbiertosBase, setCasosAbiertosBase] = useState<CaseWithPriority[]>([]);
   const [loading, setLoading] = useState(true);
   const [dashboardMetrics, setDashboardMetrics] = useState<any>(null);
   const [clientes, setClientes] = useState<any[]>([]);
@@ -211,15 +212,25 @@ const AlertasCriticas: React.FC = () => {
     try {
       const clientesList = await sapService.getClientesListado(userCountry);
       setClientes(clientesList);
-      const [list, metricsData] = await Promise.all([
+      const [criticalList, allCasesData, metricsData] = await Promise.all([
         api.getCriticalCases(),
+        api.getCases(),
         api.getDashboardMetrics({ pais: userCountry || undefined, period: 'todos' })
       ]);
       setDashboardMetrics(metricsData);
       
-      const enriched = enrichCasesWithClients(list, clientesList);
+      const enriched = enrichCasesWithClients(criticalList, clientesList);
       const prioritized = prioritizeCases(enriched);
       setCriticos(prioritized);
+
+      const allCases = Array.isArray(allCasesData)
+        ? allCasesData.filter((caso: any) => {
+            const status = String(caso.status || caso.estado || '').trim();
+            return !['Cerrado', 'Resuelto', 'Finalizado'].includes(status);
+          })
+        : [];
+      const allEnriched = enrichCasesWithClients(allCases as any, clientesList);
+      setCasosAbiertosBase(prioritizeCases(allEnriched));
     } catch (error) {
     } finally {
       setLoading(false);
@@ -333,8 +344,10 @@ const AlertasCriticas: React.FC = () => {
     return !c.slaExpired && diasRestantes <= 1;
   }).length;
 
+  const baseCases = filterStatus === 'en-riesgo' ? casosAbiertosBase : criticos;
+
   // Filtrar casos según búsqueda y filtros
-  const casosFiltrados = criticos.filter(caso => {
+  const casosFiltrados = baseCases.filter(caso => {
     // Filtro de búsqueda
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
@@ -360,7 +373,7 @@ const AlertasCriticas: React.FC = () => {
       if (filterStatus === 'vencido') {
         if (!caso.slaExpired) return false;
       } else if (filterStatus === 'en-riesgo') {
-        if (caso.slaExpired || diasRestantes > 0) return false;
+        if (caso.slaExpired || diasRestantes > 1) return false;
       }
     }
     
@@ -368,7 +381,7 @@ const AlertasCriticas: React.FC = () => {
   });
 
   // Obtener estados únicos para el filtro
-  const estadosUnicos = Array.from(new Set(criticos.map(c => normalizeStatus(c.status))));
+  const estadosUnicos = Array.from(new Set(baseCases.map(c => normalizeStatus(c.status))));
 
   // Estilos dinámicos basados en el tema
   const styles = {
@@ -682,14 +695,14 @@ const AlertasCriticas: React.FC = () => {
               backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)',
               color: '#3b82f6'
             }}>
-              {casosFiltrados.length} de {criticos.length} casos
+               {casosFiltrados.length} de {baseCases.length} casos
             </div>
           </div>
         </div>
       </div>
 
       {/* Lista de Casos */}
-      {criticos.length > 0 ? (
+      {baseCases.length > 0 ? (
         casosFiltrados.length > 0 ? (
           viewMode === 'table' ? (
             <div 
