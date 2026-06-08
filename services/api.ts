@@ -581,6 +581,38 @@ export const api = {
     });
   },
 
+  async getDashboardMetrics(options?: { pais?: 'SV' | 'GT'; period?: 'todos' | 'hoy' | 'semana' | 'mes'; agentId?: string }): Promise<any> {
+    const user = this.getUser();
+    let paisValue = options?.pais || 'GT';
+
+    if (!options?.pais && user?.pais) {
+      const paisNormalizado = String(user.pais).trim().toUpperCase();
+      if (paisNormalizado === 'SV' || paisNormalizado.includes('SALVADOR')) {
+        paisValue = 'SV';
+      } else if (paisNormalizado === 'GT' || paisNormalizado.includes('GUATEMALA')) {
+        paisValue = 'GT';
+      }
+    }
+
+    const params = new URLSearchParams();
+    params.set('pais', paisValue);
+    params.set('period', options?.period || 'todos');
+    if (options?.agentId && options.agentId !== 'todos') {
+      params.set('agentId', options.agentId);
+    }
+
+    const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/metrics?${params.toString()}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al obtener métricas del dashboard');
+    }
+
+    return response.json();
+  },
+
   async getCasoById(id: string): Promise<Case | undefined> {
     // Intentar obtener caso usando el nuevo caseService
     try {
@@ -657,42 +689,8 @@ export const api = {
   },
 
   async getKPIs(): Promise<KPI> {
-    const cases = await this.getCases();
-    
-    // Calcular SLA Compliance basado en casos reales
-    const casosConSLA = cases.filter(c => {
-      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-      return c.diasAbierto !== undefined && slaDias > 0;
-    });
-    
-    const casosCumplenSLA = casosConSLA.filter(c => {
-      return !(c.slaExpired || false);
-    });
-    
-    // Si no hay casos con SLA, no puede ser 100%, debe ser null o 0
-    const slaCompliance = casosConSLA.length > 0 
-      ? Math.round((casosCumplenSLA.length / casosConSLA.length) * 100)
-      : null;
-    
-    // Calcular CSAT promedio si está disponible en los casos
-    const casosConCSAT = cases.filter(c => {
-      const csat = (c as any).csat_rating || (c as any).csatRating || (c as any).csat;
-      return csat && !isNaN(parseFloat(csat)) && parseFloat(csat) > 0;
-    });
-    
-    // Si no hay datos de CSAT, retornar null en lugar de un valor mock
-    const csatScore = casosConCSAT.length > 0
-      ? casosConCSAT.reduce((sum, c) => {
-          const csat = parseFloat((c as any).csat_rating || (c as any).csatRating || (c as any).csat || '0');
-          return sum + csat;
-        }, 0) / casosConCSAT.length
-      : null; // No usar fallback, retornar null si no hay datos
-    
-    return {
-      totalCases: cases.length,
-      slaCompliance,
-      csatScore: Math.round(csatScore * 10) / 10 // Redondear a 1 decimal
-    };
+    const metrics = await this.getDashboardMetrics();
+    return metrics.kpis;
   },
 
   async validateSession(): Promise<boolean> {

@@ -15,6 +15,7 @@ type FilterType = 'todos' | 'criticos' | 'vencidos' | string;
 const SupervisorPanel: React.FC = () => {
   const [casos, setCasos] = useState<Caso[]>([]);
   const [criticalCases, setCriticalCases] = useState<Caso[]>([]);
+  const [dashboardMetrics, setDashboardMetrics] = useState<any>(null);
   const [agentes, setAgentes] = useState<Agente[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,7 +40,7 @@ const SupervisorPanel: React.FC = () => {
     if (supervisorCountry !== null) {
       loadData();
     }
-  }, [location.pathname, supervisorCountry]);
+  }, [location.pathname, supervisorCountry, periodFilter, agentFilter]);
 
   const loadClientes = async () => {
     try {
@@ -172,9 +173,10 @@ const SupervisorPanel: React.FC = () => {
     setLoading(true);
     try {
       const supervisorCountry = await getSupervisorCountry();
-      const [casosData, criticalCasesData, agentesData, clientesList] = await Promise.all([
+      const [casosData, criticalCasesData, metricsData, agentesData, clientesList] = await Promise.all([
         api.getCases(),
         api.getCriticalCases(),
+        api.getDashboardMetrics({ pais: supervisorCountry || undefined, period: periodFilter, agentId: agentFilter }),
         api.getAgentes(supervisorCountry),
         loadClientes()
       ]);
@@ -182,6 +184,7 @@ const SupervisorPanel: React.FC = () => {
       const criticalEnriched = enrichCasesWithClients(criticalCasesData, clientesList);
       setCasos(enriched);
       setCriticalCases(criticalEnriched);
+      setDashboardMetrics(metricsData);
       // Filtrar agentes que tengan idAgente válido
       let agentesValidos = Array.isArray(agentesData) 
         ? agentesData.filter(a => a && (a.idAgente || a.id_agente || a.id))
@@ -318,23 +321,21 @@ const SupervisorPanel: React.FC = () => {
     });
   }, [casosAbiertos]);
 
-  const slaPromedio = useMemo(() => {
-    return casosAbiertos.length > 0
-      ? Math.round((casosDentroSLA.length / casosAbiertos.length) * 100)
-      : null;
-  }, [casosAbiertos.length, casosDentroSLA.length]);
+  const metricsSummary = dashboardMetrics?.summary || {};
+  const metricsKpis = dashboardMetrics?.kpis || {};
+  const slaPromedio = metricsKpis.slaCompliance ?? null;
 
   // Para métricas: casos abiertos = casosFiltrados sin cerrados
   const casosAbiertosFiltrados = casosAbiertos;
 
   // Memorizar valores de longitud para evitar recálculos durante hover
-  const casosAbiertosCount = useMemo(() => casosAbiertosFiltrados.length, [casosAbiertosFiltrados.length]);
-  const casosVencidosCount = useMemo(() => casosVencidos.length, [casosVencidos.length]);
-  const casosCriticosCount = useMemo(() => casosCriticos.length, [casosCriticos.length]);
-  const casosTotalesCount = useMemo(() => casos.length, [casos.length]);
+  const casosAbiertosCount = metricsSummary.casosAbiertos ?? casosAbiertosFiltrados.length;
+  const casosVencidosCount = metricsSummary.casosVencidos ?? casosVencidos.length;
+  const casosCriticosCount = metricsSummary.casosCriticos ?? casosCriticos.length;
+  const casosTotalesCount = metricsSummary.totalCasos ?? casos.length;
 
-  const agentesActivos = useMemo(() => agentes.filter(a => a.estado?.toUpperCase() === 'ACTIVO').length, [agentes]);
-  const totalAgentes = useMemo(() => agentes.length, [agentes.length]);
+  const agentesActivos = metricsSummary.agentesActivos ?? agentes.filter(a => a.estado?.toUpperCase() === 'ACTIVO').length;
+  const totalAgentes = metricsSummary.totalAgentes ?? agentes.length;
 
   const casosCriticosOrdenados = useMemo(() => {
     return [...casosCriticos].sort((a, b) => {

@@ -13,6 +13,7 @@ type PeriodFilter = 'hoy' | 'semana' | 'mes';
 const GerenteDashboard: React.FC = () => {
   const [casos, setCasos] = useState<Case[]>([]);
   const [criticalCases, setCriticalCases] = useState<Case[]>([]);
+  const [dashboardMetrics, setDashboardMetrics] = useState<any>(null);
   const [kpis, setKpis] = useState<KPI>({ totalCases: 0, slaCompliance: 0, csatScore: 0 });
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('hoy');
   const [loading, setLoading] = useState(true);
@@ -166,7 +167,7 @@ const GerenteDashboard: React.FC = () => {
       console.log('[GerenteDashboard] calling loadData');
       loadData();
     }
-  }, [location.pathname, gerenteCountryDetected, gerenteCountry]);
+  }, [location.pathname, gerenteCountryDetected, gerenteCountry, periodFilter]);
 
   const loadClientes = async () => {
     console.log('[GerenteDashboard] loadClientes started, pais:', gerenteCountry);
@@ -198,9 +199,10 @@ const GerenteDashboard: React.FC = () => {
       console.log('[GerenteDashboard] loadData started, gerenteCountry:', gerenteCountry);
       
       console.log('[GerenteDashboard] calling api.getCases...');
-      const [casosData, criticalCasesData] = await Promise.all([
+      const [casosData, criticalCasesData, metricsData] = await Promise.all([
         api.getCases(true),
-        api.getCriticalCases()
+        api.getCriticalCases(),
+        api.getDashboardMetrics({ pais: gerenteCountry || undefined, period: periodFilter })
       ]);
       console.log('[GerenteDashboard] api.getCases returned:', casosData.length, 'cases');
       
@@ -235,6 +237,7 @@ const GerenteDashboard: React.FC = () => {
       
       setCasos(enriched);
       setCriticalCases(criticalEnriched);
+      setDashboardMetrics(metricsData);
       console.log('[GerenteDashboard] setCasos called with:', enriched.length, 'cases');
       
       // Cargar estados dinámicamente (TODOS, incluyendo finales)
@@ -254,6 +257,7 @@ const GerenteDashboard: React.FC = () => {
       if (casos.length === 0) {
         setCasos([]);
         setCriticalCases([]);
+        setDashboardMetrics(null);
       }
     } finally {
       setLoading(false);
@@ -315,58 +319,15 @@ const GerenteDashboard: React.FC = () => {
     return casosFiltradosPorPais.filter(c => new Date(c.createdAt) >= startDate);
   }, [casosFiltradosPorPais, periodFilter]);
 
-  // Calcular KPIs basados en casos filtrados por país
-  const kpisFiltrados = useMemo(() => {
-    const casosParaKPIs = filteredCasos;
-    
-    // Calcular SLA Compliance basado en casos filtrados por país
-    const casosConSLA = casosParaKPIs.filter(c => {
-      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-      return c.diasAbierto !== undefined && slaDias > 0;
-    });
-    
-    const casosCumplenSLA = casosConSLA.filter(c => {
-      return !(c.slaExpired || false);
-    });
-    
-    // Si no hay casos con SLA, no puede ser 100%, debe ser null o 0
-    const slaCompliance = casosConSLA.length > 0 
-      ? Math.round((casosCumplenSLA.length / casosConSLA.length) * 100)
-      : null;
-    
-    // Calcular CSAT promedio si está disponible en los casos filtrados
-    const casosConCSAT = casosParaKPIs.filter(c => {
-      const csat = (c as any).csat_rating || (c as any).csatRating || (c as any).csat;
-      return csat && !isNaN(parseFloat(csat)) && parseFloat(csat) > 0;
-    });
-    
-    // Si no hay datos de CSAT, retornar null
-    const csatScore = casosConCSAT.length > 0
-      ? casosConCSAT.reduce((sum, c) => {
-          const csat = parseFloat((c as any).csat_rating || (c as any).csatRating || (c as any).csat || '0');
-          return sum + csat;
-        }, 0) / casosConCSAT.length
-      : null;
-    
-    return {
-      totalCases: casosParaKPIs.length,
-      slaCompliance,
-      csatScore: csatScore !== null ? Math.round(csatScore * 10) / 10 : null // Redondear a 1 decimal
-    };
-  }, [filteredCasos]);
+  const metricsSummary = dashboardMetrics?.summary || {};
+  const metricsCharts = dashboardMetrics?.charts || {};
+  const kpisFiltrados = dashboardMetrics?.kpis || { totalCases: 0, slaCompliance: null, csatScore: null };
 
   // DEBUG: Usar 'casos' directamente sin filtro de país para verificar que los datos llegan
   const debugCasosCount = casos.length;
 
-  // Calcular métricas basadas en casos (sin filtro de país)
-  const abiertos = casos.filter(c => {
-    const normalizedStatus = normalizeStatus(c.status);
-    return normalizedStatus !== CaseStatus.CERRADO && normalizedStatus !== CaseStatus.RESUELTO;
-  }).length;
-  const vencidos = casosCriticos.filter(c => {
-    const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-    return c.diasAbierto >= slaDias;
-  }).length;
+  const abiertos = metricsSummary.casosAbiertos ?? 0;
+  const vencidos = metricsSummary.casosVencidos ?? 0;
   const escalados = casosCriticos.filter(c => normalizeStatus(c.status) === CaseStatus.ESCALADO).length;
   
   // Calcular variaciones reales comparando con períodos anteriores
@@ -456,7 +417,7 @@ const GerenteDashboard: React.FC = () => {
   
   // Calcular variación del total histórico basado en casos filtrados
   const historicoVar = {
-    value: `${filteredCasos.length} en ${periodFilter === 'hoy' ? 'hoy' : periodFilter === 'semana' ? 'esta semana' : 'este mes'}`,
+    value: `${kpisFiltrados.totalCases || 0} en ${periodFilter === 'hoy' ? 'hoy' : periodFilter === 'semana' ? 'esta semana' : 'este mes'}`,
     percent: null,
     isPositive: true,
     isNegative: false
@@ -465,6 +426,12 @@ const GerenteDashboard: React.FC = () => {
   // Distribución DINÁMICA basada en los estados REALES de los casos
   // NOTA: Para debug, usamos 'casos' directamente. Si funciona, el problema está en el filtro de gerenteCountry
   const chartData = useMemo(() => {
+    if (metricsCharts.casosPorEstado) {
+      return Object.entries(metricsCharts.casosPorEstado)
+        .filter(([, value]) => Number(value) > 0)
+        .map(([name, value]) => ({ name, value: Number(value) }));
+    }
+
     // Contar casos por estado real (usando estado del caso, no labels hardcodeados)
     const estadoCounts: Record<string, number> = {};
     
@@ -488,10 +455,10 @@ const GerenteDashboard: React.FC = () => {
       name: name,
       value: estadoCounts[name]
     }));
-  }, [casos, gerenteCountry]);
+  }, [casos, gerenteCountry, metricsCharts.casosPorEstado]);
 
   // El total debe ser TODOS los casos (sin filtro de país para debug)
-  const totalCasos = casos.length;
+  const totalCasos = kpisFiltrados.totalCases || 0;
 
   const chartDataWithPercent = useMemo(() => chartData.map(item => ({
     ...item,

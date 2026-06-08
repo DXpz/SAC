@@ -27,6 +27,7 @@ import LoadingScreen from '../components/LoadingScreen';
 const AdminPanel: React.FC = () => {
   const [allCasos, setAllCasos] = useState<Caso[]>([]);
   const [criticalCases, setCriticalCases] = useState<Caso[]>([]);
+  const [dashboardMetrics, setDashboardMetrics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [agentes, setAgentes] = useState<Agente[]>([]);
@@ -77,14 +78,14 @@ const AdminPanel: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [clientesList, casosList, criticalCasesList, agentesList, categoriasList, usuariosList, kpisData, estadosList] = await Promise.allSettled([
+      const [clientesList, casosList, criticalCasesList, metricsData, agentesList, categoriasList, usuariosList, estadosList] = await Promise.allSettled([
         loadClientes(),
         api.getCases(),
         api.getCriticalCases(),
+        api.getDashboardMetrics({ pais: userCountry || undefined, period: 'todos' }),
         api.getAgentes(userCountry || undefined),
         api.readCategories(), // Usar readCategories para obtener las categorías creadas en Settings
         api.getUsuarios(),
-        api.getKPIs(),
         api.readEstados()
       ]);
       
@@ -99,7 +100,9 @@ const AdminPanel: React.FC = () => {
       }
       
       setUsuarios(usuariosList.status === 'fulfilled' ? usuariosList.value : []);
-      setKpis(kpisData.status === 'fulfilled' ? kpisData.value : null);
+      const metrics = metricsData.status === 'fulfilled' ? metricsData.value : null;
+      setDashboardMetrics(metrics);
+      setKpis(metrics?.kpis || null);
       
       // Cargar estados del webhook
       if (estadosList.status === 'fulfilled' && estadosList.value && Array.isArray(estadosList.value) && estadosList.value.length > 0) {
@@ -126,6 +129,7 @@ const AdminPanel: React.FC = () => {
       setCategorias([]);
       setUsuarios([]);
       setKpis(null);
+      setDashboardMetrics(null);
       setEstados([]);
       setAllCasos([]);
       setCriticalCases([]);
@@ -150,7 +154,10 @@ const AdminPanel: React.FC = () => {
 
   // Métricas adicionales desde los endpoints (con validaciones y normalización)
   const casosSeguros = Array.isArray(allCasos) ? allCasos : [];
-  const totalCasos = casosSeguros.length;
+  const metricsSummary = dashboardMetrics?.summary || {};
+  const metricsCharts = dashboardMetrics?.charts || {};
+  const metricsAgents = dashboardMetrics?.agents || {};
+  const totalCasos = metricsSummary.totalCasos ?? casosSeguros.length;
   
   // Función helper para obtener el estado del caso desde la lista de estados del webhook
   const getEstadoFromWebhook = (casoStatus: string) => {
@@ -203,24 +210,27 @@ const AdminPanel: React.FC = () => {
   };
   
   // Usar estados finales del webhook para determinar casos cerrados
-  const casosCerrados = casosSeguros.filter(c => {
+  const casosCerradosLocal = casosSeguros.filter(c => {
     if (!c) return false;
     const casoStatus = String(c.status || (c as any).estado || '').trim();
     return isEstadoFinal(casoStatus);
   }).length;
   
-  const casosAbiertos = casosSeguros.filter(c => {
+  const casosCerrados = metricsSummary.casosCerrados ?? casosCerradosLocal;
+
+  const casosAbiertosLocal = casosSeguros.filter(c => {
     if (!c) return false;
     const casoStatus = String(c.status || (c as any).estado || '').trim();
     return !isEstadoFinal(casoStatus);
   }).length;
   
+  const casosAbiertos = metricsSummary.casosAbiertos ?? casosAbiertosLocal;
   const criticalCasesSeguros = Array.isArray(criticalCases) ? criticalCases : [];
 
   // Backend autoritativo: misma fuente que Supervisor y Alertas Críticas
-  const casosCriticos = criticalCasesSeguros.length;
+  const casosCriticos = metricsSummary.casosCriticos ?? criticalCasesSeguros.length;
 
-  const casosVencidos = criticalCasesSeguros.filter(c => {
+  const casosVencidosLocal = criticalCasesSeguros.filter(c => {
     if (!c) return false;
     const normalizedStatus = normalizeStatus(c.status);
     if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
@@ -228,9 +238,11 @@ const AdminPanel: React.FC = () => {
     }
     return (c as any).slaExpired === true;
   }).length;
+  const casosVencidos = metricsSummary.casosVencidos ?? casosVencidosLocal;
   
   // Calcular casos por estado usando los estados dinámicos del webhook
   const casosPorEstado = useMemo(() => {
+    if (metricsCharts.casosPorEstado) return metricsCharts.casosPorEstado;
     if (!estados || estados.length === 0) {
       // Fallback a estados hardcodeados si no hay estados del webhook
       return {
@@ -306,7 +318,7 @@ const AdminPanel: React.FC = () => {
     });
     
     return estadoCounts;
-  }, [casosSeguros, estados]);
+  }, [casosSeguros, estados, metricsCharts.casosPorEstado]);
 
   const usuariosSeguros = Array.isArray(usuarios) ? usuarios : [];
   
@@ -324,8 +336,8 @@ const AdminPanel: React.FC = () => {
     });
   }, [usuariosSeguros, userCountry]);
   
-  const totalUsuarios = usuariosFiltradosPorPais.length;
-  const usuariosPorRol = {
+  const totalUsuarios = metricsSummary.totalUsuarios ?? usuariosFiltradosPorPais.length;
+  const usuariosPorRol = metricsCharts.usuariosPorRol || {
     admin: usuariosFiltradosPorPais.filter((u: any) => {
       if (!u) return false;
       const rol = u.rol || u.role || '';
@@ -394,23 +406,25 @@ const AdminPanel: React.FC = () => {
     });
   }, [agentesSeguros, userCountry]);
   
-  const totalAgentes = agentesFiltradosPorPais.length;
-  const agentesActivos = agentesFiltradosPorPais.filter(a => {
+  const totalAgentes = metricsSummary.totalAgentes ?? agentesFiltradosPorPais.length;
+  const agentesActivosLocal = agentesFiltradosPorPais.filter(a => {
       const estado = (a.estado || '').toString().toUpperCase();
       return estado === 'ACTIVO';
     }).length;
-  const agentesInactivos = agentesFiltradosPorPais.filter(a => {
+  const agentesActivos = metricsSummary.agentesActivos ?? agentesActivosLocal;
+  const agentesInactivosLocal = agentesFiltradosPorPais.filter(a => {
       const estado = (a.estado || '').toString().toUpperCase();
       return estado !== 'ACTIVO';
     }).length;
+  const agentesInactivos = metricsSummary.agentesInactivos ?? agentesInactivosLocal;
 
   const clientesSeguros = Array.isArray(clientes) ? clientes : [];
   
-  const totalClientes = clientesSeguros.length;
+  const totalClientes = metricsSummary.totalClientes ?? clientesSeguros.length;
   const clientesActivos = clientesSeguros.filter(c => c && (c.estado === 'Activo' || c.estado === 'ACTIVO')).length;
 
   const categoriasSeguras = Array.isArray(categorias) ? categorias : [];
-  const totalCategorias = categoriasSeguras.length;
+  const totalCategorias = metricsSummary.totalCategorias ?? categoriasSeguras.length;
 
   // Datos para gráficas - usar estados dinámicos del webhook
   const casosPorEstadoChart = useMemo(() => {
@@ -445,7 +459,7 @@ const AdminPanel: React.FC = () => {
     
     return estadosOrdenados.map((estado, index) => ({
       name: estado.name,
-      value: casosPorEstado[estado.id] || 0,
+      value: casosPorEstado[estado.name] || casosPorEstado[estado.id] || 0,
       color: colors[index % colors.length]
     })).filter(item => item.value > 0 || estados.length <= 10); // Solo mostrar estados con casos o si hay pocos estados
   }, [casosPorEstado, estados]);
@@ -464,6 +478,15 @@ const AdminPanel: React.FC = () => {
 
   const casosPorCategoriaChart = useMemo(() => {
     try {
+      if (Array.isArray(metricsCharts.casosPorCategoria)) {
+        const colors = ['#3b82f6', '#8b5cf6', '#22c55e', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#6366f1'];
+        return metricsCharts.casosPorCategoria.map((item: any, index: number) => ({
+          name: String(item.name || 'Sin categoría').length > 15 ? String(item.name || 'Sin categoría').substring(0, 15) + '...' : String(item.name || 'Sin categoría'),
+          value: item.value || 0,
+          color: colors[index % colors.length]
+        })).sort((a: any, b: any) => b.value - a.value).slice(0, 8);
+      }
+
       if (!categorias || categorias.length === 0) {
         const categoriaCounts: Record<string, number> = {};
         casosSeguros.forEach((caso: any) => {
@@ -530,7 +553,7 @@ const AdminPanel: React.FC = () => {
     } catch (error) {
       return [];
     }
-  }, [casosSeguros, categorias]);
+  }, [casosSeguros, categorias, metricsCharts.casosPorCategoria]);
 
   // Fechas para cálculos de períodos
   const { inicioHoy, inicioSemana, inicioMes, inicioHoyAnterior, finHoyAnterior, inicioSemanaAnterior, finSemanaAnterior, inicioMesAnterior, finMesAnterior } = useMemo(() => {
@@ -575,7 +598,7 @@ const AdminPanel: React.FC = () => {
   }, []); // Solo calcular una vez al montar el componente
   
   // Métricas adicionales para administrador
-  const casosSinAsignar = useMemo(() => {
+  const casosSinAsignarLocal = useMemo(() => {
     return casosSeguros.filter(c => {
       if (!c) return false;
       const casoStatus = String(c.status || (c as any).estado || '').trim();
@@ -587,6 +610,7 @@ const AdminPanel: React.FC = () => {
       return !agenteId && !agenteNombre;
     }).length;
   }, [casosSeguros, estados]);
+  const casosSinAsignar = metricsSummary.casosSinAsignar ?? casosSinAsignarLocal;
   
   // Casos nuevos en diferentes períodos
   
@@ -675,7 +699,7 @@ const AdminPanel: React.FC = () => {
     return isEstadoFinal(casoStatus);
   });
   
-  const tiempoPromedioResolucion = useMemo(() => {
+  const tiempoPromedioResolucionLocal = useMemo(() => {
     if (casosResueltos.length === 0) return 0;
     const tiempos = casosResueltos.map(c => {
       if (!c) return null;
@@ -721,9 +745,10 @@ const AdminPanel: React.FC = () => {
     
     return tiempos.length > 0 ? Math.round(tiempos.reduce((a, b) => a + b, 0) / tiempos.length) : 0;
   }, [casosResueltos, estados]);
+  const tiempoPromedioResolucion = metricsSummary.tiempoPromedioResolucion ?? tiempoPromedioResolucionLocal;
   
   // Tasa de resolución (casos cerrados / total casos)
-  const tasaResolucion = totalCasos > 0 ? Math.round((casosCerrados / totalCasos) * 100) : 0;
+  const tasaResolucion = metricsSummary.tasaResolucion ?? (totalCasos > 0 ? Math.round((casosCerrados / totalCasos) * 100) : 0);
 
   // Tiempo promedio de resolución del mes anterior
   const tiempoPromedioResolucionAnterior = useMemo(() => {
@@ -868,7 +893,7 @@ const AdminPanel: React.FC = () => {
     : 0;
   
   // Top agentes por casos resueltos
-  const topAgentes = useMemo(() => {
+  const topAgentesLocal = useMemo(() => {
     const agenteStats: Record<string, { nombre: string; casosResueltos: number; casosAsignados: number; tiempoPromedio: number }> = {};
     
     casosSeguros.forEach(caso => {
@@ -916,9 +941,10 @@ const AdminPanel: React.FC = () => {
       })
       .slice(0, 5);
   }, [casosSeguros, estados, agentesSeguros]);
+  const topAgentes = Array.isArray(metricsAgents.topAgentes) ? metricsAgents.topAgentes : topAgentesLocal;
   
   // Agentes sobrecargados (más de 10 casos asignados)
-  const agentesSobrecargados = useMemo(() => {
+  const agentesSobrecargadosLocal = useMemo(() => {
     const agenteCarga: Record<string, { nombre: string; casos: number }> = {};
     
     casosSeguros.forEach(caso => {
@@ -951,6 +977,7 @@ const AdminPanel: React.FC = () => {
       .filter(a => a.casos > 10)
       .sort((a, b) => b.casos - a.casos);
   }, [casosSeguros, estados, agentesSeguros]);
+  const agentesSobrecargados = Array.isArray(metricsAgents.agentesSobrecargados) ? metricsAgents.agentesSobrecargados : agentesSobrecargadosLocal;
   
   // Nuevos clientes (creados en el último mes)
   const nuevosClientes = useMemo(() => {
