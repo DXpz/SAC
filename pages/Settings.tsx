@@ -1424,8 +1424,9 @@ const [showUserModal, setShowUserModal] = useState(false);
   const handleDeleteUser = async (id: string) => {
     if (window.confirm('¿Está seguro de que desea eliminar este usuario?')) {
       try {
-        await api.deleteAgente(id);
+        await api.deleteUser(id);
         setSettingsUsers(settingsUsers.filter(u => u.id !== id));
+        setToast({ message: 'Usuario eliminado correctamente', type: 'success' });
       } catch (error: any) {
         alert(error.message || 'Error al eliminar el usuario');
       }
