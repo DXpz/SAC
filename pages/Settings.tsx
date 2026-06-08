@@ -2097,6 +2097,24 @@ const [showUserModal, setShowUserModal] = useState(false);
   ];
 
   return (
+    <>
+    {successDelete && (
+      <div
+        className="fixed top-4 right-4 z-[9999] px-6 py-4 text-white text-sm font-semibold rounded-lg flex items-center gap-3 shadow-2xl"
+        style={{
+          backgroundColor: '#22c55e',
+          animation: 'slideInRight 0.3s ease-out'
+        }}
+      >
+        <div className="w-8 h-8 rounded-full bg-white bg-opacity-20 flex items-center justify-center">
+          <Check className="w-5 h-5" />
+        </div>
+        <div>
+          <div className="font-bold">{successDelete.message}</div>
+          <div className="text-xs opacity-90">{successDelete.subtitle}</div>
+        </div>
+      </div>
+    )}
     <div className="flex flex-col h-full" style={{ overflow: 'hidden', ...styles.container }}>
       {/* Header con título */}
       <div className="flex-shrink-0 mb-6">
@@ -2858,17 +2876,6 @@ const [showUserModal, setShowUserModal] = useState(false);
                     <AlertCircle className="w-4 h-4" />
                     {errorMessage}
                     <button onClick={() => setErrorMessage(null)} className="ml-2 hover:opacity-80">×</button>
-                  </div>
-                )}
-                {successDelete && (
-                  <div className="fixed top-4 right-4 z-50 px-6 py-4 text-white text-sm font-semibold rounded-lg flex items-center gap-3 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-300" style={{ backgroundColor: '#22c55e' }}>
-                    <div className="w-8 h-8 rounded-full bg-white bg-opacity-20 flex items-center justify-center">
-                      <Check className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="font-bold">{successDelete.message}</div>
-                      <div className="text-xs opacity-90">{successDelete.subtitle}</div>
-                    </div>
                   </div>
                 )}
             </div>
@@ -6324,8 +6331,20 @@ const [showUserModal, setShowUserModal] = useState(false);
             transform: translateY(0);
           }
         }
+
+        @keyframes slideInRight {
+          from {
+            opacity: 0;
+            transform: translateX(100px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
       `}</style>
     </div>
+    </>
   );
 };
 
