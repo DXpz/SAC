@@ -26,6 +26,7 @@ import LoadingScreen from '../components/LoadingScreen';
 
 const AdminPanel: React.FC = () => {
   const [allCasos, setAllCasos] = useState<Caso[]>([]);
+  const [criticalCases, setCriticalCases] = useState<Caso[]>([]);
   const [loading, setLoading] = useState(true);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [agentes, setAgentes] = useState<Agente[]>([]);
@@ -76,9 +77,10 @@ const AdminPanel: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [clientesList, casosList, agentesList, categoriasList, usuariosList, kpisData, estadosList] = await Promise.allSettled([
+      const [clientesList, casosList, criticalCasesList, agentesList, categoriasList, usuariosList, kpisData, estadosList] = await Promise.allSettled([
         loadClientes(),
         api.getCases(),
+        api.getCriticalCases(),
         api.getAgentes(userCountry || undefined),
         api.readCategories(), // Usar readCategories para obtener las categorías creadas en Settings
         api.getUsuarios(),
@@ -111,9 +113,12 @@ const AdminPanel: React.FC = () => {
       }
       
       const casosData = casosList.status === 'fulfilled' ? casosList.value : [];
+      const criticalCasesData = criticalCasesList.status === 'fulfilled' ? criticalCasesList.value : [];
       const clientesData = clientesList.status === 'fulfilled' ? clientesList.value : [];
       const enriched = enrichCasesWithClients(casosData, clientesData);
+      const criticalEnriched = enrichCasesWithClients(criticalCasesData, clientesData);
       setAllCasos(enriched);
+      setCriticalCases(criticalEnriched);
     } catch (error) {
       // Asegurar que al menos tenemos arrays vacíos
       setClientes([]);
@@ -123,6 +128,7 @@ const AdminPanel: React.FC = () => {
       setKpis(null);
       setEstados([]);
       setAllCasos([]);
+      setCriticalCases([]);
     } finally {
       setLoading(false);
     }
@@ -209,19 +215,12 @@ const AdminPanel: React.FC = () => {
     return !isEstadoFinal(casoStatus);
   }).length;
   
-  // Calcular casos críticos usando la misma lógica que AlertasCriticas
-const casosCriticos = casosSeguros.filter(c => {
-      if (!c) return false;
-      const normalizedStatus = normalizeStatus(c.status);
-      if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
-        return false;
-      }
-      const slaExpired = (c as any).slaExpired === true;
-      const diasRestantes = (c as any).diasRestantes ?? 0;
-      return slaExpired || diasRestantes <= 0;
-    }).length;
+  const criticalCasesSeguros = Array.isArray(criticalCases) ? criticalCases : [];
 
-  const casosVencidos = casosSeguros.filter(c => {
+  // Backend autoritativo: misma fuente que Supervisor y Alertas Críticas
+  const casosCriticos = criticalCasesSeguros.length;
+
+  const casosVencidos = criticalCasesSeguros.filter(c => {
     if (!c) return false;
     const normalizedStatus = normalizeStatus(c.status);
     if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {

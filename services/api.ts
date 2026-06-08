@@ -1170,28 +1170,9 @@ return response.json();
     window.location.href = '#/login';
   },
 
-  // Recuperación de contraseña con webhook (escenario: reset_password)
+  // Recuperación de contraseña: solicita el código vía /api/auth/forgot_password.
   async requestPasswordReset(email: string): Promise<boolean> {
-    // Intentar usar emailService primero (para desarrollo/testing)
-    try {
-      const result = emailService.sendPasswordResetCode(email, false);
-      // También intentar enviar al webhook si está disponible
-      try {
-        await callWebhook('reset_password', { 
-          email,
-          action: 'request_reset' 
-        });
-      } catch (webhookErr) {
-      }
-      return true;
-    } catch (err) {
-    }
-    
-    // Fallback: solo webhook
-    const data = await callWebhook('reset_password', { 
-      email,
-      action: 'request_reset' 
-    });
+    const data = await callWebhook('forgot_password', { email });
     
     // El webhook puede retornar: { success: boolean, message?: string }
     if (data.success === false) {

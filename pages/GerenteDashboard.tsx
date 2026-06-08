@@ -12,6 +12,7 @@ type PeriodFilter = 'hoy' | 'semana' | 'mes';
 
 const GerenteDashboard: React.FC = () => {
   const [casos, setCasos] = useState<Case[]>([]);
+  const [criticalCases, setCriticalCases] = useState<Case[]>([]);
   const [kpis, setKpis] = useState<KPI>({ totalCases: 0, slaCompliance: 0, csatScore: 0 });
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('hoy');
   const [loading, setLoading] = useState(true);
@@ -197,7 +198,10 @@ const GerenteDashboard: React.FC = () => {
       console.log('[GerenteDashboard] loadData started, gerenteCountry:', gerenteCountry);
       
       console.log('[GerenteDashboard] calling api.getCases...');
-      const casosData = await api.getCases(true);
+      const [casosData, criticalCasesData] = await Promise.all([
+        api.getCases(true),
+        api.getCriticalCases()
+      ]);
       console.log('[GerenteDashboard] api.getCases returned:', casosData.length, 'cases');
       
       console.log('[GerenteDashboard] calling loadClientes...');
@@ -227,8 +231,10 @@ const GerenteDashboard: React.FC = () => {
       
       // Enriquecer casos con datos de clientes (igual que en otras pantallas)
       const enriched = enrichCasesWithClients(casosValidos, clientesList);
+      const criticalEnriched = enrichCasesWithClients(criticalCasesData.filter(c => c && c.id), clientesList);
       
       setCasos(enriched);
+      setCriticalCases(criticalEnriched);
       console.log('[GerenteDashboard] setCasos called with:', enriched.length, 'cases');
       
       // Cargar estados dinámicamente (TODOS, incluyendo finales)
@@ -247,6 +253,7 @@ const GerenteDashboard: React.FC = () => {
       // En caso de error, mantener los casos anteriores o establecer array vacío
       if (casos.length === 0) {
         setCasos([]);
+        setCriticalCases([]);
       }
     } finally {
       setLoading(false);
@@ -287,29 +294,10 @@ const GerenteDashboard: React.FC = () => {
     return casosFiltrados;
   }, [casos, gerenteCountry]);
 
-  // Filtrar casos críticos usando la misma lógica que Alertas Críticas (basado en casos filtrados por país)
+  // Backend autoritativo: misma fuente que Admin, Supervisor y Alertas Críticas
   const casosCriticos = useMemo(() => {
-    return casosFiltradosPorPais.filter(c => {
-      // Excluir casos resueltos o cerrados
-      const normalizedStatus = normalizeStatus(c.status);
-      if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
-        return false;
-      }
-      
-      const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-      const diasAbierto = c.diasAbierto || 0;
-      
-      // Caso crítico si:
-      // 1. Los días abiertos son >= al SLA (vencido)
-      // 2. Está escalado
-      // 3. Le queda 1 día o menos para vencer (en riesgo)
-      const isVencido = diasAbierto >= slaDias;
-      const isEscalado = normalizedStatus === CaseStatus.ESCALADO;
-      const isEnRiesgo = (slaDias - diasAbierto <= 1) && diasAbierto > 0 && diasAbierto < slaDias;
-      
-      return isVencido || isEscalado || isEnRiesgo;
-});
-  }, [casosFiltradosPorPais]);
+    return criticalCases;
+  }, [criticalCases]);
 
   // Aplicar filtro de fecha a casosFiltradosPorPais
   const filteredCasos = useMemo(() => {
