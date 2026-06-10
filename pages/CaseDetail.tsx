@@ -612,8 +612,14 @@ const CaseDetail: React.FC = () => {
   // Validar si el caso está cerrado
   const isCaseClosed = caso?.status === CaseStatus.CERRADO;
 
+  // Validar si el caso tiene cliente y categoría obligatorios
+  const hasValidCliente = !!caso?.clienteId && caso.clienteId !== 'CL-UNKNOWN';
+  const hasValidCategoria = !!(caso?.categoria?.id || caso?.categoria?.idCategoria) && 
+    (caso.categoria?.id || caso.categoria?.idCategoria) !== 1;
+  const hasRequiredData = hasValidCliente && hasValidCategoria;
+
   // Validar si se puede realizar una acción
-  const canPerformAction = !isCaseClosed && !transitionLoading;
+  const canPerformAction = !isCaseClosed && !transitionLoading && hasRequiredData;
 
   // Obtener usuario actual para validar permisos
   const currentUser = api.getUser();
@@ -1707,19 +1713,33 @@ const CaseDetail: React.FC = () => {
                  )}
               </div>
                
-               {isCaseClosed ? (
-                <div className="p-5 rounded-lg border-2" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
-                  <div className="flex items-start gap-3">
-                    <Lock className="w-5 h-5 mt-0.5" style={{color: '#64748b'}} />
-                    <div>
-                      <p className="text-sm font-bold mb-1" style={{color: styles.text.secondary}}>Caso Cerrado</p>
-                      <p className="text-xs font-medium" style={{color: styles.text.tertiary}}>
-                     Este caso ha sido cerrado y no se pueden realizar más acciones sobre él.
+                {isCaseClosed ? (
+                 <div className="p-5 rounded-lg border-2" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
+                   <div className="flex items-start gap-3">
+                     <Lock className="w-5 h-5 mt-0.5" style={{color: '#64748b'}} />
+                     <div>
+                       <p className="text-sm font-bold mb-1" style={{color: styles.text.secondary}}>Caso Cerrado</p>
+                       <p className="text-xs font-medium" style={{color: styles.text.tertiary}}>
+                      Este caso ha sido cerrado y no se pueden realizar más acciones sobre él.
                    </p>
-                    </div>
+                     </div>
+                   </div>
                   </div>
+                ) : !hasRequiredData ? (
+                 <div className="p-5 rounded-lg border-2" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
+                   <div className="flex items-start gap-3">
+                     <AlertCircle className="w-5 h-5 mt-0.5" style={{color: '#f59e0b'}} />
+                     <div>
+                       <p className="text-sm font-bold mb-1" style={{color: styles.text.secondary}}>Datos Obligatorios Faltantes</p>
+                       <p className="text-xs font-medium" style={{color: styles.text.tertiary}}>
+                         {!hasValidCliente && !hasValidCategoria && 'Debes asignar un cliente y una categoría antes de continuar.'}
+                         {!hasValidCliente && hasValidCategoria && 'Debes asignar un cliente antes de continuar.'}
+                         {hasValidCliente && !hasValidCategoria && 'Debes asignar una categoría antes de continuar.'}
+                       </p>
+                     </div>
+                   </div>
                  </div>
-               ) : validTransitions.length > 0 ? (
+                ) : validTransitions.length > 0 ? (
                 <div className="flex flex-wrap gap-2.5">
                    {/* Botón deshabilitado que muestra el estado actual */}
                    {(() => {
