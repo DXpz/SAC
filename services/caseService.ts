@@ -1393,8 +1393,13 @@ export const updateCaseData = async (
         descripcion: (updates.descripcion !== undefined ? updates.descripcion : (currentCase?.description || '')) || '',
         cliente_id: (updates.cliente_id !== undefined ? updates.cliente_id : (currentCase?.clientId || '')) || '',
         cliente_nombre: updates.client_name !== undefined ? (updates.client_name || '') : (currentClientName || ''),
-        email_cliente: (updates.client_email !== undefined ? String(updates.client_email || '') : String(currentClientEmail || '')) || '',
-        telefono_cliente: (updates.client_phone !== undefined ? String(updates.client_phone || '') : String(currentClientPhone || '')) || '',
+        // No borrar email/phone existentes: si llega string vacío Y el caso actual tiene valor, mantener el actual
+        email_cliente: (updates.client_email !== undefined && updates.client_email !== '')
+          ? String(updates.client_email)
+          : (currentClientEmail || ''),
+        telefono_cliente: (updates.client_phone !== undefined && updates.client_phone !== '')
+          ? String(updates.client_phone)
+          : (currentClientPhone || ''),
         contacto_principal: (updates.contacto_principal !== undefined ? updates.contacto_principal : (currentCase?.contacto_principal || '')) || '',
         categoria_id: updates.categoria_id !== undefined ? Number(updates.categoria_id) : (currentCase?.categoria?.id || currentCase?.categoria_id || 1)
       }
