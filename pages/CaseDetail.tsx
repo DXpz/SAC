@@ -613,9 +613,9 @@ const CaseDetail: React.FC = () => {
   const isCaseClosed = caso?.status === CaseStatus.CERRADO;
 
   // Validar si el caso tiene cliente y categoría obligatorios
-  const hasValidCliente = !!caso?.clienteId && caso.clienteId !== 'CL-UNKNOWN';
-  const hasValidCategoria = !!(caso?.categoria?.id || caso?.categoria?.idCategoria) && 
-    (caso.categoria?.id || caso.categoria?.idCategoria) !== 1;
+  const hasValidCliente = !!caso?.clientId && caso.clientId !== 'CL-UNKNOWN';
+  const categoriaIdActual = caso?.categoria?.idCategoria || caso?.categoria?.id;
+  const hasValidCategoria = !!categoriaIdActual && String(categoriaIdActual) !== '1';
   const hasRequiredData = hasValidCliente && hasValidCategoria;
 
   // Validar si se puede realizar una acción
@@ -991,12 +991,12 @@ const CaseDetail: React.FC = () => {
     setEditedCase({
       subject: caso?.subject,
       description: caso?.description,
-      clienteId: caso?.clienteId || caso?.clientId,
+      clienteId: caso?.clientId || caso?.clienteId,
       clientName: clientName,
       clientEmail: clientEmail,
       clientPhone: clientPhone,
       contactoPrincipal: contactoPrincipal,
-      categoriaId: caso?.categoria?.id || caso?.categoria?.idCategoria || (caso as any)?.categoriaId || 1
+      categoriaId: Number(caso?.categoria?.idCategoria || caso?.categoria?.id || 1)
     });
     // Inicializar el término de búsqueda con el ID y nombre del cliente actual
     const clienteActual = clientes.find(c => c.CardCode === (caso?.clienteId || caso?.clientId));
