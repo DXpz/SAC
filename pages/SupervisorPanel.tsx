@@ -312,12 +312,18 @@ const SupervisorPanel: React.FC = () => {
 
   const casosEnRiesgo = useMemo(() => {
     return casosAbiertos.filter(c => {
+      const catId = (c as any).categoria_id || (c as any).categoria?.id || (c as any).categoria?.idCategoria;
+      const tieneCategoriaReal = catId && String(catId) !== '1';
+      if (!tieneCategoriaReal) return false;
       return !(c as any).slaExpired && ((c as any).diasRestantes != null && (c as any).diasRestantes <= 1);
     });
   }, [casosAbiertos]);
 
   const casosDentroSLA = useMemo(() => {
     return casosAbiertos.filter(c => {
+      const catId = (c as any).categoria_id || (c as any).categoria?.id || (c as any).categoria?.idCategoria;
+      const tieneCategoriaReal = catId && String(catId) !== '1';
+      if (!tieneCategoriaReal) return false;
       return !(c as any).slaExpired;
     });
   }, [casosAbiertos]);
@@ -1158,6 +1164,8 @@ const SupervisorPanel: React.FC = () => {
                     const slaExpired = (caso as any).slaExpired || false;
                     const diasRestantes = (caso as any).diasRestantes ?? 0;
                     const isVencido = slaExpired === true && diasRestantes <= 0;
+                    const catId = (caso as any).categoria_id || (caso as any).categoria?.id || (caso as any).categoria?.idCategoria;
+                    const tieneCategoriaReal = catId && String(catId) !== '1';
                     const rawStatus = caso.status || (caso as any).estado;
                     const normalizedStatus = normalizeStatus(rawStatus);
                     const statusColors = getStatusColors(normalizedStatus);
@@ -1242,11 +1250,19 @@ const SupervisorPanel: React.FC = () => {
                           <div className="flex items-center gap-1.5">
                             {isVencido ? (
                               <AlertCircle className="w-3.5 h-3.5" style={{color: '#c8151b'}} />
+                            ) : !tieneCategoriaReal ? (
+                              <Clock className="w-3.5 h-3.5" style={{color: '#94a3b8'}} />
                             ) : (
                               <Clock className="w-3.5 h-3.5" style={{color: diasRestantes <= 1 ? '#f97316' : '#64748b'}} />
                             )}
                             {(() => {
-                              if (slaExpired) {
+                              if (!tieneCategoriaReal) {
+                                return (
+                                  <span className="text-[10px] font-semibold" style={{color: '#94a3b8'}}>
+                                    Sin SLA
+                                  </span>
+                                );
+                              } else if (slaExpired) {
                                 return (
                                   <span className="text-[10px] font-semibold" style={{color: '#c8151b'}}>
                                     Vencido

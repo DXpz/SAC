@@ -369,7 +369,12 @@ const loadAgentes = async () => {
       result = result.filter(c => {
         const slaExpired = (c as any).slaExpired === true;
         const diasRestantes = (c as any).diasRestantes ?? 0;
-        
+        const catId = (c as any).categoria_id || (c as any).categoria?.id || (c as any).categoria?.idCategoria;
+        const tieneCategoriaReal = catId && String(catId) !== '1';
+
+        // Casos sin categoría real no se evalúan en filtros SLA
+        if (!tieneCategoriaReal) return false;
+
         if (slaFilter === 'vencido') {
           return slaExpired;
         } else if (slaFilter === 'en-riesgo') {
@@ -432,9 +437,16 @@ const loadAgentes = async () => {
       return { label: 'Normal', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)', icon: Clock };
     }
 
+    // Sin categoría real: SLA aún no definido
+    const catId = (caso as any).categoria_id || (caso as any).categoria?.id || (caso as any).categoria?.idCategoria;
+    const tieneCategoriaReal = catId && String(catId) !== '1';
+    if (!tieneCategoriaReal) {
+      return { label: 'Sin SLA', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.1)', icon: AlertTriangle };
+    }
+
     const slaExpired = (caso as any).slaExpired === true;
     const diasRestantes = (caso as any).diasRestantes ?? 0;
-    
+
     if (slaExpired) {
       return { label: 'Vencido', color: '#dc2626', bg: 'rgba(220, 38, 38, 0.1)', icon: Timer };
     } else if (diasRestantes <= 1) {
