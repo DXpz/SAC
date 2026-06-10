@@ -1367,6 +1367,7 @@ export const updateCaseData = async (
     client_phone?: string;
     asunto?: string;
     descripcion?: string;
+    categoria_id?: number;
     [key: string]: any;
   }
 ): Promise<Case | null> => {
@@ -1394,7 +1395,8 @@ export const updateCaseData = async (
         cliente_nombre: updates.client_name !== undefined ? (updates.client_name || '') : (currentClientName || ''),
         email_cliente: (updates.client_email !== undefined ? String(updates.client_email || '') : String(currentClientEmail || '')) || '',
         telefono_cliente: (updates.client_phone !== undefined ? String(updates.client_phone || '') : String(currentClientPhone || '')) || '',
-        contacto_principal: (updates.contacto_principal !== undefined ? updates.contacto_principal : (currentCase?.contacto_principal || '')) || ''
+        contacto_principal: (updates.contacto_principal !== undefined ? updates.contacto_principal : (currentCase?.contacto_principal || '')) || '',
+        categoria_id: updates.categoria_id !== undefined ? Number(updates.categoria_id) : (currentCase?.categoria?.id || currentCase?.categoria_id || 1)
       }
     })
   });

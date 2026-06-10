@@ -6,7 +6,7 @@ import { getUserCountry } from '../services/caseService';
 import { Case, CaseStatus, Cliente, AutorRol, HistorialEntry } from '../types';
 import { getStateBadgeColor } from '../constants';
 import { updateCaseStatus, updateCaseData, sendCaseCloseWebhook } from '../services/caseService';
-import { ArrowLeft, MessageSquare, User, Building2, Phone, Mail, CheckCircle2, Clock, X, AlertTriangle, Lock, History, Users, TrendingUp, AlertCircle, Edit, Save, Search, Folder } from 'lucide-react';
+import { ArrowLeft, MessageSquare, User, Building2, Phone, Mail, CheckCircle2, Clock, X, AlertTriangle, Lock, History, Users, TrendingUp, AlertCircle, Edit, Save, Search, Folder, Tag } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import LoadingScreen from '../components/LoadingScreen';
 
@@ -989,7 +989,8 @@ const CaseDetail: React.FC = () => {
       clientName: clientName,
       clientEmail: clientEmail,
       clientPhone: clientPhone,
-      contactoPrincipal: contactoPrincipal
+      contactoPrincipal: contactoPrincipal,
+      categoriaId: caso?.categoria?.id || caso?.categoria?.idCategoria || (caso as any)?.categoriaId || 1
     });
     // Inicializar el término de búsqueda con el ID y nombre del cliente actual
     const clienteActual = clientes.find(c => c.CardCode === (caso?.clienteId || caso?.clientId));
@@ -1183,6 +1184,11 @@ const CaseDetail: React.FC = () => {
       // Solo enviar contacto_principal si fue editado
       if (editedCase.hasOwnProperty('contactoPrincipal')) {
         updates.contacto_principal = editedCase.contactoPrincipal || '';
+      }
+
+      // Enviar categoria_id si fue editada
+      if (editedCase.hasOwnProperty('categoriaId') && editedCase.categoriaId) {
+        updates.categoria_id = Number(editedCase.categoriaId);
       }
       
       // Llamar a updateCaseData - puede retornar null si no se puede obtener el caso inmediatamente
@@ -2215,6 +2221,39 @@ const CaseDetail: React.FC = () => {
                         }}
                         placeholder="+503 0000-0000"
                       />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold mb-1.5" style={{color: styles.text.secondary}}>
+                      Categoría
+                    </label>
+                    <div className="flex items-center gap-3 p-3 rounded-lg border" style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}>
+                      <Tag className="w-4 h-4 flex-shrink-0" style={{color: '#64748b'}}/>
+                      <select
+                        value={editedCase.categoriaId || 1}
+                        onChange={(e) => setEditedCase({ ...editedCase, categoriaId: Number(e.target.value) })}
+                        className="flex-1 text-xs font-medium px-2 py-1 border rounded outline-none focus:ring-2 transition-all"
+                        style={{
+                          backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
+                          borderColor: 'rgba(148, 163, 184, 0.2)',
+                          color: styles.text.secondary
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = '#107ab4';
+                          e.target.style.boxShadow = '0 0 0 2px rgba(16, 122, 180, 0.1)';
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = 'rgba(148, 163, 184, 0.2)';
+                          e.target.style.boxShadow = 'none';
+                        }}
+                      >
+                        {categorias.map((cat: any) => (
+                          <option key={cat.id || cat.idCategoria} value={cat.id || cat.idCategoria}>
+                            {cat.categoria || cat.nombre || cat.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 </div>
