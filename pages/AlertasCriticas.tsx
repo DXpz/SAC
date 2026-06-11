@@ -227,8 +227,9 @@ const AlertasCriticas: React.FC = () => {
         ? allCasesData.filter((caso: any) => {
             const status = String(caso.status || caso.estado || '').trim();
             if (['Cerrado', 'Resuelto', 'Finalizado'].includes(status)) return false;
-            const casoPais = caso.pais || '';
-            if (userCountry && casoPais !== userCountry) return false;
+            const casoPais = (caso.pais || '').toLowerCase();
+            const normalizedPais = casoPais.includes('salvador') ? 'sv' : casoPais.includes('guatemala') ? 'gt' : casoPais;
+            if (userCountry && normalizedPais !== userCountry.toLowerCase()) return false;
             return true;
           })
         : [];
