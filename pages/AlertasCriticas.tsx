@@ -348,12 +348,16 @@ const AlertasCriticas: React.FC = () => {
 
   const casosFueraSLA = metricsSummary.casosVencidos ?? criticos.filter(c => c.slaExpired).length;
 
-  const casosVencen24h = metricsSummary.casosEnRiesgo ?? criticos.filter(c => {
+  // CORREGIDO: calcular sobre TODOS los casos abiertos, no solo sobre críticos
+  const casosVencen24h = metricsSummary.casosEnRiesgo ?? casosAbiertosBase.filter(c => {
     const diasRestantes = c.diasRestantes ?? 0;
     return !c.slaExpired && diasRestantes <= 1;
   }).length;
 
-  const baseCases = filterStatus === 'en-riesgo' ? casosAbiertosBase : criticos;
+  // Si no hay críticos reales, mostrar casos en riesgo por defecto
+  const baseCases = filterStatus === 'en-riesgo' || (filterStatus === 'all' && criticos.length === 0 && casosAbiertosBase.length > 0)
+    ? casosAbiertosBase
+    : criticos;
 
   // Filtrar casos según búsqueda y filtros
   const casosFiltrados = baseCases.filter(caso => {
@@ -540,7 +544,7 @@ const AlertasCriticas: React.FC = () => {
             borderColor: casosVencen24h > 0 ? 'rgba(249, 115, 22, 0.3)' : 'rgba(148, 163, 184, 0.2)',
             animation: 'fadeInSlide 0.3s ease-out 0.2s both'
           }}
-          onClick={() => navigate('/app/casos')}
+          onClick={() => setFilterStatus('en-riesgo')}
           onMouseEnter={(e) => {
             e.currentTarget.style.borderColor = casosVencen24h > 0 ? 'rgba(249, 115, 22, 0.45)' : 'rgba(148, 163, 184, 0.4)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
