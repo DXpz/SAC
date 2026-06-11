@@ -548,14 +548,10 @@ export const api = {
     }
     
     const data = await response.json();
-    const now = new Date();
     const casosArray = Array.isArray(data) ? data : (data.casos || []);
     return casosArray.map((c: any) => {
-      const valorSlaHours = c.categoria?.valor_sla || 24;
-      const slaDias = Math.max(1, Math.ceil(valorSlaHours / 24));
-      const diasAbierto = c.diasAbierto ?? Math.floor((now.getTime() - new Date(c.fecha_creacion).getTime()) / (1000 * 60 * 60 * 24));
-      const slaExpired = c.slaExpired === true || c.slaExpired === 'true' || diasAbierto >= slaDias;
       const caseId = c.case_id || c.caseId || String(c.id);
+      const slaDiasFromBackend = c.slaDias || c.categoria?.valor_sla || 1;
       return {
         id: caseId,
         ticketNumber: caseId,
@@ -566,16 +562,16 @@ export const api = {
         subject: c.asunto || c.subject || '',
         description: c.descripcion || c.description || '',
         status: c.estado || c.status || 'Nuevo',
-        priority: 'Alta' as const,
+        priority: c.prioridad || 'Alta',
         agentId: c.agente?.id_agente || c.agente?.idAgente || c.agentId || '',
         agentName: c.agente?.nombre || c.agente?.name || c.agentName || '',
         createdAt: c.fecha_creacion || c.createdAt || '',
         diasAbierto: c.diasAbierto,
-        slaDias,
+        slaDias: slaDiasFromBackend,
         diasRestantes: c.diasRestantes ?? 0,
         slaExpired: c.slaExpired || false,
         agenteAsignado: c.agente,
-        categoria: { ...c.categoria, slaDias },
+        categoria: { ...c.categoria, slaDias: slaDiasFromBackend },
         cliente: c.cliente,
         pais: c.pais || '',
         fechaCreacionFormateada: c.fechaCreacionFormateada || null

@@ -263,16 +263,14 @@ const SupervisorPanel: React.FC = () => {
       }
     }
 
-    // 2) Tipo (criticos/vencidos)
+    // 2) Tipo (criticos/vencidos) - usar slaExpired del backend
     if (typeFilter === 'criticos') {
       result = result.filter(c => {
-        const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-        return c.diasAbierto >= slaDias || c.status === CaseStatus.ESCALADO;
+        return (c as any).slaExpired === true || (c as any).diasRestantes <= 1 || c.status === CaseStatus.ESCALADO;
       });
     } else if (typeFilter === 'vencidos') {
       result = result.filter(c => {
-        const slaDias = c.categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
-        return c.diasAbierto > slaDias;
+        return (c as any).slaExpired === true;
       });
     }
 

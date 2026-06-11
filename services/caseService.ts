@@ -520,25 +520,12 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
       diasAbierto = 0;
       slaExpired = false;
     } else {
+      // Usar valores del backend directamente (no recalcular)
       if (diasAbierto === undefined || diasAbierto === null) {
-        try {
-          diasAbierto = calculateBusinessDaysElapsed(new Date(createdAt));
-        } catch (error) {
-          diasAbierto = caseData.dias_abierto || 0;
-        }
+        diasAbierto = caseData.dias_abierto || 0;
       }
-
-      if (slaExpired === undefined || slaExpired === null) {
-        try {
-          const delayDays = calculateSLADelayDays(new Date(createdAt), slaDays);
-          slaExpired = delayDays > 0;
-        } catch (error) {
-          slaExpired = caseData.sla_vencido || caseData.slaExpired || false;
-        }
-      } else {
-        // Si el backend envió slaExpired, usarlo directamente (no recalcular con días calendario)
-        slaExpired = slaExpired === true || slaExpired === 'true' || slaExpired === 1;
-      }
+      // Normalizar slaExpired del backend
+      slaExpired = slaExpired === true || slaExpired === 'true' || slaExpired === 1;
     }
     
     // Capturar fecha final del SLA del webhook si está disponible
