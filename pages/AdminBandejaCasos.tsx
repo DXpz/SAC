@@ -368,7 +368,7 @@ const loadAgentes = async () => {
     // Filtro por prioridad
     if (prioridadFilter !== 'all') {
       result = result.filter(c => {
-        const prioridad = (c as any).prioridad || 'Alta';
+        const prioridad = c.priority || (c as any).prioridad || 'Media';
         return prioridad === prioridadFilter;
       });
     }
@@ -870,7 +870,7 @@ const loadAgentes = async () => {
                   const normalizedStatus = normalizeStatus(rawStatus);
                   const slaStatus = getSlaStatus(caso);
                   const StatusIcon = slaStatus.icon;
-                  const prioridad = (caso as any).prioridad || 'Alta';
+                  const prioridad = caso.priority || (caso as any).prioridad || 'Media';
                   
                   return (
                     <tr 
@@ -981,7 +981,7 @@ const loadAgentes = async () => {
                       </td>
                       <td className="px-4 py-3">
                         {(() => {
-                          const prioridad = (caso as any).prioridad || 'Alta';
+const prioridad = caso.priority || (caso as any).prioridad || 'Media';
                           return (
                             <span className="inline-flex px-2 py-1 text-[10px] font-semibold rounded-lg border transition-all uppercase tracking-wide" style={{
                               backgroundColor: prioridad === 'Critica' 

@@ -248,7 +248,7 @@ const AlertasCriticas: React.FC = () => {
 
   const prioritizeCases = (cases: Caso[]): CaseWithPriority[] => {
     return cases.map(caso => {
-      const prioridad = (caso as any).prioridad || 'Alta';
+      const prioridad = caso.priority || (caso as any).prioridad || 'Media';
       const horasParaVencimiento = (caso as any).diasRestantes > 0 ? (caso as any).diasRestantes * 24 : 0;
 
       return {

@@ -1166,7 +1166,7 @@ const SupervisorPanel: React.FC = () => {
                 </thead>
                 <tbody className="divide-y" style={{borderColor: 'rgba(148, 163, 184, 0.15)'}}>
                   {casosCriticos.map((caso) => {
-                    const prioridad = (caso as any).prioridad || 'Alta';
+                    const prioridad = caso.priority || (caso as any).prioridad || 'Media';
                     const slaExpired = (caso as any).slaExpired || false;
                     const diasRestantes = (caso as any).diasRestantes ?? 0;
                     const isVencido = slaExpired === true && diasRestantes <= 0;
