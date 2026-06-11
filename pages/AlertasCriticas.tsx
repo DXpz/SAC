@@ -214,7 +214,7 @@ const AlertasCriticas: React.FC = () => {
       setClientes(clientesList);
       const [criticalList, allCasesData, metricsData] = await Promise.all([
         api.getCriticalCases(),
-        api.getCases(),
+        api.getCases(true),
         api.getDashboardMetrics({ pais: userCountry || undefined, period: 'todos' })
       ]);
       setDashboardMetrics(metricsData);

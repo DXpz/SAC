@@ -552,8 +552,8 @@ export const api = {
     return casosArray.map((c: any) => {
       const valorSlaHours = c.categoria?.valor_sla || 24;
       const slaDias = Math.max(1, Math.ceil(valorSlaHours / 24));
-      const diasAbierto = c.diasAbierto || Math.floor((now.getTime() - new Date(c.fecha_creacion).getTime()) / (1000 * 60 * 60 * 24));
-      const slaExpired = diasAbierto >= slaDias;
+      const diasAbierto = c.diasAbierto ?? Math.floor((now.getTime() - new Date(c.fecha_creacion).getTime()) / (1000 * 60 * 60 * 24));
+      const slaExpired = c.slaExpired === true || c.slaExpired === 'true' || diasAbierto >= slaDias;
       const caseId = c.case_id || c.caseId || String(c.id);
       return {
         id: caseId,
