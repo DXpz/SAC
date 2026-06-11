@@ -163,7 +163,7 @@ const CaseDetail: React.FC = () => {
     }
   }, [showClienteDropdown]);
 
-  // Cargar parámetros cuando se abre el modal y es estado final
+  // Cargar parámetros cuando se abre el modal y hay parámetros para el estado destino
   useEffect(() => {
     const loadParametrosEstadoFinal = async () => {
       // Limpiar estado anterior si se cierra el modal
@@ -173,14 +173,8 @@ const CaseDetail: React.FC = () => {
         setAnexosEstadoFinal('');
         return;
       }
-      
-      if (!isEstadoFinal) {
-        setParametrosEstadoFinal([]);
-        setFormValues({});
-        setAnexosEstadoFinal('');
-        return;
-      }
-      
+
+      // Limpiar siempre al abrir el modal
       setParametrosEstadoFinal([]);
       setFormValues({});
       setAnexosEstadoFinal('');
@@ -842,20 +836,22 @@ const CaseDetail: React.FC = () => {
     // Obtener configuración de workflow desde el backend para saber si es estado final y sus parámetros
     let esEstadoFinal = false;
     let estadoFinalParams: any = null;
-    
+    let parametrosDestino: any[] = [];
+
     try {
       const workflowConfig = await api.getWorkflowConfig(estadoActual);
       const transicionDestino = workflowConfig?.transiciones?.find(
         (t: any) => t.nombre === newState
       );
-      
+
       if (transicionDestino) {
         esEstadoFinal = transicionDestino.estado_final === true;
-        if (esEstadoFinal) {
+        parametrosDestino = transicionDestino.parametros || [];
+        if (esEstadoFinal || parametrosDestino.length > 0) {
           estadoFinalParams = {
             id: transicionDestino.id,
             nombre: transicionDestino.nombre,
-            parametros: transicionDestino.parametros || []
+            parametros: parametrosDestino
           };
         }
       }
@@ -869,6 +865,7 @@ const CaseDetail: React.FC = () => {
     setErrorMessage('');
     setIsEstadoFinal(esEstadoFinal); // Guardar si es estado final
     setEstadoFinalParams(estadoFinalParams); // Guardar los parámetros del estado final
+    setParametrosEstadoFinal(parametrosDestino);
     setShowJustificationModal(true);
   };
 
@@ -918,13 +915,32 @@ const CaseDetail: React.FC = () => {
       return;
     } else {
       // Caso especial: Diagnostico con requiereEquipo
-      if (pendingNewState === 'Diagnostico' && requiereEquipo) {
+      if ((pendingNewState === 'Diagnostico' || pendingNewState === 'Diagnóstico') && requiereEquipo) {
         const anexosValor = anexosEstadoFinal.trim();
         if (!anexosValor) {
           setErrorMessage('Por favor, ingrese los anexos');
           return;
         }
         const justificacionDiagnostico = `Diagnostico - Requiere equipo. Anexos: ${anexosValor}.`;
+        handleStateChange(pendingNewState, justificacionDiagnostico);
+        return;
+      }
+
+      // Caso: Diagnostico con parámetros dinámicos (anexos + resolución)
+      const esDiagnostico = pendingNewState === 'Diagnostico' || pendingNewState === 'Diagnóstico';
+      if (esDiagnostico && parametrosEstadoFinal.length > 0) {
+        const anexosValor = anexosEstadoFinal.trim();
+        const resolucionValor = (formValues['resolucion'] || '').toString().trim();
+        // Anexos es requerido, resolución es requerida también
+        if (!anexosValor) {
+          setErrorMessage('Por favor, ingrese los anexos');
+          return;
+        }
+        if (!resolucionValor) {
+          setErrorMessage('Por favor, ingrese la resolución del diagnóstico');
+          return;
+        }
+        const justificacionDiagnostico = `Diagnostico. Anexos: ${anexosValor}. Resolución: ${resolucionValor}.`;
         handleStateChange(pendingNewState, justificacionDiagnostico);
         return;
       }
@@ -2465,7 +2481,7 @@ const CaseDetail: React.FC = () => {
               </p>
 
               {/* Si es Diagnostico, mostrar checkbox para requerir equipo */}
-              {pendingNewState === 'Diagnostico' && (
+              {(pendingNewState === 'Diagnostico' || pendingNewState === 'Diagnóstico') && (
                 <div className="border rounded-lg p-4" style={{borderColor: 'rgba(148, 163, 184, 0.3)'}}>
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
@@ -2509,7 +2525,7 @@ const CaseDetail: React.FC = () => {
               )}
 
               {/* Si requiere equipo en Diagnostico, mostrar formulario de parámetros */}
-              {pendingNewState === 'Diagnostico' && requiereEquipo ? (
+              {(pendingNewState === 'Diagnostico' || pendingNewState === 'Diagnóstico') && requiereEquipo ? (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 pb-3 border-b" style={{
                     borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(226, 232, 240, 1)'
@@ -2542,6 +2558,60 @@ const CaseDetail: React.FC = () => {
                   </div>
                 </div>
               ) : null}
+
+              {/* Formulario dinámico de parámetros cuando el destino tiene parámetros asignados
+                  (ej: Diagnostico con anexos y resolución) */}
+              {parametrosEstadoFinal && parametrosEstadoFinal.length > 0 && (
+                <div className="space-y-3 border rounded-lg p-4" style={{borderColor: 'rgba(148, 163, 184, 0.3)'}}>
+                  <div className="flex items-center gap-2 pb-2 border-b" style={{borderColor: 'rgba(148, 163, 184, 0.2)'}}>
+                    <CheckCircle2 className="w-4 h-4" style={{color: '#107ab4'}} />
+                    <p className="text-xs font-bold" style={{color: styles.text.primary}}>
+                      Datos de {pendingNewState}
+                    </p>
+                  </div>
+                  {parametrosEstadoFinal.map((p: any) => {
+                    const nombreParam = String(p.nombre_parametro || p.nombre || '').toLowerCase();
+                    const esAnexo = nombreParam.includes('anexo');
+                    const etiqueta = p.etiqueta || p.nombre_parametro || p.nombre || '';
+                    const placeholder = p.placeholder || '';
+                    return (
+                      <div key={p.id || nombreParam}>
+                        <label className="block text-xs font-bold mb-1.5" style={{color: styles.text.secondary}}>
+                          {etiqueta} <span className="text-red-500">*</span>
+                        </label>
+                        {esAnexo ? (
+                          <textarea
+                            value={anexosEstadoFinal}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/[^0-9,\s]/g, '');
+                              setAnexosEstadoFinal(value);
+                            }}
+                            placeholder={placeholder || "111111, 222222, 333333"}
+                            className="w-full h-20 p-3 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs resize-none"
+                            style={{
+                              backgroundColor: styles.input.backgroundColor,
+                              borderColor: styles.input.borderColor,
+                              color: styles.text.primary
+                            }}
+                          />
+                        ) : (
+                          <textarea
+                            value={formValues[nombreParam] || ''}
+                            onChange={(e) => setFormValues({...formValues, [nombreParam]: e.target.value})}
+                            placeholder={placeholder}
+                            className="w-full h-20 p-3 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs resize-none"
+                            style={{
+                              backgroundColor: styles.input.backgroundColor,
+                              borderColor: styles.input.borderColor,
+                              color: styles.text.primary
+                            }}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* Si es estado final, mostrar formulario especial */}
               {false ? (
