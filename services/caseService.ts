@@ -535,6 +535,9 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
         } catch (error) {
           slaExpired = caseData.sla_vencido || caseData.slaExpired || false;
         }
+      } else {
+        // Si el backend envió slaExpired, usarlo directamente (no recalcular con días calendario)
+        slaExpired = slaExpired === true || slaExpired === 'true' || slaExpired === 1;
       }
     }
     
