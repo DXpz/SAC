@@ -537,9 +537,10 @@ export const api = {
       }
     }
     
-    const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/critical?pais=${paisValue}`, {
+    const cacheBuster = Date.now();
+    const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/critical?pais=${paisValue}&_=${cacheBuster}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true', 'Cache-Control': 'no-cache' }
     });
     
     if (!response.ok) {
