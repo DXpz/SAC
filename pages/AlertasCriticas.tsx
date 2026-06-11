@@ -226,7 +226,10 @@ const AlertasCriticas: React.FC = () => {
       const allCases = Array.isArray(allCasesData)
         ? allCasesData.filter((caso: any) => {
             const status = String(caso.status || caso.estado || '').trim();
-            return !['Cerrado', 'Resuelto', 'Finalizado'].includes(status);
+            if (['Cerrado', 'Resuelto', 'Finalizado'].includes(status)) return false;
+            const casoPais = caso.pais || '';
+            if (userCountry && casoPais !== userCountry) return false;
+            return true;
           })
         : [];
       const allEnriched = enrichCasesWithClients(allCases as any, clientesList);
