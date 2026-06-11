@@ -1492,7 +1492,14 @@ const result = await response.json();
 
       if (fechaStr) {
         try {
-          fechaDate = new Date(fechaStr);
+          // Parsear ISO date sin timezone shift (evita UTC->local conversion)
+          const isoMatch = fechaStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+          if (isoMatch) {
+            const [, year, month, day] = isoMatch;
+            fechaDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), 12, 0, 0);
+          } else {
+            fechaDate = new Date(fechaStr);
+          }
           if (isNaN(fechaDate.getTime())) {
             fechaDate = undefined;
           }
