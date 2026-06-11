@@ -308,12 +308,21 @@ const AlertasCriticas: React.FC = () => {
         icon: Timer
       };
     }
-    if (diasRestantes <= 1) {
+    if (diasRestantes <= 0) {
       return { 
         color: '#c8151b', 
         bg: 'rgba(200, 21, 27, 0.08)', 
         border: 'rgba(200, 21, 27, 0.2)', 
         label: 'Crítico',
+        icon: AlertTriangle
+      };
+    }
+    if (diasRestantes <= 1) {
+      return { 
+        color: '#f97316', 
+        bg: 'rgba(249, 115, 22, 0.08)', 
+        border: 'rgba(249, 115, 22, 0.2)', 
+        label: 'En Riesgo',
         icon: AlertTriangle
       };
     }
