@@ -239,6 +239,17 @@ const AdminPanel: React.FC = () => {
     return (c as any).slaExpired === true;
   }).length;
   const casosVencidos = metricsSummary.casosVencidos ?? casosVencidosLocal;
+
+  const casosEnRiesgoLocal = casosSeguros.filter(c => {
+    if (!c) return false;
+    const normalizedStatus = normalizeStatus(c.status);
+    if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO || normalizedStatus === 'Finalizado') {
+      return false;
+    }
+    const dr = (c as any).diasRestantes ?? 99;
+    return dr <= 1 && !(c as any).slaExpired;
+  }).length;
+  const casosEnRiesgo = metricsSummary.casosEnRiesgo ?? casosEnRiesgoLocal;
   
   // Calcular casos por estado usando los estados dinámicos del webhook
   const casosPorEstado = useMemo(() => {
@@ -1322,6 +1333,48 @@ const AdminPanel: React.FC = () => {
                 {casosVencidos > 0 ? 'SLA excedido' : 'En tiempo'}
               </p>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Casos En Riesgo */}
+      <div 
+        className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden"
+        style={{
+          ...styles.card,
+          borderColor: casosEnRiesgo > 0 ? 'rgba(249, 115, 22, 0.3)' : 'rgba(71, 85, 105, 0.3)',
+          backgroundColor: casosEnRiesgo > 0 ? (theme === 'dark' ? 'rgba(249, 115, 22, 0.05)' : 'rgba(249, 115, 22, 0.03)') : styles.card.backgroundColor,
+          animation: 'fadeInSlide 0.3s ease-out 0.25s both',
+          transform: 'scale(1)',
+          transition: 'all 0.2s ease-in-out'
+        }}
+        onClick={() => navigate('/app/admin/casos')}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = casosEnRiesgo > 0 ? 'rgba(249, 115, 22, 0.5)' : 'rgba(71, 85, 105, 0.5)';
+          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+          e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = casosEnRiesgo > 0 ? 'rgba(249, 115, 22, 0.3)' : 'rgba(71, 85, 105, 0.3)';
+          e.currentTarget.style.boxShadow = '';
+          e.currentTarget.style.transform = 'scale(1) translateY(0)';
+        }}
+      >
+        <div className="absolute top-3 right-3">
+          <AlertTriangle className="w-6 h-6" style={{color: casosEnRiesgo > 0 ? '#f97316' : styles.text.tertiary}} />
+        </div>
+        <div className="flex items-start justify-between mb-2 pr-8">
+          <div className="flex-1">
+            <p className="text-4xl font-black leading-none mb-1.5" style={{color: casosEnRiesgo > 0 ? '#f97316' : styles.text.secondary}}>
+              <AnimatedNumber value={casosEnRiesgo} />
+            </p>
+            <div className="flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{color: casosEnRiesgo > 0 ? '#f97316' : styles.text.secondary}} />
+              <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Casos En Riesgo</p>
+            </div>
+            <p className="text-[10px] mt-1" style={{color: casosEnRiesgo > 0 ? '#f97316' : styles.text.tertiary}}>
+              {casosEnRiesgo > 0 ? 'Requieren atención' : 'Bajo control'}
+            </p>
           </div>
         </div>
       </div>
