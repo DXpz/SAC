@@ -346,7 +346,7 @@ const AlertasCriticas: React.FC = () => {
 
   const metricsSummary = dashboardMetrics?.summary || {};
 
-  const casosFueraSLA = metricsSummary.casosVencidos ?? criticos.filter(c => c.slaExpired).length;
+  const casosFueraSLA = casosAbiertosBase.filter(c => (c as any).slaExpired === true).length;
 
   // CORREGIDO: calcular sobre TODOS los casos abiertos, no solo sobre críticos
   const casosVencen24h = metricsSummary.casosEnRiesgo ?? casosAbiertosBase.filter(c => {
