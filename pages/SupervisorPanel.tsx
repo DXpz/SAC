@@ -298,17 +298,19 @@ const SupervisorPanel: React.FC = () => {
     return abiertos;
   }, [casosFiltrados]);
 
-  // Casos críticos del backend
+  // Casos críticos del backend - usar casosAbiertos filtrados por SLA como AlertasCriticas
   const casosCriticos = useMemo(() => {
-    return criticalCases;
-  }, [criticalCases]);
+    return casosAbiertos.filter(c => {
+      const diasRestantes = (c as any).diasRestantes ?? 0;
+      const slaExpired = (c as any).slaExpired === true;
+      return slaExpired || diasRestantes <= 1;
+    });
+  }, [casosAbiertos]);
 
   const casosVencidos = useMemo(() => {
-    // Usar criticalCases del backend que ya tiene los criterios correctos
-    return criticalCases.filter(c => {
-      return c.status !== 'Finalizado' && c.status !== CaseStatus.RESUELTO && c.status !== CaseStatus.CERRADO;
-    }).filter(c => (c as any).slaExpired === true);
-  }, [criticalCases]);
+    // Usar casosAbiertos filtrados por slaExpired como AlertasCriticas
+    return casosAbiertos.filter(c => (c as any).slaExpired === true);
+  }, [casosAbiertos]);
 
   const casosEnRiesgo = useMemo(() => {
     return casosAbiertos.filter(c => {
