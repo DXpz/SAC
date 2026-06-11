@@ -438,23 +438,23 @@ const AlertasCriticas: React.FC = () => {
           className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden"
           style={{
             ...styles.card,
-            borderColor: criticos.length > 0 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(148, 163, 184, 0.2)',
+            borderColor: (casosFueraSLA + casosVencen24h) > 0 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(148, 163, 184, 0.2)',
             animation: 'fadeInSlide 0.3s ease-out 0.1s both'
           }}
           onClick={() => navigate('/app/casos')}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = criticos.length > 0 ? 'rgba(239, 68, 68, 0.4)' : 'rgba(148, 163, 184, 0.4)';
+            e.currentTarget.style.borderColor = (casosFueraSLA + casosVencen24h) > 0 ? 'rgba(239, 68, 68, 0.4)' : 'rgba(148, 163, 184, 0.4)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
             e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = criticos.length > 0 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(148, 163, 184, 0.2)';
+            e.currentTarget.style.borderColor = (casosFueraSLA + casosVencen24h) > 0 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(148, 163, 184, 0.2)';
             e.currentTarget.style.boxShadow = '';
             e.currentTarget.style.transform = 'translateY(0) scale(1)';
           }}
         >
           {/* Icono con glow en esquina superior derecha */}
-          {criticos.length > 0 && (
+          {(casosFueraSLA + casosVencen24h) > 0 && (
             <div className="absolute top-3 right-3">
               <div className="icon-glow-critical">
                 <ShieldAlert className="w-6 h-6" style={{
@@ -463,7 +463,7 @@ const AlertasCriticas: React.FC = () => {
               </div>
             </div>
           )}
-          {criticos.length === 0 && (
+          {(casosFueraSLA + casosVencen24h) === 0 && (
             <div className="absolute top-3 right-3">
               <ShieldAlert className="w-6 h-6" style={{
                 color: styles.text.secondary
@@ -473,15 +473,16 @@ const AlertasCriticas: React.FC = () => {
           <div className="flex items-start justify-between mb-2 pr-8">
             <div className="flex-1">
               <p className="text-4xl font-black leading-none mb-1.5" style={{
-                color: criticos.length > 0 ? '#ef4444' : styles.text.primary
+                color: (casosFueraSLA + casosVencen24h) > 0 ? '#ef4444' : styles.text.primary
               }}>
-                <AnimatedNumber value={criticos.length} />
+                <AnimatedNumber value={casosFueraSLA + casosVencen24h} />
               </p>
               <div className="flex items-center gap-1.5">
                 <ShieldAlert className="w-4 h-4 flex-shrink-0" style={{
-                  color: criticos.length > 0 ? '#ef4444' : styles.text.secondary
+                  color: (casosFueraSLA + casosVencen24h) > 0 ? '#ef4444' : styles.text.secondary
                 }} />
                 <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Total Críticos</p>
+              <p className="text-[10px] mt-1" style={{color: styles.text.tertiary}}>Vencidos + En Riesgo</p>
               </div>
             </div>
           </div>
@@ -535,7 +536,7 @@ const AlertasCriticas: React.FC = () => {
                 <Timer className="w-4 h-4 flex-shrink-0" style={{
                   color: casosFueraSLA > 0 ? '#f59e0b' : styles.text.secondary
                 }} />
-                <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Fuera de SLA</p>
+                <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Vencidos</p>
               </div>
             </div>
           </div>
