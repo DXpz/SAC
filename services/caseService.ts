@@ -828,7 +828,7 @@ export const createCase = async (caseData: {
  * El backend tiene GET /api/casos que lista casos
  * Incluye agentes, categorías y clientes relacionados
  */
-export const getCases = async (): Promise<Case[]> => {
+export const getCases = async (includeClosed: boolean = false): Promise<Case[]> => {
   const actor = getActor();
   const userRole = getUserRole();
 
@@ -869,7 +869,8 @@ export const getCases = async (): Promise<Case[]> => {
     }
   }
 
-  const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}?pais=${encodeURIComponent(paisValue)}`, {
+  const closedParam = includeClosed ? '&includeClosed=true' : '';
+  const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}?pais=${encodeURIComponent(paisValue)}${closedParam}`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
   });

@@ -507,15 +507,16 @@ export const api = {
     }
   },
 
-  async getCases(forceRefresh = false): Promise<Case[]> {
+  async getCases(forceRefresh = false, includeClosed: boolean = false): Promise<Case[]> {
+    const cacheKey = includeClosed ? 'cases_all' : 'cases';
     if (forceRefresh) {
-      delete cache['cases'];
+      delete cache[cacheKey];
     }
-    return getCachedOrFetch('cases', async () => {
+    return getCachedOrFetch(cacheKey, async () => {
       const user = this.getUser();
-      
+
       try {
-        const cases = await caseService.getCases();
+        const cases = await caseService.getCases(includeClosed);
         return cases || [];
       } catch (err: any) {
         throw err;

@@ -80,7 +80,7 @@ const AdminBandejaCasos: React.FC = () => {
           sapService.getClientesListado(pais),
           api.getCategorias(),
           api.getAgentes(pais),
-          api.getCases(),
+          api.getCases(true, true),
           fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}`, {
             headers: { 'ngrok-skip-browser-warning': 'true' }
           }).then(r => r.json()).catch(() => [])
@@ -273,7 +273,7 @@ const loadAgentes = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.getCases();
+      const data = await api.getCases(true, true);
       setCasos(data);
       const updateTime = new Date();
       localStorage.setItem('bandeja_last_update', updateTime.toISOString());
