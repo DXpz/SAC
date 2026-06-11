@@ -365,7 +365,9 @@ const AlertasCriticas: React.FC = () => {
     return slaExpired || diasRestantes <= 1;
   });
 
-  const baseCases = criticos.length > 0 ? criticos : casosEnAlerta;
+  const baseCases = casosEnAlerta;
+
+  // Ya no necesitamos criticos para la lista, casosEnAlerta tiene todos los vencidos/en riesgo del país
 
   // Filtrar casos según búsqueda y filtros
   const casosFiltrados = baseCases.filter(caso => {
