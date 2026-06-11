@@ -354,10 +354,15 @@ const AlertasCriticas: React.FC = () => {
     return !c.slaExpired && diasRestantes <= 1;
   }).length;
 
-  // Si no hay críticos reales, mostrar casos en riesgo por defecto
-  const baseCases = filterStatus === 'en-riesgo' || (filterStatus === 'all' && criticos.length === 0 && casosAbiertosBase.length > 0)
-    ? casosAbiertosBase
-    : criticos;
+  // Alertas críticas debe mostrar SOLO casos abiertos que están vencidos o en riesgo
+  // Filtrar casosAbiertosBase para quedarse solo con los que están en riesgo o vencidos
+  const casosEnAlerta = casosAbiertosBase.filter(c => {
+    const diasRestantes = (c as any).diasRestantes ?? 0;
+    const slaExpired = (c as any).slaExpired === true;
+    return slaExpired || diasRestantes <= 1;
+  });
+
+  const baseCases = criticos.length > 0 ? criticos : casosEnAlerta;
 
   // Filtrar casos según búsqueda y filtros
   const casosFiltrados = baseCases.filter(caso => {

@@ -195,22 +195,18 @@ const CaseDetail: React.FC = () => {
     );
   }
 
-  // Calcular información SLA
+  // Usar información SLA del backend (días hábiles)
   const createdDate = new Date(caso.createdAt);
-  const slaDays = caso.categoria?.slaDias || 2;
-  const slaDeadline = new Date(createdDate);
-  slaDeadline.setDate(slaDeadline.getDate() + slaDays);
+  const slaDays = caso.slaDias ?? caso.categoria?.slaDias ?? 2;
+  const slaDeadline = caso.fechaFinSla ? new Date(caso.fechaFinSla) : null;
+  const diasRestantes = caso.diasRestantes ?? slaDays ?? 1;
+  const diasAbierto = caso.diasAbierto ?? 0;
   
   const now = new Date();
-  const totalMs = slaDeadline.getTime() - createdDate.getTime();
-  const elapsedMs = now.getTime() - createdDate.getTime();
-  const slaProgress = Math.min(100, Math.max(0, (elapsedMs / totalMs) * 100));
-  
-  const daysOverdue = caso.slaExpired ? Math.floor((now.getTime() - slaDeadline.getTime()) / (1000 * 60 * 60 * 24)) : 0;
-  const hoursOverdue = caso.slaExpired ? Math.floor(((now.getTime() - slaDeadline.getTime()) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)) : 0;
-
-  const daysRemaining = !caso.slaExpired ? Math.floor((slaDeadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
-  const hoursRemaining = !caso.slaExpired ? Math.floor(((slaDeadline.getTime() - now.getTime()) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)) : 0;
+  let daysOverdue = 0;
+  if (slaDeadline && now > slaDeadline) {
+    daysOverdue = Math.floor((now.getTime() - slaDeadline.getTime()) / (1000 * 60 * 60 * 24));
+  }
 
   const isEscalated = caso.status === CaseStatus.ESCALADO;
   const showAlert = isEscalated && caso.slaExpired;
@@ -337,13 +333,13 @@ const CaseDetail: React.FC = () => {
                 <div className="p-3 rounded-lg" style={{...styles.input}}>
                   <p className="text-xs mb-1" style={{color: styles.text.tertiary}}>Fecha de Creación</p>
                   <p className="text-sm font-bold" style={{color: styles.text.primary}}>
-                    {createdDate.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                    {createdDate.toLocaleDateString('es-ES', { timeZone: 'America/Guatemala', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
                 </div>
                 <div className="p-3 rounded-lg" style={{...styles.input}}>
                   <p className="text-xs mb-1" style={{color: styles.text.tertiary}}>Fecha Límite SLA</p>
                   <p className="text-sm font-bold" style={{color: styles.text.primary}}>
-                    {slaDeadline.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                    {slaDeadline ? slaDeadline.toLocaleDateString('es-ES', { timeZone: 'America/Guatemala', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
                   </p>
                 </div>
                 <div className="p-3 rounded-lg" style={{...styles.input}}>
@@ -351,23 +347,28 @@ const CaseDetail: React.FC = () => {
                   <p className="text-sm font-bold" style={{color: styles.text.primary}}>
                     {slaDays} días hábiles
                   </p>
-                  <p className="text-xs" style={{color: styles.text.tertiary}}>{slaDays * 24} horas hábiles</p>
+                  <p className="text-xs" style={{color: styles.text.tertiary}}>{diasAbierto} días consumidos</p>
                 </div>
                 {caso.slaExpired ? (
                   <div className="p-3 rounded-lg" style={{backgroundColor: 'rgba(153, 27, 27, 0.25)', border: '1px solid rgba(153, 27, 27, 0.4)'}}>
-                    <p className="text-xs mb-1" style={{color: '#f87171'}}>Días de Retraso</p>
+                    <p className="text-xs mb-1" style={{color: '#f87171'}}>SLA Vencido</p>
                     <p className="text-sm font-bold" style={{color: '#fca5a5'}}>
-                      {daysOverdue} días hábiles
+                      {daysOverdue} días de atraso
                     </p>
-                    <p className="text-xs" style={{color: '#f87171'}}>{daysOverdue * 24 + hoursOverdue} horas hábiles de retraso</p>
+                  </div>
+                ) : diasRestantes <= 1 && diasRestantes > 0 ? (
+                  <div className="p-3 rounded-lg" style={{backgroundColor: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.4)'}}>
+                    <p className="text-xs mb-1" style={{color: '#f59e0b'}}>En Riesgo</p>
+                    <p className="text-sm font-bold" style={{color: '#f59e0b'}}>
+                      {diasRestantes} días hábiles restantes
+                    </p>
                   </div>
                 ) : (
                   <div className="p-3 rounded-lg" style={{backgroundColor: 'rgba(34, 197, 94, 0.1)', borderColor: 'rgba(34, 197, 94, 0.3)', border: '1px solid'}}>
                     <p className="text-xs mb-1 text-green-600">Tiempo Restante</p>
                     <p className="text-sm font-bold text-green-600">
-                      {daysRemaining} días hábiles
+                      {diasRestantes} días hábiles
                     </p>
-                    <p className="text-xs text-green-600">{daysRemaining * 24 + hoursRemaining} horas hábiles restantes</p>
                   </div>
                 )}
               </div>
@@ -535,6 +536,7 @@ const CaseDetail: React.FC = () => {
                       >
                         <p className="text-xs font-medium mb-2" style={{color: styles.text.tertiary}}>
                           {new Date(entry.fecha || entry.fechaHora || entry.fechayhora).toLocaleString('es-ES', {
+                            timeZone: 'America/Guatemala',
                             dateStyle: 'short',
                             timeStyle: 'short'
                           })}

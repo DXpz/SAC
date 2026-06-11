@@ -20,6 +20,7 @@ const AdminBandejaCasos: React.FC = () => {
   const [clienteFilter, setClienteFilter] = useState<string>('all');
   const [agenteFilter, setAgenteFilter] = useState<string>('all');
   const [slaFilter, setSlaFilter] = useState<string>('all'); // all, vencido, en-riesgo, dentro-sla
+  const [prioridadFilter, setPrioridadFilter] = useState<string>('all'); // all, Critica, Alta, Media
   const [fechaFilter, setFechaFilter] = useState<string>('all'); // all, hoy, semana, mes
   const [clientes, setClientes] = useState<ClienteListado[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
@@ -364,6 +365,14 @@ const loadAgentes = async () => {
       });
     }
 
+    // Filtro por prioridad
+    if (prioridadFilter !== 'all') {
+      result = result.filter(c => {
+        const prioridad = (c as any).prioridad || 'Alta';
+        return prioridad === prioridadFilter;
+      });
+    }
+
     // Filtro por SLA
     if (slaFilter !== 'all') {
       result = result.filter(c => {
@@ -405,7 +414,7 @@ const loadAgentes = async () => {
     }
 
     setFiltered(result);
-  }, [searchTerm, statusFilter, categoriaFilter, clienteFilter, agenteFilter, slaFilter, fechaFilter, casos]);
+  }, [searchTerm, statusFilter, categoriaFilter, clienteFilter, agenteFilter, prioridadFilter, slaFilter, fechaFilter, casos]);
 
   // Estilos dinámicos basados en el tema (usando useMemo para recalcular cuando cambia el tema)
   const styles = useMemo(() => ({
@@ -457,7 +466,7 @@ const loadAgentes = async () => {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return date.toLocaleDateString('es-ES', { timeZone: 'America/Guatemala', day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
   // Badges con color (como en Admin de usuarios)
@@ -703,6 +712,37 @@ const loadAgentes = async () => {
             }} />
           </div>
 
+          {/* Prioridad */}
+          <div className="relative">
+            <AlertTriangle className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none z-10" style={{color: prioridadFilter === 'all' ? '#64748b' : '#107ab4'}} />
+            <select
+              value={prioridadFilter}
+              onChange={(e) => setPrioridadFilter(e.target.value)}
+              className="w-full pl-10 pr-8 py-2.5 border rounded-xl focus:outline-none transition-all text-xs font-semibold appearance-none cursor-pointer"
+              style={{
+                backgroundColor: prioridadFilter === 'all' 
+                  ? styles.card.backgroundColor
+                  : (theme === 'dark' ? 'rgba(16, 122, 180, 0.15)' : '#e0f2fe'),
+                borderColor: prioridadFilter === 'all' 
+                  ? styles.card.borderColor
+                  : '#107ab4',
+                color: prioridadFilter === 'all' 
+                  ? styles.text.secondary
+                  : (theme === 'dark' ? '#93c5fd' : '#0c4a6e'),
+                boxShadow: prioridadFilter === 'all' ? '0 1px 2px rgba(0, 0, 0, 0.05)' : '0 2px 4px rgba(16, 122, 180, 0.15)'
+              }}
+            >
+              <option value="all">Todas las Prioridades</option>
+              <option value="Critica">Crítica</option>
+              <option value="Alta">Alta</option>
+              <option value="Media">Media</option>
+            </select>
+            <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{
+              color: prioridadFilter === 'all' ? styles.text.tertiary : '#107ab4',
+              transform: 'rotate(90deg)'
+            }} />
+          </div>
+
           {/* SLA */}
           <div className="relative">
             <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none z-10" style={{color: slaFilter === 'all' ? '#64748b' : '#107ab4'}} />
@@ -816,6 +856,7 @@ const loadAgentes = async () => {
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Empresa</th>
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Asunto</th>
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Categoría</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Prioridad</th>
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Estado</th>
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Agente</th>
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>SLA</th>
@@ -829,6 +870,7 @@ const loadAgentes = async () => {
                   const normalizedStatus = normalizeStatus(rawStatus);
                   const slaStatus = getSlaStatus(caso);
                   const StatusIcon = slaStatus.icon;
+                  const prioridad = (caso as any).prioridad || 'Alta';
                   
                   return (
                     <tr 
@@ -839,6 +881,7 @@ const loadAgentes = async () => {
                           ? (theme === 'dark' ? '#020617' : '#ffffff')
                           : (theme === 'dark' ? '#0f172a' : '#f8fafc'),
                         borderBottom: idx < filtered.length - 1 ? '1px solid rgba(148, 163, 184, 0.1)' : 'none',
+                        borderLeft: prioridad === 'Critica' ? '4px solid #c8151b' : 'none',
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.transform = 'translateX(2px)';
@@ -935,6 +978,24 @@ const loadAgentes = async () => {
                             </div>
                           )}
                         </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {(() => {
+                          const prioridad = (caso as any).prioridad || 'Alta';
+                          return (
+                            <span className="inline-flex px-2 py-1 text-[10px] font-semibold rounded-lg border transition-all uppercase tracking-wide" style={{
+                              backgroundColor: prioridad === 'Critica' 
+                                ? (theme === 'dark' ? 'rgba(200, 21, 27, 0.15)' : 'rgba(200, 21, 27, 0.05)')
+                                : prioridad === 'Alta'
+                                ? (theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.05)')
+                                : (theme === 'dark' ? 'rgba(100, 116, 139, 0.15)' : 'rgba(100, 116, 139, 0.05)'),
+                              color: prioridad === 'Critica' ? '#c8151b' : prioridad === 'Alta' ? '#f59e0b' : '#64748b',
+                              borderColor: prioridad === 'Critica' ? 'rgba(200, 21, 27, 0.3)' : prioridad === 'Alta' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(100, 116, 139, 0.3)'
+                            }}>
+                              {prioridad}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-4 py-3">
                         {(() => {

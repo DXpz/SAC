@@ -1590,7 +1590,7 @@ const CaseDetail: React.FC = () => {
                 >
                   <p className="text-xs mb-1" style={{color: styles.text.tertiary}}>Fecha Límite SLA</p>
                   <p className="text-sm font-bold" style={{color: styles.text.primary}}>
-                    {slaDeadline ? slaDeadline.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+                    {slaDeadline ? slaDeadline.toLocaleDateString('es-ES', { timeZone: 'America/Guatemala', weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
                   </p>
                 </div>
                 <div 
@@ -1618,6 +1618,20 @@ const CaseDetail: React.FC = () => {
                     <p className="text-xs mb-1 font-semibold" style={{color: '#f87171'}}>SLA Vencido</p>
                     <p className="text-sm font-bold" style={{color: '#fca5a5'}}>
                       {daysOverdue} días de atraso
+                    </p>
+                  </div>
+                ) : diasRestantes <= 1 && diasRestantes > 0 ? (
+                  <div 
+                    className="p-3 rounded-lg transition-all hover:scale-[1.02]" 
+                    style={{
+                      backgroundColor: 'rgba(245, 158, 11, 0.1)', 
+                      border: '1px solid rgba(245, 158, 11, 0.4)',
+                      animation: 'fadeInSlide 0.3s ease-out 0.4s both'
+                    }}
+                  >
+                    <p className="text-xs mb-1 font-semibold" style={{color: '#f59e0b'}}>En Riesgo</p>
+                    <p className="text-sm font-bold" style={{color: '#f59e0b'}}>
+                      {diasRestantes} días hábiles restantes
                     </p>
                   </div>
                 ) : (
@@ -1999,6 +2013,7 @@ const CaseDetail: React.FC = () => {
                                 backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.1)' : 'rgba(148, 163, 184, 0.1)'
                               }}>
                                 {new Date(fecha).toLocaleString('es-ES', { 
+                                  timeZone: 'America/Guatemala',
                                   day: 'numeric',
                                   month: 'short',
                                   year: 'numeric',
