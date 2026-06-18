@@ -1,10 +1,12 @@
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { Role } from '../types';
 import { LayoutDashboard, Ticket, Users, BarChart3, LogOut, ShieldAlert, Sun, Moon, Menu, X, Settings } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import FilterBar from './FilterBar';
+import { getStoredFilters, setStoredFilters } from '../services/filterService';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -20,6 +22,35 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const { theme, toggleTheme } = useTheme();
+
+  // Filtros globales persistentes (lectura inicial desde localStorage)
+  const storedFilters = getStoredFilters();
+  const [paisFilterLocal, setPaisFilterLocal] = useState<string>(storedFilters.paisFilter || 'all');
+  const [mesFilterLocal, setMesFilterLocal] = useState<string>(storedFilters.mesFilter || '');
+  const [yearFilterLocal, setYearFilterLocal] = useState<string>(storedFilters.yearFilter || '');
+
+  const persistFilters = useCallback((pais: string, mes: string, year: string) => {
+    const filters = { paisFilter: pais, mesFilter: mes, yearFilter: year };
+    setStoredFilters(filters);
+  }, []);
+
+  const handleSetPaisFilter = (value: string) => {
+    setPaisFilterLocal(value);
+    persistFilters(value, mesFilterLocal, yearFilterLocal);
+  };
+  const handleSetMesFilter = (value: string) => {
+    setMesFilterLocal(value);
+    persistFilters(paisFilterLocal, value, yearFilterLocal);
+  };
+  const handleSetYearFilter = (value: string) => {
+    setYearFilterLocal(value);
+    persistFilters(paisFilterLocal, mesFilterLocal, value);
+  };
+  const handleApplyFilters = () => {
+    persistFilters(paisFilterLocal, mesFilterLocal, yearFilterLocal);
+    // Recargar la página actual para aplicar filtros
+    window.location.reload();
+  };
 
   // Actualizar usuario cuando cambie en localStorage o cuando cambie la ruta
   // Usar useRef para evitar loops infinitos
@@ -569,6 +600,22 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             return null;
           })()}
         </header>
+
+        {/* FilterBar Global - persistente en localStorage, visible en todas las vistas */}
+        <div className="flex-shrink-0 mb-4 px-2">
+          <FilterBar
+            isAdminGlobal={user?.role === 'ADMIN_GLOBAL'}
+            paisFilter={paisFilterLocal}
+            setPaisFilter={handleSetPaisFilter}
+            mesFilter={mesFilterLocal}
+            setMesFilter={handleSetMesFilter}
+            yearFilter={yearFilterLocal}
+            setYearFilter={handleSetYearFilter}
+            theme={theme}
+            onApply={handleApplyFilters}
+          />
+        </div>
+
         <div style={{ flex: '1 1 auto', overflowY: 'auto', overflowX: 'hidden', minHeight: 0 }}>
           {children}
         </div>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { sapService } from '../services/sapService';
@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import AnimatedNumber from '../components/AnimatedNumber';
 import LoadingScreen from '../components/LoadingScreen';
-import FilterBar from '../components/FilterBar';
+import { getStoredFilters, getDateFiltros } from '../services/filterService';
 
 type Priority = 'Critica' | 'Alta' | 'Media';
 
@@ -60,9 +60,6 @@ const AlertasCriticas: React.FC = () => {
   // Estados de workflow cargados desde el webhook (incluye flag isFinal)
   const [estados, setEstados] = useState<Array<{ id: string; name: string; order?: number; isFinal?: boolean }>>([]);
   const [userCountry, setUserCountry] = useState<'SV' | 'GT' | null>(null);
-  const [mesFilter, setMesFilter] = useState<string>('');
-  const [yearFilter, setYearFilter] = useState<string>('');
-  const [paisFilter, setPaisFilter] = useState<string>('all');
   const navigate = useNavigate();
   const { theme } = useTheme();
   const location = useLocation();
@@ -213,25 +210,11 @@ const AlertasCriticas: React.FC = () => {
     };
   }, []);
 
-  // Calcular fechas de filtro (primero y último día del mes)
-  const getDateFiltros = useCallback(() => {
-    if (!mesFilter && !yearFilter) return {};
-    const y = yearFilter ? parseInt(yearFilter) : new Date().getFullYear();
-    const m = mesFilter ? parseInt(mesFilter) - 1 : 0;
-    const inicio = new Date(y, m, 1);
-    const fin = new Date(y, mesFilter ? m + 1 : 12, 0);
-    fin.setHours(23, 59, 59, 999);
-    return {
-      fechaInicio: inicio.toISOString(),
-      fechaFin: fin.toISOString(),
-    };
-  }, [mesFilter, yearFilter]);
-
-  const filtro = getDateFiltros();
-
   const loadData = async () => {
     setLoading(true);
     try {
+      const storedFilters = getStoredFilters();
+      const filtro = getDateFiltros(storedFilters);
       const clientesList = await sapService.getClientesListado(userCountry);
       setClientes(clientesList);
       const [criticalList, allCasesData, metricsData] = await Promise.all([
@@ -631,20 +614,6 @@ const AlertasCriticas: React.FC = () => {
         }}
       >
         <div className="p-4 space-y-4">
-          {/* FilterBar - filtros de país, mes y año */}
-          <div className="w-full">
-            <FilterBar
-              isAdminGlobal={isAdminGlobal}
-              paisFilter={paisFilter}
-              setPaisFilter={setPaisFilter}
-              mesFilter={mesFilter}
-              setMesFilter={setMesFilter}
-              yearFilter={yearFilter}
-              setYearFilter={setYearFilter}
-              theme={theme}
-              onApply={loadData}
-            />
-          </div>
           {/* Primera fila: Búsqueda y controles de vista */}
           <div className="flex flex-col md:flex-row gap-4">
             {/* Búsqueda */}

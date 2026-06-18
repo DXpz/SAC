@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { API_CONFIG } from '../config';
@@ -9,8 +9,7 @@ import { Search, Plus, Filter, ChevronRight, X, Calendar, User, Clock, AlertTria
 import { useTheme } from '../contexts/ThemeContext';
 import LoadingScreen from '../components/LoadingScreen';
 import LoadingLogo from '../components/LoadingLogo';
-import CountrySelector from '../components/CountrySelector';
-import FilterBar from '../components/FilterBar';
+import { getStoredFilters, getDateFiltros } from '../services/filterService';
 
 const AdminBandejaCasos: React.FC = () => {
   const [casos, setCasos] = useState<Case[]>([]);
@@ -25,8 +24,6 @@ const AdminBandejaCasos: React.FC = () => {
   const [prioridadFilter, setPrioridadFilter] = useState<string>('all'); // all, Critica, Alta, Media
   const [fechaFilter, setFechaFilter] = useState<string>('all'); // all, hoy, semana, mes
   const [paisFilter, setPaisFilter] = useState<string>('all'); // all, Guatemala, ElSalvador - solo para ADMIN_GLOBAL
-  const [mesFilter, setMesFilter] = useState<string>('');
-  const [yearFilter, setYearFilter] = useState<string>('');
   const [clientes, setClientes] = useState<ClienteListado[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [agentes, setAgentes] = useState<Agente[]>([]);
@@ -78,21 +75,10 @@ const AdminBandejaCasos: React.FC = () => {
     return formatCountry(rawCountry);
   };
 
-  // Calcular fechas de filtro (primero y último día del mes)
-  const getDateFiltros = useCallback(() => {
-    if (!mesFilter && !yearFilter) return {};
-    const y = yearFilter ? parseInt(yearFilter) : new Date().getFullYear();
-    const m = mesFilter ? parseInt(mesFilter) - 1 : 0;
-    const inicio = new Date(y, m, 1);
-    const fin = new Date(y, mesFilter ? m + 1 : 12, 0); // último día del mes (o del año)
-    fin.setHours(23, 59, 59, 999);
-    return {
-      fechaInicio: inicio.toISOString(),
-      fechaFin: fin.toISOString(),
-    };
-  }, [mesFilter, yearFilter]);
-
-  const filtro = getDateFiltros();
+  const getPaisFilter = useMemo(() => {
+    const stored = getStoredFilters();
+    return stored.paisFilter || 'all';
+  }, []);
 
 // Cargar datos iniciales y cuando cambia la vista
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
@@ -108,7 +94,7 @@ const AdminBandejaCasos: React.FC = () => {
           sapService.getClientesListado(pais as any),
           api.getCategorias(),
           api.getAgentes(pais as any),
-          api.getCases(true, true, filtro),
+          api.getCases(true, true, getDateFiltros(getStoredFilters())),
           fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}`, {
             headers: { 'ngrok-skip-browser-warning': 'true' }
           }).then(r => r.json()).catch(() => [])
@@ -303,7 +289,7 @@ const loadAgentes = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.getCases(true, true, filtro);
+      const data = await api.getCases(true, true, getDateFiltros(getStoredFilters()));
       setCasos(data);
       const updateTime = new Date();
       localStorage.setItem('bandeja_last_update', updateTime.toISOString());
@@ -576,20 +562,6 @@ const loadAgentes = async () => {
         </div>
 
         {/* Filtros en grid */}
-        {/* Barra de filtros mes/año/provincia */}
-        <div className="col-span-full mb-2">
-          <FilterBar
-            isAdminGlobal={isAdminGlobal}
-            paisFilter={paisFilter}
-            setPaisFilter={setPaisFilter}
-            mesFilter={mesFilter}
-            setMesFilter={setMesFilter}
-            yearFilter={yearFilter}
-            setYearFilter={setYearFilter}
-            theme={theme}
-            onApply={loadCasos}
-          />
-        </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
           {/* Estado */}
           <div className="relative">
