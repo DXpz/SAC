@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, clearCache } from '../services/api';
+import { getPaisFromFilters } from '../services/filterService';
 import { Agente } from '../types';
 import { 
   Users, 
@@ -47,26 +48,32 @@ const GestionAgentes: React.FC = () => {
     // Solo cargar agentes al montar el componente
     // No limpiar caché automáticamente para evitar recargas innecesarias
     loadAgentes();
-    
+
     const handleAgenteCreado = () => {
       clearCache('agentes');
       setTimeout(() => {
         loadAgentes();
       }, 500);
     };
-    
+
     const handleCasoReasignado = () => {
       // Cuando se reasigna un caso, recargar agentes para actualizar casosActivos
       localStorage.removeItem('intelfon_agents');
       loadAgentes();
     };
-    
+
+    const handleFilterApplied = () => {
+      loadAgentes();
+    };
+
     window.addEventListener('agente-creado', handleAgenteCreado);
     window.addEventListener('caso-reasignado', handleCasoReasignado);
-    
+    window.addEventListener('sac-filter-applied', handleFilterApplied);
+
     return () => {
       window.removeEventListener('agente-creado', handleAgenteCreado);
       window.removeEventListener('caso-reasignado', handleCasoReasignado);
+      window.removeEventListener('sac-filter-applied', handleFilterApplied);
     };
   }, []);
 
@@ -176,28 +183,37 @@ const GestionAgentes: React.FC = () => {
     setLoading(true);
     const currentUser = api.getUser();
     const isSupervisorOrAdmin = currentUser?.role === 'SUPERVISOR' || currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR' || currentUser?.role === 'ADMIN_GLOBAL';
-    
+    const isAdminGlobal = currentUser?.role === 'ADMIN_GLOBAL';
+
     // Usar getAgentes() para tener acceso a orden_round_robin
     let agentesData = await api.getAgentes();
-    
+
     // Filtrar solo usuarios con rol AGENTE (ya que getAgentes puede devolver datos de tabla agente)
     // y necesitamos enriqucier con datos de usuario para el orden round robin
-    
+
     let agentesFiltrados = [...agentesData];
-    if (isSupervisorOrAdmin) {
-      const supervisorCountry = await getSupervisorCountry();
-      if (supervisorCountry) {
-        agentesFiltrados = agentesData.filter(agente => {
-          const agentePais = agente.pais || (agente as any).country || '';
-          const agentePaisNormalizado = normalizeAgentCountry(agentePais);
-          if (!agentePaisNormalizado) {
-            return false;
-          }
-          return agentePaisNormalizado === supervisorCountry;
-        });
-      } else {
-        agentesFiltrados = [];
-      }
+
+    // Determinar país objetivo: para ADMIN_GLOBAL, respetar el filtro global; para
+    // SUPERVISOR/ADMIN, usar el país del supervisor; si ninguno, no filtrar.
+    let paisObjetivo: 'SV' | 'GT' | null = null;
+    if (isAdminGlobal) {
+      paisObjetivo = (getPaisFromFilters() as 'SV' | 'GT' | null) || null;
+    } else if (isSupervisorOrAdmin) {
+      paisObjetivo = await getSupervisorCountry();
+    }
+
+    if (paisObjetivo) {
+      agentesFiltrados = agentesData.filter(agente => {
+        const agentePais = agente.pais || (agente as any).country || '';
+        const agentePaisNormalizado = normalizeAgentCountry(agentePais);
+        if (!agentePaisNormalizado) {
+          return false;
+        }
+        return agentePaisNormalizado === paisObjetivo;
+      });
+    } else if (!isAdminGlobal) {
+      // Para roles distintos a ADMIN_GLOBAL sin país, mostrar vacío
+      agentesFiltrados = [];
     }
     // Ordenar agentes por ordenRoundRobin (1, 2, 3...) para mostrar el orden del round robin
     // Primero por round_robin_orden (ascendente), luego inactivos al final
