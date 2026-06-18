@@ -850,8 +850,10 @@ export const createCase = async (caseData: {
  * Obtiene todos los casos
  * El backend tiene GET /api/casos que lista casos
  * Incluye agentes, categorías y clientes relacionados
+ * @param includeClosed incluir casos cerrados
+ * @param options opciones de filtro (fechaInicio, fechaFin)
  */
-export const getCases = async (includeClosed: boolean = false): Promise<Case[]> => {
+export const getCases = async (includeClosed: boolean = false, options?: { fechaInicio?: string; fechaFin?: string }): Promise<Case[]> => {
   const actor = getActor();
   const userRole = getUserRole();
 
@@ -900,7 +902,9 @@ export const getCases = async (includeClosed: boolean = false): Promise<Case[]> 
 
   const closedParam = includeClosed ? '&includeClosed=true' : '';
   const paisParam = paisValue ? `&pais=${encodeURIComponent(paisValue)}` : '';
-  const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}?_t=${Date.now()}${paisParam}${closedParam}`, {
+  const fechaInicioParam = options?.fechaInicio ? `&fechaInicio=${encodeURIComponent(options.fechaInicio)}` : '';
+  const fechaFinParam = options?.fechaFin ? `&fechaFin=${encodeURIComponent(options.fechaFin)}` : '';
+  const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}?_t=${Date.now()}${paisParam}${closedParam}${fechaInicioParam}${fechaFinParam}`, {
     method: 'GET',
     headers: { ...getAuthHeaders(), 'Cache-Control': 'no-cache' }
   });

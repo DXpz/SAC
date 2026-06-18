@@ -522,7 +522,7 @@ export const api = {
     }
   },
 
-  async getCases(forceRefresh = false, includeClosed: boolean = false): Promise<Case[]> {
+  async getCases(forceRefresh = false, includeClosed: boolean = false, options?: { fechaInicio?: string; fechaFin?: string }): Promise<Case[]> {
     const cacheKey = includeClosed ? 'cases_all' : 'cases';
     if (forceRefresh) {
       delete cache[cacheKey];
@@ -531,7 +531,7 @@ export const api = {
       const user = this.getUser();
 
       try {
-        const cases = await caseService.getCases(includeClosed);
+        const cases = await caseService.getCases(includeClosed, options);
         return cases || [];
       } catch (err: any) {
         throw err;
@@ -539,7 +539,7 @@ export const api = {
     });
   },
 
-  async getCriticalCases(): Promise<Case[]> {
+  async getCriticalCases(options?: { fechaInicio?: string; fechaFin?: string }): Promise<Case[]> {
     const user = this.getUser();
     let paisValue: string | null = null;
 
@@ -558,7 +558,9 @@ export const api = {
 
     const cacheBuster = Date.now();
     const paisParam = paisValue ? `&pais=${paisValue}` : '';
-    const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/critical?_=${cacheBuster}${paisParam}`, {
+    const fechaInicioParam = options?.fechaInicio ? `&fechaInicio=${encodeURIComponent(options.fechaInicio)}` : '';
+    const fechaFinParam = options?.fechaFin ? `&fechaFin=${encodeURIComponent(options.fechaFin)}` : '';
+    const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/critical?_=${cacheBuster}${paisParam}${fechaInicioParam}${fechaFinParam}`, {
       method: 'GET',
       headers: { ...getAuthHeaders(), 'Cache-Control': 'no-cache' }
     });
@@ -599,7 +601,7 @@ export const api = {
     });
   },
 
-  async getDashboardMetrics(options?: { pais?: 'SV' | 'GT' | 'all'; period?: 'todos' | 'hoy' | 'semana' | 'mes'; agentId?: string }): Promise<any> {
+  async getDashboardMetrics(options?: { pais?: 'SV' | 'GT' | 'all'; period?: 'todos' | 'hoy' | 'semana' | 'mes'; agentId?: string; fechaInicio?: string; fechaFin?: string }): Promise<any> {
     const user = this.getUser();
     let paisValue: string | null = null;
 
@@ -623,6 +625,8 @@ export const api = {
     if (options?.agentId && options.agentId !== 'todos') {
       params.set('agentId', options.agentId);
     }
+    if (options?.fechaInicio) params.set('fechaInicio', options.fechaInicio);
+    if (options?.fechaFin) params.set('fechaFin', options.fechaFin);
 
     const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/metrics?${params.toString()}`, {
       method: 'GET',
