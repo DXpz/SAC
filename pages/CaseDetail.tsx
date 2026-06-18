@@ -2001,9 +2001,18 @@ const CaseDetail: React.FC = () => {
                                   {textoEvento}
                                 </p>
                                 {justificacion && (
-                                  <p className="text-xs font-medium mb-1" style={{color: styles.text.secondary}}>
-                                    {justificacion}
-                                  </p>
+                                  <div
+                                    className="mt-2 mb-2 px-3 py-2 rounded-md border-l-4 text-xs font-medium"
+                                    style={{
+                                      backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.08)' : 'rgba(59, 130, 246, 0.06)',
+                                      borderLeftColor: '#3b82f6',
+                                      color: styles.text.primary,
+                                      fontStyle: 'italic'
+                                    }}
+                                  >
+                                    <span className="font-semibold not-italic" style={{color: '#3b82f6'}}>Feedback: </span>
+                                    <span>&ldquo;{justificacion}&rdquo;</span>
+                                  </div>
                                 )}
                                 <p className="text-xs font-medium" style={{color: styles.text.tertiary}}>
                                   Por: {autorNombre} ({autorRol})

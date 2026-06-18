@@ -1100,6 +1100,7 @@ interface WebhookHistorialEntry {
   estado_anterior: string;
   estado_nuevo: string;
   usuario: string;
+  usuario_nombre?: string;
   detalle: string;
 }
 
@@ -1159,7 +1160,7 @@ const mapWebhookHistorialToFrontend = (webhookHistorial: WebhookHistorialEntry[]
       estado_anterior: entry.estado_anterior,
       estado_nuevo: entry.estado_nuevo,
       justificacion: entry.detalle,
-      autor_nombre: entry.usuario, // Usar el email como nombre por ahora
+      autor_nombre: entry.usuario_nombre || entry.usuario || 'Sistema',
       autor_rol: autor_rol,
       fecha: fechaISO
     };
