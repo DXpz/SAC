@@ -9,6 +9,7 @@ import { Search, Plus, Filter, ChevronRight, X, Calendar, User, Clock, AlertTria
 import { useTheme } from '../contexts/ThemeContext';
 import LoadingScreen from '../components/LoadingScreen';
 import LoadingLogo from '../components/LoadingLogo';
+import CountrySelector from '../components/CountrySelector';
 
 const AdminBandejaCasos: React.FC = () => {
   const [casos, setCasos] = useState<Case[]>([]);
@@ -22,6 +23,7 @@ const AdminBandejaCasos: React.FC = () => {
   const [slaFilter, setSlaFilter] = useState<string>('all'); // all, vencido, en-riesgo, dentro-sla
   const [prioridadFilter, setPrioridadFilter] = useState<string>('all'); // all, Critica, Alta, Media
   const [fechaFilter, setFechaFilter] = useState<string>('all'); // all, hoy, semana, mes
+  const [paisFilter, setPaisFilter] = useState<string>('all'); // all, Guatemala, ElSalvador - solo para ADMIN_GLOBAL
   const [clientes, setClientes] = useState<ClienteListado[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [agentes, setAgentes] = useState<Agente[]>([]);
@@ -31,12 +33,16 @@ const AdminBandejaCasos: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [userCountry, setUserCountry] = useState<'SV' | 'GT' | null>(null);
+  const [isAdminGlobal, setIsAdminGlobal] = useState(false);
 
   // Cargar país del usuario
   useEffect(() => {
     const loadCountry = async () => {
       const country = await getUserCountry();
       setUserCountry(country);
+      // Detectar si es ADMIN_GLOBAL
+      const currentUser = api.getUser();
+      setIsAdminGlobal(currentUser?.role === 'ADMIN_GLOBAL');
     };
     loadCountry();
   }, []);
@@ -373,6 +379,16 @@ const loadAgentes = async () => {
       });
     }
 
+    // Filtro por país (solo para ADMIN_GLOBAL)
+    if (isAdminGlobal && paisFilter !== 'all') {
+      result = result.filter(c => {
+        const casoPais = (c.pais || (c as any).country || '').toLowerCase();
+        return casoPais === paisFilter.toLowerCase() ||
+               (paisFilter === 'Guatemala' && casoPais.includes('guatemala')) ||
+               (paisFilter === 'ElSalvador' && casoPais.includes('salvador'));
+      });
+    }
+
     // Filtro por SLA
     if (slaFilter !== 'all') {
       result = result.filter(c => {
@@ -538,6 +554,18 @@ const loadAgentes = async () => {
 
         {/* Filtros en grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
+          {/* País - Solo para ADMIN_GLOBAL */}
+          {isAdminGlobal && (
+            <div className="col-span-2 md:col-span-1">
+              <CountrySelector
+                value={paisFilter}
+                onChange={setPaisFilter}
+                theme={theme}
+                label="País"
+                includeAll={true}
+              />
+            </div>
+          )}
           {/* Estado */}
           <div className="relative">
             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none z-10" style={{color: statusFilter === 'all' ? '#64748b' : '#107ab4'}} />

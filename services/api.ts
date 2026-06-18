@@ -82,6 +82,30 @@ const getBaseUrl = (): string => {
   return API_CONFIG.WEBHOOK_URL;
 };
 
+// Helper para obtener headers con info del usuario (X-User-*) y token
+const getAuthHeaders = (): Record<string, string> => {
+  const headers: Record<string, string> = {
+    'Accept': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
+  };
+
+  const userStr = localStorage.getItem('intelfon_user');
+  let userObj: any = {};
+  try { userObj = userStr ? JSON.parse(userStr) : {}; } catch (e) {}
+
+  if (userObj.id) headers['X-User-Id'] = String(userObj.id);
+  if (userObj.role) headers['X-User-Role'] = String(userObj.role);
+  if (userObj.pais) headers['X-User-Pais'] = String(userObj.pais);
+  if (userObj.email) headers['X-User-Email'] = String(userObj.email);
+
+  const token = localStorage.getItem('intelfon_token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  return headers;
+};
+
 // Helper genérico para llamadas a webhooks de n8n
 // Usa el JWT almacenado (cuando exista) y respeta el timeout global
 const callWebhookGeneric = async <T = any>(
@@ -92,19 +116,10 @@ const callWebhookGeneric = async <T = any>(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
 
-  const token = localStorage.getItem('intelfon_token');
-
-  const headers: Record<string, string> = {
-    'Accept': 'application/json',
-    'ngrok-skip-browser-warning': 'true',
-  };
+  const headers = getAuthHeaders();
 
   if (body) {
     headers['Content-Type'] = 'application/json';
-  }
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
   }
 
   try {
@@ -526,21 +541,26 @@ export const api = {
 
   async getCriticalCases(): Promise<Case[]> {
     const user = this.getUser();
-    let paisValue = 'Guatemala';
-    
-    if (user?.pais) {
-      const paisNormalizado = String(user.pais).trim().toUpperCase();
-      if (paisNormalizado === 'SV' || paisNormalizado.includes('SALVADOR')) {
-        paisValue = 'SV';
-      } else if (paisNormalizado === 'GT' || paisNormalizado.includes('GUATEMALA')) {
-        paisValue = 'GT';
+    let paisValue: string | null = null;
+
+    // ADMIN_GLOBAL no envía parámetro de país (recibe todos)
+    if (user?.role !== 'ADMIN_GLOBAL') {
+      paisValue = 'Guatemala';
+      if (user?.pais) {
+        const paisNormalizado = String(user.pais).trim().toUpperCase();
+        if (paisNormalizado === 'SV' || paisNormalizado.includes('SALVADOR')) {
+          paisValue = 'SV';
+        } else if (paisNormalizado === 'GT' || paisNormalizado.includes('GUATEMALA')) {
+          paisValue = 'GT';
+        }
       }
     }
-    
+
     const cacheBuster = Date.now();
-    const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/critical?pais=${paisValue}&_=${cacheBuster}`, {
+    const paisParam = paisValue ? `&pais=${paisValue}` : '';
+    const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/critical?_=${cacheBuster}${paisParam}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true', 'Cache-Control': 'no-cache' }
+      headers: { ...getAuthHeaders(), 'Cache-Control': 'no-cache' }
     });
     
     if (!response.ok) {
@@ -579,21 +599,26 @@ export const api = {
     });
   },
 
-  async getDashboardMetrics(options?: { pais?: 'SV' | 'GT'; period?: 'todos' | 'hoy' | 'semana' | 'mes'; agentId?: string }): Promise<any> {
+  async getDashboardMetrics(options?: { pais?: 'SV' | 'GT' | 'all'; period?: 'todos' | 'hoy' | 'semana' | 'mes'; agentId?: string }): Promise<any> {
     const user = this.getUser();
-    let paisValue = options?.pais || 'GT';
+    let paisValue: string | null = null;
 
-    if (!options?.pais && user?.pais) {
-      const paisNormalizado = String(user.pais).trim().toUpperCase();
-      if (paisNormalizado === 'SV' || paisNormalizado.includes('SALVADOR')) {
-        paisValue = 'SV';
-      } else if (paisNormalizado === 'GT' || paisNormalizado.includes('GUATEMALA')) {
-        paisValue = 'GT';
+    if (options?.pais && options.pais !== 'all') {
+      paisValue = options.pais;
+    } else if (user?.role !== 'ADMIN_GLOBAL') {
+      paisValue = 'GT'; // default para no-admin-global
+      if (user?.pais) {
+        const paisNormalizado = String(user.pais).trim().toUpperCase();
+        if (paisNormalizado === 'SV' || paisNormalizado.includes('SALVADOR')) {
+          paisValue = 'SV';
+        } else if (paisNormalizado === 'GT' || paisNormalizado.includes('GUATEMALA')) {
+          paisValue = 'GT';
+        }
       }
     }
 
     const params = new URLSearchParams();
-    params.set('pais', paisValue);
+    if (paisValue) params.set('pais', paisValue);
     params.set('period', options?.period || 'todos');
     if (options?.agentId && options.agentId !== 'todos') {
       params.set('agentId', options.agentId);
@@ -601,7 +626,7 @@ export const api = {
 
     const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/metrics?${params.toString()}`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
+      headers: { ...getAuthHeaders(), 'Cache-Control': 'no-cache' }
     });
 
     if (!response.ok) {
@@ -721,13 +746,27 @@ export const api = {
     return true;
   },
 
-  async getAgentes(pais?: 'SV' | 'GT'): Promise<any[]> {
+  async getAgentes(pais?: 'SV' | 'GT' | 'all'): Promise<any[]> {
     delete cache['agentes'];
-    const url = pais ? `${API_CONFIG.WEBHOOK_AGENTES_URL}?pais=${pais}&t=${Date.now()}` : `${API_CONFIG.WEBHOOK_AGENTES_URL}?t=${Date.now()}`;
+    const user = this.getUser();
+    let paisValue = pais;
+
+    // Si no se especifica país y es no-admin-global, usar país del usuario
+    if (!paisValue && user?.role !== 'ADMIN_GLOBAL' && user?.pais) {
+      const paisNorm = String(user.pais).trim().toUpperCase();
+      if (paisNorm === 'SV' || paisNorm.includes('SALVADOR')) {
+        paisValue = 'SV';
+      } else if (paisNorm === 'GT' || paisNorm.includes('GUATEMALA')) {
+        paisValue = 'GT';
+      }
+    }
+
+    const paisParam = (paisValue && paisValue !== 'all') ? `&pais=${paisValue}` : '';
+    const url = `${API_CONFIG.WEBHOOK_AGENTES_URL}?t=${Date.now()}${paisParam}`;
     return getCachedOrFetch('agentes', async () => {
       const response = await fetch(url, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+        headers: { ...getAuthHeaders(), 'Cache-Control': 'no-cache' },
       });
 
       if (!response.ok) {
@@ -744,7 +783,7 @@ export const api = {
     return getCachedOrFetch('usuarios', async () => {
       const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/usuarios?t=${Date.now()}`, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+        headers: { ...getAuthHeaders(), 'Cache-Control': 'no-cache' },
       });
 
       if (!response.ok) {
@@ -1260,6 +1299,7 @@ return response.json();
     // Construir el payload directo para el backend
     const rolMap: Record<string, string> = {
       'ADMIN': 'ADMINISTRADOR',
+      'ADMIN_GLOBAL': 'ADMIN_GLOBAL',
       'AGENTE': 'AGENTE',
       'SUPERVISOR': 'SUPERVISOR',
       'GERENTE': 'GERENTE'
@@ -1272,14 +1312,17 @@ return response.json();
       'GT': 'Guatemala'
     };
     const rolUsuario = rolMap[additionalData?.rol || 'AGENTE'] || 'AGENTE';
-    const paisUsuario = paisMap[additionalData?.pais || 'ElSalvador'] || 'ElSalvador';
+    // ADMIN_GLOBAL no requiere país (es null)
+    const paisUsuario = rolUsuario === 'ADMIN_GLOBAL'
+      ? null
+      : paisMap[additionalData?.pais || 'ElSalvador'] || 'ElSalvador';
 
-    const payload = {
+    const payload: any = {
       email: email.trim().toLowerCase(),
       nombre: name.trim(),
-      role: rolUsuario,
-      pais: paisUsuario
+      role: rolUsuario
     };
+    if (paisUsuario) payload.pais = paisUsuario;
     
     // Llamar directamente al backend /api/usuarios
     const controller = new AbortController();
@@ -1291,9 +1334,8 @@ return response.json();
         mode: 'cors',
         credentials: 'omit',
         headers: {
+          ...getAuthHeaders(),
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'ngrok-skip-browser-warning': 'true',
         },
         body: JSON.stringify(payload),
         signal: controller.signal,

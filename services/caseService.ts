@@ -8,6 +8,30 @@ import { api } from './api';
 // En producción puede usar URL completa si se configura en variables de entorno
 const WEBHOOK_CASOS_URL = API_CONFIG.WEBHOOK_CASOS_URL || '/api/casos';
 
+// Helper para obtener headers de autenticación (token + X-User-*)
+const getAuthHeaders = (): Record<string, string> => {
+  const headers: Record<string, string> = {
+    'Accept': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
+  };
+
+  const userStr = localStorage.getItem('intelfon_user');
+  let userObj: any = {};
+  try { userObj = userStr ? JSON.parse(userStr) : {}; } catch (e) {}
+
+  if (userObj.id) headers['X-User-Id'] = String(userObj.id);
+  if (userObj.role) headers['X-User-Role'] = String(userObj.role);
+  if (userObj.pais) headers['X-User-Pais'] = String(userObj.pais);
+  if (userObj.email) headers['X-User-Email'] = String(userObj.email);
+
+  const token = localStorage.getItem('intelfon_token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  return headers;
+};
+
 // Tipos para las acciones del webhook
 type CaseAction = 'case.create' | 'case.update' | 'case.edit' | 'case.read' | 'case.delete' | 'case.query' | 'case.agent';
 
@@ -190,17 +214,24 @@ const getUserRole = (): 'AGENTE' | 'SUPERVISOR' | 'GERENTE' | null => {
 /**
  * Obtiene y normaliza el país del usuario autenticado
  * Retorna 'SV' para El Salvador, 'GT' para Guatemala, o null si no está definido
+ * (ADMIN_GLOBAL retorna null ya que tiene acceso a todos los países)
  */
 export const getUserCountry = async (): Promise<'SV' | 'GT' | null> => {
   try {
     // Primero intentar desde api.getUser() que puede tener datos más actualizados
     const currentUser = api.getUser();
     let pais = currentUser?.pais || '';
-    
+    const userRole = currentUser?.role;
+
+    // ADMIN_GLOBAL no tiene país - retorna null para indicar acceso multi-país
+    if (userRole === 'ADMIN_GLOBAL') {
+      return null;
+    }
+
     // Si el país es string vacío, tratarlo como undefined
     if (pais && String(pais).trim() !== '') {
       const paisNormalizado = String(pais).trim().toUpperCase();
-      
+
       if (paisNormalizado === 'SV' || paisNormalizado === 'EL_SALVADOR' || paisNormalizado === 'ELSALVADOR' || paisNormalizado.includes('SALVADOR')) {
         return 'SV';
       }
@@ -244,6 +275,8 @@ export const getUserCountry = async (): Promise<'SV' | 'GT' | null> => {
     
     // Validar que el país no sea string vacío - si no se encuentra, default a 'SV' para admins
     if (!pais || String(pais).trim() === '') {
+      // Si es ADMIN_GLOBAL, mantener null
+      if (userRole === 'ADMIN_GLOBAL') return null;
       return 'SV';
     }
     
@@ -791,7 +824,7 @@ export const createCase = async (caseData: {
 
   const response = await fetch(API_CONFIG.WEBHOOK_CASOS_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+    headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
 
@@ -830,39 +863,46 @@ export const getCases = async (includeClosed: boolean = false): Promise<Case[]> 
 
   // Obtener país del usuario desde api.getUser() que tiene datos actualizados
   const currentUser = api.getUser();
-  let paisValue = 'Guatemala'; // default
-  
-  if (currentUser?.pais) {
-    const paisNormalizado = String(currentUser.pais).trim().toUpperCase();
-    if (paisNormalizado === 'SV' || paisNormalizado.includes('SALVADOR')) {
-      paisValue = 'ElSalvador';
-    } else if (paisNormalizado === 'GT' || paisNormalizado.includes('GUATEMALA')) {
-      paisValue = 'Guatemala';
+  let paisValue = null; // null = sin filtro (ADMIN_GLOBAL)
+  const userRole = currentUser?.role;
+
+  // ADMIN_GLOBAL no filtra por país (recibe todos)
+  if (userRole !== 'ADMIN_GLOBAL') {
+    paisValue = 'Guatemala'; // default para otros roles
+
+    if (currentUser?.pais) {
+      const paisNormalizado = String(currentUser.pais).trim().toUpperCase();
+      if (paisNormalizado === 'SV' || paisNormalizado.includes('SALVADOR')) {
+        paisValue = 'ElSalvador';
+      } else if (paisNormalizado === 'GT' || paisNormalizado.includes('GUATEMALA')) {
+        paisValue = 'Guatemala';
+      }
     }
-  }
-  
-  // Si aún no se detectó, usar localStorage como fallback
-  if (!currentUser?.pais) {
-    const userStr = localStorage.getItem('intelfon_user');
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        if (user.pais) {
-          const paisNormalizado = String(user.pais).trim().toUpperCase();
-          if (paisNormalizado === 'SV' || paisNormalizado.includes('SALVADOR')) {
-            paisValue = 'ElSalvador';
-          } else if (paisNormalizado === 'GT' || paisNormalizado.includes('GUATEMALA')) {
-            paisValue = 'Guatemala';
+
+    // Si aún no se detectó, usar localStorage como fallback
+    if (!currentUser?.pais) {
+      const userStr = localStorage.getItem('intelfon_user');
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          if (user.pais) {
+            const paisNormalizado = String(user.pais).trim().toUpperCase();
+            if (paisNormalizado === 'SV' || paisNormalizado.includes('SALVADOR')) {
+              paisValue = 'ElSalvador';
+            } else if (paisNormalizado === 'GT' || paisNormalizado.includes('GUATEMALA')) {
+              paisValue = 'Guatemala';
+            }
           }
-        }
-      } catch (e) {}
+        } catch (e) {}
+      }
     }
   }
 
   const closedParam = includeClosed ? '&includeClosed=true' : '';
-  const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}?pais=${encodeURIComponent(paisValue)}${closedParam}`, {
+  const paisParam = paisValue ? `&pais=${encodeURIComponent(paisValue)}` : '';
+  const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}?_t=${Date.now()}${paisParam}${closedParam}`, {
     method: 'GET',
-    headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
+    headers: { ...getAuthHeaders(), 'Cache-Control': 'no-cache' }
   });
 
   if (!response.ok) {
@@ -876,7 +916,7 @@ export const getCases = async (includeClosed: boolean = false): Promise<Case[]> 
   let casos = result.casos || result.cases || result;
   if (!Array.isArray(casos)) casos = [];
   
-  console.log('[caseService] raw casos from backend:', casos.length, 'pais:', paisValue);
+  console.log('[caseService] raw casos from backend:', casos.length, 'pais:', paisValue || 'ALL (ADMIN_GLOBAL)');
   console.log('[caseService] first caso sample:', JSON.stringify(casos[0])?.slice(0, 200));
 
   // Si es AGENTE, filtrar localmente por agente

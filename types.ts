@@ -1,5 +1,5 @@
 
-export type Role = 'AGENTE' | 'SUPERVISOR' | 'GERENTE' | 'ADMIN' | 'ADMINISTRADOR';
+export type Role = 'AGENTE' | 'SUPERVISOR' | 'GERENTE' | 'ADMIN' | 'ADMINISTRADOR' | 'ADMIN_GLOBAL';
 
 export enum CaseStatus {
   NUEVO = 'Nuevo',

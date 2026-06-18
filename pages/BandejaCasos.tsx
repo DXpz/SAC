@@ -32,7 +32,7 @@ const BandejaCasos: React.FC = () => {
   const [userCountry, setUserCountry] = useState<'SV' | 'GT' | null>(null);
   const { theme } = useTheme();
   const currentUser = api.getUser();
-  const isAdmin = currentUser?.role?.toUpperCase() === 'ADMIN' || currentUser?.role?.toUpperCase() === 'ADMINISTRADOR';
+  const isAdmin = currentUser?.role?.toUpperCase() === 'ADMIN' || currentUser?.role?.toUpperCase() === 'ADMINISTRADOR' || currentUser?.role?.toUpperCase() === 'ADMIN_GLOBAL';
   const isAgente = currentUser?.role === 'AGENTE';
   const isGerente = currentUser?.role === 'GERENTE';
   const isSupervisor = currentUser?.role === 'SUPERVISOR';

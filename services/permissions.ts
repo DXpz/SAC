@@ -17,6 +17,7 @@ export type Permission =
   | 'estado:manage';
 
 export const ROLE_HIERARCHY: Record<Role, number> = {
+  ADMIN_GLOBAL: 200,
   ADMINISTRADOR: 100,
   ADMIN: 90,
   GERENTE: 70,
@@ -72,6 +73,20 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'settings:manage',
     'estado:manage',
   ],
+  ADMIN_GLOBAL: [
+    'case:read',
+    'case:create',
+    'case:update:any',
+    'case:delete',
+    'case:reassign',
+    'case:close',
+    'agent:read',
+    'agent:manage',
+    'user:manage',
+    'report:view',
+    'settings:manage',
+    'estado:manage',
+  ],
 };
 
 export function hasPermission(role: Role, permission: Permission): boolean {
@@ -90,7 +105,12 @@ export function isRoleOrHigher(role: Role, minRole: Role): boolean {
   return ROLE_HIERARCHY[role] >= ROLE_HIERARCHY[minRole];
 }
 
+export function isAdminGlobal(role: Role): boolean {
+  return role === 'ADMIN_GLOBAL';
+}
+
 export function canAccessCountry(role: Role, userCountry: string, targetCountry: string): boolean {
+  if (isAdminGlobal(role)) return true;
   if (hasPermission(role, 'case:update:any')) return true;
   if (role === 'GERENTE' && userCountry === targetCountry) return true;
   if (role === 'SUPERVISOR' && userCountry === targetCountry) return true;

@@ -1541,7 +1541,8 @@ const AdminUsers: React.FC = () => {
                 <select
                   value={formData.pais}
                   onChange={(e) => setFormData({...formData, pais: e.target.value})}
-                  className="w-full px-3 py-2 rounded-lg border text-sm"
+                  disabled={formData.rol === 'ADMIN_GLOBAL'}
+                  className="w-full px-3 py-2 rounded-lg border text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{
                     backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
                     borderColor: 'rgba(148, 163, 184, 0.3)',
@@ -1551,6 +1552,11 @@ const AdminUsers: React.FC = () => {
                   <option value="El Salvador">El Salvador</option>
                   <option value="Guatemala">Guatemala</option>
                 </select>
+                {formData.rol === 'ADMIN_GLOBAL' && (
+                  <p className="text-[10px] mt-1" style={{color: styles.text.tertiary}}>
+                    ADMIN_GLOBAL tiene acceso a todos los países (no requiere asignación)
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1" style={{color: styles.text.secondary}}>Rol</label>
@@ -1568,6 +1574,7 @@ const AdminUsers: React.FC = () => {
                   <option value="SUPERVISOR">SUPERVISOR</option>
                   <option value="GERENTE">GERENTE</option>
                   <option value="ADMIN">ADMINISTRADOR</option>
+                  <option value="ADMIN_GLOBAL">ADMIN GLOBAL (Multi-país)</option>
                 </select>
               </div>
             </div>
