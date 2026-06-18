@@ -259,7 +259,7 @@ export const getUserCountry = async (): Promise<'SV' | 'GT' | null> => {
           u.id_agente === user.id ||
           u.id_usuario === user.id ||
           u.email === user.email ||
-          (u.nombre && u.nombre.toUpperCase() === user.name.toUpperCase())
+          (u.nombre && user.name && u.nombre.toUpperCase() === user.name.toUpperCase())
         );
         
         if (usuarioCompleto) {
