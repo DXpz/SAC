@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { sapService } from '../services/sapService';
@@ -43,9 +43,13 @@ const SupervisorPanel: React.FC = () => {
     }
   }, [location.pathname, supervisorCountry, periodFilter, agentFilter]);
 
+  // Ref para evitar stale closure en el event listener
+  const loadDataRef = useRef(loadData);
+  loadDataRef.current = loadData;
+
   // Escuchar cambios de filtro global
   useEffect(() => {
-    const handler = () => loadData();
+    const handler = () => loadDataRef.current();
     window.addEventListener('sac-filter-applied', handler);
     return () => window.removeEventListener('sac-filter-applied', handler);
   }, []);

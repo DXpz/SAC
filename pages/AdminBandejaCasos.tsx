@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { API_CONFIG } from '../config';
@@ -117,9 +117,13 @@ setAgentes(allAgentesData);
     // eslint-disable-next-line react-hooks-exhaustive-deps
   }, [location.pathname, userCountry]);
 
+  // Ref para evitar stale closure en el event listener
+  const loadCasosRef = useRef(loadCasos);
+  loadCasosRef.current = loadCasos;
+
   // Escuchar cambios de filtro global
   useEffect(() => {
-    const handler = () => loadCasos();
+    const handler = () => loadCasosRef.current();
     window.addEventListener('sac-filter-applied', handler);
     return () => window.removeEventListener('sac-filter-applied', handler);
   }, []);
