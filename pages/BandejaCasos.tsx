@@ -9,7 +9,7 @@ import { STATE_COLORS } from '../constants';
 import { Search, Plus, Filter, ChevronRight, RefreshCw, X, Grid3x3, List, User, Eye, Clock } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import LoadingScreen from '../components/LoadingScreen';
-import { getStoredFilters, getDateFiltros } from '../services/filterService';
+import { getStoredFilters, getDateFiltros, getPaisFromFilters } from '../services/filterService';
 
 const BandejaCasos: React.FC = () => {
   const [casos, setCasos] = useState<Case[]>([]);
@@ -422,7 +422,8 @@ const loadCasos = async () => {
   setError(null);
   try {
     const filtro = getDateFiltros(getStoredFilters());
-    const data = await api.getCases(false, false, filtro);
+    const paisFiltro = getPaisFromFilters();
+    const data = await api.getCases(false, false, { ...filtro, pais: paisFiltro });
     setCasos(data);
     const updateTime = new Date();
     setLastUpdate(updateTime);

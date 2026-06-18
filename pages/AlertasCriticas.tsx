@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import AnimatedNumber from '../components/AnimatedNumber';
 import LoadingScreen from '../components/LoadingScreen';
-import { getStoredFilters, getDateFiltros } from '../services/filterService';
+import { getStoredFilters, getDateFiltros, getPaisFromFilters } from '../services/filterService';
 
 type Priority = 'Critica' | 'Alta' | 'Media';
 
@@ -214,13 +214,15 @@ const AlertasCriticas: React.FC = () => {
     setLoading(true);
     try {
       const storedFilters = getStoredFilters();
-      const filtro = getDateFiltros(storedFilters);
+      const dateFilters = getDateFiltros(storedFilters);
+      const paisFiltro = getPaisFromFilters();
+      const filtrosConPais = { ...dateFilters, pais: paisFiltro };
       const clientesList = await sapService.getClientesListado(userCountry);
       setClientes(clientesList);
       const [criticalList, allCasesData, metricsData] = await Promise.all([
-        api.getCriticalCases(filtro),
-        api.getCases(true, false, filtro),
-        api.getDashboardMetrics({ pais: userCountry || undefined, period: 'todos', ...filtro })
+        api.getCriticalCases(filtrosConPais),
+        api.getCases(true, false, filtrosConPais),
+        api.getDashboardMetrics({ pais: paisFiltro || userCountry || undefined, period: 'todos', ...dateFilters })
       ]);
       setDashboardMetrics(metricsData);
       

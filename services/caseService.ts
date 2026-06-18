@@ -853,7 +853,7 @@ export const createCase = async (caseData: {
  * @param includeClosed incluir casos cerrados
  * @param options opciones de filtro (fechaInicio, fechaFin)
  */
-export const getCases = async (includeClosed: boolean = false, options?: { fechaInicio?: string; fechaFin?: string }): Promise<Case[]> => {
+export const getCases = async (includeClosed: boolean = false, options?: { fechaInicio?: string; fechaFin?: string; pais?: string }): Promise<Case[]> => {
   const actor = getActor();
   const userRole = getUserRole();
 
@@ -868,8 +868,10 @@ export const getCases = async (includeClosed: boolean = false, options?: { fecha
   let paisValue = null; // null = sin filtro (ADMIN_GLOBAL)
   const isAdminGlobalUser = currentUser?.role === 'ADMIN_GLOBAL';
 
-  // ADMIN_GLOBAL no filtra por país (recibe todos)
-  if (!isAdminGlobalUser) {
+  // Si el filtro global tiene país seleccionado, usarlo (ADMIN_GLOBAL elige país)
+  if (options?.pais && options.pais !== 'all') {
+    paisValue = options.pais === 'GT' ? 'Guatemala' : 'ElSalvador';
+  } else if (!isAdminGlobalUser) {
     paisValue = 'Guatemala'; // default para otros roles
 
     if (currentUser?.pais) {

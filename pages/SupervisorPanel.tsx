@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { sapService } from '../services/sapService';
 import { getUserCountry } from '../services/caseService';
-import { getStoredFilters, getDateFiltros } from '../services/filterService';
+import { getStoredFilters, getDateFiltros, getPaisFromFilters } from '../services/filterService';
 import { Caso, CaseStatus, Agente, Cliente } from '../types';
 import { STATE_COLORS } from '../constants';
 import { AlertCircle, Clock, Users, ArrowUpRight, ChevronRight, Activity, Info, Filter, UserPlus, Bell, ArrowRightLeft, TrendingUp, TrendingDown, X, User, CheckCircle2, Eye, RefreshCw, Zap, FileText } from 'lucide-react';
@@ -186,12 +186,13 @@ const SupervisorPanel: React.FC = () => {
       const supervisorCountry = await getSupervisorCountry();
       const storedFilters = getStoredFilters();
       const dateFilters = getDateFiltros(storedFilters);
+      const paisFiltro = getPaisFromFilters();
+      const filtrosConPais = { ...dateFilters, pais: paisFiltro };
       const [casosData, criticalCasesData, metricsData, agentesData, clientesList] = await Promise.all([
-        api.getCases(false, false, dateFilters),
-        api.getCriticalCases(dateFilters),
-        // Las tarjetas resumen deben venir globales; el período se usa en listados/gráficas locales.
-        api.getDashboardMetrics({ pais: supervisorCountry || undefined, period: 'todos', agentId: agentFilter, ...dateFilters }),
-        api.getAgentes(supervisorCountry),
+        api.getCases(false, false, filtrosConPais),
+        api.getCriticalCases(filtrosConPais),
+        api.getDashboardMetrics({ pais: paisFiltro || supervisorCountry || undefined, period: 'todos', agentId: agentFilter, ...dateFilters }),
+        api.getAgentes(paisFiltro || supervisorCountry),
         loadClientes()
       ]);
       const enriched = enrichCasesWithClients(casosData, clientesList);

@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { sapService } from '../services/sapService';
 import { getUserCountry } from '../services/caseService';
-import { getStoredFilters, getDateFiltros } from '../services/filterService';
+import { getStoredFilters, getDateFiltros, getPaisFromFilters } from '../services/filterService';
 import { Caso, CaseStatus, Agente, Cliente, Categoria, KPI } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
@@ -81,13 +81,15 @@ const AdminPanel: React.FC = () => {
     setLoading(true);
     try {
       const storedFilters = getStoredFilters();
-    const dateFilters = getDateFiltros(storedFilters);
+      const dateFilters = getDateFiltros(storedFilters);
+      const paisFiltro = getPaisFromFilters();
+      const filtrosConPais = { ...dateFilters, pais: paisFiltro };
     const [clientesList, casosList, criticalCasesList, metricsData, agentesList, categoriasList, usuariosList, estadosList] = await Promise.allSettled([
         loadClientes(),
-        api.getCases(false, false, dateFilters),
-        api.getCriticalCases(dateFilters),
-        api.getDashboardMetrics({ pais: userCountry || undefined, period: 'todos', ...dateFilters }),
-        api.getAgentes(userCountry || undefined),
+        api.getCases(false, false, filtrosConPais),
+        api.getCriticalCases(filtrosConPais),
+        api.getDashboardMetrics({ pais: paisFiltro || userCountry || undefined, period: 'todos', ...dateFilters }),
+        api.getAgentes(paisFiltro || userCountry || undefined),
         api.readCategories(), // Usar readCategories para obtener las categorías creadas en Settings
         api.getUsuarios(),
         api.readEstados()

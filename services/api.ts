@@ -522,7 +522,7 @@ export const api = {
     }
   },
 
-  async getCases(forceRefresh = false, includeClosed: boolean = false, options?: { fechaInicio?: string; fechaFin?: string }): Promise<Case[]> {
+  async getCases(forceRefresh = false, includeClosed: boolean = false, options?: { fechaInicio?: string; fechaFin?: string; pais?: string }): Promise<Case[]> {
     const cacheKey = includeClosed ? 'cases_all' : 'cases';
     if (forceRefresh) {
       delete cache[cacheKey];
@@ -539,12 +539,14 @@ export const api = {
     });
   },
 
-  async getCriticalCases(options?: { fechaInicio?: string; fechaFin?: string }): Promise<Case[]> {
+  async getCriticalCases(options?: { fechaInicio?: string; fechaFin?: string; pais?: string }): Promise<Case[]> {
     const user = this.getUser();
     let paisValue: string | null = null;
 
-    // ADMIN_GLOBAL no envía parámetro de país (recibe todos)
-    if (user?.role !== 'ADMIN_GLOBAL') {
+    // Usar pais del filtro si viene en options (ADMIN_GLOBAL puede elegir)
+    if (options?.pais && options.pais !== 'all') {
+      paisValue = options.pais;
+    } else if (user?.role !== 'ADMIN_GLOBAL') {
       paisValue = 'Guatemala';
       if (user?.pais) {
         const paisNormalizado = String(user.pais).trim().toUpperCase();

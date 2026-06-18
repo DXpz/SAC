@@ -9,7 +9,7 @@ import { Search, Plus, Filter, ChevronRight, X, Calendar, User, Clock, AlertTria
 import { useTheme } from '../contexts/ThemeContext';
 import LoadingScreen from '../components/LoadingScreen';
 import LoadingLogo from '../components/LoadingLogo';
-import { getStoredFilters, getDateFiltros } from '../services/filterService';
+import { getStoredFilters, getDateFiltros, getPaisFromFilters } from '../services/filterService';
 
 const AdminBandejaCasos: React.FC = () => {
   const [casos, setCasos] = useState<Case[]>([]);
@@ -94,7 +94,7 @@ const AdminBandejaCasos: React.FC = () => {
           sapService.getClientesListado(pais as any),
           api.getCategorias(),
           api.getAgentes(pais as any),
-          api.getCases(true, true, getDateFiltros(getStoredFilters())),
+          api.getCases(true, true, { ...getDateFiltros(getStoredFilters()), pais: getPaisFromFilters() }),
           fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}`, {
             headers: { 'ngrok-skip-browser-warning': 'true' }
           }).then(r => r.json()).catch(() => [])
@@ -299,7 +299,7 @@ const loadAgentes = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.getCases(true, true, getDateFiltros(getStoredFilters()));
+      const data = await api.getCases(true, true, { ...getDateFiltros(getStoredFilters()), pais: getPaisFromFilters() });
       setCasos(data);
       const updateTime = new Date();
       localStorage.setItem('bandeja_last_update', updateTime.toISOString());

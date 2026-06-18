@@ -33,3 +33,15 @@ export const getDateFiltros = (filters: StoredFilters) => {
     fechaFin: fin.toISOString(),
   };
 };
+
+// Obtiene el pais del filtro para pasar al API.
+// Retorna undefined si es 'all' o vacío (no filtrar).
+// Retorna 'GT' o 'SV' según corresponda.
+export const getPaisFromFilters = (): string | undefined => {
+  const filters = getStoredFilters();
+  const pais = filters.paisFilter || 'all';
+  if (pais === 'all') return undefined;
+  if (pais === 'Guatemala') return 'GT';
+  if (pais === 'ElSalvador') return 'SV';
+  return undefined;
+};
