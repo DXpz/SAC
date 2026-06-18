@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { sapService } from '../services/sapService';
+import { getStoredFilters, getDateFiltros } from '../services/filterService';
 import { Case, CaseStatus, KPI } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { TrendingUp, Users, Clock, ThumbsUp, ArrowUp, ArrowDown, Info, AlertTriangle, CheckCircle2, Filter, Zap, Target, TrendingDown, Shield, Activity } from 'lucide-react';
@@ -197,13 +198,15 @@ const GerenteDashboard: React.FC = () => {
     setLoading(true);
     try {
       console.log('[GerenteDashboard] loadData started, gerenteCountry:', gerenteCountry);
-      
+
+      const storedFilters = getStoredFilters();
+      const dateFilters = getDateFiltros(storedFilters);
       console.log('[GerenteDashboard] calling api.getCases...');
       const [casosData, criticalCasesData, metricsData] = await Promise.all([
-        api.getCases(true),
-        api.getCriticalCases(),
+        api.getCases(true, false, dateFilters),
+        api.getCriticalCases(dateFilters),
         // Las tarjetas principales deben reflejar el estado global, no solo el período seleccionado.
-        api.getDashboardMetrics({ pais: gerenteCountry || undefined, period: 'todos' })
+        api.getDashboardMetrics({ pais: gerenteCountry || undefined, period: 'todos', ...dateFilters })
       ]);
       console.log('[GerenteDashboard] api.getCases returned:', casosData.length, 'cases');
       

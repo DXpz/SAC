@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { sapService } from '../services/sapService';
 import { getUserCountry } from '../services/caseService';
+import { getStoredFilters, getDateFiltros } from '../services/filterService';
 import { Caso, CaseStatus, Agente, Cliente, Categoria, KPI } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
@@ -79,11 +80,13 @@ const AdminPanel: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [clientesList, casosList, criticalCasesList, metricsData, agentesList, categoriasList, usuariosList, estadosList] = await Promise.allSettled([
+      const storedFilters = getStoredFilters();
+    const dateFilters = getDateFiltros(storedFilters);
+    const [clientesList, casosList, criticalCasesList, metricsData, agentesList, categoriasList, usuariosList, estadosList] = await Promise.allSettled([
         loadClientes(),
-        api.getCases(),
-        api.getCriticalCases(),
-        api.getDashboardMetrics({ pais: userCountry || undefined, period: 'todos' }),
+        api.getCases(false, false, dateFilters),
+        api.getCriticalCases(dateFilters),
+        api.getDashboardMetrics({ pais: userCountry || undefined, period: 'todos', ...dateFilters }),
         api.getAgentes(userCountry || undefined),
         api.readCategories(), // Usar readCategories para obtener las categorías creadas en Settings
         api.getUsuarios(),
