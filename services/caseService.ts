@@ -864,10 +864,10 @@ export const getCases = async (includeClosed: boolean = false): Promise<Case[]> 
   // Obtener país del usuario desde api.getUser() que tiene datos actualizados
   const currentUser = api.getUser();
   let paisValue = null; // null = sin filtro (ADMIN_GLOBAL)
-  const userRole = currentUser?.role;
+  const isAdminGlobalUser = currentUser?.role === 'ADMIN_GLOBAL';
 
   // ADMIN_GLOBAL no filtra por país (recibe todos)
-  if (userRole !== 'ADMIN_GLOBAL') {
+  if (!isAdminGlobalUser) {
     paisValue = 'Guatemala'; // default para otros roles
 
     if (currentUser?.pais) {
