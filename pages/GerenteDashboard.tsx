@@ -171,8 +171,7 @@ const GerenteDashboard: React.FC = () => {
   }, [location.pathname, gerenteCountryDetected, gerenteCountry, periodFilter]);
 
   // Ref para evitar stale closure en el event listener
-  const loadDataRef = useRef(loadData);
-  loadDataRef.current = loadData;
+  const loadDataRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
   // Escuchar cambios de filtro global
   useEffect(() => {
@@ -278,6 +277,7 @@ const GerenteDashboard: React.FC = () => {
       setLoading(false);
     }
   };
+  loadDataRef.current = loadData;
 
   // Filtrar casos por país del gerente (sin filtro de fecha) para calcular métricas
   const casosFiltradosPorPais = useMemo(() => {

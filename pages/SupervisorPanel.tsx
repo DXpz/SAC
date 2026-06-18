@@ -44,8 +44,7 @@ const SupervisorPanel: React.FC = () => {
   }, [location.pathname, supervisorCountry, periodFilter, agentFilter]);
 
   // Ref para evitar stale closure en el event listener
-  const loadDataRef = useRef(loadData);
-  loadDataRef.current = loadData;
+  const loadDataRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
   // Escuchar cambios de filtro global
   useEffect(() => {
@@ -230,6 +229,7 @@ const SupervisorPanel: React.FC = () => {
       setLoading(false);
     }
   };
+  loadDataRef.current = loadData;
 
   // Función para normalizar estado (debe estar antes de su uso)
   const normalizeStatus = React.useCallback((status: string | CaseStatus | undefined): CaseStatus => {

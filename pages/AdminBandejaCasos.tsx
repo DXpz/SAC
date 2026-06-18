@@ -118,8 +118,7 @@ setAgentes(allAgentesData);
   }, [location.pathname, userCountry]);
 
   // Ref para evitar stale closure en el event listener
-  const loadCasosRef = useRef(loadCasos);
-  loadCasosRef.current = loadCasos;
+  const loadCasosRef = useRef<() => Promise<Case[] | undefined>>(() => Promise.resolve([]));
 
   // Escuchar cambios de filtro global
   useEffect(() => {
@@ -313,6 +312,7 @@ const loadAgentes = async () => {
       setLoading(false);
     }
   };
+  loadCasosRef.current = loadCasos;
 
   // Aplicar todos los filtros
   useEffect(() => {

@@ -141,6 +141,7 @@ const AdminPanel: React.FC = () => {
       setLoading(false);
     }
   };
+  loadDataRef.current = loadData;
 
   useEffect(() => {
     const init = async () => {
@@ -157,8 +158,7 @@ const AdminPanel: React.FC = () => {
   }, [location.pathname, userCountry]);
 
   // Ref para evitar stale closure en el event listener
-  const loadDataRef = useRef(loadData);
-  loadDataRef.current = loadData;
+  const loadDataRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
   // Escuchar cambios de filtro global
   useEffect(() => {

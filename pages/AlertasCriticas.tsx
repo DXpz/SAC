@@ -245,6 +245,7 @@ const AlertasCriticas: React.FC = () => {
       setLoading(false);
     }
   };
+  loadDataRef.current = loadData;
 
   useEffect(() => {
     if (userCountry === undefined) return;
@@ -252,8 +253,7 @@ const AlertasCriticas: React.FC = () => {
   }, [location.pathname, userCountry]);
 
   // Ref para evitar stale closure en el event listener
-  const loadDataRef = useRef(loadData);
-  loadDataRef.current = loadData;
+  const loadDataRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
   // Escuchar cambios de filtro global
   useEffect(() => {
