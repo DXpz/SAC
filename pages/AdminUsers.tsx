@@ -203,7 +203,7 @@ const AdminUsers: React.FC = () => {
       // Cargar el país del admin si es necesario
       const currentUser = api.getUser();
       console.log('[AdminUsers] currentUser:', currentUser?.email, 'role:', currentUser?.role, 'pais:', currentUser?.pais);
-      if (currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR') {
+      if (currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR' || currentUser?.role === 'ADMIN_GLOBAL') {
         if (!adminCountry) {
           const country = await getAdminCountry();
           console.log('[AdminUsers] country detected:', country);
@@ -330,7 +330,7 @@ const AdminUsers: React.FC = () => {
     const init = async () => {
       const currentUser = api.getUser();
       console.log('[AdminUsers] init - currentUser:', currentUser?.email, 'adminCountry:', adminCountry);
-      if ((currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR') && !adminCountry) {
+      if ((currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR' || currentUser?.role === 'ADMIN_GLOBAL') && !adminCountry) {
         const country = await getAdminCountry();
         console.log('[AdminUsers] init - country detected:', country);
         if (country) {

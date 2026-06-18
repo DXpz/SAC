@@ -306,7 +306,7 @@ const [showUserModal, setShowUserModal] = useState(false);
     try {
       let paisAdmin: 'SV' | 'GT' | null = adminCountry;
       const currentUser = api.getUser();
-      if (currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR') {
+      if (currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR' || currentUser?.role === 'ADMIN_GLOBAL') {
         if (!paisAdmin) {
           paisAdmin = await getAdminCountry();
           setAdminCountry(paisAdmin);

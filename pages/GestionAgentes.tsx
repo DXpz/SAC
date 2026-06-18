@@ -175,7 +175,7 @@ const GestionAgentes: React.FC = () => {
   const loadAgentes = async () => {
     setLoading(true);
     const currentUser = api.getUser();
-    const isSupervisorOrAdmin = currentUser?.role === 'SUPERVISOR' || currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR';
+    const isSupervisorOrAdmin = currentUser?.role === 'SUPERVISOR' || currentUser?.role === 'ADMIN' || currentUser?.role === 'ADMINISTRADOR' || currentUser?.role === 'ADMIN_GLOBAL';
     
     // Usar getAgentes() para tener acceso a orden_round_robin
     let agentesData = await api.getAgentes();

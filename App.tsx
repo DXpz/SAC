@@ -118,40 +118,40 @@ const App: React.FC = () => {
 
                 {/* Supervisor, Gerencia & Admin */}
                 <Route path="alertas" element={
-                  <ProtectedRoute allowedRoles={[UserRole.SUPERVISOR, UserRole.GERENTE, UserRole.ADMIN, UserRole.ADMINISTRADOR]}>
+                  <ProtectedRoute allowedRoles={[UserRole.SUPERVISOR, UserRole.GERENTE, UserRole.ADMIN, UserRole.ADMINISTRADOR, UserRole.ADMIN_GLOBAL]}>
                     <AlertasCriticas />
                   </ProtectedRoute>
                 } />
                 <Route path="agentes" element={
-                  <ProtectedRoute allowedRoles={[UserRole.SUPERVISOR, UserRole.ADMIN, UserRole.ADMINISTRADOR]}>
+                  <ProtectedRoute allowedRoles={[UserRole.SUPERVISOR, UserRole.ADMIN, UserRole.ADMINISTRADOR, UserRole.ADMIN_GLOBAL]}>
                     <GestionAgentes />
                   </ProtectedRoute>
                 } />
-                
+
                 {/* Panel Admin - Dashboard completo */}
                 <Route path="admin" element={
-                  <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.ADMINISTRADOR]}>
+                  <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.ADMINISTRADOR, UserRole.ADMIN_GLOBAL]}>
                     <AdminPanel />
                   </ProtectedRoute>
                 } />
-                
+
                 {/* Bandeja de Casos Admin - Vista completa con filtros avanzados */}
                 <Route path="admin/casos" element={
-                  <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.ADMINISTRADOR]}>
+                  <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.ADMINISTRADOR, UserRole.ADMIN_GLOBAL]}>
                     <AdminBandejaCasos />
                   </ProtectedRoute>
                 } />
-                
+
                 {/* Administración de Usuarios - Solo para ADMIN */}
                 <Route path="admin/usuarios" element={
-                  <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.ADMINISTRADOR]}>
+                  <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.ADMINISTRADOR, UserRole.ADMIN_GLOBAL]}>
                     <AdminUsers />
                   </ProtectedRoute>
                 } />
-                
+
                 {/* Configuración - Solo para ADMIN */}
                 <Route path="admin/settings" element={
-                  <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.ADMINISTRADOR]}>
+                  <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.ADMINISTRADOR, UserRole.ADMIN_GLOBAL]}>
                     <Settings />
                   </ProtectedRoute>
                 } />

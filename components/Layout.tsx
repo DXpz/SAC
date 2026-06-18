@@ -101,71 +101,72 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       'SUPERVISOR': 'Supervisor',
       'GERENTE': 'Gerente',
       'ADMIN': 'Administrador',
-      'ADMINISTRADOR': 'Administrador'
+      'ADMINISTRADOR': 'Administrador',
+      'ADMIN_GLOBAL': 'Admin Global (Multi-país)'
     };
     return roleNames[role] || role;
   };
 
   const navItems = [
-    { 
-        name: 'Bandeja de Casos', 
-        path: '/app/agente', 
+    {
+        name: 'Bandeja de Casos',
+        path: '/app/agente',
         icon: Ticket,
         roles: ['AGENTE'] as Role[]
     },
-    { 
-        name: 'Panel Supervisor', 
-        path: '/app/supervisor', 
+    {
+        name: 'Panel Supervisor',
+        path: '/app/supervisor',
         icon: LayoutDashboard,
         roles: ['SUPERVISOR'] as Role[]
     },
-    { 
-        name: 'Bandeja Global', 
-        path: '/app/casos', 
+    {
+        name: 'Bandeja Global',
+        path: '/app/casos',
         icon: Ticket,
         roles: ['SUPERVISOR'] as Role[]
     },
-    { 
-        name: 'Gestión de Agentes', 
-        path: '/app/agentes', 
+    {
+        name: 'Gestión de Agentes',
+        path: '/app/agentes',
         icon: Users,
         roles: ['SUPERVISOR'] as Role[]
     },
-    { 
-        name: 'Panel Ejecutivo', 
-        path: '/app/gerencia', 
+    {
+        name: 'Panel Ejecutivo',
+        path: '/app/gerencia',
         icon: BarChart3,
         roles: ['GERENTE'] as Role[]
     },
-    { 
-        name: 'Alertas Críticas', 
-        path: '/app/alertas', 
+    {
+        name: 'Alertas Críticas',
+        path: '/app/alertas',
         icon: ShieldAlert,
-        roles: ['SUPERVISOR', 'GERENTE'] as Role[]
+        roles: ['SUPERVISOR', 'GERENTE', 'ADMIN_GLOBAL'] as Role[]
     },
-    { 
-        name: 'Panel Admin', 
-        path: '/app/admin', 
+    {
+        name: 'Panel Admin',
+        path: '/app/admin',
         icon: LayoutDashboard,
-        roles: ['ADMIN', 'ADMINISTRADOR'] as Role[]
+        roles: ['ADMIN', 'ADMINISTRADOR', 'ADMIN_GLOBAL'] as Role[]
     },
-    { 
-        name: 'Bandeja de Casos', 
-        path: '/app/admin/casos', 
+    {
+        name: 'Bandeja de Casos',
+        path: '/app/admin/casos',
         icon: Ticket,
-        roles: ['ADMIN', 'ADMINISTRADOR'] as Role[]
+        roles: ['ADMIN', 'ADMINISTRADOR', 'ADMIN_GLOBAL'] as Role[]
     },
-    { 
-        name: 'Administración de Usuarios', 
-        path: '/app/admin/usuarios', 
+    {
+        name: 'Administración de Usuarios',
+        path: '/app/admin/usuarios',
         icon: Users,
-        roles: ['ADMIN', 'ADMINISTRADOR'] as Role[]
+        roles: ['ADMIN', 'ADMINISTRADOR', 'ADMIN_GLOBAL'] as Role[]
     },
-    { 
-        name: 'Configuración', 
-        path: '/app/admin/settings', 
+    {
+        name: 'Configuración',
+        path: '/app/admin/settings',
         icon: Settings,
-        roles: ['ADMIN', 'ADMINISTRADOR'] as Role[]
+        roles: ['ADMIN', 'ADMINISTRADOR', 'ADMIN_GLOBAL'] as Role[]
     },
   ];
 
