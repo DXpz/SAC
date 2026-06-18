@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
+import { ensureDefaultFilters } from '../services/filterService';
 import { LogIn, AlertCircle, ShieldCheck, Mail, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import AnimatedBackground from '../components/AnimatedBackground';
 import LoadingLogo from '../components/LoadingLogo';
@@ -112,7 +113,10 @@ const Login: React.FC = () => {
     
     try {
       const user = await api.authenticate(email, password);
-      
+
+      // Inicializar filtros globales por defecto (mes/año actual)
+      ensureDefaultFilters();
+
       // Mostrar animación de éxito
       setShowSuccessAnimation(true);
       

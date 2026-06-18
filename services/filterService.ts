@@ -15,6 +15,22 @@ export const getStoredFilters = (): StoredFilters => {
   }
 };
 
+// Inicializa los filtros por defecto si no hay ninguno guardado.
+// Por defecto: mes actual y año actual. País queda en 'all' para ADMIN_GLOBAL
+// o se asigna según el país del usuario para roles normales.
+export const ensureDefaultFilters = (): StoredFilters => {
+  const current = getStoredFilters();
+  if (current.mesFilter || current.yearFilter) return current;
+  const now = new Date();
+  const defaults: StoredFilters = {
+    paisFilter: current.paisFilter || 'all',
+    mesFilter: String(now.getMonth() + 1).padStart(2, '0'),
+    yearFilter: String(now.getFullYear()),
+  };
+  localStorage.setItem(FILTERS_KEY, JSON.stringify(defaults));
+  return defaults;
+};
+
 export const setStoredFilters = (filters: StoredFilters) => {
   localStorage.setItem(FILTERS_KEY, JSON.stringify(filters));
   window.dispatchEvent(new CustomEvent('sac-filters-changed', { detail: filters }));

@@ -6,7 +6,7 @@ import { Role } from '../types';
 import { LayoutDashboard, Ticket, Users, BarChart3, LogOut, ShieldAlert, Sun, Moon, Menu, X, Settings } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import FilterBar from './FilterBar';
-import { getStoredFilters, setStoredFilters } from '../services/filterService';
+import { getStoredFilters, setStoredFilters, ensureDefaultFilters } from '../services/filterService';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -24,7 +24,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { theme, toggleTheme } = useTheme();
 
   // Filtros globales persistentes (lectura inicial desde localStorage)
-  const storedFilters = getStoredFilters();
+  const storedFilters = ensureDefaultFilters();
   const [paisFilterLocal, setPaisFilterLocal] = useState<string>(storedFilters.paisFilter || 'all');
   const [mesFilterLocal, setMesFilterLocal] = useState<string>(storedFilters.mesFilter || '');
   const [yearFilterLocal, setYearFilterLocal] = useState<string>(storedFilters.yearFilter || '');
