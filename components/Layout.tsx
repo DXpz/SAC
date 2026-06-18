@@ -81,7 +81,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
     
     // Validar rol (solo cuentas registradas en n8n)
-    if (!['AGENTE', 'SUPERVISOR', 'GERENTE', 'ADMIN', 'ADMINISTRADOR'].includes(user.role)) {
+    if (!['AGENTE', 'SUPERVISOR', 'GERENTE', 'ADMIN', 'ADMINISTRADOR', 'ADMIN_GLOBAL'].includes(user.role)) {
       api.logout();
       navigate('/login');
       return;

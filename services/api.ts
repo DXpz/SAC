@@ -340,7 +340,7 @@ try {
       }
       
       // Validar que el rol sea válido
-      if (!['AGENTE', 'SUPERVISOR', 'GERENTE', 'ADMIN', 'ADMINISTRADOR'].includes(result.role)) {
+      if (!['AGENTE', 'SUPERVISOR', 'GERENTE', 'ADMIN', 'ADMINISTRADOR', 'ADMIN_GLOBAL'].includes(result.role)) {
         throw new Error('Rol de usuario inválido. La cuenta debe tener un rol válido asignado.');
       }
       
@@ -424,7 +424,7 @@ const authenticateWithWebhook = async (email: string, password: string): Promise
 
   // Validar que el rol sea válido y venga del webhook
   const userRole = userData.role;
-  if (!userRole || !['AGENTE', 'SUPERVISOR', 'GERENTE', 'ADMIN', 'ADMINISTRADOR'].includes(userRole)) {
+  if (!userRole || !['AGENTE', 'SUPERVISOR', 'GERENTE', 'ADMIN', 'ADMINISTRADOR', 'ADMIN_GLOBAL'].includes(userRole)) {
     throw new Error('Rol de usuario inválido. La cuenta debe tener un rol válido asignado.');
   }
 
