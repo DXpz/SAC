@@ -161,8 +161,9 @@ const App: React.FC = () => {
                     <Register />
                   </ProtectedRoute>
                 } />
-                
-                <Route path="*" element={<Navigate to="casos" replace />} />
+
+                {/* Redirección por defecto según rol */}
+                <Route path="*" element={<DefaultRouteByRole />} />
               </Routes>
             </Layout>
           </ProtectedRoute>
@@ -176,3 +177,21 @@ const App: React.FC = () => {
 };
 
 export default App;
+
+// Componente que redirige al usuario a su panel principal según su rol.
+// ADMIN_GLOBAL siempre va a /app/admin, ADMIN/ADMINISTRADOR también.
+// Otros roles van a su panel correspondiente o BandejaCasos como fallback.
+const DefaultRouteByRole: React.FC = () => {
+  const user = api.getUser();
+  const role = (user?.role || '').toUpperCase();
+  if (role === 'ADMIN' || role === 'ADMINISTRADOR' || role === 'ADMIN_GLOBAL') {
+    return <Navigate to="admin" replace />;
+  }
+  if (role === 'SUPERVISOR') {
+    return <Navigate to="supervisor" replace />;
+  }
+  if (role === 'GERENTE') {
+    return <Navigate to="gerencia" replace />;
+  }
+  return <Navigate to="casos" replace />;
+};
