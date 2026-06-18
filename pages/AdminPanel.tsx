@@ -42,8 +42,9 @@ const AdminPanel: React.FC = () => {
 
   const loadClientes = async () => {
     try {
-      const pais = userCountry || 'SV';
-      const clientesList = await sapService.getClientesListado(pais);
+      // ADMIN_GLOBAL no filtra por país (userCountry es null)
+      const pais = userCountry || undefined;
+      const clientesList = await sapService.getClientesListado(pais as any);
       setClientes(clientesList);
       return clientesList;
     } catch (error) {
@@ -147,7 +148,7 @@ const AdminPanel: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (userCountry !== null) {
+    if (userCountry !== undefined) {
       loadData();
     }
   }, [location.pathname, userCountry]);

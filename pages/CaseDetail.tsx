@@ -69,7 +69,7 @@ const CaseDetail: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (userCountry === null) return;
+    if (userCountry === undefined) return;
     const initializeData = async () => {
       try {
         // Primero cargar clientes, luego agentes y categorías en paralelo
@@ -213,9 +213,10 @@ const CaseDetail: React.FC = () => {
 
   const loadClientes = async () => {
     try {
-      const pais = userCountry || 'SV';
-      console.log('[loadClientes] Loading clientes for pais:', pais, 'userCountry:', userCountry);
-      const data = await sapService.getClientesListado(pais);
+      // ADMIN_GLOBAL: userCountry es null, no filtrar por país
+      const pais = userCountry || undefined;
+      console.log('[loadClientes] Loading clientes for pais:', pais || 'TODOS', 'userCountry:', userCountry);
+      const data = await sapService.getClientesListado(pais as any);
       console.log('[loadClientes] Loaded:', data.length, 'clientes');
       setClientes(data);
     } catch (err) {

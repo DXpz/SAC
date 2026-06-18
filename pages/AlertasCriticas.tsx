@@ -242,7 +242,7 @@ const AlertasCriticas: React.FC = () => {
   };
 
   useEffect(() => {
-    if (userCountry === null) return;
+    if (userCountry === undefined) return;
     loadData();
   }, [location.pathname, userCountry]);
 

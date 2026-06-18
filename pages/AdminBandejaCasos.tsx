@@ -81,12 +81,14 @@ const AdminBandejaCasos: React.FC = () => {
   useEffect(() => {
     const initializeData = async () => {
       try {
-        const pais = userCountry || 'SV';
-        console.log('[AdminBandejaCasos] init with pais:', pais);
+        // ADMIN_GLOBAL no filtra por país (userCountry es null)
+        const pais = userCountry || undefined; // undefined = no filtro (todos los países)
+        console.log('[AdminBandejaCasos] init with pais:', pais || 'TODOS (ADMIN_GLOBAL)');
         const [clientesData, categoriasData, allAgentesData, casosData, estadosData] = await Promise.all([
-          sapService.getClientesListado(pais),
+          // Para SAP clientes, solo pasamos país si no es ADMIN_GLOBAL
+          sapService.getClientesListado(pais as any),
           api.getCategorias(),
-          api.getAgentes(pais),
+          api.getAgentes(pais as any),
           api.getCases(true, true),
           fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}`, {
             headers: { 'ngrok-skip-browser-warning': 'true' }
@@ -104,7 +106,7 @@ setAgentes(allAgentesData);
         setInitialLoadComplete(true);
       }
     };
-    if (userCountry !== null) {
+    if (userCountry !== undefined) {
       initializeData();
     }
     // eslint-disable-next-line react-hooks-exhaustive-deps
@@ -243,9 +245,10 @@ setAgentes(allAgentesData);
 
   const loadClientes = async () => {
     try {
-      const pais = userCountry || 'SV';
-      console.log('[AdminBandejaCasos] loadClientes pais:', pais);
-      const data = await sapService.getClientesListado(pais);
+      // ADMIN_GLOBAL: userCountry es null, no filtrar por país
+      const pais = userCountry || undefined;
+      console.log('[AdminBandejaCasos] loadClientes pais:', pais || 'TODOS');
+      const data = await sapService.getClientesListado(pais as any);
       console.log('[AdminBandejaCasos] loaded clientes:', data.length);
       setClientes(data);
       return data;
@@ -267,8 +270,9 @@ setAgentes(allAgentesData);
 
 const loadAgentes = async () => {
     try {
-      const pais = userCountry || 'SV';
-      const agentesData = await api.getAgentes(pais);
+      // ADMIN_GLOBAL: userCountry es null, no filtrar por país
+      const pais = userCountry || undefined;
+      const agentesData = await api.getAgentes(pais as any);
       setAgentes(agentesData);
       return agentesData;
     } catch (err) {

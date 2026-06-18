@@ -257,7 +257,8 @@ const NuevoCaso: React.FC = () => {
     setShowClienteDropdown(false);
 
     try {
-      const detalle = await sapService.getClienteDetalle(cliente.CardCode, userCountry || 'SV');
+      // ADMIN_GLOBAL: userCountry es null, no filtrar por país
+      const detalle = await sapService.getClienteDetalle(cliente.CardCode, (userCountry || undefined) as any);
       setClienteDetalle(detalle);
 
       if (detalle) {

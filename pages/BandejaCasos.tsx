@@ -316,7 +316,7 @@ const BandejaCasos: React.FC = () => {
 
   // Cargar datos iniciales
   useEffect(() => {
-    if (userCountry === null) return;
+    if (userCountry === undefined) return;
     const initializeData = async () => {
       try {
         // Cargar en paralelo - casos, clientes y categorias
