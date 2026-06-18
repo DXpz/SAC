@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { sapService } from '../services/sapService';
@@ -9,6 +9,7 @@ import { STATE_COLORS } from '../constants';
 import { Search, Plus, Filter, ChevronRight, RefreshCw, X, Grid3x3, List, User, Eye, Clock } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import LoadingScreen from '../components/LoadingScreen';
+import FilterBar from '../components/FilterBar';
 
 const BandejaCasos: React.FC = () => {
   const [casos, setCasos] = useState<Case[]>([]);
@@ -30,9 +31,13 @@ const BandejaCasos: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 20;
   const [userCountry, setUserCountry] = useState<'SV' | 'GT' | null>(null);
+  const [mesFilter, setMesFilter] = useState<string>('');
+  const [yearFilter, setYearFilter] = useState<string>('');
+  const [paisFilter, setPaisFilter] = useState<string>('all');
   const { theme } = useTheme();
   const currentUser = api.getUser();
   const isAdmin = currentUser?.role?.toUpperCase() === 'ADMIN' || currentUser?.role?.toUpperCase() === 'ADMINISTRADOR' || currentUser?.role?.toUpperCase() === 'ADMIN_GLOBAL';
+  const isAdminGlobal = currentUser?.role === 'ADMIN_GLOBAL';
   const isAgente = currentUser?.role === 'AGENTE';
   const isGerente = currentUser?.role === 'GERENTE';
   const isSupervisor = currentUser?.role === 'SUPERVISOR';
@@ -405,11 +410,27 @@ const loadCategorias = async () => {
   }
 };
 
+// Calcular fechas de filtro (primero y último día del mes)
+const getDateFiltros = useCallback(() => {
+  if (!mesFilter && !yearFilter) return {};
+  const y = yearFilter ? parseInt(yearFilter) : new Date().getFullYear();
+  const m = mesFilter ? parseInt(mesFilter) - 1 : 0;
+  const inicio = new Date(y, m, 1);
+  const fin = new Date(y, mesFilter ? m + 1 : 12, 0);
+  fin.setHours(23, 59, 59, 999);
+  return {
+    fechaInicio: inicio.toISOString(),
+    fechaFin: fin.toISOString(),
+  };
+}, [mesFilter, yearFilter]);
+
+const filtro = getDateFiltros();
+
 const loadCasos = async () => {
   setLoading(true);
   setError(null);
   try {
-    const data = await api.getCases();
+    const data = await api.getCases(false, false, filtro);
     setCasos(data);
     const updateTime = new Date();
     setLastUpdate(updateTime);
@@ -557,6 +578,21 @@ const filteredCasos = useMemo(() => {
             }}
           />
           </div>
+        </div>
+
+        {/* FilterBar global - filtros de país, mes y año */}
+        <div className="w-full">
+          <FilterBar
+            isAdminGlobal={isAdminGlobal}
+            paisFilter={paisFilter}
+            setPaisFilter={setPaisFilter}
+            mesFilter={mesFilter}
+            setMesFilter={setMesFilter}
+            yearFilter={yearFilter}
+            setYearFilter={setYearFilter}
+            theme={theme}
+            onApply={loadCasos}
+          />
         </div>
         
         <div className="flex gap-3 w-full md:w-auto flex-wrap">
