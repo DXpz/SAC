@@ -335,6 +335,13 @@ const BandejaCasos: React.FC = () => {
     initializeData();
   }, [userCountry]);
 
+  // Escuchar cambios de filtro global
+  useEffect(() => {
+    const handler = () => loadCasos();
+    window.addEventListener('sac-filter-applied', handler);
+    return () => window.removeEventListener('sac-filter-applied', handler);
+  }, []);
+
 
   const normalizeId = (id: string): string => {
   if (!id) return '';

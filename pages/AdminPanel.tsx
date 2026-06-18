@@ -156,6 +156,13 @@ const AdminPanel: React.FC = () => {
     }
   }, [location.pathname, userCountry]);
 
+  // Escuchar cambios de filtro global
+  useEffect(() => {
+    const handler = () => loadData();
+    window.addEventListener('sac-filter-applied', handler);
+    return () => window.removeEventListener('sac-filter-applied', handler);
+  }, []);
+
   // Métricas adicionales desde los endpoints (con validaciones y normalización)
   const casosSeguros = Array.isArray(allCasos) ? allCasos : [];
   const metricsSummary = dashboardMetrics?.summary || {};

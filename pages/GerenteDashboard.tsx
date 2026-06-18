@@ -170,6 +170,13 @@ const GerenteDashboard: React.FC = () => {
     }
   }, [location.pathname, gerenteCountryDetected, gerenteCountry, periodFilter]);
 
+  // Escuchar cambios de filtro global
+  useEffect(() => {
+    const handler = () => loadData();
+    window.addEventListener('sac-filter-applied', handler);
+    return () => window.removeEventListener('sac-filter-applied', handler);
+  }, []);
+
   const loadClientes = async () => {
     console.log('[GerenteDashboard] loadClientes started, pais:', gerenteCountry);
     try {

@@ -48,8 +48,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
   const handleApplyFilters = () => {
     persistFilters(paisFilterLocal, mesFilterLocal, yearFilterLocal);
-    // Recargar la página actual para aplicar filtros
-    window.location.reload();
+    // Dispara evento global para que todas las vistas recarguen datos
+    window.dispatchEvent(new CustomEvent('sac-filter-applied'));
   };
 
   // Actualizar usuario cuando cambie en localStorage o cuando cambie la ruta

@@ -117,6 +117,13 @@ setAgentes(allAgentesData);
     // eslint-disable-next-line react-hooks-exhaustive-deps
   }, [location.pathname, userCountry]);
 
+  // Escuchar cambios de filtro global
+  useEffect(() => {
+    const handler = () => loadCasos();
+    window.addEventListener('sac-filter-applied', handler);
+    return () => window.removeEventListener('sac-filter-applied', handler);
+  }, []);
+
   // Enriquecer casos con clientes y categorías - SOLO UNA VEZ
   useEffect(() => {
     if (!initialLoadComplete) return;

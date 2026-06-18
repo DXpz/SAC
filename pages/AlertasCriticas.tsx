@@ -251,6 +251,13 @@ const AlertasCriticas: React.FC = () => {
     loadData();
   }, [location.pathname, userCountry]);
 
+  // Escuchar cambios de filtro global
+  useEffect(() => {
+    const handler = () => loadData();
+    window.addEventListener('sac-filter-applied', handler);
+    return () => window.removeEventListener('sac-filter-applied', handler);
+  }, []);
+
   const prioritizeCases = (cases: Caso[]): CaseWithPriority[] => {
     return cases.map(caso => {
       const prioridad = caso.priority || (caso as any).prioridad || 'Media';

@@ -43,6 +43,13 @@ const SupervisorPanel: React.FC = () => {
     }
   }, [location.pathname, supervisorCountry, periodFilter, agentFilter]);
 
+  // Escuchar cambios de filtro global
+  useEffect(() => {
+    const handler = () => loadData();
+    window.addEventListener('sac-filter-applied', handler);
+    return () => window.removeEventListener('sac-filter-applied', handler);
+  }, []);
+
   const loadClientes = async () => {
     try {
       const pais = supervisorCountry || 'SV';
