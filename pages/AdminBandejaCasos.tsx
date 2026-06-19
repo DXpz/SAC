@@ -5,7 +5,7 @@ import { API_CONFIG } from '../config';
 import { sapService, ClienteListado } from '../services/sapService';
 import { getUserCountry } from '../services/caseService';
 import { Case, CaseStatus, Cliente, Categoria, Agente } from '../types';
-import { Search, Plus, Filter, ChevronRight, X, Calendar, User, Clock, AlertTriangle, Timer, HelpCircle } from 'lucide-react';
+import { Search, Plus, Filter, ChevronRight, X, Calendar, User, Clock, AlertTriangle, Timer, HelpCircle, CheckCircle2 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import LoadingScreen from '../components/LoadingScreen';
 import LoadingLogo from '../components/LoadingLogo';
