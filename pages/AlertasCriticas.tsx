@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { sapService } from '../services/sapService';
 import { getUserCountry } from '../services/caseService';
+import { isClosedCase, getDiasRestantes, isSlaExpired, isSlaCritical } from '../utils/slaUtils';
 import { Caso, CaseStatus } from '../types';
 import { STATE_COLORS } from '../constants';
 import { useTheme } from '../contexts/ThemeContext';
@@ -778,7 +779,9 @@ const AlertasCriticas: React.FC = () => {
                       const priorityConfig = getPriorityConfig(caso.priority);
                       const slaDias = caso.categoria?.slaDias || 5;
                       const slaExpired = caso.slaExpired || false;
-                      const diasRestantes = caso.diasRestantes ?? 0;
+                      const casoCerrado = isClosedCase(caso);
+                      const diasRestantesRaw = getDiasRestantes(caso);
+                      const diasRestantes = diasRestantesRaw ?? 0;
 
                   return (
                     <tr 
@@ -930,8 +933,12 @@ const AlertasCriticas: React.FC = () => {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
-                          <Timer className="w-3.5 h-3.5" style={{color: slaExpired ? '#c8151b' : diasRestantes <= 1 ? '#f97316' : styles.text.tertiary}} />
-                          {slaExpired ? (
+                          <Timer className="w-3.5 h-3.5" style={{color: casoCerrado ? '#22c55e' : slaExpired ? '#c8151b' : diasRestantes <= 1 ? '#f97316' : styles.text.tertiary}} />
+                          {casoCerrado ? (
+                            <span className="text-[10px] font-semibold" style={{color: '#22c55e'}}>
+                              Cerrado
+                            </span>
+                          ) : slaExpired ? (
                             <span className="text-[10px] font-semibold" style={{color: '#c8151b'}}>
                               Vencido
                             </span>
@@ -994,7 +1001,9 @@ const AlertasCriticas: React.FC = () => {
                 const priorityConfig = getPriorityConfig(caso.priority);
                 const slaDias = caso.categoria?.slaDias || 5;
                 const slaExpired = caso.slaExpired || false;
-                const diasRestantes = caso.diasRestantes ?? 0;
+                const casoCerrado = isClosedCase(caso);
+                const diasRestantesRaw = getDiasRestantes(caso);
+                const diasRestantes = diasRestantesRaw ?? 0;
                 
                 return (
                   <div
@@ -1142,8 +1151,12 @@ const AlertasCriticas: React.FC = () => {
                           );
                         })()}
                         <div className="flex items-center gap-1.5">
-                          <Timer className="w-3.5 h-3.5" style={{color: slaExpired ? '#c8151b' : diasRestantes <= 1 ? '#f97316' : styles.text.tertiary}} />
-                          {slaExpired ? (
+                          <Timer className="w-3.5 h-3.5" style={{color: casoCerrado ? '#22c55e' : slaExpired ? '#c8151b' : diasRestantes <= 1 ? '#f97316' : styles.text.tertiary}} />
+                          {casoCerrado ? (
+                            <span className="text-[10px] font-semibold" style={{color: '#22c55e'}}>
+                              Cerrado
+                            </span>
+                          ) : slaExpired ? (
                             <span className="text-[10px] font-semibold" style={{color: '#c8151b'}}>
                               Vencido
                             </span>

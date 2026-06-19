@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
+import { isClosedCase, getDiasRestantes, isSlaCritical, isSlaAtRisk, isSlaWithin } from '../utils/slaUtils';
 import { sapService } from '../services/sapService';
 import { getUserCountry } from '../services/caseService';
 import { getStoredFilters, getDateFiltros, getPaisFromFilters } from '../services/filterService';
@@ -1183,7 +1184,7 @@ const SupervisorPanel: React.FC = () => {
                   {casosCriticos.map((caso) => {
                     const prioridad = caso.priority || (caso as any).prioridad || 'Media';
                     const slaExpired = (caso as any).slaExpired || false;
-                    const diasRestantes = (caso as any).diasRestantes ?? 0;
+                    const diasRestantes = getDiasRestantes(caso) ?? 0; // casosCriticos ya excluye cerrados
                     const isVencido = slaExpired === true && diasRestantes <= 0;
                     const catId = (caso as any).categoria_id || (caso as any).categoria?.id || (caso as any).categoria?.idCategoria;
                     const tieneCategoriaReal = catId && String(catId) !== '1';
@@ -1269,7 +1270,9 @@ const SupervisorPanel: React.FC = () => {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1.5">
-                            {isVencido ? (
+                            {isClosedCase(caso) ? (
+                              <CheckCircle2 className="w-3.5 h-3.5" style={{color: '#22c55e'}} />
+                            ) : isVencido ? (
                               <AlertCircle className="w-3.5 h-3.5" style={{color: '#c8151b'}} />
                             ) : !tieneCategoriaReal ? (
                               <Clock className="w-3.5 h-3.5" style={{color: '#94a3b8'}} />
@@ -1277,7 +1280,13 @@ const SupervisorPanel: React.FC = () => {
                               <Clock className="w-3.5 h-3.5" style={{color: diasRestantes <= 1 ? '#f97316' : '#64748b'}} />
                             )}
                             {(() => {
-                              if (!tieneCategoriaReal) {
+                              if (isClosedCase(caso)) {
+                                return (
+                                  <span className="text-[10px] font-semibold" style={{color: '#22c55e'}}>
+                                    Cerrado
+                                  </span>
+                                );
+                              } else if (!tieneCategoriaReal) {
                                 return (
                                   <span className="text-[10px] font-semibold" style={{color: '#94a3b8'}}>
                                     Sin SLA
