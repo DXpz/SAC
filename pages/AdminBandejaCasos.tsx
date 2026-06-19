@@ -423,9 +423,9 @@ const loadAgentes = async () => {
         if (slaFilter === 'vencido') {
           return slaExpired;
         } else if (slaFilter === 'en-riesgo') {
-          return !slaExpired && diasRestantes <= 1;
+          return !slaExpired && diasRestantes != null && diasRestantes <= 1;
         } else if (slaFilter === 'dentro-sla') {
-          return !slaExpired && diasRestantes > 0;
+          return !slaExpired && diasRestantes != null && diasRestantes > 0;
         }
         return true;
       });
@@ -477,9 +477,10 @@ const loadAgentes = async () => {
 
   const getSlaStatus = (caso: Case) => {
     const estado = caso.status || (caso as any).estado || '';
-    const isClosedState = ['Cerrado', 'Resuelto', 'cerrado', 'resuelto'].includes(estado);
+    // Caso cerrado/finalizado: SLA no aplica, no es vencido ni en riesgo
+    const isClosedState = ['Cerrado', 'Resuelto', 'Finalizado', 'cerrado', 'resuelto', 'finalizado'].includes(estado);
     if (isClosedState) {
-      return { label: 'Normal', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)', icon: Clock };
+      return { label: 'Cerrado', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)', icon: CheckCircle2 };
     }
 
     // Sin categoría real: SLA aún no definido
@@ -490,10 +491,12 @@ const loadAgentes = async () => {
     }
 
     const slaExpired = (caso as any).slaExpired === true;
-    const diasRestantes = (caso as any).diasRestantes ?? 0;
+    const diasRestantes = (caso as any).diasRestantes; // puede ser null si el caso esta cerrado o sin SLA
 
     if (slaExpired) {
       return { label: 'Vencido', color: '#dc2626', bg: 'rgba(220, 38, 38, 0.1)', icon: Timer };
+    } else if (diasRestantes == null) {
+      return { label: 'Sin SLA', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.1)', icon: AlertTriangle };
     } else if (diasRestantes <= 1) {
       return { label: 'En Riesgo', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)', icon: AlertTriangle };
     }
