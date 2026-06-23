@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import StagePipeline from '../components/StagePipeline';
 import { setStageSlaMap } from '../utils/slaUtils';
+import { API_CONFIG } from '../config';
 import { isClosedCase, getDiasRestantes, isSlaCritical, isSlaAtRisk, isSlaWithin } from '../utils/slaUtils';
 import { sapService } from '../services/sapService';
 import { getUserCountry } from '../services/caseService';
@@ -191,13 +192,26 @@ const SupervisorPanel: React.FC = () => {
       const dateFilters = getDateFiltros(storedFilters);
       const paisFiltro = getPaisFromFilters();
       const filtrosConPais = { ...dateFilters, pais: paisFiltro };
-      const [casosData, criticalCasesData, metricsData, agentesData, clientesList] = await Promise.all([
+      const [casosData, criticalCasesData, metricsData, agentesData, clientesList, estadosList] = await Promise.all([
         api.getCases(false, true, filtrosConPais),
         api.getCriticalCases(filtrosConPais),
         api.getDashboardMetrics({ pais: paisFiltro || supervisorCountry || undefined, period: 'todos', agentId: agentFilter, ...dateFilters }),
         api.getAgentes(paisFiltro || supervisorCountry),
-        loadClientes()
+        loadClientes(),
+        fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}`, {
+          headers: { 'ngrok-skip-browser-warning': 'true' }
+        }).then(r => r.json()).catch(() => [])
       ]);
+      // Cargar estados del webhook
+      if (estadosList && Array.isArray(estadosList) && estadosList.length > 0) {
+        const estadosFromWebhook = estadosList.map((s: any) => ({
+          id: String(s.id || s.nombre || ''),
+          name: String(s.nombre || ''),
+          order: Number(s.orden || 0),
+          isFinal: s.estado_final === true || s.isFinal === true || s.is_final === true || false
+        }));
+        setEstados(estadosFromWebhook);
+      }
       const enriched = enrichCasesWithClients(casosData, clientesList);
       const criticalEnriched = enrichCasesWithClients(criticalCasesData, clientesList);
       setCasos(enriched);
@@ -361,17 +375,8 @@ const SupervisorPanel: React.FC = () => {
   // Para métricas: casos abiertos = casosFiltrados sin cerrados
   const casosAbiertosFiltrados = casosAbiertos;
 
-  // Derivar estados unicos de los casos (para el pipeline)
-  const estadosUnicos = useMemo(() => {
-    const mapa = new Map<string, { id: string; nombre: string; orden: number }>();
-    casos.forEach((c: any) => {
-      const nombre = c.status || c.estado;
-      if (nombre && !mapa.has(nombre)) {
-        mapa.set(nombre, { id: nombre, nombre, orden: mapa.size });
-      }
-    });
-    return Array.from(mapa.values());
-  }, [casos]);
+  // Estados del webhook (mismo patron que AdminPanel)
+  const [estados, setEstados] = useState<Array<{ id: string; name: string; order: number; isFinal: boolean }>>([]);
 
   // Memorizar valores de longitud para evitar recálculos durante hover
   const casosAbiertosCount = metricsSummary.casosAbiertos ?? casosAbiertosFiltrados.length;
@@ -631,14 +636,6 @@ const SupervisorPanel: React.FC = () => {
         </div>
       </div>
 
-      {/* Pipeline por Etapa */}
-      <StagePipeline
-        casos={casos as any}
-        estados={estadosUnicos}
-        onStageClick={(estadoNombre) => navigate('/app/casos', { state: { estadoFilter: estadoNombre } })}
-        theme={theme}
-      />
-
       <div className="flex flex-wrap items-center gap-3 p-3 rounded-lg border" style={{
         backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
         borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.2)',
@@ -883,6 +880,14 @@ const SupervisorPanel: React.FC = () => {
           </button>
         )}
       </div>
+      {/* Pipeline por Etapa */}
+      <StagePipeline
+        casos={casos as any}
+        estados={estados}
+        onStageClick={(estadoNombre) => navigate('/app/casos', { state: { estadoFilter: estadoNombre } })}
+        theme={theme}
+      />
+
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 items-stretch">
         <Tooltip id="casos-abiertos" content="Total de casos activos en el sistema">

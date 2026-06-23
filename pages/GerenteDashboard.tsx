@@ -1,15 +1,15 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { sapService } from '../services/sapService';
 import { getStoredFilters, getDateFiltros, getPaisFromFilters } from '../services/filterService';
+import { API_CONFIG } from '../config';
 import { Case, CaseStatus, KPI } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { TrendingUp, Users, Clock, ThumbsUp, ArrowUp, ArrowDown, Info, AlertTriangle, CheckCircle2, Filter, Zap, Target, TrendingDown, Shield, Activity } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import LoadingScreen from '../components/LoadingScreen';
 import StagePipeline from '../components/StagePipeline';
-import { useNavigate } from 'react-router-dom';
 import { setStageSlaMap } from '../utils/slaUtils';
 
 type PeriodFilter = 'hoy' | 'semana' | 'mes';
@@ -229,33 +229,30 @@ const GerenteDashboard: React.FC = () => {
       const paisFiltro = getPaisFromFilters();
       const filtrosConPais = { ...dateFilters, pais: paisFiltro };
       console.log('[GerenteDashboard] calling api.getCases...');
-      const [casosData, criticalCasesData, metricsData] = await Promise.all([
+      const [casosData, criticalCasesData, metricsData, estadosList] = await Promise.all([
         api.getCases(false, true, filtrosConPais),
         api.getCriticalCases(filtrosConPais),
-        api.getDashboardMetrics({ pais: paisFiltro || gerenteCountry || undefined, period: 'todos', ...dateFilters })
+        api.getDashboardMetrics({ pais: paisFiltro || gerenteCountry || undefined, period: 'todos', ...dateFilters }),
+        fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}`, {
+          headers: { 'ngrok-skip-browser-warning': 'true' }
+        }).then(r => r.json()).catch(() => [])
       ]);
+      // Cargar estados del webhook (mismo patron que AdminPanel)
+      if (estadosList && Array.isArray(estadosList) && estadosList.length > 0) {
+        const estadosFromWebhook = estadosList.map((s: any) => ({
+          id: String(s.id || s.nombre || ''),
+          name: String(s.nombre || ''),
+          order: Number(s.orden || 0),
+          isFinal: s.estado_final === true || s.isFinal === true || s.is_final === true || false
+        }));
+        setEstados(estadosFromWebhook);
+      }
       console.log('[GerenteDashboard] api.getCases returned:', casosData.length, 'cases');
       
       console.log('[GerenteDashboard] calling loadClientes...');
       const clientesList = await loadClientes();
       console.log('[GerenteDashboard] loadClientes returned:', clientesList.length, 'clientes');
-      
-      console.log('[GerenteDashboard] calling estados...');
-      let estadosData: any[] = [];
-      try {
-        const response = await fetch(`${api.getBaseUrl()}/api/estados`, {
-          headers: { 'ngrok-skip-browser-warning': 'true' }
-        });
-        console.log('[GerenteDashboard] estados response status:', response.status);
-        const text = await response.text();
-        console.log('[GerenteDashboard] estados response text length:', text.length);
-        estadosData = JSON.parse(text);
-        console.log('[GerenteDashboard] estados returned:', estadosData.length, 'estados');
-      } catch (error) {
-        console.log('[GerenteDashboard] estados error:', error);
-      }
-      console.log('[GerenteDashboard] estados returned:', estadosData.length, 'estados');
-      
+
       console.log('[GerenteDashboard] api.getCases returned:', casosData.length, 'cases');
       
       // Verificar que los casos tengan datos válidos
@@ -271,11 +268,6 @@ const GerenteDashboard: React.FC = () => {
       if (metricsData?.slaPorEtapa) setStageSlaMap(metricsData.slaPorEtapa);
       console.log('[GerenteDashboard] setCasos called with:', enriched.length, 'cases');
       
-      // Cargar estados dinámicamente (TODOS, incluyendo finales)
-      if (estadosData && Array.isArray(estadosData)) {
-        const estadosOrdenados = [...estadosData].sort((a: any, b: any) => (a.orden || 0) - (b.orden || 0));
-        setEstados(estadosOrdenados);
-      }
       
       // Los KPIs se calcularán en useMemo basados en casos filtrados por país
       // No necesitamos setKpis aquí, se calculará automáticamente
@@ -350,18 +342,6 @@ const GerenteDashboard: React.FC = () => {
 
     return casosFiltradosPorPais.filter(c => new Date(c.createdAt) >= startDate);
   }, [casosFiltradosPorPais, periodFilter]);
-
-  // Derivar estados unicos de los casos (para el pipeline)
-  const estadosUnicos = useMemo(() => {
-    const mapa = new Map<string, { id: string; nombre: string; orden: number }>();
-    casos.forEach((c: any) => {
-      const nombre = c.status || c.estado;
-      if (nombre && !mapa.has(nombre)) {
-        mapa.set(nombre, { id: nombre, nombre, orden: mapa.size });
-      }
-    });
-    return Array.from(mapa.values());
-  }, [casos]);
 
   const metricsSummary = dashboardMetrics?.summary || {};
   const metricsCharts = dashboardMetrics?.charts || {};
@@ -837,7 +817,7 @@ const GerenteDashboard: React.FC = () => {
       {/* Pipeline por Etapa */}
       <StagePipeline
         casos={filteredCasos as any}
-        estados={estadosUnicos}
+        estados={estados}
         onStageClick={(estadoNombre) => navigate('/app/gerencia', { state: { estadoFilter: estadoNombre } })}
         theme={theme}
       />
