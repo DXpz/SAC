@@ -321,10 +321,23 @@ const BandejaCasos: React.FC = () => {
     if (userCountry === undefined) return;
     const initializeData = async () => {
       try {
-        // Cargar en paralelo - casos, clientes y categorias
+        // Cargar clientes segun el pais del usuario.
+        // Para ADMIN_GLOBAL, userCountry es null -> cargar SV+GT
+        let clientesData: any[] = [];
+        if (userCountry) {
+          const code = userCountry === 'Guatemala' ? 'GT' : 'SV';
+          clientesData = await sapService.getClientesListado(code);
+        } else {
+          const [sv, gt] = await Promise.all([
+            sapService.getClientesListado('SV'),
+            sapService.getClientesListado('GT')
+          ]);
+          clientesData = [...sv, ...gt];
+        }
+        setClientes(clientesData);
+        // Cargar el resto en paralelo
         await Promise.all([
           loadCasos(),
-          sapService.getClientesListado(userCountry).then(data => { setClientes(data); return data; }),
           api.getCategorias().then(data => { setCategorias(data); return data; }),
           api.getAgentes(userCountry).then(data => { setAgentes(data); return data; })
         ]);
@@ -374,8 +387,18 @@ const findCategoriaById = (categoriaId: string | number, categoriasList: Categor
 
 const enrichCase = (caso: Case, clientesList: Cliente[], categoriasList: Categoria[]): Case => {
   const enriched = { ...caso };
+  // Si el backend ya envio el cliente correcto, usarlo
+  if (caso.cliente && (caso.cliente as any).CardCode && enriched.clientId === (caso.cliente as any).CardCode) {
+    enriched.clientName = (caso.cliente as any).CardName || enriched.clientName;
+    return enriched;
+  }
   if (clientesList.length > 0 && caso.clientId) {
-    const cliente = findClienteById(caso.clientId, clientesList);
+    // Filtrar clientes por pais del caso para evitar match cruzado
+    const casoPais = (caso as any).pais === 'SV' ? 'ElSalvador' : ((caso as any).pais === 'GT' ? 'Guatemala' : (caso as any).pais);
+    const clientesFiltrados = casoPais
+      ? clientesList.filter(c => (c as any).pais === casoPais)
+      : clientesList;
+    const cliente = findClienteById(caso.clientId, clientesFiltrados);
     if (cliente && (!caso.clientName || caso.clientName === 'Por definir')) {
       enriched.clientName = cliente.CardName;
       enriched.clientEmail = caso.clientEmail || (cliente as any).Email || '';
@@ -893,8 +916,8 @@ const filteredCasos = useMemo(() => {
                   backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
                   animation: 'fadeInSlide 0.3s ease-out'
                 }}>
-                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>ID Caso</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Cliente</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)', width: '110px', minWidth: '110px'}}>ID Caso</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)', width: '280px', minWidth: '280px'}}>Cliente</th>
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Empresa</th>
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Categoría</th>
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Estado</th>
@@ -923,10 +946,10 @@ const filteredCasos = useMemo(() => {
                     }} 
                     onClick={() => navigate(`/app/casos/${caso.id}`)}
                   >
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" style={{width: '110px', minWidth: '110px'}}>
                       <span className="text-xs font-bold transition-colors" style={{color: styles.text.primary}}>{caso.ticketNumber || (caso as any).idCaso}</span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" style={{width: '280px', minWidth: '280px'}}>
                       <div className="flex items-center gap-2">
                         <span 
                           className="inline-flex px-2 py-1 text-[10px] font-semibold rounded-lg border transition-all"
@@ -946,9 +969,19 @@ const filteredCasos = useMemo(() => {
                         >
                           {caso.clientId || caso.cliente?.CardCode || 'N/A'}
                         </span>
-                        <span className="text-xs font-semibold" style={{color: styles.text.primary}}>
-                          {caso.clientName || caso.cliente?.CardName || 'Por definir'}
-                        </span>
+                         <span
+                           className="text-xs font-semibold max-w-[180px] leading-tight"
+                           style={{
+                             color: styles.text.primary,
+                             display: '-webkit-box',
+                             WebkitLineClamp: 2,
+                             WebkitBoxOrient: 'vertical',
+                             overflow: 'hidden',
+                             wordBreak: 'break-word'
+                           }}
+                         >
+                           {caso.clientName || caso.cliente?.CardName || 'Por definir'}
+                         </span>
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -1175,7 +1208,17 @@ const filteredCasos = useMemo(() => {
                   {/* Cliente */}
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold" style={{color: styles.text.secondary}}>Cliente:</span>
-                    <span className="text-xs font-bold flex-1 truncate" style={{color: styles.text.primary}}>
+                    <span
+                      className="text-xs font-bold flex-1 leading-tight"
+                      style={{
+                        color: styles.text.primary,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        wordBreak: 'break-word'
+                      }}
+                    >
                       {caso.clientName || caso.cliente?.CardName || 'Por definir'}
                     </span>
                   </div>

@@ -140,20 +140,35 @@ setAgentes(allAgentesData);
       let casoActualizado = { ...caso };
 
       // Enriquecer con cliente
-      const getClientId = (caso: any): string => caso.clientId || '';
-      
-      if (clientes.length > 0 && getClientId(caso)) {
+      const getClientId = (caso: any): string =>
+        caso.clientId || caso.clienteId || caso.cliente_id || '';
+
+      // Si el backend ya envio el cliente enriquecido, usarlo (es la fuente de verdad)
+      if (caso.cliente && caso.cliente.CardCode === getClientId(caso)) {
+        casoActualizado = {
+          ...casoActualizado,
+          clientName: caso.cliente.CardName || caso.clientName,
+          cliente: caso.cliente
+        };
+      } else if (clientes.length > 0 && getClientId(caso)) {
         const clienteIdStr = String(getClientId(caso)).trim();
-        console.log('[AdminBandejaCasos] cliente_id to find:', clienteIdStr);
-        console.log('[AdminBandejaCasos] first 5 CardCodes in clientes:', clientes.slice(0, 5).map(c => c.CardCode));
+        // Pais del caso: SV -> ElSalvador, GT -> Guatemala
+        const casoPais = caso.pais === 'SV' ? 'ElSalvador' : (caso.pais === 'GT' ? 'Guatemala' : caso.pais);
+        // Buscar SOLO en clientes del mismo pais del caso (evita match cruzado SV/GT)
         const clienteCompleto = clientes.find(c => {
           if (!c?.CardCode) return false;
           const cardCodeStr = String(c.CardCode).trim();
-          return cardCodeStr === clienteIdStr;
+          const matchByCode = cardCodeStr === clienteIdStr
+            || cardCodeStr.toLowerCase() === clienteIdStr.toLowerCase()
+            || cardCodeStr.replace(/\D/g, '') === clienteIdStr.replace(/\D/g, '');
+          // Si hay lista mezclada, exigir match por pais
+          if (casoPais) {
+            return matchByCode && c.pais === casoPais;
+          }
+          return matchByCode;
         });
 
         if (clienteCompleto) {
-          console.log('[AdminBandejaCasos] FOUND cliente:', clienteCompleto.CardName);
           casoActualizado = {
             ...casoActualizado,
             clientName: clienteCompleto.CardName,
@@ -162,11 +177,7 @@ setAgentes(allAgentesData);
             clientEmail: caso.clientEmail || clienteCompleto.Email,
             clientPhone: caso.clientPhone || clienteCompleto.Telefono,
           };
-        } else {
-          console.log('[AdminBandejaCasos] no match for cliente_id:', clienteIdStr);
         }
-      } else {
-        console.log('[AdminBandejaCasos] skipping - clientes.length:', clientes.length, 'getClientId:', getClientId(caso));
       }
 
       // Enriquecer con categoría
@@ -260,10 +271,26 @@ setAgentes(allAgentesData);
 
   const loadClientes = async () => {
     try {
-      // ADMIN_GLOBAL: userCountry es null, no filtrar por país
-      const pais = userCountry || undefined;
-      console.log('[AdminBandejaCasos] loadClientes pais:', pais || 'TODOS');
-      const data = await sapService.getClientesListado(pais as any);
+      // Para ADMIN_GLOBAL: usar el pais del filtro global.
+      // Si no hay filtro (all), cargar SV + GT y combinar.
+      let data: any[] = [];
+      const paisFiltro = getPaisFromFilters();
+      if (paisFiltro && paisFiltro !== 'all') {
+        const code = paisFiltro === 'Guatemala' ? 'GT' : 'SV';
+        console.log('[AdminBandejaCasos] loadClientes pais (filtro):', code);
+        data = await sapService.getClientesListado(code);
+      } else if (userCountry) {
+        const code = userCountry === 'Guatemala' ? 'GT' : 'SV';
+        data = await sapService.getClientesListado(code);
+      } else {
+        // ADMIN_GLOBAL sin filtro: cargar ambos paises
+        console.log('[AdminBandejaCasos] loadClientes ADMIN_GLOBAL todos');
+        const [sv, gt] = await Promise.all([
+          sapService.getClientesListado('SV'),
+          sapService.getClientesListado('GT')
+        ]);
+        data = [...sv, ...gt];
+      }
       console.log('[AdminBandejaCasos] loaded clientes:', data.length);
       setClientes(data);
       return data;
@@ -890,8 +917,8 @@ const loadAgentes = async () => {
                   backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
                   animation: 'fadeInSlide 0.3s ease-out'
                 }}>
-                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>ID Caso</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Cliente</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)', width: '110px', minWidth: '110px'}}>ID Caso</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)', width: '280px', minWidth: '280px'}}>Cliente</th>
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Empresa</th>
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Asunto</th>
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Categoría</th>
@@ -931,12 +958,12 @@ const loadAgentes = async () => {
                       }} 
                       onClick={() => navigate(`/app/casos/${caso.id}`)}
                     >
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3" style={{width: '110px', minWidth: '110px'}}>
                         <span className="text-xs font-bold transition-colors" style={{color: styles.text.primary}}>
                           {caso.ticketNumber || (caso as any).idCaso || caso.id}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3" style={{width: '280px', minWidth: '280px'}}>
                         <div className="flex items-center gap-2">
                           <span className="inline-flex px-2 py-1 text-[10px] font-semibold rounded-lg border transition-all" style={{
                             backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.12)' : '#dbeafe',
@@ -945,7 +972,17 @@ const loadAgentes = async () => {
                           }}>
                             {caso.clientId || caso.cliente_id || caso.cliente?.CardCode || 'N/A'}
                           </span>
-                          <span className="text-xs font-semibold max-w-[150px] truncate" style={{color: styles.text.primary}}>
+                          <span
+                            className="text-xs font-semibold max-w-[180px] leading-tight"
+                            style={{
+                              color: styles.text.primary,
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              wordBreak: 'break-word'
+                            }}
+                          >
                             {caso.clientName || caso.cliente?.CardName || 'Por definir'}
                           </span>
                         </div>

@@ -8,10 +8,14 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { TrendingUp, Users, Clock, ThumbsUp, ArrowUp, ArrowDown, Info, AlertTriangle, CheckCircle2, Filter, Zap, Target, TrendingDown, Shield, Activity } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import LoadingScreen from '../components/LoadingScreen';
+import StagePipeline from '../components/StagePipeline';
+import { useNavigate } from 'react-router-dom';
+import { setStageSlaMap } from '../utils/slaUtils';
 
 type PeriodFilter = 'hoy' | 'semana' | 'mes';
 
 const GerenteDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [casos, setCasos] = useState<Case[]>([]);
   const [criticalCases, setCriticalCases] = useState<Case[]>([]);
   const [dashboardMetrics, setDashboardMetrics] = useState<any>(null);
@@ -183,10 +187,21 @@ const GerenteDashboard: React.FC = () => {
   const loadClientes = async () => {
     console.log('[GerenteDashboard] loadClientes started, pais:', gerenteCountry);
     try {
-      const pais = gerenteCountry || 'SV';
-      const clientesList = await sapService.getClientesListado(pais);
-      console.log('[GerenteDashboard] loadClientes completed, count:', clientesList.length);
-      return clientesList;
+      // Para ADMIN_GLOBAL, gerenteCountry es null -> cargar ambos paises
+      if (gerenteCountry) {
+        const code = gerenteCountry === 'Guatemala' ? 'GT' : 'SV';
+        const clientesList = await sapService.getClientesListado(code);
+        console.log('[GerenteDashboard] loadClientes completed, count:', clientesList.length);
+        return clientesList;
+      } else {
+        const [sv, gt] = await Promise.all([
+          sapService.getClientesListado('SV'),
+          sapService.getClientesListado('GT')
+        ]);
+        const clientesList = [...sv, ...gt];
+        console.log('[GerenteDashboard] loadClientes ADMIN_GLOBAL, count:', clientesList.length);
+        return clientesList;
+      }
     } catch (error) {
       console.log('[GerenteDashboard] loadClientes error:', error);
       return [];
@@ -215,7 +230,7 @@ const GerenteDashboard: React.FC = () => {
       const filtrosConPais = { ...dateFilters, pais: paisFiltro };
       console.log('[GerenteDashboard] calling api.getCases...');
       const [casosData, criticalCasesData, metricsData] = await Promise.all([
-        api.getCases(true, false, filtrosConPais),
+        api.getCases(false, true, filtrosConPais),
         api.getCriticalCases(filtrosConPais),
         api.getDashboardMetrics({ pais: paisFiltro || gerenteCountry || undefined, period: 'todos', ...dateFilters })
       ]);
@@ -253,6 +268,7 @@ const GerenteDashboard: React.FC = () => {
       setCasos(enriched);
       setCriticalCases(criticalEnriched);
       setDashboardMetrics(metricsData);
+      if (metricsData?.slaPorEtapa) setStageSlaMap(metricsData.slaPorEtapa);
       console.log('[GerenteDashboard] setCasos called with:', enriched.length, 'cases');
       
       // Cargar estados dinámicamente (TODOS, incluyendo finales)
@@ -334,6 +350,18 @@ const GerenteDashboard: React.FC = () => {
 
     return casosFiltradosPorPais.filter(c => new Date(c.createdAt) >= startDate);
   }, [casosFiltradosPorPais, periodFilter]);
+
+  // Derivar estados unicos de los casos (para el pipeline)
+  const estadosUnicos = useMemo(() => {
+    const mapa = new Map<string, { id: string; nombre: string; orden: number }>();
+    casos.forEach((c: any) => {
+      const nombre = c.status || c.estado;
+      if (nombre && !mapa.has(nombre)) {
+        mapa.set(nombre, { id: nombre, nombre, orden: mapa.size });
+      }
+    });
+    return Array.from(mapa.values());
+  }, [casos]);
 
   const metricsSummary = dashboardMetrics?.summary || {};
   const metricsCharts = dashboardMetrics?.charts || {};
@@ -805,6 +833,14 @@ const GerenteDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Pipeline por Etapa */}
+      <StagePipeline
+        casos={filteredCasos as any}
+        estados={estadosUnicos}
+        onStageClick={(estadoNombre) => navigate('/app/gerencia', { state: { estadoFilter: estadoNombre } })}
+        theme={theme}
+      />
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">

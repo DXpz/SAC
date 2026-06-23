@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
+import StagePipeline from '../components/StagePipeline';
+import { setStageSlaMap } from '../utils/slaUtils';
 import { isClosedCase, getDiasRestantes, isSlaCritical, isSlaAtRisk, isSlaWithin } from '../utils/slaUtils';
 import { sapService } from '../services/sapService';
 import { getUserCountry } from '../services/caseService';
@@ -190,7 +192,7 @@ const SupervisorPanel: React.FC = () => {
       const paisFiltro = getPaisFromFilters();
       const filtrosConPais = { ...dateFilters, pais: paisFiltro };
       const [casosData, criticalCasesData, metricsData, agentesData, clientesList] = await Promise.all([
-        api.getCases(false, false, filtrosConPais),
+        api.getCases(false, true, filtrosConPais),
         api.getCriticalCases(filtrosConPais),
         api.getDashboardMetrics({ pais: paisFiltro || supervisorCountry || undefined, period: 'todos', agentId: agentFilter, ...dateFilters }),
         api.getAgentes(paisFiltro || supervisorCountry),
@@ -201,6 +203,7 @@ const SupervisorPanel: React.FC = () => {
       setCasos(enriched);
       setCriticalCases(criticalEnriched);
       setDashboardMetrics(metricsData);
+      if (metricsData?.slaPorEtapa) setStageSlaMap(metricsData.slaPorEtapa);
       // Filtrar agentes que tengan idAgente válido
       let agentesValidos = Array.isArray(agentesData) 
         ? agentesData.filter(a => a && (a.idAgente || a.id_agente || a.id))
@@ -357,6 +360,18 @@ const SupervisorPanel: React.FC = () => {
 
   // Para métricas: casos abiertos = casosFiltrados sin cerrados
   const casosAbiertosFiltrados = casosAbiertos;
+
+  // Derivar estados unicos de los casos (para el pipeline)
+  const estadosUnicos = useMemo(() => {
+    const mapa = new Map<string, { id: string; nombre: string; orden: number }>();
+    casos.forEach((c: any) => {
+      const nombre = c.status || c.estado;
+      if (nombre && !mapa.has(nombre)) {
+        mapa.set(nombre, { id: nombre, nombre, orden: mapa.size });
+      }
+    });
+    return Array.from(mapa.values());
+  }, [casos]);
 
   // Memorizar valores de longitud para evitar recálculos durante hover
   const casosAbiertosCount = metricsSummary.casosAbiertos ?? casosAbiertosFiltrados.length;
@@ -615,6 +630,14 @@ const SupervisorPanel: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Pipeline por Etapa */}
+      <StagePipeline
+        casos={casos as any}
+        estados={estadosUnicos}
+        onStageClick={(estadoNombre) => navigate('/app/casos', { state: { estadoFilter: estadoNombre } })}
+        theme={theme}
+      />
 
       <div className="flex flex-wrap items-center gap-3 p-3 rounded-lg border" style={{
         backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',

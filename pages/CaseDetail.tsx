@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
+import DocumentosPorEtapa from '../components/DocumentosPorEtapa';
 import { sapService } from '../services/sapService';
 import { getUserCountry } from '../services/caseService';
 import { Case, CaseStatus, Cliente, AutorRol, HistorialEntry } from '../types';
@@ -17,6 +18,7 @@ const CaseDetail: React.FC = () => {
   const [clientes, setClientes] = useState<any[]>([]);
   const [agentes, setAgentes] = useState<any[]>([]);
   const [categorias, setCategorias] = useState<any[]>([]);
+  const [documentos, setDocumentos] = useState<any[]>([]);
   const [transitionLoading, setTransitionLoading] = useState(false);
   const [userCountry, setUserCountry] = useState<'SV' | 'GT' | null>(null);
   const { theme } = useTheme();
@@ -599,6 +601,25 @@ const CaseDetail: React.FC = () => {
       }
       
       setCaso(data);
+      // Cargar documentos del caso para mostrarlos en el historial
+      try {
+        const user = api.getUser();
+        const docsRes = await fetch(`/api/casos/${data.case_id || caseId}/documentos`, {
+          headers: {
+            'X-User-Id': user?.id || '',
+            'X-User-Role': user?.role || '',
+            'X-User-Email': user?.email || '',
+            'X-User-Pais': user?.pais || '',
+            'ngrok-skip-browser-warning': 'true'
+          }
+        });
+        if (docsRes.ok) {
+          const docsData = await docsRes.json();
+          setDocumentos(docsData.documentos || []);
+        }
+      } catch (e) {
+        // Silenciar error de documentos
+      }
     } catch (error) {
       throw error; // Lanzar el error en lugar de usar fallback local
     }
@@ -1666,7 +1687,7 @@ const CaseDetail: React.FC = () => {
                   </p>
                 </div>
                 <div className="w-full h-3 rounded-full overflow-hidden" style={{backgroundColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(148, 163, 184, 0.15)'}}>
-                  <div 
+                  <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{
                       width: `${caseProgress}%`,
@@ -1675,6 +1696,15 @@ const CaseDetail: React.FC = () => {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Documentos por etapa */}
+            <div className="mt-4">
+              <DocumentosPorEtapa
+                casoId={caso.case_id || caso.id || id || ''}
+                etapaActual={estadoActual}
+                theme={theme}
+              />
             </div>
 
             {/* Descripción */}
@@ -2008,6 +2038,42 @@ const CaseDetail: React.FC = () => {
                                     {justificacion}
                                   </p>
                                 )}
+                                {/* Documentos subidos en esta etapa (estado_anterior) */}
+                                {(() => {
+                                  const estadoParaDocs = entry.estado_anterior && entry.estado_anterior !== 'N/A' ? entry.estado_anterior : null;
+                                  if (!estadoParaDocs) return null;
+                                  const docsEnEtapa = documentos.filter((d: any) => d.estado === estadoParaDocs);
+                                  if (docsEnEtapa.length === 0) return null;
+                                  return (
+                                    <div
+                                      className="mt-2 mb-2 p-2 rounded-md"
+                                      style={{
+                                        backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.08)' : 'rgba(59, 130, 246, 0.05)',
+                                        borderLeft: '3px solid #3b82f6'
+                                      }}
+                                    >
+                                      <p className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{color: '#3b82f6'}}>
+                                        Documentos en {estadoParaDocs} ({docsEnEtapa.length})
+                                      </p>
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {docsEnEtapa.map((d: any) => (
+                                          <span
+                                            key={d.id}
+                                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium"
+                                            style={{
+                                              backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                                              color: '#3b82f6'
+                                            }}
+                                            title={`${d.filename} · ${(d.size_bytes / 1024).toFixed(1)} KB`}
+                                          >
+                                            <FileText className="w-3 h-3" />
+                                            {d.filename}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
                                 <p className="text-xs font-medium" style={{color: styles.text.tertiary}}>
                                   Por: {autorNombre} ({autorRol})
                                 </p>

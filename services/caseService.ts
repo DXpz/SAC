@@ -596,6 +596,9 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
         : (agenteMapped?.idAgente || String(caseData.agente_id || caseData.agentId || '')),
       agentName: agenteMapped?.nombre || agenteName || getAgenteNombreByUserId(agenteUserIdFromWebhook, agentesCache || undefined),
       createdAt: createdAt,
+      // Mantener tambien el campo fecha_creacion que usa el frontend
+      fecha_creacion: caseData.fecha_creacion || createdAt,
+      fechaCreacionFormateada: caseData.fechaCreacionFormateada || null,
       pais: caseData.pais || caseData.country || clienteMapped?.pais || '',
       slaDeadline: slaDeadlineFromWebhook || undefined, // Fecha final del SLA del webhook
       // Preservar fechaFinSla directamente para CaseDetail que usa este campo específico

@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { sapService } from '../services/sapService';
 import { getUserCountry } from '../services/caseService';
+import StagePipeline from '../components/StagePipeline';
+import { setStageSlaMap } from '../utils/slaUtils';
 import { getStoredFilters, getDateFiltros, getPaisFromFilters } from '../services/filterService';
 import { Caso, CaseStatus, Agente, Cliente, Categoria, KPI } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
@@ -86,7 +88,7 @@ const AdminPanel: React.FC = () => {
       const filtrosConPais = { ...dateFilters, pais: paisFiltro };
     const [clientesList, casosList, criticalCasesList, metricsData, agentesList, categoriasList, usuariosList, estadosList] = await Promise.allSettled([
         loadClientes(),
-        api.getCases(false, false, filtrosConPais),
+        api.getCases(false, true, filtrosConPais),
         api.getCriticalCases(filtrosConPais),
         api.getDashboardMetrics({ pais: paisFiltro || userCountry || undefined, period: 'todos', ...dateFilters }),
         api.getAgentes(paisFiltro || userCountry || undefined),
@@ -109,6 +111,8 @@ const AdminPanel: React.FC = () => {
       const metrics = metricsData.status === 'fulfilled' ? metricsData.value : null;
       setDashboardMetrics(metrics);
       setKpis(metrics?.kpis || null);
+      // Actualizar el mapa SLA del backend (fuente de verdad unica)
+      if (metrics?.slaPorEtapa) setStageSlaMap(metrics.slaPorEtapa);
       
       // Cargar estados del webhook
       if (estadosList.status === 'fulfilled' && estadosList.value && Array.isArray(estadosList.value) && estadosList.value.length > 0) {
@@ -1266,6 +1270,14 @@ const AdminPanel: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Pipeline por Etapa */}
+      <StagePipeline
+        casos={casosSeguros as any}
+        estados={estados}
+        onStageClick={(estadoNombre) => navigate('/app/admin/casos', { state: { estadoFilter: estadoNombre } })}
+        theme={theme}
+      />
 
       {/* Métricas de Casos Críticos y Vencidos */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
