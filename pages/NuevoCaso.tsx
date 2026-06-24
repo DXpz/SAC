@@ -658,6 +658,7 @@ const NuevoCaso: React.FC = () => {
                     <option value={Channel.WHATSAPP}>WhatsApp</option>
                     <option value={Channel.TELEFONO}>Teléfono</option>
                     <option value={Channel.REDES_SOCIALES}>Redes Sociales</option>
+                    <option value={Channel.CLIENTE_PRESENCIAL}>Cliente presencial</option>
                   </select>
                 </div>
 
@@ -684,6 +685,7 @@ const NuevoCaso: React.FC = () => {
                     <option value={Channel.TELEFONO}>Teléfono</option>
                     <option value={Channel.WEB}>Web</option>
                     <option value={Channel.REDES_SOCIALES}>Redes Sociales</option>
+                    <option value={Channel.CLIENTE_PRESENCIAL}>Cliente presencial</option>
                   </select>
                 </div>
               </div>

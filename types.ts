@@ -15,7 +15,8 @@ export enum Channel {
   WHATSAPP = 'WhatsApp',
   TELEFONO = 'Teléfono',
   WEB = 'Web',
-  REDES_SOCIALES = 'Redes Sociales'
+  REDES_SOCIALES = 'Redes Sociales',
+  CLIENTE_PRESENCIAL = 'Cliente presencial'
 }
 
 export enum NotificationChannel {
