@@ -542,8 +542,9 @@ export const api = {
     const user = this.getUser();
     let paisValue: string | null = null;
 
-    // Usar pais del filtro si viene en options (ADMIN_GLOBAL puede elegir)
-    if (options?.pais && options.pais !== 'all') {
+    // Solo ADMIN_GLOBAL puede elegir país vía filtro global.
+    // Otros roles están锁定 a su propio país.
+    if (user?.role === 'ADMIN_GLOBAL' && options?.pais && options.pais !== 'all') {
       paisValue = options.pais;
     } else if (user?.role !== 'ADMIN_GLOBAL') {
       paisValue = 'Guatemala';
@@ -606,7 +607,9 @@ export const api = {
     const user = this.getUser();
     let paisValue: string | null = null;
 
-    if (options?.pais && options.pais !== 'all') {
+    // Solo ADMIN_GLOBAL puede elegir país vía filtro global.
+    // Otros roles están锁定 a su propio país.
+    if (user?.role === 'ADMIN_GLOBAL' && options?.pais && options.pais !== 'all') {
       paisValue = options.pais;
     } else if (user?.role !== 'ADMIN_GLOBAL') {
       paisValue = 'GT'; // default para no-admin-global

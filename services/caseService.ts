@@ -868,8 +868,9 @@ export const getCases = async (includeClosed: boolean = false, options?: { fecha
   let paisValue = null; // null = sin filtro (ADMIN_GLOBAL)
   const isAdminGlobalUser = currentUser?.role === 'ADMIN_GLOBAL';
 
-  // Si el filtro global tiene país seleccionado, usarlo (ADMIN_GLOBAL elige país)
-  if (options?.pais && options.pais !== 'all') {
+  // Solo ADMIN_GLOBAL puede elegir país vía filtro global.
+  // Otros roles (SUPERVISOR, GERENTE, AGENTE, ADMIN) están锁定 a su propio país.
+  if (isAdminGlobalUser && options?.pais && options.pais !== 'all') {
     paisValue = options.pais === 'GT' ? 'Guatemala' : 'ElSalvador';
   } else if (!isAdminGlobalUser) {
     paisValue = 'Guatemala'; // default para otros roles

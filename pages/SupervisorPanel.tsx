@@ -192,7 +192,8 @@ const SupervisorPanel: React.FC = () => {
       const supervisorCountry = await getSupervisorCountry();
       const storedFilters = getStoredFilters();
       const dateFilters = getDateFiltros(storedFilters);
-      const paisFiltro = getPaisFromFilters();
+      // SUPERVISOR está锁定 a su país; ignorar filtro global de país del localStorage
+      const paisFiltro = supervisorCountry;
       const filtrosConPais = { ...dateFilters, pais: paisFiltro };
       const [casosData, criticalCasesData, metricsData, agentesData, clientesList, estadosList] = await Promise.all([
         api.getCases(false, true, filtrosConPais),
