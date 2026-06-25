@@ -374,6 +374,8 @@ const CaseDetail: React.FC = () => {
     const statusMap: Record<string, CaseStatus> = {
       'nuevo': CaseStatus.NUEVO,
       'sin respuesta': CaseStatus.NUEVO, // Mantener como Nuevo para compatibilidad con enum
+      'primer contacto': CaseStatus.PRIMER_CONTACTO,
+      'primercontacto': CaseStatus.PRIMER_CONTACTO,
       'en proceso': CaseStatus.EN_PROCESO,
       'en_proceso': CaseStatus.EN_PROCESO,
       'pendiente cliente': CaseStatus.PENDIENTE_CLIENTE,
@@ -816,6 +818,13 @@ const CaseDetail: React.FC = () => {
 
     // Validar transición
     const estadoActual = caso?.estado || caso?.status || 'Nuevo';
+
+    // CASO ESPECIAL: Nueva Solicitud → no requiere justificación.
+    // Esta etapa es solo indicativa. El cambio de estado se hace directo sin modal.
+    if (estadoActual === 'Nueva Solicitud') {
+      handleStateChange(newState, 'Inicio de seguimiento');
+      return;
+    }
     
     // VALIDACIÓN: No permitir cambiar al mismo estado
     if (estadoActual === newState) {

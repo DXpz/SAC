@@ -3,6 +3,7 @@ export type Role = 'AGENTE' | 'SUPERVISOR' | 'GERENTE' | 'ADMIN' | 'ADMINISTRADO
 
 export enum CaseStatus {
   NUEVO = 'Nuevo',
+  PRIMER_CONTACTO = 'Primer Contacto',
   EN_PROCESO = 'En Proceso',
   PENDIENTE_CLIENTE = 'Pendiente Cliente',
   ESCALADO = 'Escalado',
