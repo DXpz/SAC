@@ -11,6 +11,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 import BandejaCasos from './pages/BandejaCasos';
 import CaseDetail from './pages/CaseDetail';
 import NuevoCaso from './pages/NuevoCaso';
+import NuevoCasoPublico from './pages/NuevoCasoPublico';
+import PublicLayout from './components/PublicLayout';
 import Unauthorized from './pages/Unauthorized';
 import GerenteDashboard from './pages/GerenteDashboard';
 import SupervisorPanel from './pages/SupervisorPanel';
@@ -93,7 +95,14 @@ const App: React.FC = () => {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/verify-code" element={<VerifyCode />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        
+
+        {/* RUTA PÚBLICA: Formulario de creación de caso (sin auth) */}
+        <Route path="/public/nuevo-caso" element={
+          <PublicLayout>
+            <NuevoCasoPublico />
+          </PublicLayout>
+        } />
+
         <Route path="/unauthorized" element={<Unauthorized />} />
         
         {/* 
