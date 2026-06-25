@@ -4,6 +4,8 @@ import { api } from '../services/api';
 import { sapService } from '../services/sapService';
 import { getUserCountry } from '../services/caseService';
 import StagePipeline from '../components/StagePipeline';
+import EtapasVencidasCard from '../components/EtapasVencidasCard';
+import CasosVencidosCard from '../components/CasosVencidosCard';
 import { setStageSlaMap } from '../utils/slaUtils';
 import { getStoredFilters, getDateFiltros, getPaisFromFilters } from '../services/filterService';
 import { Caso, CaseStatus, Agente, Cliente, Categoria, KPI } from '../types';
@@ -260,6 +262,30 @@ const AdminPanel: React.FC = () => {
     return (c as any).slaExpired === true;
   }).length;
   const casosVencidos = metricsSummary.casosVencidos ?? casosVencidosLocal;
+
+  // "Casos Vencidos" usa la lógica original (diasAbierto > slaDias de la categoría)
+  // para mostrar el tiempo total del caso vs SLA de la categoría
+  const casosVencidosTotalLocal = useMemo(() => casosSeguros.filter(c => {
+    if (!c) return false;
+    const normalizedStatus = normalizeStatus(c.status);
+    if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
+      return false;
+    }
+    const slaDias = (c as any).categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
+    const diasAbierto = (c as any).diasAbierto || 0;
+    return diasAbierto > slaDias;
+  }).length, [casosSeguros]);
+  const casosVencidosTotal = metricsSummary.casosVencidosTotal ?? casosVencidosTotalLocal;
+
+  const etapasVencidasLocal = useMemo(() => casosSeguros.filter(c => {
+    if (!c) return false;
+    const normalizedStatus = normalizeStatus(c.status);
+    if (normalizedStatus === CaseStatus.RESUELTO || normalizedStatus === CaseStatus.CERRADO) {
+      return false;
+    }
+    return (c as any).slaExpired === true;
+  }).length, [casosSeguros]);
+  const etapasVencidas = metricsSummary.etapasVencidas ?? etapasVencidasLocal;
 
   const casosEnRiesgoLocal = casosSeguros.filter(c => {
     if (!c) return false;
@@ -1280,7 +1306,7 @@ const AdminPanel: React.FC = () => {
       />
 
       {/* Métricas de Casos Críticos y Vencidos */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Casos Críticos */}
         <div 
           className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden"
@@ -1324,45 +1350,19 @@ const AdminPanel: React.FC = () => {
         </div>
 
         {/* Casos Vencidos */}
-        <div 
-          className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden"
-          style={{
-            ...styles.card,
-            borderColor: 'rgba(71, 85, 105, 0.3)',
-            backgroundColor: styles.card.backgroundColor,
-            animation: 'fadeInSlide 0.3s ease-out 0.3s both',
-            transform: 'scale(1)',
-            transition: 'all 0.2s ease-in-out'
-          }}
-          onClick={() => navigate('/app/admin/casos')}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
-            e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.3)';
-            e.currentTarget.style.boxShadow = '';
-            e.currentTarget.style.transform = 'scale(1) translateY(0)';
-          }}
-        >
-          <div className="absolute top-3 right-3">
-            <Ticket className="w-6 h-6" style={{color: casosVencidos > 0 ? '#ef4444' : styles.text.tertiary}} />
-          </div>
-          <div className="flex items-start justify-between mb-2 pr-8">
-            <div className="flex-1">
-              <p className="text-4xl font-black leading-none mb-1.5" style={{color: casosVencidos > 0 ? '#ef4444' : styles.text.secondary}}>
-                <AnimatedNumber value={casosVencidos} />
-              </p>
-              <div className="flex items-center gap-1.5">
-                <Ticket className="w-4 h-4 flex-shrink-0" style={{color: casosVencidos > 0 ? '#ef4444' : styles.text.secondary}} />
-                <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Casos Vencidos</p>
-              </div>
-              <p className="text-[10px] mt-1" style={{color: casosVencidos > 0 ? '#ef4444' : styles.text.tertiary}}>
-                {casosVencidos > 0 ? 'SLA excedido' : 'En tiempo'}
-              </p>
-            </div>
-          </div>
+        <CasosVencidosCard
+          count={casosVencidosTotal}
+          navigate={navigate}
+          delay="0.25s"
+        />
+
+        {/* Etapas Vencidas */}
+        <div style={{ animation: 'fadeInSlide 0.3s ease-out 0.3s both' }}>
+          <EtapasVencidasCard
+            cases={casosSeguros}
+            estados={estados}
+            navigate={navigate}
+          />
         </div>
       </div>
 
@@ -1935,21 +1935,22 @@ const AdminPanel: React.FC = () => {
                 </span>
               </div>
             </div>
-            <div 
+            <div
+              title="Casos cuya etapa actual excedió su SLA. El caso puede estar en tiempo si cambia de etapa pronto."
               className="p-3 rounded-lg border cursor-pointer transition-all hover:scale-[1.02]"
-              onClick={() => navigate('/app/admin/casos?filter=vencidos')}
+              onClick={() => navigate('/app/admin/casos?filter=etapas-vencidas')}
               style={{
-                backgroundColor: theme === 'dark' ? styles.card.backgroundColor : (casosVencidos > 0 ? 'rgba(220, 38, 38, 0.05)' : '#ffffff'),
-                borderColor: casosVencidos > 0 ? 'rgba(220, 38, 38, 0.3)' : styles.card.borderColor
+                backgroundColor: theme === 'dark' ? styles.card.backgroundColor : (etapasVencidas > 0 ? 'rgba(220, 38, 38, 0.05)' : '#ffffff'),
+                borderColor: etapasVencidas > 0 ? 'rgba(220, 38, 38, 0.3)' : styles.card.borderColor
               }}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4" style={{color: casosVencidos > 0 ? '#dc2626' : styles.text.tertiary}} />
-                  <span className="text-sm font-semibold" style={{color: styles.text.primary}}>Casos Vencidos</span>
+                  <Clock className="w-4 h-4" style={{color: etapasVencidas > 0 ? '#dc2626' : styles.text.tertiary}} />
+                  <span className="text-sm font-semibold" style={{color: styles.text.primary}}>Etapas Vencidas</span>
                 </div>
-                <span className="text-lg font-black" style={{color: casosVencidos > 0 ? '#dc2626' : styles.text.secondary}}>
-                  {casosVencidos}
+                <span className="text-lg font-black" style={{color: etapasVencidas > 0 ? '#dc2626' : styles.text.secondary}}>
+                  {etapasVencidas}
                 </span>
               </div>
             </div>

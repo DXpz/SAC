@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
 import { sapService } from '../services/sapService';
 import { getUserCountry } from '../services/caseService';
@@ -18,6 +18,7 @@ const BandejaCasos: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoriaFilter, setCategoriaFilter] = useState<string>('all');
   const [agenteFilter, setAgenteFilter] = useState<string>('all');
+  const [slaFilter, setSlaFilter] = useState<string>('all'); // all, vencido, en-riesgo, dentro-sla
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
@@ -40,6 +41,21 @@ const BandejaCasos: React.FC = () => {
   const isSupervisor = currentUser?.role === 'SUPERVISOR';
 
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Leer ?filter= de la URL al montar (deep-link desde cards de dashboard)
+  useEffect(() => {
+    const f = searchParams.get('filter');
+    if (!f) return;
+    if (f === 'etapas-vencidas' || f === 'vencidos') {
+      setSlaFilter('vencido');
+    } else if (f.startsWith('estado:')) {
+      const estadoNombre = f.substring('estado:'.length);
+      setStatusFilter(estadoNombre);
+    }
+    setSearchParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Función para normalizar el estado del caso
   const normalizeStatus = (status: string | CaseStatus | undefined): CaseStatus => {
@@ -528,8 +544,23 @@ const filteredCasos = useMemo(() => {
       });
     }
 
+    // Filtro por SLA
+    if (slaFilter !== 'all') {
+      result = result.filter(c => {
+        const slaExpired = (c as any).slaExpired === true;
+        const diasRestantes = (c as any).diasRestantes ?? 0;
+        const catId = (c as any).categoria_id || (c as any).categoria?.id || (c as any).categoria?.idCategoria;
+        const tieneCategoriaReal = catId && String(catId) !== '1';
+        if (!tieneCategoriaReal) return false;
+        if (slaFilter === 'vencido') return slaExpired;
+        if (slaFilter === 'en-riesgo') return !slaExpired && diasRestantes != null && diasRestantes <= 1;
+        if (slaFilter === 'dentro-sla') return !slaExpired && diasRestantes != null && diasRestantes > 0;
+        return true;
+      });
+    }
+
     return result;
-  }, [casos, clientes, categorias, searchTerm, statusFilter, categoriaFilter, agenteFilter, userCountry, isEstadoFinal]);
+  }, [casos, clientes, categorias, searchTerm, statusFilter, categoriaFilter, agenteFilter, slaFilter, userCountry, isEstadoFinal]);
 
   // Paginación
   const totalPages = Math.ceil(filteredCasos.length / PAGE_SIZE);
@@ -814,6 +845,33 @@ const filteredCasos = useMemo(() => {
             <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-all duration-200" style={{color: agenteFilter === 'all' ? styles.text.tertiary : '#107ab4', transform: 'rotate(90deg)'}} />
           </div>
           )}
+
+          <div className="relative group" style={{ animation: 'fadeInSlide 0.3s ease-out 0.1s both' }}>
+            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-colors z-10" style={{color: slaFilter === 'all' ? '#64748b' : '#107ab4'}} />
+            <select
+              value={slaFilter}
+              onChange={(e) => setSlaFilter(e.target.value)}
+              className="pl-10 pr-10 py-2.5 border rounded-xl focus:outline-none transition-all text-xs font-semibold appearance-none cursor-pointer"
+              style={{
+                backgroundColor: slaFilter === 'all'
+                  ? (theme === 'dark' ? '#020617' : '#ffffff')
+                  : '#e0f2fe',
+                borderColor: slaFilter === 'all'
+                  ? (theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : '#cbd5e1')
+                  : '#107ab4',
+                color: slaFilter === 'all'
+                  ? styles.text.secondary
+                  : '#0c4a6e',
+                minWidth: '150px'
+              }}
+            >
+              <option value="all">SLA: Todos</option>
+              <option value="vencido">SLA: Vencidos</option>
+              <option value="en-riesgo">SLA: En riesgo</option>
+              <option value="dentro-sla">SLA: En tiempo</option>
+            </select>
+            <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-all duration-200" style={{color: slaFilter === 'all' ? styles.text.tertiary : '#107ab4', transform: 'rotate(90deg)'}} />
+          </div>
 
           <div className="flex items-center gap-3">
             {/* Controles de vista */}

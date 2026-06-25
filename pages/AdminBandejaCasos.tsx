@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
 import { API_CONFIG } from '../config';
 import { sapService, ClienteListado } from '../services/sapService';
@@ -32,6 +32,7 @@ const AdminBandejaCasos: React.FC = () => {
   const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [userCountry, setUserCountry] = useState<'SV' | 'GT' | null>(null);
   const [isAdminGlobal, setIsAdminGlobal] = useState(false);
 
@@ -125,6 +126,23 @@ setAgentes(allAgentesData);
     const handler = () => loadCasosRef.current();
     window.addEventListener('sac-filter-applied', handler);
     return () => window.removeEventListener('sac-filter-applied', handler);
+  }, []);
+
+  // Leer ?filter= de la URL al montar (deep-link desde cards de dashboard)
+  useEffect(() => {
+    const f = searchParams.get('filter');
+    if (!f) return;
+    if (f === 'etapas-vencidas' || f === 'vencidos') {
+      setSlaFilter('vencido');
+    } else if (f === 'sin-asignar') {
+      setAgenteFilter('sin-asignar');
+    } else if (f.startsWith('estado:')) {
+      const estadoNombre = f.substring('estado:'.length);
+      setStatusFilter(estadoNombre);
+    }
+    // Limpiar el query param para no persistir el filtro en refresh
+    setSearchParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Enriquecer casos con clientes y categorías - SOLO UNA VEZ

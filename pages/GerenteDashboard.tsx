@@ -10,6 +10,8 @@ import { TrendingUp, Users, Clock, ThumbsUp, ArrowUp, ArrowDown, Info, AlertTria
 import { useTheme } from '../contexts/ThemeContext';
 import LoadingScreen from '../components/LoadingScreen';
 import StagePipeline from '../components/StagePipeline';
+import EtapasVencidasCard from '../components/EtapasVencidasCard';
+import CasosVencidosCard from '../components/CasosVencidosCard';
 import { setStageSlaMap } from '../utils/slaUtils';
 
 type PeriodFilter = 'hoy' | 'semana' | 'mes';
@@ -351,7 +353,23 @@ const GerenteDashboard: React.FC = () => {
   const debugCasosCount = casos.length;
 
   const abiertos = metricsSummary.casosAbiertos ?? 0;
-  const vencidos = metricsSummary.casosVencidos ?? 0;
+  const etapasVencidasLocal = useMemo(() => casos.filter(c => {
+    if (!c) return false;
+    const ns = normalizeStatus(c.status);
+    if (ns === CaseStatus.CERRADO || ns === CaseStatus.RESUELTO) return false;
+    return (c as any).slaExpired === true;
+  }).length, [casos]);
+  const etapasVencidas = metricsSummary.etapasVencidas ?? etapasVencidasLocal;
+
+  const casosVencidosTotalLocal = useMemo(() => casos.filter(c => {
+    if (!c) return false;
+    const ns = normalizeStatus(c.status);
+    if (ns === CaseStatus.CERRADO || ns === CaseStatus.RESUELTO) return false;
+    const slaDias = (c as any).categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
+    const diasAbierto = (c as any).diasAbierto || 0;
+    return diasAbierto > slaDias;
+  }).length, [casos]);
+  const casosVencidosTotal = metricsSummary.casosVencidosTotal ?? casosVencidosTotalLocal;
   const escalados = casosCriticos.filter(c => normalizeStatus(c.status) === CaseStatus.ESCALADO).length;
   
   // Calcular variaciones reales comparando con períodos anteriores
@@ -428,7 +446,6 @@ const GerenteDashboard: React.FC = () => {
   };
 
   const abiertosVar = getVariation(abiertos, 'Casos Abiertos');
-  const vencidosVar = getVariation(vencidos, 'Excedidos SLA');
   
   // Calcular variación de CSAT (si hay datos históricos disponibles)
   // Por ahora, si no hay datos históricos, mostrar sin variación
@@ -723,7 +740,7 @@ const GerenteDashboard: React.FC = () => {
               <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>{label}</p>
             </div>
             <p className="text-[10px] mt-1" style={{color: styles.text.tertiary}}>
-              {isHighlighted && vencidos > 0 ? 'Requiere acción' : variation.value}
+              {isHighlighted && Number(value) > 0 ? 'Requiere acción' : variation.value}
             </p>
           </div>
         </div>
@@ -823,7 +840,7 @@ const GerenteDashboard: React.FC = () => {
       />
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-stretch">
         <KPICard
           label="Casos Abiertos"
           value={abiertos}
@@ -833,15 +850,14 @@ const GerenteDashboard: React.FC = () => {
           variation={abiertosVar}
           tooltip="Total de casos activos que no han sido cerrados o resueltos"
         />
-        <KPICard
-          label="Excedidos SLA"
-          value={vencidos}
-          color="#ef4444"
-          bg="bg-red-50"
-          icon={Clock}
-          variation={vencidosVar}
-          isHighlighted={true}
-          tooltip="Casos que han superado el tiempo comprometido de resolución (SLA)"
+        <CasosVencidosCard
+          count={casosVencidosTotal}
+          navigate={navigate}
+        />
+        <EtapasVencidasCard
+          cases={casos}
+          estados={estados}
+          navigate={navigate}
         />
         <KPICard
           label="CSAT Promedio"

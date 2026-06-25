@@ -2,6 +2,8 @@ import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import StagePipeline from '../components/StagePipeline';
+import EtapasVencidasCard from '../components/EtapasVencidasCard';
+import CasosVencidosCard from '../components/CasosVencidosCard';
 import { setStageSlaMap } from '../utils/slaUtils';
 import { API_CONFIG } from '../config';
 import { isClosedCase, getDiasRestantes, isSlaCritical, isSlaAtRisk, isSlaWithin } from '../utils/slaUtils';
@@ -347,6 +349,16 @@ const SupervisorPanel: React.FC = () => {
       if (['Cerrado', 'Resuelto', 'Finalizado', CaseStatus.RESUELTO, CaseStatus.CERRADO].includes(status)) return false;
       return (c as any).slaExpired === true;
     });
+  }, [casos]);
+
+  const casosVencidosTotal = useMemo(() => {
+    return casos.filter(c => {
+      const status = c.status || '';
+      if (['Cerrado', 'Resuelto', 'Finalizado', CaseStatus.RESUELTO, CaseStatus.CERRADO].includes(status)) return false;
+      const slaDias = (c as any).categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
+      const diasAbierto = (c as any).diasAbierto || 0;
+      return diasAbierto > slaDias;
+    }).length;
   }, [casos]);
 
   const casosEnRiesgo = useMemo(() => {
@@ -889,7 +901,7 @@ const SupervisorPanel: React.FC = () => {
       />
 
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4 items-stretch">
         <Tooltip id="casos-abiertos" content="Total de casos activos en el sistema">
           <div 
             className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
@@ -929,42 +941,22 @@ const SupervisorPanel: React.FC = () => {
           </div>
         </Tooltip>
 
-        <Tooltip id="casos-vencidos" content="Casos que han excedido el tiempo de SLA">
-          <div 
-            className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
-            style={{
-              ...styles.card,
-              borderColor: 'rgba(71, 85, 105, 0.3)',
-              backgroundColor: styles.card.backgroundColor
-            }}
-            onMouseEnter={(e) => {
-              handleTooltipEnter('casos-vencidos');
-              e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
-            }}
-            onMouseLeave={(e) => {
-              handleTooltipLeave();
-              e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.3)';
-              e.currentTarget.style.boxShadow = '';
-            }}
-          >
-            <div className="absolute top-3 right-3">
-              <AlertCircle className="w-6 h-6" style={{color: casosVencidosCount > 0 ? '#ef4444' : styles.text.tertiary}} />
-            </div>
-            <div className="flex items-start justify-between mb-2 pr-8">
-              <div className="flex-1">
-                <p className="text-4xl font-black leading-none mb-1.5" style={{color: casosVencidosCount > 0 ? '#ef4444' : styles.text.secondary}}>
-                  {casosVencidosCount}
-                </p>
-                <div className="flex items-center gap-1.5">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" style={{color: casosVencidos.length > 0 ? '#ef4444' : styles.text.secondary}} />
-                  <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Casos Vencidos</p>
-                </div>
-                <p className="text-[10px] mt-1" style={{color: casosVencidos.length > 0 ? '#ef4444' : styles.text.tertiary}}>
-                  {casosVencidos.length > 0 ? 'SLA excedido' : 'En tiempo'}
-                </p>
-              </div>
-            </div>
+        <Tooltip id="casos-vencidos-total" content="Casos cuyo tiempo total abierto supera el SLA de la categoría. Vista global, no por etapa.">
+          <div className="h-full">
+            <CasosVencidosCard
+              count={casosVencidosTotal}
+              navigate={navigate}
+            />
+          </div>
+        </Tooltip>
+
+        <Tooltip id="casos-vencidos" content="Casos cuya etapa actual excedió su SLA. El caso puede estar en tiempo si cambia de etapa pronto.">
+          <div className="h-full">
+            <EtapasVencidasCard
+              cases={casosAbiertosFiltrados}
+              estados={estados}
+              navigate={navigate}
+            />
           </div>
         </Tooltip>
 
