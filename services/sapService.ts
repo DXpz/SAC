@@ -3,8 +3,7 @@ import { API_CONFIG } from '../config';
 const BACKEND_URL = API_CONFIG.WEBHOOK_URL;
 
 const headers = {
-  'Content-Type': 'application/json',
-  'ngrok-skip-browser-warning': 'true'
+  'Content-Type': 'application/json'
 };
 
 export interface ClienteListado {

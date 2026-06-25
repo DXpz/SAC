@@ -201,7 +201,7 @@ const SupervisorPanel: React.FC = () => {
         api.getAgentes(paisFiltro || supervisorCountry),
         loadClientes(),
         fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}`, {
-          headers: { 'ngrok-skip-browser-warning': 'true' }
+          headers: { }
         }).then(r => r.json()).catch(() => [])
       ]);
       // Cargar estados del webhook

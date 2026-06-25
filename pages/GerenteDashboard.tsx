@@ -236,7 +236,7 @@ const GerenteDashboard: React.FC = () => {
         api.getCriticalCases(filtrosConPais),
         api.getDashboardMetrics({ pais: paisFiltro || gerenteCountry || undefined, period: 'todos', ...dateFilters }),
         fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}`, {
-          headers: { 'ngrok-skip-browser-warning': 'true' }
+          headers: { }
         }).then(r => r.json()).catch(() => [])
       ]);
       // Cargar estados del webhook (mismo patron que AdminPanel)

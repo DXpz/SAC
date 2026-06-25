@@ -97,7 +97,7 @@ const AdminBandejaCasos: React.FC = () => {
           api.getAgentes(pais as any),
           api.getCases(true, true, { ...getDateFiltros(getStoredFilters()), pais: getPaisFromFilters() }),
           fetch(`${API_CONFIG.WEBHOOK_ESTADOS_URL}`, {
-            headers: { 'ngrok-skip-browser-warning': 'true' }
+            headers: { }
           }).then(r => r.json()).catch(() => [])
         ]);
 setAgentes(allAgentesData);

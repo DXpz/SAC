@@ -12,7 +12,6 @@ const WEBHOOK_CASOS_URL = API_CONFIG.WEBHOOK_CASOS_URL || '/api/casos';
 const getAuthHeaders = (): Record<string, string> => {
   const headers: Record<string, string> = {
     'Accept': 'application/json',
-    'ngrok-skip-browser-warning': 'true',
   };
 
   const userStr = localStorage.getItem('intelfon_user');
@@ -119,7 +118,7 @@ const getAgentesInfo = async (): Promise<AgenteInfo[]> => {
       method: 'GET',
       mode: 'cors',
       credentials: 'omit',
-      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+      headers: { 'Content-Type': 'application/json' },
       signal: controller.signal,
     });
 
@@ -699,7 +698,6 @@ const callCaseWebhook = async (payload: CaseWebhookPayload): Promise<CaseWebhook
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'ngrok-skip-browser-warning': 'true',
       },
       body: JSON.stringify(payload),
       signal: controller.signal,
@@ -1047,7 +1045,7 @@ export const getCaseById = async (caseId: string): Promise<Case | null> => {
 
   const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/${caseId}`, {
     method: 'GET',
-    headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
+    headers: { 'Content-Type': 'application/json' }
   });
 
   if (!response.ok) {
@@ -1207,7 +1205,7 @@ export const updateCaseStatus = async (
 
   const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/${caseId}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
 
@@ -1247,7 +1245,7 @@ export const reassignCase = async (
   try {
     const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/${caseId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         data: {
           update_type: 'reassign',
@@ -1297,7 +1295,7 @@ export const deleteCase = async (caseId: string): Promise<boolean> => {
 
   const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/${caseId}`, {
     method: 'DELETE',
-    headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
+    headers: { 'Content-Type': 'application/json' }
   });
 
   if (!response.ok) {
@@ -1344,7 +1342,6 @@ export const sendCaseCloseWebhook = async (
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'ngrok-skip-browser-warning': 'true',
       },
       body: JSON.stringify({
         case_id: caseId,
@@ -1425,7 +1422,7 @@ export const updateCaseData = async (
 
   const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/${caseId}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       data: {
         case_id: caseId,

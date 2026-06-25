@@ -6,7 +6,7 @@ export async function OPTIONS(req: NextRequest) {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, X-API-KEY, ngrok-skip-browser-warning, Authorization',
+      'Access-Control-Allow-Headers': 'Content-Type, X-API-KEY, Authorization',
       'Access-Control-Max-Age': '86400',
     },
   });
@@ -56,7 +56,6 @@ async function handleRequest(req: NextRequest) {
 
   const upstreamHeaders: Record<string, string> = {
     'X-API-KEY': process.env.API_KEY || '',
-    'ngrok-skip-browser-warning': 'true',
     'Authorization': `Bearer ${token}`,
   };
 

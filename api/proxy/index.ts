@@ -23,7 +23,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const upstreamHeaders: Record<string, string> = {
     'Content-Type': headers['content-type'] || 'application/json',
-    'ngrok-skip-browser-warning': 'true',
   };
 
   const apiKey = process.env.API_KEY;

@@ -11,11 +11,11 @@ export default defineConfig(({ mode }) => {
         host: '0.0.0.0',
         cors: true,
         proxy: {
-          // Backend directo via ngrok
+          // Backend directo via dominio propio
           '/api': {
-            target: 'https://kailee-chorial-toshiko.ngrok-free.dev',
+            target: 'https://sac.red.com.sv',
             changeOrigin: true,
-            secure: false,
+            secure: true,
             rewrite: (path) => path,
           },
         },

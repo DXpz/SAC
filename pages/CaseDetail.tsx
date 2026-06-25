@@ -609,8 +609,7 @@ const CaseDetail: React.FC = () => {
             'X-User-Id': user?.id || '',
             'X-User-Role': user?.role || '',
             'X-User-Email': user?.email || '',
-            'X-User-Pais': user?.pais || '',
-            'ngrok-skip-browser-warning': 'true'
+            'X-User-Pais': user?.pais || ''
           }
         });
         if (docsRes.ok) {

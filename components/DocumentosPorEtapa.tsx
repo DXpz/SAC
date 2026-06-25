@@ -89,7 +89,7 @@ export const DocumentosPorEtapa: React.FC<DocumentosPorEtapaProps> = ({
     setLoading(true);
     try {
       const res = await fetch(`/api/casos/${casoId}/documentos`, {
-        headers: { ...getAuthHeaders(), 'ngrok-skip-browser-warning': 'true' }
+        headers: { ...getAuthHeaders() }
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
@@ -131,7 +131,7 @@ export const DocumentosPorEtapa: React.FC<DocumentosPorEtapaProps> = ({
 
       const res = await fetch(`/api/casos/${casoId}/documentos`, {
         method: 'POST',
-        headers: { ...getAuthHeaders(), 'ngrok-skip-browser-warning': 'true' },
+        headers: { ...getAuthHeaders() },
         body: fd
       });
       if (!res.ok) {
