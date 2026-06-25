@@ -1,8 +1,9 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Upload, X, FileText, Image as ImageIcon, Download, Trash2, FileIcon, Loader2, Clock, ChevronDown, ChevronUp, Eye, AlertTriangle } from 'lucide-react';
 import { api } from '../services/api';
+import { API_CONFIG } from '../config';
 
-const API_BASE = '';
+const API_BASE = API_CONFIG.WEBHOOK_URL;
 
 const ALLOWED_TYPES = {
   'application/pdf': { ext: 'pdf', label: 'PDF', icon: FileText, color: '#ef4444' },
@@ -88,7 +89,7 @@ export const DocumentosPorEtapa: React.FC<DocumentosPorEtapaProps> = ({
   const loadDocumentos = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/casos/${casoId}/documentos`, {
+      const res = await fetch(`${API_BASE}/api/casos/${casoId}/documentos`, {
         headers: { ...getAuthHeaders() }
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -129,7 +130,7 @@ export const DocumentosPorEtapa: React.FC<DocumentosPorEtapaProps> = ({
       fd.append('uploaded_by', user?.id || '');
       fd.append('uploaded_by_nombre', user?.name || user?.nombre || '');
 
-      const res = await fetch(`/api/casos/${casoId}/documentos`, {
+      const res = await fetch(`${API_BASE}/api/casos/${casoId}/documentos`, {
         method: 'POST',
         headers: { ...getAuthHeaders() },
         body: fd
@@ -175,7 +176,7 @@ export const DocumentosPorEtapa: React.FC<DocumentosPorEtapaProps> = ({
 
   const handleDownload = async (doc: DocumentoItem) => {
     try {
-      const res = await fetch(`/api/casos/${casoId}/documentos/${doc.id}/download`, {
+      const res = await fetch(`${API_BASE}/api/casos/${casoId}/documentos/${doc.id}/download`, {
         headers: getAuthHeaders()
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -200,7 +201,7 @@ export const DocumentosPorEtapa: React.FC<DocumentosPorEtapaProps> = ({
 
   const handleDelete = async (doc: DocumentoItem) => {
     try {
-      const res = await fetch(`/api/casos/${casoId}/documentos/${doc.id}`, {
+      const res = await fetch(`${API_BASE}/api/casos/${casoId}/documentos/${doc.id}`, {
         method: 'DELETE',
         headers: getAuthHeaders()
       });
@@ -215,7 +216,7 @@ export const DocumentosPorEtapa: React.FC<DocumentosPorEtapaProps> = ({
 
   const showVersions = async (filename: string) => {
     try {
-      const res = await fetch(`/api/casos/${casoId}/documentos/versiones/${encodeURIComponent(filename)}`, {
+      const res = await fetch(`${API_BASE}/api/casos/${casoId}/documentos/versiones/${encodeURIComponent(filename)}`, {
         headers: getAuthHeaders()
       });
       if (!res.ok) throw new Error('Error');
@@ -335,7 +336,7 @@ export const DocumentosPorEtapa: React.FC<DocumentosPorEtapaProps> = ({
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/casos/${casoId}/documentos/${previewModal.id}/download?inline=1`, {
+        const res = await fetch(`${API_BASE}/api/casos/${casoId}/documentos/${previewModal.id}/download?inline=1`, {
           headers: getAuthHeaders()
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
