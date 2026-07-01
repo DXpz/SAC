@@ -82,7 +82,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           cursor: 'pointer',
         }}
       >
-        <option value="">Mes</option>
+        <option value="">Todos los meses</option>
         {MESES.map((m) => (
           <option key={m.value} value={m.value}>
             {m.label}
@@ -102,7 +102,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           cursor: 'pointer',
         }}
       >
-        <option value="">Año</option>
+        <option value="">Todos los años</option>
         {years.map((y) => (
           <option key={y} value={y}>
             {y}

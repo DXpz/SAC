@@ -522,7 +522,10 @@ export const api = {
   },
 
   async getCases(forceRefresh = false, includeClosed: boolean = false, options?: { fechaInicio?: string; fechaFin?: string; pais?: string }): Promise<Case[]> {
-    const cacheKey = includeClosed ? 'cases_all' : 'cases';
+    // El cache key debe incluir los filtros de fecha y país, porque sino
+    // cambiar de mes/año devuelve los casos del filtro anterior (mismo cache key).
+    const filtrosKey = `${options?.pais || 'all'}_${options?.fechaInicio || ''}_${options?.fechaFin || ''}`;
+    const cacheKey = `cases_${includeClosed ? 'all' : 'open'}_${filtrosKey}`;
     if (forceRefresh) {
       delete cache[cacheKey];
     }

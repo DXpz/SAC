@@ -819,13 +819,6 @@ const CaseDetail: React.FC = () => {
     // Validar transición
     const estadoActual = caso?.estado || caso?.status || 'Nuevo';
 
-    // CASO ESPECIAL: Nueva Solicitud → no requiere justificación.
-    // Esta etapa es solo indicativa. El cambio de estado se hace directo sin modal.
-    if (estadoActual === 'Nueva Solicitud') {
-      handleStateChange(newState, 'Inicio de seguimiento');
-      return;
-    }
-    
     // VALIDACIÓN: No permitir cambiar al mismo estado
     if (estadoActual === newState) {
       const estadoFormateado = formatEstadoName(estadoActual);

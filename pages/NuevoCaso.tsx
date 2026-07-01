@@ -314,7 +314,7 @@ const NuevoCaso: React.FC = () => {
 
   const handleCreateCase = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validaciones básicas - Solo campos de "Detalles del Caso" son obligatorios
     if (!newCase.subject || !newCase.description || !newCase.categoriaId) {
       setToast({ message: 'Por favor, completa todos los campos requeridos de Detalles del Caso (marcados con *)', type: 'warning' });
@@ -326,13 +326,15 @@ const NuevoCaso: React.FC = () => {
       return;
     }
 
-    // Validar formato de email solo si se proporcionó
-    if (newCase.email) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(newCase.email)) {
-        setToast({ message: 'Por favor, ingresa un email válido', type: 'warning' });
-        return;
-      }
+    // Email es obligatorio
+    if (!newCase.email || !newCase.email.trim()) {
+      setToast({ message: 'Por favor, ingresa un email de contacto', type: 'warning' });
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newCase.email.trim())) {
+      setToast({ message: 'Por favor, ingresa un email válido', type: 'warning' });
+      return;
     }
 
     setLoading(true);
@@ -612,7 +614,7 @@ const NuevoCaso: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>Email Cliente</label>
+                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>Email Cliente <span style={{color: '#ef4444'}}>*</span></label>
                   <input 
                     type="email" 
                     className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
