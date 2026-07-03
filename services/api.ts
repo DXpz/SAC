@@ -678,6 +678,13 @@ export const api = {
     return true;
   },
 
+  async registrarGestion(caseId: string, detalle: string): Promise<{ success: boolean; message: string; gestion: any }> {
+    const result = await caseService.registrarGestion(caseId, detalle);
+    // Limpiar caché para que el caso refresque con la nueva entrada en historial
+    clearCache('cases');
+    return result;
+  },
+
   async reassignCase(caseId: string, newAgentId: string, motivo?: string): Promise<{ success: boolean; message: string }> {
     const result = await caseService.reassignCase(caseId, newAgentId, motivo);
     clearCache('cases');

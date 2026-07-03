@@ -1225,6 +1225,49 @@ export const updateCaseStatus = async (
 };
 
 /**
+ * Registra una gestion/tipificacion sin cambiar el estado del caso.
+ * Util para registrar llamadas, intentos de contacto, etc.
+ * El estado del caso NO cambia; solo se agrega una fila en historial_casos.
+ */
+export const registrarGestion = async (
+  caseId: string,
+  detalle: string
+): Promise<{ success: boolean; message: string; gestion: any }> => {
+  const actor = getActor();
+
+  if (!actor) {
+    throw new Error('Usuario no autenticado. Por favor, inicia sesion.');
+  }
+
+  if (!caseId || !detalle) {
+    throw new Error('ID de caso y detalle son requeridos.');
+  }
+
+  if (detalle.trim().length < 5) {
+    throw new Error('El detalle debe tener al menos 5 caracteres.');
+  }
+
+  const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/${caseId}/gestiones`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({
+      data: { detalle: detalle.trim() },
+      actor: { email: actor.email, name: actor.name }
+    })
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || `Error al registrar gestion (HTTP ${response.status})`);
+  }
+
+  return response.json();
+};
+
+/**
  * Reasigna un caso a otro agente (manual)
  * El backend tiene PUT /api/casos/:id con update_type = 'reassign'
  */

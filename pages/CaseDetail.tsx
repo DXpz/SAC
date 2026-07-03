@@ -27,6 +27,10 @@ const CaseDetail: React.FC = () => {
   const [showJustificationModal, setShowJustificationModal] = useState(false);
   const [pendingNewState, setPendingNewState] = useState<string | null>(null);
   const [justification, setJustification] = useState('');
+
+  // Modal de gestion/tipificacion (sin cambio de estado)
+  const [showGestionModal, setShowGestionModal] = useState(false);
+  const [gestionDetalle, setGestionDetalle] = useState('');
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [showErrorAnimation, setShowErrorAnimation] = useState(false);
   const [showInvalidCommentAnimation, setShowInvalidCommentAnimation] = useState(false);
@@ -1016,6 +1020,47 @@ const CaseDetail: React.FC = () => {
   };
 
   // ==================================================
+  // REGISTRAR GESTION / TIPIFICACION
+  // Estado del caso NO cambia. Solo agrega entrada en historial_casos.
+  // ==================================================
+  const handleRegistrarGestion = () => {
+    setGestionDetalle('');
+    setErrorMessage('');
+    setShowGestionModal(true);
+  };
+
+  const confirmarGestion = async () => {
+    const detalle = gestionDetalle.trim();
+    if (detalle.length < 5) {
+      setErrorMessage('El detalle debe tener al menos 5 caracteres');
+      return;
+    }
+
+    setTransitionLoading(true);
+    setErrorMessage('');
+    try {
+      const caseId = caso?.id || caso?.ticketNumber || id;
+      if (!caseId) {
+        setErrorMessage('No se encontro el ID del caso');
+        setTransitionLoading(false);
+        return;
+      }
+      await api.registrarGestion(caseId, detalle);
+      setShowGestionModal(false);
+      setGestionDetalle('');
+      setToast({ message: 'Gestion registrada correctamente', type: 'success' });
+      // Recargar el caso
+      if (id) {
+        await loadCaso(id);
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Error al registrar la gestion');
+    } finally {
+      setTransitionLoading(false);
+    }
+  };
+
+  // ==================================================
   // FUNCIONES DE EDICIÓN DEL CASO
   // ==================================================
   const handleEditClick = () => {
@@ -1825,12 +1870,40 @@ const CaseDetail: React.FC = () => {
                              color: '#f1f5f9',
                              border: '1px solid rgba(148,163,184,0.3)'
                            }}>
-                           El caso ya se encuentra en este estado
-                         </div>
-                       </div>
-                     ) : null;
-                   })()}
-                   {validTransitions.map((estadoDestino: string) => {
+                            El caso ya se encuentra en este estado
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
+
+                    {/* Boton de Registrar Gestion - tipificacion sin cambio de estado */}
+                    <button
+                      type="button"
+                      onClick={handleRegistrarGestion}
+                      disabled={transitionLoading || !canPerformAction}
+                      className="px-4 py-2.5 rounded-lg text-xs font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:hover:translate-y-0 flex items-center gap-1.5"
+                      style={{
+                        backgroundColor: '#6366f1',
+                        boxShadow: '0 2px 8px rgba(99, 102, 241, 0.3)'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!e.currentTarget.disabled) {
+                          e.currentTarget.style.transform = 'translateY(-3px) scale(1.02)';
+                          e.currentTarget.style.backgroundColor = '#4f46e5';
+                          e.currentTarget.style.boxShadow = '0 6px 16px rgba(99, 102, 241, 0.5)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                        e.currentTarget.style.backgroundColor = '#6366f1';
+                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(99, 102, 241, 0.3)';
+                      }}
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      Registrar gestion
+                    </button>
+
+                    {validTransitions.map((estadoDestino: string) => {
                      const estadoFormateado = formatEstadoName(estadoDestino);
                      
                      return (
@@ -1942,15 +2015,21 @@ const CaseDetail: React.FC = () => {
                 return historialOrdenado.length > 0 ? (
                   <div className="space-y-4">
                     {historialOrdenado.map((entry: HistorialEntry | any, idx: number) => {
-                      // Formatear texto del evento según tipo
-                      let textoEvento = '';
-                      // Detectar si es realmente un cambio de estado o una edición/reasignación
-                      const esCambioEstadoReal = entry.tipo_evento === 'CAMBIO_ESTADO' && 
-                                                 entry.estado_anterior && 
-                                                 entry.estado_nuevo &&
-                                                 entry.estado_anterior !== 'N/A' && 
-                                                 entry.estado_nuevo !== 'N/A' &&
-                                                 entry.estado_anterior !== entry.estado_nuevo;
+                       // Formatear texto del evento según tipo
+                       let textoEvento = '';
+                       const justificacionCruda = entry.justificacion || entry.detalle || '';
+                       // Detectar gestion/tipificacion (prefijo [Gestion] en el detalle)
+                       const esGestion = justificacionCruda.trim().startsWith('[Gestion]');
+                       if (esGestion) {
+                         textoEvento = 'Gestion registrada';
+                       }
+                       // Detectar si es realmente un cambio de estado o una edición/reasignación
+                       const esCambioEstadoReal = entry.tipo_evento === 'CAMBIO_ESTADO' &&
+                                                  entry.estado_anterior &&
+                                                  entry.estado_nuevo &&
+                                                  entry.estado_anterior !== 'N/A' &&
+                                                  entry.estado_nuevo !== 'N/A' &&
+                                                  entry.estado_anterior !== entry.estado_nuevo;
                       
                       // Detectar si es una edición (contiene "Se ha editado" o similar en el detalle)
                       const justificacion = entry.justificacion || entry.detalle || '';
@@ -3362,6 +3441,108 @@ const CaseDetail: React.FC = () => {
                   Entendido
                 </button>
               </div>
+            </div>
+           </div>
+         </div>
+       )}
+
+      {/* Modal de Gestion / Tipificacion - registra interaccion sin cambio de estado */}
+      {showGestionModal && (
+        <div
+          className="fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+          style={{
+            backgroundColor: styles.modal.overlay,
+            animation: 'fadeIn 0.2s ease-out'
+          }}
+        >
+          <div
+            className="rounded-xl w-full max-w-sm overflow-hidden shadow-2xl border"
+            style={{
+              ...styles.modal,
+              borderColor: styles.card.borderColor,
+              animation: 'fadeInSlide 0.3s ease-out'
+            }}
+          >
+            {/* Header */}
+            <div className="px-5 pt-5 pb-4 border-b" style={{borderColor: styles.cardHeader.borderColor}}>
+              <div className="flex items-center gap-2 mb-1">
+                <Phone className="w-4 h-4" style={{color: '#6366f1'}} />
+                <h3 className="font-bold text-sm" style={{color: styles.text.primary}}>
+                  Registrar gestion en {caso?.estado || caso?.status}
+                </h3>
+              </div>
+              <p className="text-xs" style={{color: styles.text.tertiary}}>
+                El estado del caso no cambiara. Solo se registra la interaccion en el historial.
+              </p>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 space-y-3">
+              <div>
+                <label className="block text-xs font-bold mb-2" style={{color: styles.text.secondary}}>
+                  Detalle de la gestion <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  className="w-full h-24 p-3 rounded-lg border outline-none focus:ring-2 transition-all text-xs resize-none"
+                  style={{
+                    backgroundColor: styles.input.backgroundColor,
+                    borderColor: gestionDetalle.trim() ? styles.input.borderColor : 'rgba(220, 38, 38, 0.4)',
+                    color: styles.text.primary
+                  }}
+                  value={gestionDetalle}
+                  onChange={(e) => setGestionDetalle(e.target.value)}
+                  placeholder="Ej: Llame al cliente, no contesto. Vuelvo a intentar en 1 hora."
+                  maxLength={2000}
+                />
+                <p className="text-[10px] mt-1" style={{color: gestionDetalle.trim().length < 5 ? '#ef4444' : styles.text.tertiary}}>
+                  {gestionDetalle.trim().length} / 2000 caracteres (minimo 5)
+                </p>
+              </div>
+
+              {/* Mensaje de error */}
+              {errorMessage && (
+                <div className="p-3 rounded-lg border-2 border-red-500" style={{backgroundColor: 'rgba(220, 38, 38, 0.1)'}}>
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-bold text-red-600 mb-1">Error de validacion</p>
+                      <p className="text-xs text-red-600">{errorMessage}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex gap-2.5 p-5 pt-3 border-t" style={{borderColor: styles.cardHeader.borderColor}}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowGestionModal(false);
+                  setGestionDetalle('');
+                  setErrorMessage('');
+                }}
+                className="flex-1 px-4 py-2.5 text-xs font-semibold rounded-lg border transition-all hover:bg-white/5"
+                style={{
+                  backgroundColor: 'transparent',
+                  color: styles.text.secondary,
+                  borderColor: styles.input.borderColor
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmarGestion}
+                disabled={transitionLoading || gestionDetalle.trim().length < 5}
+                className="flex-1 px-4 py-2.5 text-xs font-bold rounded-lg text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: '#6366f1',
+                  boxShadow: '0 2px 8px rgba(99, 102, 241, 0.3)'
+                }}
+              >
+                {transitionLoading ? 'Registrando...' : 'Registrar gestion'}
+              </button>
             </div>
           </div>
         </div>
