@@ -128,6 +128,13 @@ setAgentes(allAgentesData);
     return () => window.removeEventListener('sac-filter-applied', handler);
   }, []);
 
+  // Escuchar actualizaciones de casos (cambio de estado, gestión registrada, etc.)
+  useEffect(() => {
+    const handler = () => loadCasosRef.current();
+    window.addEventListener('sac-case-updated', handler);
+    return () => window.removeEventListener('sac-case-updated', handler);
+  }, []);
+
   // Leer ?filter= de la URL al montar (deep-link desde cards de dashboard)
   useEffect(() => {
     const f = searchParams.get('filter');

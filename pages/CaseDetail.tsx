@@ -709,7 +709,10 @@ const CaseDetail: React.FC = () => {
       } else if (id) {
         await loadCaso(id);
       }
-      
+
+      // Disparar evento global para que la bandeja se actualice
+      window.dispatchEvent(new CustomEvent('sac-case-updated', { detail: { id, action: 'state-change' } }));
+
       // Cerrar modal
       setShowJustificationModal(false);
       setPendingNewState(null);
@@ -732,6 +735,8 @@ const CaseDetail: React.FC = () => {
       
       // Mostrar animación de éxito (si llegamos aquí es porque no hubo error)
       setShowSuccessAnimation(true);
+      // Disparar evento global para que la bandeja se actualice
+      window.dispatchEvent(new CustomEvent('sac-case-updated', { detail: { id, action: 'state-change' } }));
       setTimeout(() => {
         setShowSuccessAnimation(false);
       }, 2000);
@@ -1053,6 +1058,8 @@ const CaseDetail: React.FC = () => {
       if (id) {
         await loadCaso(id);
       }
+      // Disparar evento global para que la bandeja se actualice
+      window.dispatchEvent(new CustomEvent('sac-case-updated', { detail: { caseId, action: 'gestion' } }));
     } catch (err: any) {
       setErrorMessage(err?.message || 'Error al registrar la gestion');
     } finally {

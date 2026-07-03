@@ -374,6 +374,13 @@ const BandejaCasos: React.FC = () => {
     return () => window.removeEventListener('sac-filter-applied', handler);
   }, []);
 
+  // Escuchar actualizaciones de casos (cambio de estado, gestión registrada, etc.)
+  useEffect(() => {
+    const handler = () => loadCasosRef.current();
+    window.addEventListener('sac-case-updated', handler);
+    return () => window.removeEventListener('sac-case-updated', handler);
+  }, []);
+
 
   const normalizeId = (id: string): string => {
   if (!id) return '';
