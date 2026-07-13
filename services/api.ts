@@ -797,9 +797,15 @@ export const api = {
   },
 
   // Obtener lista de usuarios desde backend directo
-  async getUsuarios(): Promise<any[]> {
-    return getCachedOrFetch('usuarios', async () => {
-      const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/usuarios?t=${Date.now()}`, {
+  async getUsuarios(options?: { pais?: 'GT' | 'SV' | 'all' }): Promise<any[]> {
+    const key = `usuarios_${options?.pais || 'all'}`;
+    return getCachedOrFetch(key, async () => {
+      const params = new URLSearchParams();
+      params.set('t', String(Date.now()));
+      if (options?.pais && options.pais !== 'all') {
+        params.set('pais', options.pais);
+      }
+      const response = await fetch(`${API_CONFIG.WEBHOOK_URL}/api/usuarios?${params.toString()}`, {
         method: 'GET',
         headers: { ...getAuthHeaders(), 'Cache-Control': 'no-cache' },
       });

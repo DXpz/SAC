@@ -31,6 +31,12 @@ const CaseDetail: React.FC = () => {
   // Modal de gestion/tipificacion (sin cambio de estado)
   const [showGestionModal, setShowGestionModal] = useState(false);
   const [gestionDetalle, setGestionDetalle] = useState('');
+
+  // Modal de reasignación de caso
+  const [showReasignarModal, setShowReasignarModal] = useState(false);
+  const [reassignUsuarioId, setReassignUsuarioId] = useState('');
+  const [reassignMotivo, setReassignMotivo] = useState('');
+  const [usuariosDisponibles, setUsuariosDisponibles] = useState<Array<{id: string; nombre: string; email: string; role: string}>>([]);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [showErrorAnimation, setShowErrorAnimation] = useState(false);
   const [showInvalidCommentAnimation, setShowInvalidCommentAnimation] = useState(false);
@@ -1068,6 +1074,66 @@ const CaseDetail: React.FC = () => {
   };
 
   // ==================================================
+  // REASIGNAR CASO
+  // ==================================================
+  const handleReasignar = async () => {
+    setReassignUsuarioId('');
+    setReassignMotivo('');
+    setErrorMessage('');
+    setShowReasignarModal(true);
+
+    // Cargar usuarios disponibles del mismo país (incluye SUPERVISOR y GERENTE)
+    const casoPais = (caso?.pais === 'Guatemala' || caso?.pais === 'ElSalvador') ? caso.pais : null;
+    const currentUserPais = api.getUser()?.pais;
+    const pais = casoPais || currentUserPais;
+    if (!pais) {
+      setErrorMessage('No se pudo determinar el pais del caso');
+      return;
+    }
+
+    try {
+      const resp = await api.getUsers({ pais });
+      const usuarios = Array.isArray(resp) ? resp : [];
+      // Excluir al agente actual y al usuario que está reasignando
+      const currentUserId = api.getUser()?.id;
+      setUsuariosDisponibles(usuarios.filter((u: any) => u.id !== caso?.agente_user_id && u.id !== currentUserId && u.estado === 'ACTIVO'));
+    } catch (err) {
+      console.error('Error cargando usuarios:', err);
+      setErrorMessage('Error cargando lista de usuarios');
+    }
+  };
+
+  const confirmarReasignacion = async () => {
+    if (!reassignUsuarioId) {
+      setErrorMessage('Selecciona un usuario para reasignar');
+      return;
+    }
+    setTransitionLoading(true);
+    setErrorMessage('');
+    try {
+      const caseId = caso?.id || caso?.ticketNumber || id;
+      if (!caseId) {
+        setErrorMessage('No se encontro el ID del caso');
+        setTransitionLoading(false);
+        return;
+      }
+      await api.reasignarCaso(caseId, reassignUsuarioId, reassignMotivo.trim());
+      setShowReasignarModal(false);
+      setReassignUsuarioId('');
+      setReassignMotivo('');
+      setToast({ message: 'Caso reasignado correctamente', type: 'success' });
+      if (id) {
+        await loadCaso(id);
+      }
+      window.dispatchEvent(new CustomEvent('sac-case-updated', { detail: { caseId, action: 'reasign' } }));
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Error al reasignar el caso');
+    } finally {
+      setTransitionLoading(false);
+    }
+  };
+
+  // ==================================================
   // FUNCIONES DE EDICIÓN DEL CASO
   // ==================================================
   const handleEditClick = () => {
@@ -1908,6 +1974,32 @@ const CaseDetail: React.FC = () => {
                     >
                       <Phone className="w-3.5 h-3.5" />
                       Registrar gestion
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleReasignar}
+                      disabled={transitionLoading || !canPerformAction}
+                      className="px-4 py-2.5 rounded-lg text-xs font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:hover:translate-y-0 flex items-center gap-1.5"
+                      style={{
+                        backgroundColor: '#0891b2',
+                        boxShadow: '0 2px 8px rgba(8, 145, 178, 0.3)'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!e.currentTarget.disabled) {
+                          e.currentTarget.style.transform = 'translateY(-3px) scale(1.02)';
+                          e.currentTarget.style.backgroundColor = '#0e7490';
+                          e.currentTarget.style.boxShadow = '0 6px 16px rgba(8, 145, 178, 0.5)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                        e.currentTarget.style.backgroundColor = '#0891b2';
+                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(8, 145, 178, 0.3)';
+                      }}
+                    >
+                      <UserCheck className="w-3.5 h-3.5" />
+                      Reasignar
                     </button>
 
                     {validTransitions.map((estadoDestino: string) => {
@@ -3549,6 +3641,133 @@ const CaseDetail: React.FC = () => {
                 }}
               >
                 {transitionLoading ? 'Registrando...' : 'Registrar gestion'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Reasignar Caso */}
+      {showReasignarModal && (
+        <div
+          className="fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+          style={{
+            backgroundColor: styles.modal.overlay,
+            animation: 'fadeIn 0.2s ease-out'
+          }}
+        >
+          <div
+            className="rounded-xl w-full max-w-sm overflow-hidden shadow-2xl border"
+            style={{
+              ...styles.modal,
+              borderColor: styles.card.borderColor,
+              animation: 'fadeInSlide 0.3s ease-out'
+            }}
+          >
+            {/* Header */}
+            <div className="px-5 pt-5 pb-4 border-b" style={{borderColor: styles.cardHeader.borderColor}}>
+              <div className="flex items-center gap-2 mb-1">
+                <UserCheck className="w-4 h-4" style={{color: '#0891b2'}} />
+                <h3 className="font-bold text-sm" style={{color: styles.text.primary}}>
+                  Reasignar caso
+                </h3>
+              </div>
+              <p className="text-xs" style={{color: styles.text.tertiary}}>
+                El caso cambiara de agente asignado. El estado no se modifica.
+              </p>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 space-y-3">
+              <div>
+                <label className="block text-xs font-bold mb-2" style={{color: styles.text.secondary}}>
+                  Nuevo usuario asignado <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={reassignUsuarioId}
+                  onChange={(e) => setReassignUsuarioId(e.target.value)}
+                  className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 transition-all text-xs"
+                  style={{
+                    backgroundColor: styles.input.backgroundColor,
+                    borderColor: styles.input.borderColor,
+                    color: styles.text.primary
+                  }}
+                >
+                  <option value="">Selecciona un usuario...</option>
+                  {usuariosDisponibles.map((u: any) => (
+                    <option key={u.id} value={u.id}>
+                      {u.nombre} ({u.role}) - {u.email}
+                    </option>
+                  ))}
+                </select>
+                {usuariosDisponibles.length === 0 && (
+                  <p className="text-[10px] mt-1" style={{color: styles.text.tertiary}}>
+                    (Cargando usuarios del pais...)
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold mb-2" style={{color: styles.text.secondary}}>
+                  Motivo de reasignacion (opcional)
+                </label>
+                <textarea
+                  className="w-full h-20 p-3 rounded-lg border outline-none focus:ring-2 transition-all text-xs resize-none"
+                  style={{
+                    backgroundColor: styles.input.backgroundColor,
+                    borderColor: styles.input.borderColor,
+                    color: styles.text.primary
+                  }}
+                  value={reassignMotivo}
+                  onChange={(e) => setReassignMotivo(e.target.value)}
+                  placeholder="Ej: Carga del agente, vacaciones, expertise, etc."
+                  maxLength={500}
+                />
+                <p className="text-[10px] mt-1" style={{color: styles.text.tertiary}}>
+                  {reassignMotivo.length} / 500 caracteres
+                </p>
+              </div>
+
+              {errorMessage && (
+                <div className="p-3 rounded-lg border-2 border-red-500" style={{backgroundColor: 'rgba(220, 38, 38, 0.1)'}}>
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-red-600">{errorMessage}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex gap-2.5 p-5 pt-3 border-t" style={{borderColor: styles.cardHeader.borderColor}}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowReasignarModal(false);
+                  setReassignUsuarioId('');
+                  setReassignMotivo('');
+                  setErrorMessage('');
+                }}
+                className="flex-1 px-4 py-2.5 text-xs font-semibold rounded-lg border transition-all hover:bg-white/5"
+                style={{
+                  backgroundColor: 'transparent',
+                  color: styles.text.secondary,
+                  borderColor: styles.input.borderColor
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmarReasignacion}
+                disabled={transitionLoading || !reassignUsuarioId}
+                className="flex-1 px-4 py-2.5 text-xs font-bold rounded-lg text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: '#0891b2',
+                  boxShadow: '0 2px 8px rgba(8, 145, 178, 0.3)'
+                }}
+              >
+                {transitionLoading ? 'Reasignando...' : 'Reasignar caso'}
               </button>
             </div>
           </div>

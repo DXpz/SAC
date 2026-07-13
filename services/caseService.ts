@@ -1273,38 +1273,38 @@ export const registrarGestion = async (
  */
 export const reassignCase = async (
   caseId: string,
-  agentId: string,
+  nuevoUsuarioId: string,
   motivo?: string
-): Promise<{ success: boolean; message: string }> => {
+): Promise<{ success: boolean; message: string; caso?: any }> => {
   const actor = getActor();
 
   if (!actor) {
-    throw new Error('Usuario no autenticado. Por favor, inicia sesión.');
+    throw new Error('Usuario no autenticado. Por favor, inicia sesion.');
   }
 
-  if (!caseId || !agentId) {
-    throw new Error('ID de caso y ID de agente son requeridos.');
+  if (!caseId || !nuevoUsuarioId) {
+    throw new Error('ID de caso y ID de usuario son requeridos.');
   }
 
   try {
-    const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/${caseId}`, {
+    const response = await fetch(`${API_CONFIG.WEBHOOK_CASOS_URL}/${caseId}/reasignar`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({
         data: {
-          update_type: 'reassign',
-          agent_id: agentId,
-          comentario: motivo || `Reasignación manual de caso`
+          nuevo_agente_id: nuevoUsuarioId,
+          motivo: motivo || ''
         },
         actor: {
-          email: actor.email
+          email: actor.email,
+          name: actor.name
         }
       })
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      return { success: false, message: error.message || 'Error al reasignar' };
+      const error = await response.json().catch(() => ({}));
+      return { success: false, message: error.message || `Error al reasignar (HTTP ${response.status})` };
     }
 
     const result = await response.json();
@@ -1313,10 +1313,14 @@ export const reassignCase = async (
       return { success: false, message: result.message || 'Error al reasignar' };
     }
 
-    agentesCache = null;
-    agentesCacheTime = 0;
+    // Limpiar cache de casos
+    clearCache('cases');
 
-    return { success: true, message: 'Caso reasignado correctamente' };
+    return {
+      success: true,
+      message: result.message || 'Caso reasignado correctamente',
+      caso: result.caso
+    };
   } catch (error: any) {
     return { success: false, message: error.message || 'Error al reasignar' };
   }
