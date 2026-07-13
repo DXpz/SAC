@@ -1117,7 +1117,7 @@ const CaseDetail: React.FC = () => {
         setTransitionLoading(false);
         return;
       }
-      await api.reasignarCaso(caseId, reassignUsuarioId, reassignMotivo.trim());
+      await api.reassignCase(caseId, reassignUsuarioId, reassignMotivo.trim());
       setShowReasignarModal(false);
       setReassignUsuarioId('');
       setReassignMotivo('');
