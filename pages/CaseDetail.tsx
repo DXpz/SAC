@@ -987,18 +987,13 @@ const [requiereEquipo, setRequiereEquipo] = useState(false); // Para Diagnostico
       }
 
       // Caso especial: Diagnostico con requiereEquipo (solo SV)
-      // 1. Validar anexos y folios de equipo
+      // 1. Validar folios (anexos FOLCOD separados por coma/salto)
       // 2. Llamar al webhook N8N SECUENCIALMENTE por cada folio
       // 3. Si todos pasan, hacer cambio de estado con el comentario concatenado
       if (esDiagnostico && requiereEquipo && esSV) {
-        const anexosValor = anexosEstadoFinal.trim();
-        if (!anexosValor) {
-          setErrorMessage('Por favor, ingrese los anexos');
-          return;
-        }
         const foliosArr = foliosEquipo.split(/[\n,;]+/).map(f => f.trim()).filter(Boolean);
         if (foliosArr.length === 0) {
-          setErrorMessage('Por favor, ingrese al menos un folio de equipo (FOLCOD)');
+          setErrorMessage('Por favor, ingrese al menos un anexo (FOLCOD)');
           return;
         }
         const clicod = (caso?.cliente_id || caso?.clientId || '').trim();
@@ -1028,26 +1023,16 @@ const [requiereEquipo, setRequiereEquipo] = useState(false); // Para Diagnostico
           return;
         }
 
-        const comentarioFinal = `${justificacionTrim} | Requiere equipo. Anexos: ${anexosValor}. Folios bodega: ${foliosArr.join(', ')}.`;
+        const comentarioFinal = `${justificacionTrim} | Requiere equipo. Anexos: ${foliosArr.join(', ')}.`;
         handleStateChange(pendingNewState, comentarioFinal);
         return;
       }
 
       // Caso: Diagnostico con parámetros dinámicos (anexos + resolución) - solo SV
-      if (esDiagnostico && parametrosEstadoFinal.length > 0 && esSV) {
-        const anexosValor = anexosEstadoFinal.trim();
-        const resolucionValor = (formValues['resolucion'] || '').toString().trim();
-        if (!anexosValor) {
-          setErrorMessage('Por favor, ingrese los anexos');
-          return;
-        }
-        if (!resolucionValor) {
-          setErrorMessage('Por favor, ingrese la resolución del diagnóstico');
-          return;
-        }
-        const comentarioFinal = `${justificacionTrim} | Anexos: ${anexosValor}. Resolución: ${resolucionValor}.`;
-        handleStateChange(pendingNewState, comentarioFinal);
-        return;
+      // NOTA: Este bloque está deshabilitado porque la lógica de anexos ahora
+      // se maneja por el input único "Anexo (FOLCOD)" del bloque requiereEquipo.
+      if (false && esDiagnostico && parametrosEstadoFinal.length > 0 && esSV) {
+        // No-op
       }
 
       // Caso especial: Ejecucion/Ejecución con equipoCorrecto
@@ -2841,7 +2826,7 @@ const [requiereEquipo, setRequiereEquipo] = useState(false); // Para Diagnostico
                     <div className="pl-7 space-y-2 border-l-2 border-blue-200">
                       <div>
                         <label className="block text-xs font-bold mb-1.5" style={{color: styles.text.secondary}}>
-                          Anexo (FOLCOD) <span className="text-red-500">*</span>
+                          Anexo <span className="text-red-500">*</span>
                         </label>
                         <textarea
                           value={foliosEquipo}
@@ -2896,96 +2881,9 @@ const [requiereEquipo, setRequiereEquipo] = useState(false); // Para Diagnostico
                 </div>
               )}
 
-              {/* Si requiere equipo en Diagnostico Y es SV, mostrar formulario de parámetros.
-                  Anexos y Resolución SOLO aplican para SV. */}
-              {(pendingNewState === 'Diagnostico' || pendingNewState === 'Diagnóstico') && requiereEquipo &&
-               caso?.pais === 'ElSalvador' ? (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 pb-3 border-b" style={{
-                    borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(226, 232, 240, 1)'
-                  }}>
-                    <CheckCircle2 className="w-4 h-4" style={{color: '#107ab4'}} />
-                    <p className="text-sm font-bold" style={{color: styles.text.primary}}>
-                      Formulario de Equipo
-                    </p>
-                  </div>
-                  <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
-                    <div>
-                      <label className="block text-xs font-bold mb-1.5" style={{color: styles.text.secondary}}>
-                        Anexos <span className="text-red-500">*</span>
-                      </label>
-                      <textarea
-                        value={anexosEstadoFinal}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/[^0-9,]/g, '');
-                          setAnexosEstadoFinal(value);
-                        }}
-                        placeholder="111111, 222222, 333333"
-                        className="w-full h-20 p-3 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs resize-none"
-                        style={{
-                          backgroundColor: styles.input.backgroundColor,
-                          borderColor: styles.input.borderColor,
-                          color: styles.text.primary
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
-              {/* Formulario dinámico de parámetros cuando el destino tiene parámetros asignados
-                  (ej: Diagnostico con anexos y resolución) */}
-              {parametrosEstadoFinal && parametrosEstadoFinal.length > 0 && (
-                <div className="space-y-3 border rounded-lg p-4" style={{borderColor: 'rgba(148, 163, 184, 0.3)'}}>
-                  <div className="flex items-center gap-2 pb-2 border-b" style={{borderColor: 'rgba(148, 163, 184, 0.2)'}}>
-                    <CheckCircle2 className="w-4 h-4" style={{color: '#107ab4'}} />
-                    <p className="text-xs font-bold" style={{color: styles.text.primary}}>
-                      Datos de {pendingNewState}
-                    </p>
-                  </div>
-                  {parametrosEstadoFinal.map((p: any) => {
-                    const nombreParam = String(p.nombre_parametro || p.nombre || '').toLowerCase();
-                    const esAnexo = nombreParam.includes('anexo');
-                    const etiqueta = p.etiqueta || p.nombre_parametro || p.nombre || '';
-                    const placeholder = p.placeholder || '';
-                    return (
-                      <div key={p.id || nombreParam}>
-                        <label className="block text-xs font-bold mb-1.5" style={{color: styles.text.secondary}}>
-                          {etiqueta} <span className="text-red-500">*</span>
-                        </label>
-                        {esAnexo ? (
-                          <textarea
-                            value={anexosEstadoFinal}
-                            onChange={(e) => {
-                              const value = e.target.value.replace(/[^0-9,\s]/g, '');
-                              setAnexosEstadoFinal(value);
-                            }}
-                            placeholder={placeholder || "111111, 222222, 333333"}
-                            className="w-full h-20 p-3 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs resize-none"
-                            style={{
-                              backgroundColor: styles.input.backgroundColor,
-                              borderColor: styles.input.borderColor,
-                              color: styles.text.primary
-                            }}
-                          />
-                        ) : (
-                          <textarea
-                            value={formValues[nombreParam] || ''}
-                            onChange={(e) => setFormValues({...formValues, [nombreParam]: e.target.value})}
-                            placeholder={placeholder}
-                            className="w-full h-20 p-3 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs resize-none"
-                            style={{
-                              backgroundColor: styles.input.backgroundColor,
-                              borderColor: styles.input.borderColor,
-                              color: styles.text.primary
-                            }}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              {/* (Eliminado: Formulario de Equipo y Formulario dinámico de parámetros.
+                  Solo se muestra UN input "Anexo" (FOLCOD) cuando requiereEquipo.
+                  El cambio de estado envía al webhook N8N con los folios.) */}
 
               {/* Si es estado final, mostrar formulario especial */}
               {false ? (
