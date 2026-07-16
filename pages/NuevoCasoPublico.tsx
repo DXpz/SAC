@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { sapService, ClienteListado } from '../services/sapService';
-import { Channel, NotificationChannel } from '../types';
+import { Channel } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 import { API_CONFIG } from '../config';
 import { CheckCircle2, AlertTriangle, Search, X, Building2, Loader2 } from 'lucide-react';
@@ -31,13 +31,12 @@ const NuevoCasoPublico: React.FC = () => {
     clienteId: '',
     clienteNombre: '',
     categoriaId: '',
-    asunto: '',
     descripcion: '',
     contactoPrincipal: '',
     telefono: '',
     email: '',
-    canalOrigen: '' as Channel | '',
-    canalNotificacion: '' as Channel | NotificationChannel | ''
+    emailNotificacion: '',
+    canalContacto: '' as Channel | ''
   });
 
   const [clienteSearchTerm, setClienteSearchTerm] = useState('');
@@ -160,14 +159,15 @@ const NuevoCasoPublico: React.FC = () => {
     if (!pais) errs.push('Selecciona el país');
     if (!form.clienteId) errs.push('Selecciona un cliente');
     if (!form.categoriaId) errs.push('Selecciona una categoría');
-    if (!form.asunto.trim() || form.asunto.trim().length < 5) errs.push('El asunto debe tener al menos 5 caracteres');
     if (!form.descripcion.trim() || form.descripcion.trim().length < 10) errs.push('La descripción debe tener al menos 10 caracteres');
     if (!form.contactoPrincipal.trim()) errs.push('Ingresa el contacto principal');
     if (!form.telefono.trim()) errs.push('Ingresa un teléfono');
     if (!form.email.trim()) errs.push('Ingresa un email');
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errs.push('El email no es válido');
-    if (!form.canalOrigen) errs.push('Selecciona el medio de contacto (primer contacto)');
-    if (!form.canalNotificacion) errs.push('Selecciona el canal de notificación');
+    if (form.emailNotificacion.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.emailNotificacion.trim())) {
+      errs.push('El email de notificaciones no es válido');
+    }
+    if (!form.canalContacto) errs.push('Selecciona el medio de contacto y notificación');
     return errs;
   };
 
@@ -189,13 +189,12 @@ const NuevoCasoPublico: React.FC = () => {
         pais,
         cliente_id: form.clienteId,
         categoria_id: parseInt(form.categoriaId, 10),
-        asunto: form.asunto.trim(),
         descripcion: form.descripcion.trim(),
         contacto_principal: form.contactoPrincipal.trim(),
         telefono: form.telefono.trim(),
         email: form.email.trim(),
-        canal_origen: form.canalOrigen,
-        canal_notificacion: form.canalNotificacion
+        email_notificacion: form.emailNotificacion.trim() || undefined,
+        canal_contacto: form.canalContacto
       };
 
       const url = `${API_CONFIG.WEBHOOK_URL}/api/public/casos`;
@@ -233,13 +232,12 @@ const NuevoCasoPublico: React.FC = () => {
       clienteId: '',
       clienteNombre: '',
       categoriaId: '',
-      asunto: '',
       descripcion: '',
       contactoPrincipal: '',
       telefono: '',
       email: '',
-      canalOrigen: '',
-      canalNotificacion: ''
+      emailNotificacion: '',
+      canalContacto: ''
     });
     setClienteSearchTerm('');
     setValidationErrors([]);
@@ -521,22 +519,6 @@ const NuevoCasoPublico: React.FC = () => {
                   ))}
                 </select>
               </div>
-
-              {/* Asunto */}
-              <div>
-                <label className="block text-xs font-semibold mb-1.5" style={{ color: styles.text.secondary }}>
-                  Asunto <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <input
-                  type="text"
-                  value={form.asunto}
-                  onChange={(e) => setForm(f => ({ ...f, asunto: e.target.value }))}
-                  placeholder="Resumen del caso"
-                  className={inputBaseClass}
-                  style={styles.input}
-                  maxLength={150}
-                />
-              </div>
             </div>
 
             {/* === COLUMNA DERECHA === */}
@@ -606,37 +588,38 @@ const NuevoCasoPublico: React.FC = () => {
                 />
               </div>
 
-              {/* Canal Origen (Primer Contacto) */}
+              {/* Email de notificaciones (opcional) */}
               <div>
                 <label className="block text-xs font-semibold mb-1.5" style={{ color: styles.text.secondary }}>
-                  Medio de Contacto (Primer Contacto) <span style={{ color: '#ef4444' }}>*</span>
+                  Email para notificaciones
+                  <span className="ml-1 text-xs font-normal" style={{ color: styles.text.tertiary }}>(opcional)</span>
+                </label>
+                <input
+                  type="email"
+                  value={form.emailNotificacion}
+                  onChange={(e) => setForm(f => ({ ...f, emailNotificacion: e.target.value }))}
+                  placeholder="recibe-avisos@ejemplo.com"
+                  className={inputBaseClass}
+                  style={styles.input}
+                />
+                <p className="text-xs mt-1" style={{ color: styles.text.tertiary }}>
+                  Te enviaremos un correo confirmando que tu caso fue registrado.
+                </p>
+              </div>
+
+              {/* Canal de contacto y notificación (unificado) */}
+              <div>
+                <label className="block text-xs font-semibold mb-1.5" style={{ color: styles.text.secondary }}>
+                  Medio de contacto y notificación <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <select
-                  value={form.canalOrigen}
-                  onChange={(e) => setForm(f => ({ ...f, canalOrigen: e.target.value as Channel }))}
+                  value={form.canalContacto}
+                  onChange={(e) => setForm(f => ({ ...f, canalContacto: e.target.value as Channel }))}
                   className={inputBaseClass}
                   style={styles.input}
                 >
                   <option value="">Seleccionar una opción</option>
                   {Object.values(Channel).map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Canal Notificación (Contacto Posterior) */}
-              <div>
-                <label className="block text-xs font-semibold mb-1.5" style={{ color: styles.text.secondary }}>
-                  Canal de Notificación (Contacto Posterior) <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <select
-                  value={form.canalNotificacion}
-                  onChange={(e) => setForm(f => ({ ...f, canalNotificacion: e.target.value as NotificationChannel }))}
-                  className={inputBaseClass}
-                  style={styles.input}
-                >
-                  <option value="">Seleccionar una opción</option>
-                  {Object.values(NotificationChannel).map(c => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>

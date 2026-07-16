@@ -705,13 +705,12 @@ export const api = {
         categoriaId: caseData.categoriaId || '7',
         categoriaNombre: caseData.categoriaNombre || caseData.categoria?.nombre || caseData.categoryName || '',
         contactChannel: caseData.contactChannel || caseData.canalOrigen || 'Web',
-        subject: caseData.subject,
         description: caseData.description,
         clientEmail: caseData.clientEmail || '',
         clientName: caseData.clientName || caseData.nombreEmpresa || 'Por definir',
         contactName: caseData.contactName || caseData.contactoPrincipal || caseData.clientName || 'Por definir',
         phone: caseData.phone || caseData.clientPhone || caseData.telefono || '',
-        notificationChannel: caseData.notificationChannel || caseData.contactChannel || caseData.canalNotificacion || 'Email',
+        emailNotificacion: caseData.emailNotificacion || caseData.email_notificacion || '',
         ...caseData
       };
       

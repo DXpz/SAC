@@ -6,7 +6,7 @@ import { sapService } from '../services/sapService';
 import { getUserCountry } from '../services/caseService';
 import { Case, CaseStatus, Cliente, Categoria, Agente } from '../types';
 import { STATE_COLORS } from '../constants';
-import { Search, Plus, Filter, ChevronRight, RefreshCw, X, Grid3x3, List, User, Eye, Clock } from 'lucide-react';
+import { Search, Plus, Filter, ChevronRight, RefreshCw, X, Grid3x3, List, User, Eye, Clock, Bell } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import LoadingScreen from '../components/LoadingScreen';
 import { getStoredFilters, getDateFiltros, getPaisFromFilters } from '../services/filterService';
@@ -428,6 +428,7 @@ const enrichCase = (caso: Case, clientesList: Cliente[], categoriasList: Categor
       enriched.clientPhone = caso.clientPhone || (cliente as any).Telefono || '';
       enriched.cliente = cliente;
     }
+    enriched.emailNotificacion = (caso as any).emailNotificacion || (caso as any).email_notificacion || caso.emailNotificacion || '';
   }
   if (categoriasList.length > 0 && caso.categoria?.idCategoria) {
     const categoria = findCategoriaById(caso.categoria.idCategoria, categoriasList);
@@ -1317,6 +1318,24 @@ const filteredCasos = useMemo(() => {
                       {getCaseCountry(caso)}
                     </span>
                   </div>
+
+                  {/* Email de notificaciones (solo si existe) */}
+                  {(caso as any).emailNotificacion && (
+                    <div className="flex items-center gap-2">
+                      <Bell className="w-3.5 h-3.5 flex-shrink-0" style={{color: '#107ab4'}} />
+                      <span 
+                        className="text-[10px] font-semibold px-2 py-1 rounded-lg truncate max-w-[180px]"
+                        title={(caso as any).emailNotificacion}
+                        style={{
+                          backgroundColor: 'rgba(16, 122, 180, 0.1)',
+                          color: '#107ab4',
+                          border: '1px solid rgba(16, 122, 180, 0.3)'
+                        }}
+                      >
+                        Notifica a: {(caso as any).emailNotificacion}
+                      </span>
+                    </div>
+                  )}
                   
                   {/* Agente y Tiempo */}
                   <div className="flex items-center justify-between pt-2 border-t" style={{borderColor: 'rgba(148, 163, 184, 0.15)'}}>

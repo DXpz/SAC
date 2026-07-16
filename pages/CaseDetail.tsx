@@ -7,7 +7,7 @@ import { getUserCountry } from '../services/caseService';
 import { Case, CaseStatus, Cliente, AutorRol, HistorialEntry } from '../types';
 import { getStateBadgeColor } from '../constants';
 import { updateCaseStatus, updateCaseData, sendCaseCloseWebhook } from '../services/caseService';
-import { ArrowLeft, MessageSquare, User, Building2, Phone, Mail, CheckCircle2, Clock, X, AlertTriangle, Lock, History, Users, TrendingUp, AlertCircle, Edit, Save, Search, Folder, Tag } from 'lucide-react';
+import { ArrowLeft, MessageSquare, User, Building2, Phone, Mail, CheckCircle2, Clock, X, AlertTriangle, Lock, History, Users, TrendingUp, AlertCircle, Edit, Save, Search, Folder, Tag, Bell, UserCheck, FileText } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import LoadingScreen from '../components/LoadingScreen';
 
@@ -1092,7 +1092,7 @@ const CaseDetail: React.FC = () => {
     }
 
     try {
-      const resp = await api.getUsers({ pais });
+      const resp = await api.getUsuarios({ pais });
       const usuarios = Array.isArray(resp) ? resp : [];
       // Excluir al agente actual y al usuario que está reasignando
       const currentUserId = api.getUser()?.id;
@@ -2589,6 +2589,22 @@ const CaseDetail: React.FC = () => {
                   <Mail className="w-4 h-4" style={{color: '#64748b'}}/>
                   <p className="text-xs font-medium" style={{color: styles.text.secondary}}>{caso.clientEmail || 'No disponible'}</p>
                 </div>
+                {(caso as any).emailNotificacion && (
+                  <div 
+                    className="flex items-center gap-3 p-3 rounded-lg border transition-all hover:scale-[1.02]" 
+                    style={{
+                      backgroundColor: 'rgba(16, 122, 180, 0.08)', 
+                      borderColor: 'rgba(16, 122, 180, 0.4)',
+                      animation: 'fadeInSlide 0.3s ease-out 0.41s both'
+                    }}
+                  >
+                    <Bell className="w-4 h-4 flex-shrink-0" style={{color: '#107ab4'}}/>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide" style={{color: '#107ab4'}}>Email de notificaciones</p>
+                      <p className="text-xs font-medium truncate" style={{color: styles.text.secondary}}>{(caso as any).emailNotificacion}</p>
+                    </div>
+                  </div>
+                )}
                 {(caso.contacto_principal || caso.contactoPrincipal) && (
                   <div 
                     className="flex items-center gap-3 p-3 rounded-lg border transition-all hover:scale-[1.02]" 
@@ -2636,7 +2652,7 @@ const CaseDetail: React.FC = () => {
               </div>
               {!isCaseClosed && canReassign && (
                 <button
-                  onClick={handleReassignClick}
+                  onClick={handleReasignar}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all border"
                   style={{
                     color: '#107ab4',
@@ -2660,7 +2676,7 @@ const CaseDetail: React.FC = () => {
             <div 
               className={`flex items-center gap-3 p-4 rounded-lg border transition-all ${!isCaseClosed && canReassign ? 'cursor-pointer' : ''}`}
               style={{backgroundColor: styles.input.backgroundColor, borderColor: styles.input.borderColor}}
-              onClick={!isCaseClosed && canReassign ? handleReassignClick : undefined}
+              onClick={!isCaseClosed && canReassign ? handleReasignar : undefined}
               onMouseEnter={(e) => {
                 if (!isCaseClosed && canReassign) {
                   e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : '#eff6ff';

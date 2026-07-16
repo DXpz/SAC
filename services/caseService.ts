@@ -771,9 +771,9 @@ export const createCase = async (caseData: {
   clienteId: string;
   categoriaId: string;
   contactChannel: Channel | string;
-  subject: string;
   description: string;
   clientEmail?: string;
+  emailNotificacion?: string;
   pais?: string;
   phone?: string;
   clientPhone?: string;
@@ -786,8 +786,8 @@ export const createCase = async (caseData: {
   }
 
   // Validar campos requeridos
-  if (!caseData.categoriaId || !caseData.subject || !caseData.description) {
-    throw new Error('Faltan campos requeridos: categoría, asunto y descripción son obligatorios.');
+  if (!caseData.categoriaId || !caseData.description) {
+    throw new Error('Faltan campos requeridos: categoría y descripción son obligatorios.');
   }
 
   // Obtener país del usuario o usar default
@@ -813,9 +813,8 @@ export const createCase = async (caseData: {
     categoria: {
       id: parseInt(caseData.categoriaId) || 1
     },
-    canal_origen: mapChannel(caseData.contactChannel),
-    canal_notificacion: mapChannel(caseData.contactChannel) || 'Email',
-    asunto: caseData.subject,
+    canal_contacto: mapChannel(caseData.contactChannel),
+    email_notificacion: caseData.emailNotificacion || undefined,
     descripcion: caseData.description,
     actor: {
       email: actor.email

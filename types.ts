@@ -134,6 +134,7 @@ export interface Case {
   historial?: HistorialEntry[]; // Formato nuevo oficial
   clientEmail?: string;
   clientPhone?: string;
+  emailNotificacion?: string;
   // Extended metadata for supervisor/alert views
   diasAbierto: number;
   agenteAsignado: Agente;

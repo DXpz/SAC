@@ -36,13 +36,13 @@ const NuevoCaso: React.FC = () => {
     clienteId: '',
     categoriaId: '',
     contactChannel: '' as Channel | '',
-    notificationChannel: '' as Channel | '',
     subject: '',
     description: '',
     clientName: '',
     contactName: '',
     phone: '',
     email: '',
+    emailNotificacion: '',
     pais: ''
   });
 
@@ -296,9 +296,9 @@ const NuevoCaso: React.FC = () => {
       contactName: '',
       phone: '',
       email: '',
+      emailNotificacion: '',
       pais: '',
       contactChannel: '' as Channel | '',
-      notificationChannel: '' as Channel | '',
     });
     setClienteSearchTerm('');
     setShowClienteDropdown(false);
@@ -316,13 +316,13 @@ const NuevoCaso: React.FC = () => {
     e.preventDefault();
 
     // Validaciones básicas - Solo campos de "Detalles del Caso" son obligatorios
-    if (!newCase.subject || !newCase.description || !newCase.categoriaId) {
+    if (!newCase.description || !newCase.categoriaId) {
       setToast({ message: 'Por favor, completa todos los campos requeridos de Detalles del Caso (marcados con *)', type: 'warning' });
       return;
     }
 
     if (!newCase.contactChannel) {
-      setToast({ message: 'Por favor, selecciona el Medio de Contacto (Primer Contacto)', type: 'warning' });
+      setToast({ message: 'Por favor, selecciona el Medio de Contacto', type: 'warning' });
       return;
     }
 
@@ -334,6 +334,11 @@ const NuevoCaso: React.FC = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(newCase.email.trim())) {
       setToast({ message: 'Por favor, ingresa un email válido', type: 'warning' });
+      return;
+    }
+    // Email de notificaciones es opcional pero si está, debe ser válido
+    if (newCase.emailNotificacion && newCase.emailNotificacion.trim() && !emailRegex.test(newCase.emailNotificacion.trim())) {
+      setToast({ message: 'El email para notificaciones no es válido', type: 'warning' });
       return;
     }
 
@@ -348,14 +353,12 @@ const NuevoCaso: React.FC = () => {
         contactChannel: newCase.contactChannel,
         medio_contacto: newCase.contactChannel,
         canal_contacto: newCase.contactChannel,
-        notificationChannel: newCase.notificationChannel,
-        canal_notificacion: newCase.notificationChannel,
-        subject: newCase.subject,
         description: newCase.description,
         clientName: newCase.clientName,
         contactName: newCase.contactName,
         phone: newCase.phone,
         clientEmail: newCase.email,
+        emailNotificacion: newCase.emailNotificacion.trim() || undefined,
         pais: newCase.pais,
         status: CaseStatus.NUEVO,
         createdAt: new Date().toISOString()
@@ -638,7 +641,7 @@ const NuevoCaso: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>Medio de Contacto (Primer Contacto)</label>
+                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>Medio de Contacto y Notificación</label>
                   <select
                     value={newCase.contactChannel}
                     onChange={(e) => setNewCase({...newCase, contactChannel: e.target.value as Channel})}
@@ -665,30 +668,18 @@ const NuevoCaso: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>Canal de Notificación (Contacto Posterior)</label>
-                  <select
-                    value={newCase.notificationChannel}
-                    onChange={(e) => setNewCase({...newCase, notificationChannel: e.target.value as Channel})}
-                    className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs appearance-none cursor-pointer shadow-sm hover:shadow-md"
-                    style={{
-                      ...styles.input,
-                      color: newCase.notificationChannel ? styles.text.secondary : styles.text.tertiary
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = theme === 'dark' ? '#020617' : '#ffffff';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = styles.input.backgroundColor;
-                    }}
-                  >
-                    <option value="" disabled>Seleccionar una opción</option>
-                    <option value={Channel.EMAIL}>Email</option>
-                    <option value={Channel.WHATSAPP}>WhatsApp</option>
-                    <option value={Channel.TELEFONO}>Teléfono</option>
-                    <option value={Channel.WEB}>Web</option>
-                    <option value={Channel.REDES_SOCIALES}>Redes Sociales</option>
-                    <option value={Channel.CLIENTE_PRESENCIAL}>Cliente presencial</option>
-                  </select>
+                  <label className="block text-xs font-semibold tracking-normal mb-1.5" style={{color: styles.text.secondary}}>
+                    Email para notificaciones
+                    <span className="ml-1 font-normal opacity-70">(opcional)</span>
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="recibe-avisos@ejemplo.com"
+                    value={newCase.emailNotificacion}
+                    onChange={e => setNewCase({...newCase, emailNotificacion: e.target.value})}
+                    className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
+                    style={styles.input}
+                  />
                 </div>
               </div>
 
@@ -878,31 +869,6 @@ const NuevoCaso: React.FC = () => {
                       <p className="text-xs mt-1" style={{color: styles.text.tertiary}}>Cargando categorías...</p>
                     )}
                   </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black uppercase tracking-wider mb-1.5" style={{color: styles.text.secondary}}>Asunto <span className="text-red-500">*</span></label>
-                  <input 
-                    type="text" 
-                    required 
-                    className="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-4 transition-all font-medium text-xs shadow-sm hover:shadow-md"
-                    style={{
-                      ...styles.input
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = 'var(--color-accent-blue)';
-                      e.target.style.boxShadow = '0 0 0 4px rgba(16, 122, 180, 0.15)';
-                      e.target.style.backgroundColor = theme === 'dark' ? '#020617' : '#f1f5f9';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = styles.input.borderColor;
-                      e.target.style.boxShadow = '';
-                      e.target.style.backgroundColor = styles.input.backgroundColor;
-                    }}
-                    placeholder="Resumen del caso"
-                    value={newCase.subject}
-                    onChange={e => setNewCase({...newCase, subject: e.target.value})}
-                  />
                 </div>
 
                 <div>
