@@ -817,7 +817,8 @@ export const createCase = async (caseData: {
     email_notificacion: caseData.emailNotificacion || undefined,
     descripcion: caseData.description,
     actor: {
-      email: actor.email
+      email: actor.email,
+      role: actor.role
     }
   };
 
@@ -1189,7 +1190,8 @@ export const updateCaseStatus = async (
       comentario: detail || `Cambio de estado a ${newStatus}`
     },
     actor: {
-      email: actor.email
+      email: actor.email,
+      role: actor.role
     }
   };
 
@@ -1249,7 +1251,7 @@ export const registrarGestion = async (
     },
     body: JSON.stringify({
       data: { detalle: detalle.trim() },
-      actor: { email: actor.email, name: actor.name }
+      actor: { email: actor.email, name: actor.name, role: actor.role }
     })
   });
 
@@ -1291,7 +1293,8 @@ export const reassignCase = async (
         },
         actor: {
           email: actor.email,
-          name: actor.name
+          name: actor.name,
+          role: actor.role
         }
       })
     });

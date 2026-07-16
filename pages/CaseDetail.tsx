@@ -956,15 +956,46 @@ const CaseDetail: React.FC = () => {
       const esDiagnostico = pendingNewState === 'Diagnostico' || pendingNewState === 'Diagnóstico';
       const esSV = caso?.pais === 'ElSalvador';
 
+      // Validar justificación PRIMERO (siempre, antes de cualquier caso especial)
+      const justificacionTrim = justification.trim();
+      if (!justificacionTrim) {
+        setErrorMessage('La justificación es obligatoria');
+        return;
+      }
+      if (justificacionTrim.length < 10) {
+        setErrorMessage('La justificación debe tener al menos 10 caracteres');
+        return;
+      }
+      const soloNumeros = /^\d+$/;
+      if (soloNumeros.test(justificacionTrim)) {
+        setErrorMessage('La justificación no puede ser solo números');
+        return;
+      }
+      const soloSignos = /^[^\w\s]+$/;
+      if (soloSignos.test(justificacionTrim)) {
+        setErrorMessage('La justificación no puede ser solo signos o símbolos');
+        return;
+      }
+      const simbolosPeligrosos = /[<>{}[\]\\|]/;
+      if (simbolosPeligrosos.test(justificacionTrim)) {
+        setErrorMessage('La justificación no puede contener símbolos como < > { } [ ] \\ |');
+        return;
+      }
+      if (justificacionTrim.length > 500) {
+        setErrorMessage('La justificación no puede exceder 500 caracteres');
+        return;
+      }
+
       // Caso especial: Diagnostico con requiereEquipo (solo SV)
+      // CONCATENAR al comentario del usuario, NO sobrescribirlo
       if (esDiagnostico && requiereEquipo && esSV) {
         const anexosValor = anexosEstadoFinal.trim();
         if (!anexosValor) {
           setErrorMessage('Por favor, ingrese los anexos');
           return;
         }
-        const justificacionDiagnostico = `Diagnostico - Requiere equipo. Anexos: ${anexosValor}.`;
-        handleStateChange(pendingNewState, justificacionDiagnostico);
+        const comentarioFinal = `${justificacionTrim} | Requiere equipo. Anexos: ${anexosValor}.`;
+        handleStateChange(pendingNewState, comentarioFinal);
         return;
       }
 
@@ -972,7 +1003,6 @@ const CaseDetail: React.FC = () => {
       if (esDiagnostico && parametrosEstadoFinal.length > 0 && esSV) {
         const anexosValor = anexosEstadoFinal.trim();
         const resolucionValor = (formValues['resolucion'] || '').toString().trim();
-        // Anexos es requerido, resolución es requerida también
         if (!anexosValor) {
           setErrorMessage('Por favor, ingrese los anexos');
           return;
@@ -981,54 +1011,23 @@ const CaseDetail: React.FC = () => {
           setErrorMessage('Por favor, ingrese la resolución del diagnóstico');
           return;
         }
-        const justificacionDiagnostico = `Diagnostico. Anexos: ${anexosValor}. Resolución: ${resolucionValor}.`;
-        handleStateChange(pendingNewState, justificacionDiagnostico);
+        const comentarioFinal = `${justificacionTrim} | Anexos: ${anexosValor}. Resolución: ${resolucionValor}.`;
+        handleStateChange(pendingNewState, comentarioFinal);
         return;
       }
 
       // Caso especial: Ejecucion/Ejecución con equipoCorrecto
+      // CONCATENAR al comentario del usuario, NO sobrescribirlo
       if (pendingNewState === 'Ejecucion' || pendingNewState === 'Ejecución') {
-        const justificacionEjecucion = equipoCorrecto
-          ? `Ejecucion - Equipo verificado y funciona correctamente`
-          : `Ejecucion - Equipo requiere revisión/falla`;
-        handleStateChange(pendingNewState, justificacionEjecucion, equipoCorrecto);
+        const decisionEquipo = equipoCorrecto
+          ? 'Equipo verificado y funciona correctamente'
+          : 'Equipo requiere revisión/falla';
+        const comentarioFinal = `${justificacionTrim} | ${decisionEquipo}`;
+        handleStateChange(pendingNewState, comentarioFinal, equipoCorrecto);
         return;
       }
 
-      // Validar justificación
-      const justificacionTrim = justification.trim();
-      if (!justificacionTrim) {
-        setErrorMessage('La justificación es obligatoria');
-        return;
-      }
-      // Validar longitud mínima (no muy corta)
-      if (justificacionTrim.length < 10) {
-        setErrorMessage('La justificación debe tener al menos 10 caracteres');
-        return;
-      }
-      // Validar que no sea solo números
-      const soloNumeros = /^\d+$/;
-      if (soloNumeros.test(justificacionTrim)) {
-        setErrorMessage('La justificación no puede ser solo números');
-        return;
-      }
-      // Validar que no sea solo signos/símbolos
-      const soloSignos = /^[^\w\s]+$/;
-      if (soloSignos.test(justificacionTrim)) {
-        setErrorMessage('La justificación no puede ser solo signos o símbolos');
-        return;
-      }
-      // Validar que no contenga símbolos peligrosos
-      const simbolosPeligrosos = /[<>{}[\]\\|]/;
-      if (simbolosPeligrosos.test(justificacionTrim)) {
-        setErrorMessage('La justificación no puede contener símbolos como < > { } [ ] \\ |');
-        return;
-      }
-      // Validar longitud máxima
-      if (justificacionTrim.length > 500) {
-        setErrorMessage('La justificación no puede exceder 500 caracteres');
-        return;
-      }
+      // Flujo normal: enviar el comentario tal cual
       handleStateChange(pendingNewState, justificacionTrim);
     }
   };
