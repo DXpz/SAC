@@ -1085,8 +1085,11 @@ const CaseDetail: React.FC = () => {
     setErrorMessage('');
     setShowReasignarModal(true);
 
-    // Cargar usuarios disponibles del mismo país (SOLO AGENTE y SUPERVISOR).
-    // GERENTE, ADMINISTRADOR y ADMIN_GLOBAL no se muestran en el dropdown.
+    // Cargar usuarios disponibles del mismo país.
+    // - Dropdown normal: solo AGENTE y SUPERVISOR
+    // - Excepción: si el usuario actual es ADMINISTRADOR, se incluye a sí mismo
+    //   en el dropdown para que pueda reasignarse el caso a sí mismo.
+    // - GERENTE y ADMIN_GLOBAL NO aparecen.
     const casoPais = (caso?.pais === 'Guatemala' || caso?.pais === 'ElSalvador') ? caso.pais : null;
     const currentUserPais = api.getUser()?.pais;
     const pais = casoPais || currentUserPais;
@@ -1096,18 +1099,24 @@ const CaseDetail: React.FC = () => {
     }
 
     const ROLES_REASIGNABLES = ['AGENTE', 'SUPERVISOR'];
+    const currentUser = api.getUser();
+    const isCurrentUserAdmin = currentUser?.role === 'ADMINISTRADOR';
 
     try {
       const resp = await api.getUsuarios({ pais });
       const usuarios = Array.isArray(resp) ? resp : [];
-      // Excluir al agente actual, al usuario actual, y filtrar solo roles reasignables
-      const currentUserId = api.getUser()?.id;
-      setUsuariosDisponibles(usuarios.filter((u: any) =>
-        u.id !== caso?.agente_user_id &&
-        u.id !== currentUserId &&
-        u.estado === 'ACTIVO' &&
-        ROLES_REASIGNABLES.includes(String(u.role || '').toUpperCase())
-      ));
+      // Excluir al agente actual. Si el usuario actual es ADMINISTRADOR, sí puede
+      // reasignarse a sí mismo (caso especial: aparece en el dropdown aunque su rol
+      // no esté en ROLES_REASIGNABLES). Para otros roles, no aparece.
+      const currentUserId = currentUser?.id;
+      setUsuariosDisponibles(usuarios.filter((u: any) => {
+        if (u.id === caso?.agente_user_id) return false;
+        if (u.estado !== 'ACTIVO') return false;
+        // El usuario actual ADMINISTRADOR puede auto-reasignarse
+        if (isCurrentUserAdmin && u.id === currentUserId) return true;
+        // Para todos los demás casos, filtrar por roles reasignables
+        return ROLES_REASIGNABLES.includes(String(u.role || '').toUpperCase());
+      }));
     } catch (err) {
       console.error('Error cargando usuarios:', err);
       setErrorMessage('Error cargando lista de usuarios');
