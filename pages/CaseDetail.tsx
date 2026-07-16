@@ -44,10 +44,10 @@ const CaseDetail: React.FC = () => {
   const [isEstadoFinal, setIsEstadoFinal] = useState(false); // Nuevo estado para detectar si es un estado final
   const [estadoFinalParams, setEstadoFinalParams] = useState<any>(null); // Parámetros del estado final
   const [parametrosEstadoFinal, setParametrosEstadoFinal] = useState<any[]>([]); // Parámetros dinámicos del formulario
-  const [requiereEquipo, setRequiereEquipo] = useState(false); // Para Diagnostico
+const [requiereEquipo, setRequiereEquipo] = useState(false); // Para Diagnostico
   const [equipoCorrecto, setEquipoCorrecto] = useState(false); // Para Ejecucion
-  const [formValues, setFormValues] = useState<Record<string, any>>({}); // Valores del formulario dinámico
   const [anexosEstadoFinal, setAnexosEstadoFinal] = useState(''); // Campo de anexos para estado final
+  const [foliosEquipo, setFoliosEquipo] = useState(''); // FOLCODs de bodega separados por coma (uno por línea en N8N)
 
   const isAnexoParam = (param: any) => {
     const nombre = String(param?.nombre_parametro || param?.name || '').toLowerCase();
@@ -987,14 +987,48 @@ const CaseDetail: React.FC = () => {
       }
 
       // Caso especial: Diagnostico con requiereEquipo (solo SV)
-      // CONCATENAR al comentario del usuario, NO sobrescribirlo
+      // 1. Validar anexos y folios de equipo
+      // 2. Llamar al webhook N8N SECUENCIALMENTE por cada folio
+      // 3. Si todos pasan, hacer cambio de estado con el comentario concatenado
       if (esDiagnostico && requiereEquipo && esSV) {
         const anexosValor = anexosEstadoFinal.trim();
         if (!anexosValor) {
           setErrorMessage('Por favor, ingrese los anexos');
           return;
         }
-        const comentarioFinal = `${justificacionTrim} | Requiere equipo. Anexos: ${anexosValor}.`;
+        const foliosArr = foliosEquipo.split(/[\n,;]+/).map(f => f.trim()).filter(Boolean);
+        if (foliosArr.length === 0) {
+          setErrorMessage('Por favor, ingrese al menos un folio de equipo (FOLCOD)');
+          return;
+        }
+        const clicod = (caso?.cliente_id || caso?.clientId || '').trim();
+        const nreclamo = (caso?.case_id || caso?.ticketNumber || '').trim();
+        if (!clicod || !nreclamo) {
+          setErrorMessage('El caso no tiene cliente_id o case_id, no se puede solicitar equipo');
+          return;
+        }
+
+        // Llamar SECUENCIALMENTE al webhook N8N por cada folio
+        setTransitionLoading(true);
+        setErrorMessage('');
+        try {
+          const { solicitarEquipoBodegaMultiple } = await import('../services/n8nService');
+          const resultado = await solicitarEquipoBodegaMultiple(foliosArr, { clicod, nreclamo });
+          if (!resultado.success) {
+            const failed = resultado.results.find(r => !r.success);
+            setErrorMessage(
+              `No se pudo solicitar el folio "${foliosArr[resultado.results.indexOf(failed!)]}". ${failed?.message || ''}`
+            );
+            setTransitionLoading(false);
+            return;
+          }
+        } catch (err: any) {
+          setErrorMessage(`Error al solicitar equipo: ${err?.message || err}`);
+          setTransitionLoading(false);
+          return;
+        }
+
+        const comentarioFinal = `${justificacionTrim} | Requiere equipo. Anexos: ${anexosValor}. Folios bodega: ${foliosArr.join(', ')}.`;
         handleStateChange(pendingNewState, comentarioFinal);
         return;
       }
@@ -2757,6 +2791,7 @@ const CaseDetail: React.FC = () => {
                   setParametrosEstadoFinal([]);
                   setFormValues({});
                   setAnexosEstadoFinal('');
+                  setFoliosEquipo('');
                   setRequiereEquipo(false);
                   setEquipoCorrecto(false);
                 }}
@@ -2783,7 +2818,7 @@ const CaseDetail: React.FC = () => {
                   Anexos/Resolución SOLO aplican para SV (no GT). */}
               {(pendingNewState === 'Diagnostico' || pendingNewState === 'Diagnóstico') &&
                caso?.pais === 'ElSalvador' && (
-                <div className="border rounded-lg p-4" style={{borderColor: 'rgba(148, 163, 184, 0.3)'}}>
+                <div className="border rounded-lg p-4 space-y-3" style={{borderColor: 'rgba(148, 163, 184, 0.3)'}}>
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
@@ -2796,10 +2831,46 @@ const CaseDetail: React.FC = () => {
                         ¿Requiere equipo?
                       </span>
                       <p className="text-xs mt-0.5" style={{color: styles.text.tertiary}}>
-                        Marcar si se necesita solicitar equipo para este caso
+                        Marcar si se necesita solicitar equipo de bodega
                       </p>
                     </div>
                   </label>
+
+                  {/* Si requiere equipo, mostrar input de folios de bodega */}
+                  {requiereEquipo && (
+                    <div className="pl-7 space-y-2 border-l-2 border-blue-200">
+                      <div>
+                        <label className="block text-xs font-bold mb-1.5" style={{color: styles.text.secondary}}>
+                          Folios de equipo (FOLCOD) <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                          value={foliosEquipo}
+                          onChange={(e) => setFoliosEquipo(e.target.value)}
+                          placeholder="FOL001, FOL002, FOL003 (uno por línea o separados por coma)"
+                          rows={3}
+                          className="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs font-mono resize-none"
+                          style={{
+                            backgroundColor: styles.input.backgroundColor,
+                            borderColor: styles.input.borderColor,
+                            color: styles.text.primary
+                          }}
+                        />
+                        <p className="text-xs mt-1" style={{color: styles.text.tertiary}}>
+                          Un FOLCOD por línea. Cada folio se procesa individualmente (uno a uno).
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs" style={{color: styles.text.tertiary}}>
+                        <div>
+                          <span className="font-semibold">Cliente (clicod): </span>
+                          <span className="font-mono">{caso?.cliente_id || caso?.clientId || '—'}</span>
+                        </div>
+                        <div>
+                          <span className="font-semibold">N° Reclamo: </span>
+                          <span className="font-mono">{caso?.case_id || caso?.ticketNumber || '—'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
