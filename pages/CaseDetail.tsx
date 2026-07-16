@@ -2841,12 +2841,12 @@ const [requiereEquipo, setRequiereEquipo] = useState(false); // Para Diagnostico
                     <div className="pl-7 space-y-2 border-l-2 border-blue-200">
                       <div>
                         <label className="block text-xs font-bold mb-1.5" style={{color: styles.text.secondary}}>
-                          Folios de equipo (FOLCOD) <span className="text-red-500">*</span>
+                          Anexo (FOLCOD) <span className="text-red-500">*</span>
                         </label>
                         <textarea
                           value={foliosEquipo}
                           onChange={(e) => setFoliosEquipo(e.target.value)}
-                          placeholder="FOL001, FOL002, FOL003 (uno por línea o separados por coma)"
+                          placeholder="FOL001 (uno por línea, separados por coma o salto de línea)"
                           rows={3}
                           className="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs font-mono resize-none"
                           style={{
@@ -2856,7 +2856,7 @@ const [requiereEquipo, setRequiereEquipo] = useState(false); // Para Diagnostico
                           }}
                         />
                         <p className="text-xs mt-1" style={{color: styles.text.tertiary}}>
-                          Un FOLCOD por línea. Cada folio se procesa individualmente (uno a uno).
+                          Un FOLCOD por línea. Se procesan uno a uno (secuencial).
                         </p>
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-xs" style={{color: styles.text.tertiary}}>
