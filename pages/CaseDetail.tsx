@@ -952,8 +952,12 @@ const CaseDetail: React.FC = () => {
       }
       return;
     } else {
-      // Caso especial: Diagnostico con requiereEquipo
-      if ((pendingNewState === 'Diagnostico' || pendingNewState === 'Diagnóstico') && requiereEquipo) {
+      // Anexos/Resolución SOLO aplican para SV. Para GT, cambio de estado normal sin anexos.
+      const esDiagnostico = pendingNewState === 'Diagnostico' || pendingNewState === 'Diagnóstico';
+      const esSV = caso?.pais === 'ElSalvador';
+
+      // Caso especial: Diagnostico con requiereEquipo (solo SV)
+      if (esDiagnostico && requiereEquipo && esSV) {
         const anexosValor = anexosEstadoFinal.trim();
         if (!anexosValor) {
           setErrorMessage('Por favor, ingrese los anexos');
@@ -964,9 +968,8 @@ const CaseDetail: React.FC = () => {
         return;
       }
 
-      // Caso: Diagnostico con parámetros dinámicos (anexos + resolución)
-      const esDiagnostico = pendingNewState === 'Diagnostico' || pendingNewState === 'Diagnóstico';
-      if (esDiagnostico && parametrosEstadoFinal.length > 0) {
+      // Caso: Diagnostico con parámetros dinámicos (anexos + resolución) - solo SV
+      if (esDiagnostico && parametrosEstadoFinal.length > 0 && esSV) {
         const anexosValor = anexosEstadoFinal.trim();
         const resolucionValor = (formValues['resolucion'] || '').toString().trim();
         // Anexos es requerido, resolución es requerida también
@@ -1082,7 +1085,8 @@ const CaseDetail: React.FC = () => {
     setErrorMessage('');
     setShowReasignarModal(true);
 
-    // Cargar usuarios disponibles del mismo país (incluye SUPERVISOR y GERENTE)
+    // Cargar usuarios disponibles del mismo país (SOLO AGENTE y SUPERVISOR).
+    // GERENTE, ADMINISTRADOR y ADMIN_GLOBAL no se muestran en el dropdown.
     const casoPais = (caso?.pais === 'Guatemala' || caso?.pais === 'ElSalvador') ? caso.pais : null;
     const currentUserPais = api.getUser()?.pais;
     const pais = casoPais || currentUserPais;
@@ -1091,12 +1095,19 @@ const CaseDetail: React.FC = () => {
       return;
     }
 
+    const ROLES_REASIGNABLES = ['AGENTE', 'SUPERVISOR'];
+
     try {
       const resp = await api.getUsuarios({ pais });
       const usuarios = Array.isArray(resp) ? resp : [];
-      // Excluir al agente actual y al usuario que está reasignando
+      // Excluir al agente actual, al usuario actual, y filtrar solo roles reasignables
       const currentUserId = api.getUser()?.id;
-      setUsuariosDisponibles(usuarios.filter((u: any) => u.id !== caso?.agente_user_id && u.id !== currentUserId && u.estado === 'ACTIVO'));
+      setUsuariosDisponibles(usuarios.filter((u: any) =>
+        u.id !== caso?.agente_user_id &&
+        u.id !== currentUserId &&
+        u.estado === 'ACTIVO' &&
+        ROLES_REASIGNABLES.includes(String(u.role || '').toUpperCase())
+      ));
     } catch (err) {
       console.error('Error cargando usuarios:', err);
       setErrorMessage('Error cargando lista de usuarios');
@@ -2760,8 +2771,10 @@ const CaseDetail: React.FC = () => {
                 Se cambiará el estado del caso de <strong>{caso?.estado || caso?.status || 'Nuevo'}</strong> a <strong>{pendingNewState}</strong>.
               </p>
 
-              {/* Si es Diagnostico, mostrar checkbox para requerir equipo */}
-              {(pendingNewState === 'Diagnostico' || pendingNewState === 'Diagnóstico') && (
+              {/* Si es Diagnostico Y el caso es de SV, mostrar checkbox para requerir equipo.
+                  Anexos/Resolución SOLO aplican para SV (no GT). */}
+              {(pendingNewState === 'Diagnostico' || pendingNewState === 'Diagnóstico') &&
+               caso?.pais === 'ElSalvador' && (
                 <div className="border rounded-lg p-4" style={{borderColor: 'rgba(148, 163, 184, 0.3)'}}>
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
@@ -2804,8 +2817,10 @@ const CaseDetail: React.FC = () => {
                 </div>
               )}
 
-              {/* Si requiere equipo en Diagnostico, mostrar formulario de parámetros */}
-              {(pendingNewState === 'Diagnostico' || pendingNewState === 'Diagnóstico') && requiereEquipo ? (
+              {/* Si requiere equipo en Diagnostico Y es SV, mostrar formulario de parámetros.
+                  Anexos y Resolución SOLO aplican para SV. */}
+              {(pendingNewState === 'Diagnostico' || pendingNewState === 'Diagnóstico') && requiereEquipo &&
+               caso?.pais === 'ElSalvador' ? (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 pb-3 border-b" style={{
                     borderColor: theme === 'dark' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(226, 232, 240, 1)'
