@@ -1101,6 +1101,7 @@ interface WebhookHistorialEntry {
   estado_nuevo: string;
   usuario: string;
   usuario_nombre?: string;
+  usuario_rol?: string;  // Rol del usuario que hizo el cambio (AGENTE, SUPERVISOR, GERENTE, ADMINISTRADOR, etc.)
   detalle: string;
 }
 
@@ -1140,20 +1141,14 @@ const mapWebhookHistorialToFrontend = (webhookHistorial: WebhookHistorialEntry[]
       fechaISO = new Date().toISOString();
     }
 
-    // Determinar autor_rol basado en el email del usuario
-    // Por ahora usamos 'agente' por defecto, pero podríamos buscar el usuario en localStorage
-    let autor_rol: 'agente' | 'supervisor' | 'sistema' = 'agente';
-    try {
-      const userStr = localStorage.getItem('intelfon_user');
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        if (user.role === 'SUPERVISOR' || user.role === 'GERENTE') {
-          autor_rol = 'supervisor';
-        }
-      }
-    } catch {
-      // Si no se puede obtener el usuario, usar 'agente' por defecto
-    }
+    // Determinar autor_rol desde el backend (entry.usuario_rol guardado en historial_casos).
+    // El backend ya guarda el rol real del usuario que hizo el cambio. No deducir
+    // desde localStorage porque el historial puede ser de OTROS usuarios.
+    const autorRolFromBackend = String(entry.usuario_rol || '').toLowerCase();
+    const autor_rol: 'agente' | 'supervisor' | 'sistema' =
+      autorRolFromBackend === 'supervisor' || autorRolFromBackend === 'gerente' ? 'supervisor' :
+      autorRolFromBackend === 'agente' ? 'agente' :
+      'sistema';
 
     return {
       tipo_evento: 'CAMBIO_ESTADO' as const,
