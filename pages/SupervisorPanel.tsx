@@ -1192,7 +1192,7 @@ const SupervisorPanel: React.FC = () => {
                 }}>
                   <tr>
                     <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>ID Caso</th>
-                    <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Asunto</th>
+                    <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Categoría</th>
                     <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Cliente</th>
                     <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Agente</th>
                     <th className="px-4 py-3 text-xs font-bold tracking-wide uppercase" style={{color: styles.text.secondary}}>Prioridad</th>
@@ -1237,7 +1237,7 @@ const SupervisorPanel: React.FC = () => {
                         <td className="px-4 py-3">
                           <div className="max-w-xs">
                             <span className="text-xs font-semibold line-clamp-1" style={{color: styles.text.primary}}>
-                              {caso.subject}
+                              {caso.category || (caso as any).categoria?.nombre || '—'}
                               </span>
                           </div>
                         </td>
