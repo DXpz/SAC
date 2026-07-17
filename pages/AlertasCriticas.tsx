@@ -764,7 +764,7 @@ const AlertasCriticas: React.FC = () => {
                       animation: 'fadeInSlide 0.3s ease-out'
                     }}>
                       <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>ID Caso</th>
-                      <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Asunto</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Categoría</th>
                       <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Cliente</th>
                       <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Empresa</th>
                       <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Agente</th>
@@ -811,7 +811,7 @@ const AlertasCriticas: React.FC = () => {
                       <td className="px-4 py-3">
                         <div className="max-w-xs">
                           <span className="text-xs font-semibold line-clamp-1" style={{color: styles.text.primary}}>
-                            {caso.subject}
+                            {caso.category || (caso as any).categoria?.nombre || '—'}
                           </span>
                         </div>
                       </td>
