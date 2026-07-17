@@ -1151,7 +1151,7 @@ const filteredCasos = useMemo(() => {
                     </td>
                     <td className="px-4 py-3" style={{color: styles.text.tertiary}}>
                       <span className="text-xs">
-                        {caso.fechaCreacionFormateada || (caso.createdAt ? new Date(caso.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—')}
+                        {caso.fechaCreacionFormateada || (caso.createdAt ? new Date(caso.createdAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—')}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
