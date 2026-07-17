@@ -987,6 +987,7 @@ const filteredCasos = useMemo(() => {
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Empresa</th>
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Categoría</th>
                   <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Estado</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)', width: '110px', minWidth: '110px'}}>Fecha</th>
                   <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider" style={{color: styles.text.secondary, borderBottom: '1px solid rgba(148, 163, 184, 0.2)'}}>Acción</th>
                 </tr>
               </thead>
@@ -1147,6 +1148,11 @@ const filteredCasos = useMemo(() => {
                           </span>
                         );
                       })()}
+                    </td>
+                    <td className="px-4 py-3" style={{color: styles.text.tertiary}}>
+                      <span className="text-xs">
+                        {caso.fechaCreacionFormateada || (caso.createdAt ? new Date(caso.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—')}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end">
