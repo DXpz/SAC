@@ -710,10 +710,10 @@ const SupervisorPanel: React.FC = () => {
       </div>
 
       {/* === Grid de 5 cards: 4 numéricos + SLA por Etapa === */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-stretch">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 items-stretch">
          <Tooltip id="casos-abiertos" content="Total de casos activos en el sistema">
           <div 
-            className="p-2.5 rounded-md border cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
+            className="p-2 rounded border cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
             style={{
               ...styles.card,
               borderColor: 'rgba(71, 85, 105, 0.3)',
@@ -730,19 +730,19 @@ const SupervisorPanel: React.FC = () => {
               e.currentTarget.style.boxShadow = '';
             }}
           >
-            <div className="absolute top-2.5 right-2.5">
-              <Activity className="w-4 h-4" style={{color: '#3b82f6'}} />
+            <div className="absolute top-1.5 right-1.5">
+              <Activity className="w-3.5 h-3.5" style={{color: '#3b82f6'}} />
             </div>
-            <div className="flex items-start justify-between mb-1 pr-6">
+            <div className="flex items-center justify-center text-center gap-1">
               <div className="flex-1">
-                <p className="text-2xl font-bold leading-tight mb-0.5" style={{color: '#3b82f6'}}>
+                <p className="text-xl font-bold leading-tight" style={{color: '#3b82f6'}}>
                   {casosAbiertosCount}
                 </p>
-                <div className="flex items-center gap-1">
-                  <Activity className="w-3.5 h-3.5 flex-shrink-0" style={{color: '#3b82f6'}} />
+                <div className="flex items-center justify-center gap-0.5 flex-wrap">
+                  <Activity className="w-3 h-3 flex-shrink-0" style={{color: '#3b82f6'}} />
                   <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Casos Abiertos</p>
                 </div>
-                <p className="text-[10px] mt-0.5" style={{color: styles.text.tertiary}}>
+                <p className="text-[9px] mt-0.5" style={{color: styles.text.tertiary}}>
                   Activos
                 </p>
               </div>
@@ -752,7 +752,7 @@ const SupervisorPanel: React.FC = () => {
 
          <Tooltip id="casos-totales" content="Total de casos en el sistema">
           <div 
-            className="p-2.5 rounded-md border cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
+            className="p-2 rounded border cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
             style={{
               ...styles.card,
               borderColor: 'rgba(71, 85, 105, 0.3)',
@@ -769,19 +769,19 @@ const SupervisorPanel: React.FC = () => {
               e.currentTarget.style.boxShadow = '';
             }}
           >
-            <div className="absolute top-2.5 right-2.5">
-              <Activity className="w-4 h-4" style={{color: '#3b82f6'}} />
+            <div className="absolute top-1.5 right-1.5">
+              <Activity className="w-3.5 h-3.5" style={{color: '#3b82f6'}} />
             </div>
-            <div className="flex items-start justify-between mb-1 pr-6">
+            <div className="flex items-center justify-center text-center gap-1">
               <div className="flex-1">
-                <p className="text-2xl font-bold leading-tight mb-0.5" style={{color: '#3b82f6'}}>
+                <p className="text-xl font-bold leading-tight" style={{color: '#3b82f6'}}>
                   {casosTotalesCount}
                 </p>
-                <div className="flex items-center gap-1">
-                  <Activity className="w-3.5 h-3.5 flex-shrink-0" style={{color: '#3b82f6'}} />
+                <div className="flex items-center justify-center gap-0.5 flex-wrap">
+                  <Activity className="w-3 h-3 flex-shrink-0" style={{color: '#3b82f6'}} />
                   <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Casos Totales</p>
                 </div>
-                <p className="text-[10px] mt-0.5" style={{color: styles.text.tertiary}}>
+                <p className="text-[9px] mt-0.5" style={{color: styles.text.tertiary}}>
                   Todos los casos
                 </p>
               </div>
@@ -809,7 +809,7 @@ const SupervisorPanel: React.FC = () => {
 
          <Tooltip id="casos-criticos" content="Casos que requieren atención inmediata">
           <div 
-            className="p-2.5 rounded-md border cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
+            className="p-2 rounded border cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
             style={{
               ...styles.card,
               borderColor: 'rgba(71, 85, 105, 0.3)',
@@ -826,19 +826,19 @@ const SupervisorPanel: React.FC = () => {
               e.currentTarget.style.boxShadow = '';
             }}
           >
-            <div className="absolute top-2.5 right-2.5">
-              <AlertCircle className="w-4 h-4" style={{color: casosCriticos.length > 0 ? '#f87171' : styles.text.tertiary}} />
+            <div className="absolute top-1.5 right-1.5">
+              <AlertCircle className="w-3.5 h-3.5" style={{color: casosCriticos.length > 0 ? '#f87171' : styles.text.tertiary}} />
             </div>
-            <div className="flex items-start justify-between mb-1 pr-6">
+            <div className="flex items-center justify-center text-center gap-1">
               <div className="flex-1">
-                <p className="text-2xl font-bold leading-tight mb-0.5" style={{color: casosCriticosCount > 0 ? '#f87171' : styles.text.secondary}}>
+                <p className="text-xl font-bold leading-tight" style={{color: casosCriticosCount > 0 ? '#f87171' : styles.text.secondary}}>
                   {casosCriticosCount}
                 </p>
-                <div className="flex items-center gap-1">
-                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" style={{color: casosCriticosCount > 0 ? '#f87171' : styles.text.secondary}} />
+                <div className="flex items-center justify-center gap-0.5 flex-wrap">
+                  <AlertCircle className="w-3 h-3 flex-shrink-0" style={{color: casosCriticosCount > 0 ? '#f87171' : styles.text.secondary}} />
                   <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Casos Críticos</p>
                 </div>
-                <p className="text-[10px] mt-0.5" style={{color: casosCriticosCount > 0 ? '#f87171' : styles.text.tertiary}}>
+                <p className="text-[9px] mt-0.5" style={{color: casosCriticosCount > 0 ? '#f87171' : styles.text.tertiary}}>
                   {casosCriticosCount > 0 ? 'Requiere acción' : 'Bajo control'}
                 </p>
               </div>
@@ -848,7 +848,7 @@ const SupervisorPanel: React.FC = () => {
 
          <Tooltip id="sla-promedio" content="Porcentaje de casos cumpliendo SLA">
           <div 
-            className="p-2.5 rounded-md border cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
+            className="p-2 rounded border cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
             style={{
               ...styles.card,
               borderColor: 'rgba(71, 85, 105, 0.3)',
@@ -865,17 +865,17 @@ const SupervisorPanel: React.FC = () => {
               e.currentTarget.style.boxShadow = '';
             }}
           >
-            <div className="absolute top-2.5 right-2.5">
-              <Clock className="w-4 h-4" style={{
+            <div className="absolute top-1.5 right-1.5">
+              <Clock className="w-3.5 h-3.5" style={{
                 color: slaPromedio === null ? styles.text.tertiary :
                        slaPromedio >= 90 ? '#22c55e' : 
                        slaPromedio >= 70 ? '#fbbf24' : 
                        '#f87171'
               }} />
             </div>
-            <div className="flex items-start justify-between mb-1 pr-6">
+            <div className="flex items-center justify-center text-center gap-1">
               <div className="flex-1">
-                <p className="text-2xl font-bold leading-tight mb-0.5" style={{
+                <p className="text-xl font-bold leading-tight" style={{
                   color: slaPromedio === null ? styles.text.tertiary :
                          slaPromedio >= 90 ? '#22c55e' : 
                          slaPromedio >= 70 ? '#fbbf24' : 
@@ -883,8 +883,8 @@ const SupervisorPanel: React.FC = () => {
                 }}>
                   {slaPromedio === null ? 'N/A' : `${slaPromedio}%`}
                 </p>
-                <div className="flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 flex-shrink-0" style={{
+                <div className="flex items-center justify-center gap-0.5 flex-wrap">
+                  <Clock className="w-3 h-3 flex-shrink-0" style={{
                     color: slaPromedio === null ? styles.text.secondary :
                            slaPromedio >= 90 ? '#22c55e' : 
                            slaPromedio >= 70 ? '#fbbf24' : 
@@ -892,7 +892,7 @@ const SupervisorPanel: React.FC = () => {
                   }} />
                   <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>SLA Promedio</p>
                 </div>
-                <p className="text-[10px] mt-0.5" style={{color: styles.text.tertiary}}>
+                <p className="text-[9px] mt-0.5" style={{color: styles.text.tertiary}}>
                   {slaPromedio === null ? 'Sin datos' : 
                    slaPromedio >= 90 ? 'Normal' : 
                    slaPromedio >= 70 ? 'En riesgo' : 
