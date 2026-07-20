@@ -407,6 +407,22 @@ const SupervisorPanel: React.FC = () => {
     });
   }, [casosAbiertos]);
 
+  // Cumplimiento SLA global: casos en tiempo / casos totales
+  // Incluye abiertos + cerrados. Un caso cerrado esta "en tiempo" si
+  // no tiene etapasVencidas (no se vencio en ninguna etapa).
+  const casosEnTiempoGlobal = useMemo(() => {
+    return casos.filter(c => {
+      const catId = (c as any).categoria_id || (c as any).categoria?.id || (c as any).categoria?.idCategoria;
+      const tieneCategoriaReal = catId && String(catId) !== '1';
+      if (!tieneCategoriaReal) return false;
+      // Abierto: en tiempo si !slaExpired
+      if ((c as any).slaExpired === true) return false;
+      // Cerrado con etapasVencidas: NO en tiempo
+      if (Array.isArray((c as any).etapasVencidas) && (c as any).etapasVencidas.length > 0) return false;
+      return true;
+    });
+  }, [casos]);
+
   const metricsSummary = dashboardMetrics?.summary || {};
   const metricsKpis = dashboardMetrics?.kpis || {};
   const metricsAgents = dashboardMetrics?.agents || {};
@@ -414,10 +430,18 @@ const SupervisorPanel: React.FC = () => {
   // Para métricas: casos abiertos = casosFiltrados sin cerrados
   const casosAbiertosFiltrados = casosAbiertos;
 
-  // Cumplimiento SLA global = casos sin vencer / casos abiertos
-  // (calculo directo en frontend, consistente con el subtitle)
-  const slaPromedio = casosAbiertosFiltrados.length > 0
-    ? Math.round((casosDentroSLA.length / casosAbiertosFiltrados.length) * 100)
+  // Total de casos con SLA real (denominador del Cumplimiento SLA Global)
+  const totalCasosConSla = useMemo(() => {
+    return casos.filter(c => {
+      const catId = (c as any).categoria_id || (c as any).categoria?.id || (c as any).categoria?.idCategoria;
+      return catId && String(catId) !== '1';
+    }).length;
+  }, [casos]);
+
+  // Cumplimiento SLA global = casos en tiempo / casos totales (abiertos + cerrados)
+  // Cuenta TODOS los casos con SLA real, no solo los abiertos.
+  const slaPromedio = totalCasosConSla > 0
+    ? Math.round((casosEnTiempoGlobal.length / totalCasosConSla) * 100)
     : null;
 
   // Estados del webhook (mismo patron que AdminPanel)
@@ -854,7 +878,7 @@ const SupervisorPanel: React.FC = () => {
           </div>
         </Tooltip>
 
-          <Tooltip id="sla-promedio" content={`FORMULA: slaPromedio = round(${casosDentroSLA.length} / ${casosAbiertosFiltrados.length} * 100). | Valor actual: ${casosDentroSLA.length} en tiempo de ${casosAbiertosFiltrados.length} abiertos. | Solo cuenta casos ABIERTOS (no cerrados). | Numerador: abiertos con categoria real SIN vencer. | Denominador: total abiertos.`}>
+          <Tooltip id="sla-promedio" content={`FORMULA: slaPromedio = round(${casosEnTiempoGlobal.length} / ${totalCasosConSla} * 100). | Valor actual: ${casosEnTiempoGlobal.length} en tiempo de ${totalCasosConSla} totales. | Cuenta TODOS los casos con SLA real (abiertos + cerrados). | Numerador: casos sin vencer (abierto: !slaExpired; cerrado: !etapasVencidas). | Denominador: total casos con categoria real (no '1').`}>
            <div
              className="pt-2 px-2 pb-1 rounded border cursor-pointer transition-colors relative overflow-hidden h-full flex flex-col"
              style={{
@@ -885,7 +909,7 @@ const SupervisorPanel: React.FC = () => {
               <p className="text-[8px] text-center w-full opacity-70 m-0 leading-tight" style={{color: styles.text.tertiary}}>
                 {slaPromedio === null
                   ? 'Sin datos'
-                  : 'Casos con SLA global en tiempo / Casos totales'}
+                  : `${casosEnTiempoGlobal.length} / ${totalCasosConSla} Casos con SLA global en tiempo / Casos totales`}
               </p>
            </div>
          </Tooltip>
