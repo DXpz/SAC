@@ -81,10 +81,10 @@ const CasosVencidosCard: React.FC<Props> = ({
       <p className="text-2xl font-bold text-center w-full m-0 flex-1 flex items-center justify-center" style={{ color: colorSecondary }}>
         {count}
       </p>
-      <p className="text-[9px] text-center w-full opacity-70 m-0" style={{ color: count > 0 ? '#ef4444' : styles.text.tertiary }}>
+      <p className="text-[8px] text-center w-full opacity-70 m-0 leading-tight" style={{ color: count > 0 ? '#ef4444' : styles.text.tertiary }}>
         {totalAbiertos > 0
-          ? `${count} / ${totalAbiertos} casos`
-          : `Sin casos`}
+          ? 'Casos con SLA global vencidos / Casos totales'
+          : 'Sin casos'}
       </p>
     </div>
   );
