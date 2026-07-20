@@ -12,6 +12,7 @@ import { isClosedCase, getDiasRestantes, isSlaCritical, isSlaAtRisk, isSlaWithin
 import { sapService } from '../services/sapService';
 import { getUserCountry } from '../services/caseService';
 import { getStoredFilters, getDateFiltros, getPaisFromFilters } from '../services/filterService';
+import { getTotalSlaDias } from '../utils/slaUtils';
 import { Caso, CaseStatus, Agente, Cliente } from '../types';
 import { STATE_COLORS } from '../constants';
 import { AlertCircle, Clock, Users, ArrowUpRight, ChevronRight, Activity, Info, Filter, UserPlus, Bell, ArrowRightLeft, TrendingUp, TrendingDown, X, User, CheckCircle2, Eye, RefreshCw, Zap, FileText } from 'lucide-react';
@@ -355,18 +356,22 @@ const SupervisorPanel: React.FC = () => {
     });
   }, [casos]);
 
+  // Total global de SLA = suma de SLAs por etapa del workflow.
+  // Un caso se considera 'vencido global' si supera este total desde su creacion,
+  // o si tiene slaExpired, o si tiene etapasVencidas persistido.
+  const totalSlaDias = getTotalSlaDias();
+
   const casosVencidosTotal = useMemo(() => {
     return casos.filter(c => {
       // 1) Esta actualmente vencido
       if ((c as any).slaExpired === true) return true;
       // 2) Se vencio en alguna etapa (incluso si cambio de estado o se finalizo)
       if (Array.isArray((c as any).etapasVencidas) && (c as any).etapasVencidas.length > 0) return true;
-      // 3) Fallback: diasAbierto > slaDias (caso legacy sin etapasVencidas)
+      // 3) Fallback: diasAbierto > total SLA global (caso sin etapasVencidas)
       const status = c.status || '';
       if (['Cerrado', 'Resuelto', 'Finalizado', CaseStatus.RESUELTO, CaseStatus.CERRADO].includes(status)) return false;
-      const slaDias = (c as any).categoria?.slaDias || (c as any).categoria?.sla_dias || 5;
       const diasAbierto = (c as any).diasAbierto || 0;
-      return diasAbierto > slaDias;
+      return diasAbierto > totalSlaDias;
     }).length;
   }, [casos]);
 
@@ -784,10 +789,11 @@ const SupervisorPanel: React.FC = () => {
           </div>
         </Tooltip>
 
-         <Tooltip id="casos-vencidos-total" content="Casos cuyo tiempo total abierto supera el SLA de la categoría. Vista global, no por etapa.">
-          <div className="h-full">
-            <CasosVencidosCard
-              count={casosVencidosTotal}
+         <Tooltip id="casos-vencidos-total" content={`Casos cuyo tiempo total abierto supera el SLA global (suma de SLAs por etapa = ${totalSlaDias} dias). Vista global, no por etapa.`}>
+           <div className="h-full">
+             <CasosVencidosCard
+               count={casosVencidosTotal}
+               totalSlaDias={totalSlaDias}
               navigate={navigate}
             />
           </div>

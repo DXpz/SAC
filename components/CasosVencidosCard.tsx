@@ -10,6 +10,7 @@ interface Props {
   filterQuery?: string;
   delay?: string;
   tooltipId?: string;
+  totalSlaDias?: number;
 }
 
 const CasosVencidosCard: React.FC<Props> = ({
@@ -18,7 +19,8 @@ const CasosVencidosCard: React.FC<Props> = ({
   onCardClick,
   filterQuery = 'vencidos',
   delay = '0.2s',
-  tooltipId
+  tooltipId,
+  totalSlaDias
 }) => {
   const { theme } = useTheme();
 
@@ -78,7 +80,9 @@ const CasosVencidosCard: React.FC<Props> = ({
         {count}
       </p>
       <p className="text-[9px] text-center w-full opacity-70 m-0" style={{ color: count > 0 ? '#ef4444' : styles.text.tertiary }}>
-        {count > 0 ? 'SLA categoría excedido' : 'En tiempo'}
+        {count > 0
+          ? `Más de ${totalSlaDias ?? 6} días`
+          : `En tiempo (${totalSlaDias ?? 6}d)`}
       </p>
     </div>
   );

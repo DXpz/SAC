@@ -28,8 +28,31 @@ const FALLBACK_STAGE_SLA_DAYS: Record<string, number | null> = {
   'Resuelto': 1
 };
 
+// Total global de SLA del workflow = suma de los SLA por etapa
+// (excluyendo etapas nulas/heredadas y estados finales).
+// Usado por el card 'Casos Vencidos Global' para definir el plazo
+// maximo que un caso puede permanecer abierto sin considerarse vencido.
+// Ejemplo: Primer Contacto(1) + Diagnostico(1) + Ejecucion(2) +
+//          Control de Calidad(1) + Listo(1) = 6 dias habiles.
+const ESTADOS_EXCLUIDOS_DEL_TOTAL = ['Nueva solicitud', 'Nuevo', 'Nueva Solicitud', 'Finalizado', 'Cerrado', 'Resuelto', 'Listo - Pendiente de entrega cliente'];
+const TOTAL_SLA_DIAS_FALLBACK = Object.entries(FALLBACK_STAGE_SLA_DAYS)
+  .filter(([nombre, dias]) => !ESTADOS_EXCLUIDOS_DEL_TOTAL.includes(nombre) && dias !== null)
+  .reduce((sum, [, dias]) => sum + (dias as number), 0);
+
 // Mapa activo, puede ser reemplazado por setStageSlaMap con los datos del backend
 let activeStageSlaMap: Record<string, number | null> = FALLBACK_STAGE_SLA_DAYS;
+
+// Total de SLA global = suma de SLAs por etapa del workflow activo.
+// Si el backend envia el mapa via setStageSlaMap, se recalcula dinamicamente.
+// Default fallback = 6 dias (1+1+2+1+1).
+export const getTotalSlaDias = (): number => {
+  if (activeStageSlaMap === FALLBACK_STAGE_SLA_DAYS) {
+    return TOTAL_SLA_DIAS_FALLBACK;
+  }
+  return Object.entries(activeStageSlaMap)
+    .filter(([nombre, dias]) => !ESTADOS_EXCLUIDOS_DEL_TOTAL.includes(nombre) && dias !== null)
+    .reduce((sum, [, dias]) => sum + (dias as number), 0);
+};
 
 // Llamado desde los dashboards tras recibir dashboardMetrics del backend
 export const setStageSlaMap = (map: Record<string, number | null> | null | undefined) => {
