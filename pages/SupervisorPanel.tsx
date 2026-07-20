@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import StagePipeline from '../components/StagePipeline';
 import EtapasVencidasPipeline from '../components/EtapasVencidasPipeline';
 import CasosVencidosCard from '../components/CasosVencidosCard';
+import CasosCompletadosConSlaVencidoCard from '../components/CasosCompletadosConSlaVencidoCard';
 import MedicionSlaPorEtapaCard from '../components/MedicionSlaPorEtapaCard';
 import { setStageSlaMap } from '../utils/slaUtils';
 import { API_CONFIG } from '../config';
@@ -915,12 +916,18 @@ const SupervisorPanel: React.FC = () => {
           theme={theme}
         />
 
-        {/* Grid de 2 columnas: Etapas Vencidas + nueva card de SLA Completados con Vencido */}
+        {/* Grid de 2 columnas: Etapas Vencidas + Completados con SLA Vencido */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="h-full">
             <EtapasVencidasPipeline
               cases={casosAbiertosFiltrados}
               estados={estados}
+              navigate={navigate}
+            />
+          </div>
+          <div className="h-full">
+            <CasosCompletadosConSlaVencidoCard
+              cases={casosAbiertosFiltrados}
               navigate={navigate}
             />
           </div>
