@@ -81,8 +81,8 @@ const CasosVencidosCard: React.FC<Props> = ({
       </p>
       <p className="text-[9px] text-center w-full opacity-70 m-0" style={{ color: count > 0 ? '#ef4444' : styles.text.tertiary }}>
         {count > 0
-          ? `Más de ${totalSlaDias ?? 6} días`
-          : `En tiempo (${totalSlaDias ?? 6}d)`}
+          ? `Más de ${totalSlaDias ?? 6} días (SLA global)`
+          : `En tiempo (${totalSlaDias ?? 6}d global)`}
       </p>
     </div>
   );
