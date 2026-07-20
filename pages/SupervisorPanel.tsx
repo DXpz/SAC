@@ -198,7 +198,8 @@ const SupervisorPanel: React.FC = () => {
       const paisFiltro = supervisorCountry;
       const filtrosConPais = { ...dateFilters, pais: paisFiltro };
       const [casosData, criticalCasesData, metricsData, agentesData, clientesList, estadosList] = await Promise.all([
-        api.getCases(false, true, filtrosConPais),
+        // forceRefresh=true para evitar cache obsoleto que no incluye casos recien creados
+        api.getCases(true, true, filtrosConPais),
         api.getCriticalCases(filtrosConPais),
         api.getDashboardMetrics({ pais: paisFiltro || supervisorCountry || undefined, period: 'todos', agentId: agentFilter, ...dateFilters }),
         api.getAgentes(paisFiltro || supervisorCountry),
