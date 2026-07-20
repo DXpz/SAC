@@ -597,6 +597,7 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
       createdAt: createdAt,
       // Mantener tambien el campo fecha_creacion que usa el frontend
       fecha_creacion: caseData.fecha_creacion || createdAt,
+      fecha_actualizacion: caseData.fecha_actualizacion || caseData.fechaActualizacion || null,
       fechaCreacionFormateada: caseData.fechaCreacionFormateada || null,
       pais: caseData.pais || caseData.country || clienteMapped?.pais || '',
       slaDeadline: slaDeadlineFromWebhook || undefined, // Fecha final del SLA del webhook

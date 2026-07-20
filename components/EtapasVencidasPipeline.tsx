@@ -66,7 +66,7 @@ const EtapasVencidasPipeline: React.FC<Props> = ({
       if (!estado) return false;
       const norm = normalize(estado).replace(/\s+/g, '');
       if (norm === 'cerrado' || norm === 'resuelto' || norm === 'finalizado') return false;
-      const fechaRef = c.fecha_actualizacion || c.fechaCreacionFormateada || c.createdAt;
+      const fechaRef = c.fecha_actualizacion || c.createdAt || c.fechaCreacionFormateada;
       return isCurrentMonth(fechaRef);
     });
   }, [cases]);
