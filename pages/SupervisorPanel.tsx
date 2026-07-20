@@ -422,6 +422,42 @@ const SupervisorPanel: React.FC = () => {
     });
   }, [casos]);
 
+  // Cumplimiento SLA por etapa: cerrados y abiertos, contando por etapa
+  // - Abiertos: 1 en etapa actual
+  // - Cerrados con breach: 1 por cada etapa con breach (etapasVencidas)
+  // - Cerrados sin breach: 1 (en tiempo)
+  const casosEnTiempoPorEtapa = useMemo(() => {
+    const SIN_CAT = 1;
+    let total = 0;
+    let enTiempo = 0;
+    for (const c of casos || []) {
+      if (!c) continue;
+      if (!c.categoria_id || c.categoria_id === SIN_CAT) continue;
+
+      const status = c.status || c.estado || '';
+      const isClosed = ['Cerrado', 'Resuelto', 'Finalizado', 'cerrado', 'resuelto', 'finalizado'].includes(status);
+      const breach = (c as any).slaExpired === true
+        || (Array.isArray((c as any).etapasVencidas) && (c as any).etapasVencidas.length > 0);
+
+      if (!isClosed) {
+        // Abierto: cuenta 1 en etapa actual
+        total += 1;
+        if (!breach) enTiempo += 1;
+      } else if (Array.isArray((c as any).etapasVencidas) && (c as any).etapasVencidas.length > 0) {
+        // Cerrado con breach: 1 por cada etapa con breach
+        for (const _ of (c as any).etapasVencidas) {
+          total += 1;
+          // no en tiempo
+        }
+      } else {
+        // Cerrado sin breach: 1 (en tiempo)
+        total += 1;
+        enTiempo += 1;
+      }
+    }
+    return { enTiempo, total };
+  }, [casos]);
+
   const metricsSummary = dashboardMetrics?.summary || {};
   const metricsKpis = dashboardMetrics?.kpis || {};
   const metricsAgents = dashboardMetrics?.agents || {};
@@ -915,13 +951,13 @@ const SupervisorPanel: React.FC = () => {
            </div>
          </Tooltip>
 
-          <Tooltip id="sla-por-etapa" content={`% = (casos en tiempo por etapa) / (total por etapa) * 100. | Actual: ver card.`}>
-           <div className="h-full">
-             <MedicionSlaPorEtapaCard
-               cases={casos}
-               estados={estados}
-               navigate={navigate}
-             />
+          <Tooltip id="sla-por-etapa" content={`pct = round(${casosEnTiempoPorEtapa.enTiempo} / ${casosEnTiempoPorEtapa.total} * 100) = ${casosEnTiempoPorEtapa.total > 0 ? Math.round((casosEnTiempoPorEtapa.enTiempo / casosEnTiempoPorEtapa.total) * 100) : 'N/A'}%. | Cerrados y abiertos (cuenta por etapa).`}>
+            <div className="h-full">
+              <MedicionSlaPorEtapaCard
+                enTiempo={casosEnTiempoPorEtapa.enTiempo}
+                total={casosEnTiempoPorEtapa.total}
+                navigate={navigate}
+              />
           </div>
         </Tooltip>
 
