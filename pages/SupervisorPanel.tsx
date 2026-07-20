@@ -710,8 +710,8 @@ const SupervisorPanel: React.FC = () => {
       </div>
 
       {/* === Grid de 5 cards: 4 numéricos + SLA por Etapa === */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 items-stretch">
-        <Tooltip id="casos-abiertos" content="Total de casos activos en el sistema">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 items-stretch">
+         <Tooltip id="casos-abiertos" content="Total de casos activos en el sistema">
           <div 
             className="p-3 rounded-lg border cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
             style={{
@@ -750,16 +750,7 @@ const SupervisorPanel: React.FC = () => {
           </div>
         </Tooltip>
 
-        <Tooltip id="casos-vencidos-total" content="Casos cuyo tiempo total abierto supera el SLA de la categoría. Vista global, no por etapa.">
-          <div className="h-full">
-            <CasosVencidosCard
-              count={casosVencidosTotal}
-              navigate={navigate}
-            />
-          </div>
-        </Tooltip>
-
-        <Tooltip id="casos-totales" content="Total de casos en el sistema">
+         <Tooltip id="casos-totales" content="Total de casos en el sistema">
           <div 
             className="p-3 rounded-lg border cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
             style={{
@@ -798,7 +789,25 @@ const SupervisorPanel: React.FC = () => {
           </div>
         </Tooltip>
 
-        <Tooltip id="casos-criticos" content="Casos que requieren atención inmediata">
+         <Tooltip id="casos-vencidos-total" content="Casos cuyo tiempo total abierto supera el SLA de la categoría. Vista global, no por etapa.">
+          <div className="h-full">
+            <CasosVencidosCard
+              count={casosVencidosTotal}
+              navigate={navigate}
+            />
+          </div>
+        </Tooltip>
+
+         <Tooltip id="completados-sla-vencido" content="Casos finalizados que en alguna etapa del workflow excedieron el SLA">
+          <div className="h-full">
+            <CasosCompletadosConSlaVencidoCard
+              cases={casosAbiertosFiltrados}
+              navigate={navigate}
+            />
+          </div>
+        </Tooltip>
+
+         <Tooltip id="casos-criticos" content="Casos que requieren atención inmediata">
           <div 
             className="p-3 rounded-lg border cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
             style={{
@@ -837,7 +846,7 @@ const SupervisorPanel: React.FC = () => {
           </div>
         </Tooltip>
 
-        <Tooltip id="sla-promedio" content="Porcentaje de casos cumpliendo SLA">
+         <Tooltip id="sla-promedio" content="Porcentaje de casos cumpliendo SLA">
           <div 
             className="p-3 rounded-lg border cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
             style={{
@@ -904,16 +913,7 @@ const SupervisorPanel: React.FC = () => {
           </div>
         </Tooltip>
 
-        <Tooltip id="completados-sla-vencido" content="Casos finalizados que en alguna etapa del workflow excedieron el SLA">
-          <div className="h-full">
-            <CasosCompletadosConSlaVencidoCard
-              cases={casosAbiertosFiltrados}
-              navigate={navigate}
-            />
-          </div>
-        </Tooltip>
-      </div>
-
+       </div>
       {/* === Sección de Gráficas ===
           Orden: Pipeline por Etapa (distribución casos) -> Etapas Vencidas === */}
       <div className="space-y-4">
