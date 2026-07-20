@@ -97,7 +97,7 @@ const MedicionSlaPorEtapaCard: React.FC<Props> = ({
 
   return (
     <div
-      title={`FORMULA: pct = round(${enTiempo} / ${total} * 100). | Valor actual: ${enTiempo} en tiempo de ${total} totales. | ${total} = (abiertos sin cerrar) + (cerrados sin breach) + (cerrados con breach, contando 1 por cada etapa con breach). | Incluye TANTO abiertos como cerrados.`}
+      title={`pct = round(${enTiempo} / ${total} * 100) = ${pct ?? 'N/A'}%`}
       className="pt-2 px-2 pb-1 rounded border cursor-pointer h-full flex flex-col items-center"
       style={{
         ...styles.card,

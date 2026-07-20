@@ -827,7 +827,7 @@ const SupervisorPanel: React.FC = () => {
           </div>
         </Tooltip>
 
-         <Tooltip id="casos-vencidos-total" content={`FORMULA GLOBAL: casosVencidosTotal = casos con (slaExpired=true OR etapasVencidas.length>0 OR diasAbierto>${totalSlaDias}) - cerrados que terminaron en <=${totalSlaDias} dias. | Valor actual: ${casosVencidosTotal} vencido(s) de ${casosAbiertosFiltrados.length} abierto(s). | Total SLA global: ${totalSlaDias} dias = suma de SLAs por etapa.`}>
+         <Tooltip id="casos-vencidos-total" content={`casosVencidosTotal = (slaExpired=true OR etapasVencidas.length>0 OR diasAbierto>${totalSlaDias}) - cerrados<=${totalSlaDias}d. | Actual: ${casosVencidosTotal}`}>
             <div className="h-full">
               <CasosVencidosCard
                 count={casosVencidosTotal}
@@ -838,7 +838,7 @@ const SupervisorPanel: React.FC = () => {
            </div>
          </Tooltip>
 
-         <Tooltip id="completados-sla-vencido" content={`FORMULA POR ETAPA: cuenta 1 por cada (caso abierto en etapa actual) + (cerrado con etapasVencidas: 1 por cada etapa con breach) + (cerrado sin breach: 1 en tiempo). | Valor actual: ver card. | Incluye TANTO abiertos como cerrados (a diferencia del Global que solo cuenta abiertos).`}>
+         <Tooltip id="completados-sla-vencido" content={`por etapa: abiertos en etapa + cerrados con breach (1/etapa) + cerrados sin breach. | Actual: ver card.`}>
            <div className="h-full">
              <CasosCompletadosConSlaVencidoCard
                cases={casos}
@@ -878,7 +878,7 @@ const SupervisorPanel: React.FC = () => {
           </div>
         </Tooltip>
 
-          <Tooltip id="sla-promedio" content={`FORMULA: slaPromedio = round(${casosEnTiempoGlobal.length} / ${totalCasosConSla} * 100). | Valor actual: ${casosEnTiempoGlobal.length} en tiempo de ${totalCasosConSla} totales. | Cuenta TODOS los casos con SLA real (abiertos + cerrados). | Numerador: casos sin vencer (abierto: !slaExpired; cerrado: !etapasVencidas). | Denominador: total casos con categoria real (no '1').`}>
+          <Tooltip id="sla-promedio" content={`slaPromedio = round(${casosEnTiempoGlobal.length} / ${totalCasosConSla} * 100). | Actual: ${casosEnTiempoGlobal.length}/${totalCasosConSla} = ${slaPromedio ?? 'N/A'}%`}>
            <div
              className="pt-2 px-2 pb-1 rounded border cursor-pointer transition-colors relative overflow-hidden h-full flex flex-col"
              style={{
@@ -914,7 +914,7 @@ const SupervisorPanel: React.FC = () => {
            </div>
          </Tooltip>
 
-          <Tooltip id="sla-por-etapa" content={`FORMULA: % = (casos en tiempo por etapa) / (total casos por etapa) * 100. Cuenta abiertos en etapa actual + cerrados con etapasVencidas (1 por etapa breach) + cerrados sin breach (1 en tiempo). | Valor actual: ver card.`}>
+          <Tooltip id="sla-por-etapa" content={`% = (casos en tiempo por etapa) / (total por etapa) * 100. | Actual: ver card.`}>
            <div className="h-full">
              <MedicionSlaPorEtapaCard
                cases={casos}
