@@ -363,13 +363,27 @@ const SupervisorPanel: React.FC = () => {
 
   const casosVencidosTotal = useMemo(() => {
     return casos.filter(c => {
-      // 1) Esta actualmente vencido
-      if ((c as any).slaExpired === true) return true;
-      // 2) Se vencio en alguna etapa (incluso si cambio de estado o se finalizo)
-      if (Array.isArray((c as any).etapasVencidas) && (c as any).etapasVencidas.length > 0) return true;
-      // 3) Fallback: diasAbierto > total SLA global (caso sin etapasVencidas)
       const status = c.status || '';
-      if (['Cerrado', 'Resuelto', 'Finalizado', CaseStatus.RESUELTO, CaseStatus.CERRADO].includes(status)) return false;
+      const isClosed = ['Cerrado', 'Resuelto', 'Finalizado', CaseStatus.RESUELTO, CaseStatus.CERRADO].includes(status);
+
+      // Si esta cerrado y SÍ se completo dentro de los 6 dias, NO cuenta
+      // como vencido global (aunque tenga breach en alguna etapa).
+      if (isClosed) {
+        const fechaCierre = new Date((c as any).fecha_fin_resolucion || (c as any).fecha_actualizacion || (c as any).updatedAt);
+        const fechaCreacion = new Date((c as any).fecha_creacion || (c as any).createdAt);
+        if (fechaCierre >= fechaCreacion) {
+          const diasAbierto = Math.floor((fechaCierre.getTime() - fechaCreacion.getTime()) / (1000 * 60 * 60 * 24));
+          // Si se cerro en menos de 6 dias calendario, NO es vencido global
+          if (diasAbierto <= 6) return false;
+        }
+      }
+
+      // 1) Esta actualmente vencido (caso abierto)
+      if ((c as any).slaExpired === true) return true;
+      // 2) Cerrado pero tardo mas de 6 dias (caso legacy sin slaExpired)
+      if (Array.isArray((c as any).etapasVencidas) && (c as any).etapasVencidas.length > 0) return true;
+      // 3) Fallback: diasAbierto > total SLA global
+      if (isClosed) return false;
       const diasAbierto = (c as any).diasAbierto || 0;
       return diasAbierto > totalSlaDias;
     }).length;

@@ -22,7 +22,11 @@ const STAGE_COLORS = [
 ];
 
 const normalize = (s: string) =>
-  String(s || '').toLowerCase().trim().replace(/\s+/g, ' ');
+  String(s || '')
+    .toLowerCase()
+    .replace(/[áéíóú]/g, m => ({á:'a',é:'e',í:'i',ó:'o',ú:'u'}[m] || m))
+    .replace(/\s*-\s*.*$/, '') // dedup "Listo - pendiente" con "Listo"
+    .trim();
 
 const EtapasVencidasPipeline: React.FC<Props> = ({
   cases,
