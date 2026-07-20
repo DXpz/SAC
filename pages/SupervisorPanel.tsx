@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import StagePipeline from '../components/StagePipeline';
-import EtapasVencidasCard from '../components/EtapasVencidasCard';
+import EtapasVencidasPipeline from '../components/EtapasVencidasPipeline';
 import CasosVencidosCard from '../components/CasosVencidosCard';
 import MedicionSlaPorEtapaCard from '../components/MedicionSlaPorEtapaCard';
 import { setStageSlaMap } from '../utils/slaUtils';
@@ -915,7 +915,7 @@ const SupervisorPanel: React.FC = () => {
           ya está en el grid de cards arriba) === */}
       <div className="grid grid-cols-1 gap-4">
         <div className="h-full">
-          <EtapasVencidasCard
+          <EtapasVencidasPipeline
             cases={casosAbiertosFiltrados}
             estados={estados}
             navigate={navigate}
