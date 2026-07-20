@@ -887,6 +887,9 @@ const SupervisorPanel: React.FC = () => {
                   ? 'Sin datos'
                   : 'Casos con SLA global en tiempo / Casos totales'}
               </p>
+              <p className="text-[8px] text-center w-full opacity-70 m-0 leading-tight" style={{color: styles.text.tertiary}}>
+                Fecha de entrega: Lunes 20-07
+              </p>
            </div>
          </Tooltip>
 
