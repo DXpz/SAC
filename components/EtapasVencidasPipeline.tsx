@@ -202,13 +202,13 @@ const EtapasVencidasPipeline: React.FC<Props> = ({
                 <div className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2 w-24 text-center">
                   <p
                     className="text-[10px] font-bold leading-tight uppercase tracking-wide mb-0.5"
-                    style={{ color: hasData ? textPrimary : textTertiary }}
+                    style={{ color: hasData ? textPrimary : (isDark ? '#cbd5e1' : '#475569') }}
                   >
                     {estado.nombre}
                   </p>
                   <p
                     className="text-[9px] font-medium"
-                    style={{ color: slaDays == null ? textTertiary : '#ef4444' }}
+                    style={{ color: slaDays == null ? (isDark ? '#94a3b8' : '#64748b') : '#ef4444' }}
                   >
                     SLA {slaDays == null ? 'N/A' : `${slaDays}d`}
                   </p>
