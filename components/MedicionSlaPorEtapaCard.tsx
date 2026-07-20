@@ -158,36 +158,34 @@ const MedicionSlaPorEtapaCard: React.FC<Props> = ({
 
       {expanded && rows.length > 0 && (
         <div className="space-y-1.5 mt-2">
-          {rows.map((r) => {
+          {rows.map((r, idx) => {
             const color = getColorByPct(r.pct);
             return (
-              <div key={r.name} className="flex items-center gap-2">
-                <span
-                  className="text-[11px] flex-1 truncate"
-                  style={{ color: styles.text.primary }}
-                  title={`${r.name} (${r.enTiempo}/${r.total} en tiempo)`}
-                >
-                  {r.name}
-                </span>
+              <div key={`${idx}-${r.name}`} className="space-y-0.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className="text-[11px] font-medium truncate"
+                    style={{ color: styles.text.primary }}
+                    title={`${r.name} (${r.enTiempo}/${r.total} en tiempo)`}
+                  >
+                    {r.name}
+                  </span>
+                  <span
+                    className="text-[11px] font-bold tabular-nums flex-shrink-0"
+                    style={{ color }}
+                  >
+                    {r.pct}%
+                  </span>
+                </div>
                 <div
-                  className="h-1.5 rounded-full overflow-hidden"
-                  style={{
-                    backgroundColor: 'rgba(71, 85, 105, 0.2)',
-                    width: '70px',
-                    flexShrink: 0
-                  }}
+                  className="h-1 rounded-full overflow-hidden"
+                  style={{ backgroundColor: 'rgba(71, 85, 105, 0.2)' }}
                 >
                   <div
                     className="h-full rounded-full"
                     style={{ width: `${r.pct}%`, backgroundColor: color }}
                   />
                 </div>
-                <span
-                  className="text-[11px] font-bold tabular-nums w-9 text-right"
-                  style={{ color }}
-                >
-                  {r.pct}%
-                </span>
               </div>
             );
           })}

@@ -148,35 +148,37 @@ const EtapasVencidasCard: React.FC<Props> = ({
 
       {breakdown.length > 0 ? (
         <div className="mt-3 pt-3 border-t space-y-1.5" style={{ borderColor: 'rgba(71, 85, 105, 0.2)' }}>
-          {breakdown.map((b) => {
+          {breakdown.map((b, idx) => {
             const pct = total > 0 ? Math.round((b.value / total) * 100) : 0;
             const hasVencidos = b.value > 0;
             return (
-              <div key={b.name} className="flex items-center gap-1.5">
-                <span
-                  className="text-[10px] flex-1 whitespace-nowrap overflow-hidden text-ellipsis"
-                  style={{ color: hasVencidos ? styles.text.primary : styles.text.tertiary, minWidth: 0 }}
-                  title={b.name}
-                >
-                  {b.name}
-                </span>
-                <div
-                  className="h-1.5 rounded-full overflow-hidden"
-                  style={{ backgroundColor: 'rgba(71, 85, 105, 0.2)', width: '50px', flexShrink: 0 }}
-                >
-                  {hasVencidos && (
+              <div key={`${idx}-${b.name}`} className="space-y-0.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className="text-[11px] font-medium truncate"
+                    style={{ color: hasVencidos ? styles.text.primary : styles.text.tertiary }}
+                    title={b.name}
+                  >
+                    {b.name}
+                  </span>
+                  <span
+                    className="text-[11px] font-bold tabular-nums flex-shrink-0"
+                    style={{ color: hasVencidos ? '#ef4444' : styles.text.tertiary }}
+                  >
+                    {b.value}
+                  </span>
+                </div>
+                {hasVencidos && (
+                  <div
+                    className="h-1 rounded-full overflow-hidden"
+                    style={{ backgroundColor: 'rgba(71, 85, 105, 0.2)' }}
+                  >
                     <div
                       className="h-full rounded-full"
                       style={{ width: `${pct}%`, backgroundColor: '#ef4444' }}
                     />
-                  )}
-                </div>
-                <span
-                  className="text-[10px] font-bold tabular-nums w-5 text-right"
-                  style={{ color: hasVencidos ? '#ef4444' : styles.text.tertiary }}
-                >
-                  {b.value}
-                </span>
+                  </div>
+                )}
               </div>
             );
           })}
