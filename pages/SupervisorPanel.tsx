@@ -890,13 +890,13 @@ const SupervisorPanel: React.FC = () => {
            </div>
          </Tooltip>
 
-         <Tooltip id="sla-por-etapa" content="Cumplimiento de SLA promedio por cada etapa del workflow">
-          <div className="h-full">
-            <MedicionSlaPorEtapaCard
-              cases={casosAbiertosFiltrados}
-              estados={estados}
-              navigate={navigate}
-            />
+          <Tooltip id="sla-por-etapa" content="Cumplimiento de SLA por cada etapa del workflow (acumulado: abiertos + cerrados con breach por etapa)">
+           <div className="h-full">
+             <MedicionSlaPorEtapaCard
+               cases={casos}
+               estados={estados}
+               navigate={navigate}
+             />
           </div>
         </Tooltip>
 
