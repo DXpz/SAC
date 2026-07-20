@@ -881,9 +881,11 @@ const SupervisorPanel: React.FC = () => {
           theme={theme}
         />
 
-        {/* Etapas Vencidas del mes actual */}
+        {/* Etapas Vencidas del mes actual: usa TODOS los casos (incluyendo cerrados)
+            porque el pipeline agrupa por etapasVencidas persistido, que puede
+            incluir etapas de casos ya finalizados. */}
         <EtapasVencidasPipeline
-          cases={casosAbiertosFiltrados}
+          cases={casos}
           estados={estados}
           navigate={navigate}
         />
