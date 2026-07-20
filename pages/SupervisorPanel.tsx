@@ -793,14 +793,14 @@ const SupervisorPanel: React.FC = () => {
           </div>
         </Tooltip>
 
-         <Tooltip id="completados-sla-vencido" content="Casos finalizados que en alguna etapa del workflow excedieron el SLA">
-          <div className="h-full">
-            <CasosCompletadosConSlaVencidoCard
-              cases={casosAbiertosFiltrados}
-              navigate={navigate}
-            />
-          </div>
-        </Tooltip>
+          <Tooltip id="completados-sla-vencido" content="Casos con una o mas etapas vencidas (actualmente vencidos + cerrados con breach)">
+           <div className="h-full">
+             <CasosCompletadosConSlaVencidoCard
+               cases={casos}
+               navigate={navigate}
+             />
+           </div>
+         </Tooltip>
 
          <Tooltip id="casos-criticos" content="Casos que requieren atención inmediata">
           <div 
