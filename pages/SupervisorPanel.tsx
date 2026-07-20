@@ -710,7 +710,7 @@ const SupervisorPanel: React.FC = () => {
       </div>
 
       {/* === Grid de 5 cards: 4 numéricos + SLA por Etapa === */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 items-stretch">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-stretch">
          <Tooltip id="casos-abiertos" content="Total de casos activos en el sistema">
           <div 
             className="p-2.5 rounded-md border cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
