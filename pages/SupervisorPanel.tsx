@@ -769,23 +769,15 @@ const SupervisorPanel: React.FC = () => {
               e.currentTarget.style.boxShadow = '';
             }}
           >
-            <div className="absolute top-1.5 right-1.5">
-              <Activity className="w-3.5 h-3.5" style={{color: '#3b82f6'}} />
-            </div>
-            <div className="flex items-center justify-center text-center gap-1">
-              <div className="flex-1">
-                <p className="text-xl font-bold leading-tight" style={{color: '#3b82f6'}}>
-                  {casosTotalesCount}
-                </p>
-                <div className="flex items-center justify-center gap-0.5 flex-wrap">
-                  <Activity className="w-3 h-3 flex-shrink-0" style={{color: '#3b82f6'}} />
-                  <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Casos Totales</p>
-                </div>
-                <p className="text-[9px] mt-0.5" style={{color: styles.text.tertiary}}>
-                  Todos los casos
-                </p>
-              </div>
-            </div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-center w-full" style={{color: styles.text.secondary}}>
+              Casos Totales
+            </p>
+            <p className="text-2xl font-bold text-center flex-1 flex items-center" style={{color: '#3b82f6'}}>
+              {casosTotalesCount}
+            </p>
+            <p className="text-[9px] text-center w-full opacity-70" style={{color: styles.text.tertiary}}>
+              Todos los casos
+            </p>
           </div>
         </Tooltip>
 
@@ -826,23 +818,15 @@ const SupervisorPanel: React.FC = () => {
               e.currentTarget.style.boxShadow = '';
             }}
           >
-            <div className="absolute top-1.5 right-1.5">
-              <AlertCircle className="w-3.5 h-3.5" style={{color: casosCriticos.length > 0 ? '#f87171' : styles.text.tertiary}} />
-            </div>
-            <div className="flex items-center justify-center text-center gap-1">
-              <div className="flex-1">
-                <p className="text-xl font-bold leading-tight" style={{color: casosCriticosCount > 0 ? '#f87171' : styles.text.secondary}}>
-                  {casosCriticosCount}
-                </p>
-                <div className="flex items-center justify-center gap-0.5 flex-wrap">
-                  <AlertCircle className="w-3 h-3 flex-shrink-0" style={{color: casosCriticosCount > 0 ? '#f87171' : styles.text.secondary}} />
-                  <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Casos Críticos</p>
-                </div>
-                <p className="text-[9px] mt-0.5" style={{color: casosCriticosCount > 0 ? '#f87171' : styles.text.tertiary}}>
-                  {casosCriticosCount > 0 ? 'Requiere acción' : 'Bajo control'}
-                </p>
-              </div>
-            </div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-center w-full" style={{color: styles.text.secondary}}>
+              Casos Críticos
+            </p>
+            <p className="text-2xl font-bold text-center flex-1 flex items-center" style={{color: casosCriticosCount > 0 ? '#f87171' : styles.text.secondary}}>
+              {casosCriticosCount}
+            </p>
+            <p className="text-[9px] text-center w-full opacity-70" style={{color: casosCriticosCount > 0 ? '#f87171' : styles.text.tertiary}}>
+              {casosCriticosCount > 0 ? 'Requiere acción' : 'Bajo control'}
+            </p>
           </div>
         </Tooltip>
 
@@ -865,41 +849,23 @@ const SupervisorPanel: React.FC = () => {
               e.currentTarget.style.boxShadow = '';
             }}
           >
-            <div className="absolute top-1.5 right-1.5">
-              <Clock className="w-3.5 h-3.5" style={{
-                color: slaPromedio === null ? styles.text.tertiary :
-                       slaPromedio >= 90 ? '#22c55e' : 
-                       slaPromedio >= 70 ? '#fbbf24' : 
-                       '#f87171'
-              }} />
-            </div>
-            <div className="flex items-center justify-center text-center gap-1">
-              <div className="flex-1">
-                <p className="text-xl font-bold leading-tight" style={{
-                  color: slaPromedio === null ? styles.text.tertiary :
-                         slaPromedio >= 90 ? '#22c55e' : 
-                         slaPromedio >= 70 ? '#fbbf24' : 
-                         '#f87171'
-                }}>
-                  {slaPromedio === null ? 'N/A' : `${slaPromedio}%`}
-                </p>
-                <div className="flex items-center justify-center gap-0.5 flex-wrap">
-                  <Clock className="w-3 h-3 flex-shrink-0" style={{
-                    color: slaPromedio === null ? styles.text.secondary :
-                           slaPromedio >= 90 ? '#22c55e' : 
-                           slaPromedio >= 70 ? '#fbbf24' : 
-                           styles.text.secondary
-                  }} />
-                  <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>SLA Promedio</p>
-                </div>
-                <p className="text-[9px] mt-0.5" style={{color: styles.text.tertiary}}>
-                  {slaPromedio === null ? 'Sin datos' : 
-                   slaPromedio >= 90 ? 'Normal' : 
-                   slaPromedio >= 70 ? 'En riesgo' : 
-                   'Bajo el objetivo'}
-                </p>
-              </div>
-            </div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-center w-full" style={{color: styles.text.secondary}}>
+              SLA Promedio
+            </p>
+            <p className="text-2xl font-bold text-center flex-1 flex items-center" style={{
+              color: slaPromedio === null ? styles.text.tertiary :
+                     slaPromedio >= 90 ? '#22c55e' :
+                     slaPromedio >= 70 ? '#fbbf24' :
+                     '#f87171'
+            }}>
+              {slaPromedio === null ? 'N/A' : `${slaPromedio}%`}
+            </p>
+            <p className="text-[9px] text-center w-full opacity-70" style={{color: styles.text.tertiary}}>
+              {slaPromedio === null ? 'Sin datos' :
+               slaPromedio >= 90 ? 'Normal' :
+               slaPromedio >= 70 ? 'En riesgo' :
+               'Bajo el objetivo'}
+            </p>
           </div>
         </Tooltip>
 
