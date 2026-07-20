@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { TrendingDown } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { api } from '../services/api';
-import { getStageSlaDays } from '../utils/slaUtils';
+import { getStageSlaDays, isClosedCase } from '../utils/slaUtils';
 
 interface Props {
   cases: any[];
@@ -128,7 +128,7 @@ const EtapasVencidasPipeline: React.FC<Props> = ({
             const count = counts[key] || 0;
             const hasData = count > 0;
             const colorSet = STAGE_COLORS[idx % STAGE_COLORS.length];
-            const slaDays = getStageSlaDays(estado.nombre);
+            const slaDays = isClosedCase({ status: estado.nombre }) ? null : getStageSlaDays(estado.nombre);
             const heightPct = hasData ? Math.max(12, (count / maxCount) * 100) : 0;
 
             return (
@@ -169,7 +169,7 @@ const EtapasVencidasPipeline: React.FC<Props> = ({
                       backgroundColor: '#ef4444',
                       boxShadow: '0 -2px 8px rgba(239, 68, 68, 0.4)'
                     }}
-                    title={`${estado.nombre}: ${count} vencido${count !== 1 ? 's' : ''} · SLA ${slaDays ?? 'N/A'}`}
+                    title={`${estado.nombre}: ${count} vencido${count !== 1 ? 's' : ''}${slaDays != null ? ` · SLA ${slaDays}d` : ''}`}
                   />
                 ) : (
                   <div className="w-full h-1 opacity-30" style={{ backgroundColor: axisColor }} />
@@ -177,17 +177,19 @@ const EtapasVencidasPipeline: React.FC<Props> = ({
 
                 <div className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2 w-24 text-center">
                   <p
-                    className="text-[10px] font-bold leading-tight uppercase tracking-wide mb-0.5"
+                    className={`text-[10px] font-bold leading-tight uppercase tracking-wide ${slaDays == null ? '' : 'mb-0.5'}`}
                     style={{ color: hasData ? textPrimary : (isDark ? '#cbd5e1' : '#475569') }}
                   >
                     {estado.nombre}
                   </p>
-                  <p
-                    className="text-[9px] font-medium"
-                    style={{ color: slaDays == null ? (isDark ? '#94a3b8' : '#64748b') : '#ef4444' }}
-                  >
-                    SLA {slaDays == null ? 'N/A' : `${slaDays}d`}
-                  </p>
+                  {slaDays != null && (
+                    <p
+                      className="text-[9px] font-medium"
+                      style={{ color: '#ef4444' }}
+                    >
+                      SLA {slaDays}d
+                    </p>
+                  )}
                 </div>
               </div>
             );

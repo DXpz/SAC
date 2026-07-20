@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { Case } from '../types';
-import { getStageSlaDays } from '../utils/slaUtils';
+import { getStageSlaDays, isClosedCase } from '../utils/slaUtils';
 
 interface Estado {
   id: string;
@@ -137,7 +137,7 @@ export const StagePipeline: React.FC<StagePipelineProps> = ({
             const count = counts[key] || 0;
             const hasData = count > 0;
             const colorSet = STAGE_COLORS[idx % STAGE_COLORS.length];
-            const slaDays = getStageSlaDays(estado.nombre);
+            const slaDays = isClosedCase({ status: estado.nombre }) ? null : getStageSlaDays(estado.nombre);
             // Altura proporcional: minimo 8% si tiene casos, para que sea visible
             const heightPct = hasData ? Math.max(12, (count / maxCount) * 100) : 0;
 
@@ -194,7 +194,7 @@ export const StagePipeline: React.FC<StagePipelineProps> = ({
                       backgroundColor: colorSet.bar,
                       boxShadow: `0 -2px 8px ${colorSet.bar}40`
                     }}
-                    title={`${estado.nombre}: ${count} casos · SLA ${slaDays ?? 'N/A'}`}
+                    title={`${estado.nombre}: ${count} caso${count === 1 ? '' : 's'}${slaDays != null ? ` · SLA ${slaDays}d` : ''}`}
                   />
                 ) : (
                   <div className="w-full h-1 opacity-30" style={{ backgroundColor: axisColor }} />
@@ -205,17 +205,19 @@ export const StagePipeline: React.FC<StagePipelineProps> = ({
                   className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2 w-24 text-center"
                 >
                   <p
-                    className="text-[10px] font-bold leading-tight uppercase tracking-wide mb-0.5"
+                    className={`text-[10px] font-bold leading-tight uppercase tracking-wide ${slaDays == null ? '' : 'mb-0.5'}`}
                     style={{ color: hasData ? textPrimary : textTertiary }}
                   >
                     {estado.nombre}
                   </p>
-                  <p
-                    className="text-[9px] font-medium"
-                    style={{ color: slaDays == null ? textTertiary : colorSet.bar }}
-                  >
-                    SLA {slaDays == null ? 'N/A' : `${slaDays}d`}
-                  </p>
+                  {slaDays != null && (
+                    <p
+                      className="text-[9px] font-medium"
+                      style={{ color: colorSet.bar }}
+                    >
+                      SLA {slaDays}d
+                    </p>
+                  )}
                 </div>
               </div>
             );
