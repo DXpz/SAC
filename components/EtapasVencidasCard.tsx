@@ -62,13 +62,14 @@ const EtapasVencidasCard: React.FC<Props> = ({
       : ['Nueva Solicitud', 'Primer Contacto', 'Diagnóstico', 'Ejecución', 'Control de Calidad', 'Listo - pendiente entrega cliente', 'Finalizado'];
 
     const breakdownList = order
-      .map(name => ({ name, value: map[name] || 0 }))
-      .filter(b => b.value > 0)
-      .concat(
-        Object.keys(map)
-          .filter(k => !order.includes(k))
-          .map(k => ({ name: k, value: map[k] }))
-      );
+      .map(name => ({ name, value: map[name] || 0 }));
+
+    // Agregar estados que esten en map pero no en order (al final)
+    Object.keys(map).forEach(k => {
+      if (!order.includes(k)) {
+        breakdownList.push({ name: k, value: map[k] });
+      }
+    });
 
     return { total: filtered.length, breakdown: breakdownList };
   }, [cases, estados]);
@@ -149,21 +150,27 @@ const EtapasVencidasCard: React.FC<Props> = ({
         <div className="mt-3 pt-3 border-t space-y-1.5" style={{ borderColor: 'rgba(71, 85, 105, 0.2)' }}>
           {breakdown.map((b) => {
             const pct = total > 0 ? Math.round((b.value / total) * 100) : 0;
+            const hasVencidos = b.value > 0;
             return (
               <div key={b.name} className="flex items-center gap-2">
-                <span className="text-[11px] flex-1 truncate" style={{ color: styles.text.primary }} title={b.name}>
+                <span className="text-[11px] flex-1 truncate" style={{ color: hasVencidos ? styles.text.primary : styles.text.tertiary }} title={b.name}>
                   {b.name}
                 </span>
                 <div
                   className="h-1.5 rounded-full overflow-hidden"
                   style={{ backgroundColor: 'rgba(71, 85, 105, 0.2)', width: '70px', flexShrink: 0 }}
                 >
-                  <div
-                    className="h-full rounded-full"
-                    style={{ width: `${pct}%`, backgroundColor: '#ef4444' }}
-                  />
+                  {hasVencidos && (
+                    <div
+                      className="h-full rounded-full"
+                      style={{ width: `${pct}%`, backgroundColor: '#ef4444' }}
+                    />
+                  )}
                 </div>
-                <span className="text-[11px] font-bold tabular-nums w-6 text-right" style={{ color: '#ef4444' }}>
+                <span
+                  className="text-[11px] font-bold tabular-nums w-6 text-right"
+                  style={{ color: hasVencidos ? '#ef4444' : styles.text.tertiary }}
+                >
                   {b.value}
                 </span>
               </div>
@@ -172,7 +179,7 @@ const EtapasVencidasCard: React.FC<Props> = ({
         </div>
       ) : (
         <p className="text-[11px] italic mt-3 pt-3 border-t" style={{ borderColor: 'rgba(71, 85, 105, 0.2)', color: styles.text.tertiary }}>
-          Sin etapas vencidas en {monthLabel}
+          Sin etapas configuradas
         </p>
       )}
     </div>
