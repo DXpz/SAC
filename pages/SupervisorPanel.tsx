@@ -911,17 +911,11 @@ const SupervisorPanel: React.FC = () => {
         </Tooltip>
       </div>
 
-      {/* === Sección de Gráficas === Cards primero, gráficas después === */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* === Sección de Gráficas === Etapas Vencidas del mes (MedicionSlaPorEtapa
+          ya está en el grid de cards arriba) === */}
+      <div className="grid grid-cols-1 gap-4">
         <div className="h-full">
           <EtapasVencidasCard
-            cases={casosAbiertosFiltrados}
-            estados={estados}
-            navigate={navigate}
-          />
-        </div>
-        <div className="h-full">
-          <MedicionSlaPorEtapaCard
             cases={casosAbiertosFiltrados}
             estados={estados}
             navigate={navigate}
