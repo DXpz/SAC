@@ -96,30 +96,6 @@ const EtapasVencidasPipeline: React.FC<Props> = ({
     navigate(`${path}?filter=etapas-vencidas&etapa=${encodeURIComponent(estadoNombre)}`);
   };
 
-  if (totalCount === 0) {
-    return (
-      <div
-        className="rounded-2xl border p-5 shadow-sm"
-        style={{ backgroundColor: cardBg, borderColor: cardBorder }}
-      >
-        <div className="flex items-center justify-between mb-2">
-          <div>
-            <h2 className="text-lg font-bold flex items-center gap-2" style={{ color: textPrimary }}>
-              <TrendingDown className="w-5 h-5" style={{ color: '#ef4444' }} />
-              Etapas Vencidas
-            </h2>
-            <p className="text-xs mt-0.5" style={{ color: textSecondary }}>
-              Distribución de casos vencidos en cada etapa ({monthLabel})
-            </p>
-          </div>
-        </div>
-        <p className="text-sm text-center py-8" style={{ color: textTertiary }}>
-          No hay casos vencidos este mes
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div
       className="rounded-2xl border p-5 shadow-sm"
