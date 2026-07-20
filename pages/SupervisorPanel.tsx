@@ -822,44 +822,41 @@ const SupervisorPanel: React.FC = () => {
           </div>
         </Tooltip>
 
-         <Tooltip id="sla-promedio" content="Porcentaje de casos cumpliendo SLA">
-          <div 
-            className="pt-2 px-2 pb-1 rounded border cursor-pointer transition-colors relative overflow-hidden h-full flex flex-col"
-            style={{
-              ...styles.card,
-              borderColor: 'rgba(71, 85, 105, 0.3)',
-              backgroundColor: styles.card.backgroundColor
-            }}
-            onMouseEnter={(e) => {
-              handleTooltipEnter('sla-promedio');
-              e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
-            }}
-            onMouseLeave={(e) => {
-              handleTooltipLeave();
-              e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.3)';
-              e.currentTarget.style.boxShadow = '';
-            }}
-          >
-            <p className="text-[10px] font-bold uppercase tracking-wide text-center w-full m-0" style={{color: styles.text.secondary}}>
-              SLA Promedio
-            </p>
-            <p className="text-2xl font-bold text-center w-full m-0 flex-1 flex items-center justify-center" style={{
-              color: slaPromedio === null ? styles.text.tertiary :
-                     slaPromedio >= 90 ? '#22c55e' :
-                     slaPromedio >= 70 ? '#fbbf24' :
-                     '#f87171'
-            }}>
-              {slaPromedio === null ? 'N/A' : `${slaPromedio}%`}
-            </p>
-            <p className="text-[9px] text-center w-full opacity-70 m-0" style={{color: styles.text.tertiary}}>
-              {slaPromedio === null ? 'Sin datos' :
-               slaPromedio >= 90 ? 'Normal' :
-               slaPromedio >= 70 ? 'En riesgo' :
-               'Bajo el objetivo'}
-            </p>
-          </div>
-        </Tooltip>
+          <Tooltip id="sla-promedio" content="Porcentaje de casos cumpliendo SLA">
+           <div
+             className="pt-2 px-2 pb-1 rounded border cursor-pointer transition-colors relative overflow-hidden h-full flex flex-col"
+             style={{
+               ...styles.card,
+               borderColor: 'rgba(71, 85, 105, 0.3)',
+               backgroundColor: styles.card.backgroundColor
+             }}
+             onMouseEnter={(e) => {
+               handleTooltipEnter('sla-promedio');
+               e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
+             }}
+             onMouseLeave={(e) => {
+               handleTooltipLeave();
+               e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.3)';
+             }}
+           >
+             <p className="text-[10px] font-bold uppercase tracking-wide text-center w-full m-0" style={{color: styles.text.secondary}}>
+               Cumplimiento SLA global
+             </p>
+             <p className="text-2xl font-bold text-center w-full m-0 flex-1 flex items-center justify-center" style={{
+               color: slaPromedio === null ? styles.text.tertiary :
+                      slaPromedio >= 90 ? '#22c55e' :
+                      slaPromedio >= 70 ? '#fbbf24' :
+                      '#f87171'
+             }}>
+               {slaPromedio === null ? 'N/A' : `${slaPromedio}%`}
+             </p>
+             <p className="text-[9px] text-center w-full opacity-70 m-0" style={{color: styles.text.tertiary}}>
+               {slaPromedio === null
+                 ? 'Sin datos'
+                 : `${casosDentroSLA.length} / ${metricsSummary.casosAbiertos ?? casosAbiertosFiltrados.length} casos`}
+             </p>
+           </div>
+         </Tooltip>
 
          <Tooltip id="sla-por-etapa" content="Cumplimiento de SLA promedio por cada etapa del workflow">
           <div className="h-full">

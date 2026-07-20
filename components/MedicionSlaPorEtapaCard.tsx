@@ -23,7 +23,7 @@ const MedicionSlaPorEtapaCard: React.FC<Props> = ({
   const { theme } = useTheme();
   const [expanded, setExpanded] = React.useState(true);
 
-  const { totalGeneral, rows, peorEtapa } = useMemo(() => {
+  const { totalGeneral, enTiempoTotal, rows, peorEtapa } = useMemo(() => {
     const SIN_CAT = 1;
     const casosAbiertos = (cases || []).filter(c =>
       c && !isFinalStatus(c.status || c.estado) && c.categoria_id && c.categoria_id !== SIN_CAT
@@ -57,11 +57,12 @@ const MedicionSlaPorEtapaCard: React.FC<Props> = ({
     });
 
     const total = list.reduce((acc, r) => acc + r.total, 0);
+    const enTiempoTotal = list.reduce((acc, r) => acc + r.enTiempo, 0);
     const peor = list.length > 0
       ? list.reduce((min, r) => r.pct < min.pct ? r : min, list[0])
       : null;
 
-    return { totalGeneral: total, rows: list, peorEtapa: peor };
+    return { totalGeneral: total, enTiempoTotal, rows: list, peorEtapa: peor };
   }, [cases, estados]);
 
   const handleClick = () => {
@@ -129,7 +130,9 @@ const MedicionSlaPorEtapaCard: React.FC<Props> = ({
       </p>
 
       <p className="text-[9px] text-center w-full opacity-70 m-0" style={{ color: styles.text.tertiary }}>
-        {totalGeneral} caso{totalGeneral !== 1 ? 's' : ''} abierto{totalGeneral !== 1 ? 's' : ''} con SLA
+        {totalGeneral > 0
+          ? `${enTiempoTotal} / ${totalGeneral} casos en tiempo`
+          : 'Sin casos con SLA'}
       </p>
 
       {expanded && rows.length > 0 && (
