@@ -710,7 +710,7 @@ const SupervisorPanel: React.FC = () => {
       </div>
 
       {/* === Grid de 5 cards: 4 numéricos + SLA por Etapa === */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 items-stretch">
         <Tooltip id="casos-abiertos" content="Total de casos activos en el sistema">
           <div 
             className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
@@ -894,11 +894,20 @@ const SupervisorPanel: React.FC = () => {
           </div>
         </Tooltip>
 
-        <Tooltip id="sla-por-etapa" content="Cumplimiento de SLA promedio por cada etapa del workflow">
+         <Tooltip id="sla-por-etapa" content="Cumplimiento de SLA promedio por cada etapa del workflow">
           <div className="h-full">
             <MedicionSlaPorEtapaCard
               cases={casosAbiertosFiltrados}
               estados={estados}
+              navigate={navigate}
+            />
+          </div>
+        </Tooltip>
+
+        <Tooltip id="completados-sla-vencido" content="Casos finalizados que en alguna etapa del workflow excedieron el SLA">
+          <div className="h-full">
+            <CasosCompletadosConSlaVencidoCard
+              cases={casosAbiertosFiltrados}
               navigate={navigate}
             />
           </div>
@@ -916,22 +925,12 @@ const SupervisorPanel: React.FC = () => {
           theme={theme}
         />
 
-        {/* Grid de 2 columnas: Etapas Vencidas + Completados con SLA Vencido */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="h-full">
-            <EtapasVencidasPipeline
-              cases={casosAbiertosFiltrados}
-              estados={estados}
-              navigate={navigate}
-            />
-          </div>
-          <div className="h-full">
-            <CasosCompletadosConSlaVencidoCard
-              cases={casosAbiertosFiltrados}
-              navigate={navigate}
-            />
-          </div>
-        </div>
+        {/* Etapas Vencidas del mes actual */}
+        <EtapasVencidasPipeline
+          cases={casosAbiertosFiltrados}
+          estados={estados}
+          navigate={navigate}
+        />
       </div>
 
       <div className="space-y-4">
