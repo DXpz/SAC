@@ -169,12 +169,13 @@ const EtapasVencidasPipeline: React.FC<Props> = ({
                       opacity: hasData ? 1 : 0.4
                     }}
                   />
-                  {/* Label inferior */}
+                  {/* Label inferior: nombre de la etapa (siempre visible) */}
                   <div
-                    className="text-[10px] text-center mt-2 leading-tight px-1 w-full"
+                    className="text-[11px] text-center mt-2 leading-tight px-1 w-full"
                     style={{
-                      color: hasData ? textPrimary : textTertiary,
-                      fontWeight: hasData ? 600 : 400
+                      color: textPrimary,
+                      fontWeight: 500,
+                      opacity: hasData ? 1 : 0.7
                     }}
                   >
                     {estado.nombre}
