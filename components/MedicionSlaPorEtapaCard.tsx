@@ -59,10 +59,10 @@ const MedicionSlaPorEtapaCard: React.FC<Props> = ({
 
     const list = order
       .filter(name => map[name] && map[name].total > 0)
-      .map((name, idx) => {
+      .map(name => {
         const r = map[name];
         const pct = r.total > 0 ? Math.round((r.enTiempo / r.total) * 100) : 0;
-        return { name, total: r.total, enTiempo: r.enTiempo, pct, _key: `${idx}-${name}` };
+        return { name, total: r.total, enTiempo: r.enTiempo, pct };
       });
 
     // También agregar estados que no estén en `order`
@@ -161,7 +161,7 @@ const MedicionSlaPorEtapaCard: React.FC<Props> = ({
           {rows.map((r) => {
             const color = getColorByPct(r.pct);
             return (
-              <div key={r._key} className="flex items-center gap-2">
+              <div key={r.name} className="flex items-center gap-2">
                 <span
                   className="text-[11px] flex-1 truncate"
                   style={{ color: styles.text.primary }}

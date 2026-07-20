@@ -62,13 +62,12 @@ const EtapasVencidasCard: React.FC<Props> = ({
       : ['Nueva Solicitud', 'Primer Contacto', 'Diagnóstico', 'Ejecución', 'Control de Calidad', 'Listo - pendiente entrega cliente', 'Finalizado'];
 
     const breakdownList = order
-      .map((name, idx) => ({ name, value: map[name] || 0, _key: `order-${idx}-${name}` }));
+      .map(name => ({ name, value: map[name] || 0 }));
 
     // Agregar estados que esten en map pero no en order (al final)
-    let extraIdx = 0;
     Object.keys(map).forEach(k => {
       if (!order.includes(k)) {
-        breakdownList.push({ name: k, value: map[k], _key: `extra-${extraIdx++}-${k}` });
+        breakdownList.push({ name: k, value: map[k] });
       }
     });
 
@@ -153,7 +152,7 @@ const EtapasVencidasCard: React.FC<Props> = ({
             const pct = total > 0 ? Math.round((b.value / total) * 100) : 0;
             const hasVencidos = b.value > 0;
             return (
-              <div key={b._key} className="flex items-center gap-1.5">
+              <div key={b.name} className="flex items-center gap-1.5">
                 <span
                   className="text-[10px] flex-1 whitespace-nowrap overflow-hidden text-ellipsis"
                   style={{ color: hasVencidos ? styles.text.primary : styles.text.tertiary, minWidth: 0 }}
