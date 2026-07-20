@@ -861,10 +861,10 @@ const SupervisorPanel: React.FC = () => {
              }}>
                {slaPromedio === null ? 'N/A' : `${slaPromedio}%`}
              </p>
-              <p className="text-[9px] text-center w-full opacity-70 m-0" style={{color: styles.text.tertiary}}>
+              <p className="text-[8px] text-center w-full opacity-70 m-0 leading-tight" style={{color: styles.text.tertiary}}>
                 {slaPromedio === null
                   ? 'Sin datos'
-                  : `${casosDentroSLA.length} / ${casosAbiertosFiltrados.length} casos`}
+                  : 'Casos con SLA global en tiempo / Casos totales'}
               </p>
            </div>
          </Tooltip>

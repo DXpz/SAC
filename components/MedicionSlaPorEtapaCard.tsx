@@ -117,9 +117,9 @@ const MedicionSlaPorEtapaCard: React.FC<Props> = ({
       <p className="text-2xl font-bold text-center w-full m-0 flex-1 flex items-center justify-center" style={{ color }}>
         {pct === null ? '—' : `${pct}%`}
       </p>
-      <p className="text-[9px] text-center w-full opacity-70 m-0" style={{ color: styles.textTertiary }}>
+      <p className="text-[8px] text-center w-full opacity-70 m-0 leading-tight" style={{ color: styles.textTertiary }}>
         {total > 0
-          ? `${enTiempo} / ${total} casos en tiempo`
+          ? 'casos con SLA por etapa en tiempo / Caso totales'
           : 'Sin casos con SLA'}
       </p>
     </div>
