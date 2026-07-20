@@ -730,23 +730,15 @@ const SupervisorPanel: React.FC = () => {
               e.currentTarget.style.boxShadow = '';
             }}
           >
-            <div className="absolute top-1.5 right-1.5">
-              <Activity className="w-3.5 h-3.5" style={{color: '#3b82f6'}} />
-            </div>
-            <div className="flex items-center justify-center text-center gap-1">
-              <div className="flex-1">
-                <p className="text-xl font-bold leading-tight" style={{color: '#3b82f6'}}>
-                  {casosAbiertosCount}
-                </p>
-                <div className="flex items-center justify-center gap-0.5 flex-wrap">
-                  <Activity className="w-3 h-3 flex-shrink-0" style={{color: '#3b82f6'}} />
-                  <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Casos Abiertos</p>
-                </div>
-                <p className="text-[9px] mt-0.5" style={{color: styles.text.tertiary}}>
-                  Activos
-                </p>
-              </div>
-            </div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-center w-full" style={{color: styles.text.secondary}}>
+              Casos Abiertos
+            </p>
+            <p className="text-2xl font-bold text-center flex-1 flex items-center" style={{color: '#3b82f6'}}>
+              {casosAbiertosCount}
+            </p>
+            <p className="text-[9px] text-center w-full opacity-70" style={{color: styles.text.tertiary}}>
+              Activos
+            </p>
           </div>
         </Tooltip>
 

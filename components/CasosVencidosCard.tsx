@@ -34,7 +34,6 @@ const CasosVencidosCard: React.FC<Props> = ({
     }
   };
 
-  const color = count > 0 ? '#ef4444' : styles.text.tertiary;
   const colorSecondary = count > 0 ? '#ef4444' : styles.text.secondary;
 
   const handleClick = () => {
@@ -57,46 +56,30 @@ const CasosVencidosCard: React.FC<Props> = ({
     <div
       {...dataAttr}
       title="Casos cuyo tiempo total abierto supera el SLA de la categoría. Vista global, no por etapa."
-      className="p-3 rounded-lg border cursor-pointer transition-all duration-200 relative overflow-hidden"
+      className="p-2 rounded border cursor-pointer h-full flex flex-col items-center"
       style={{
         ...styles.card,
         borderColor: 'rgba(71, 85, 105, 0.3)',
         backgroundColor: styles.card.backgroundColor,
-        animation: `fadeInSlide 0.3s ease-out ${delay} both`,
-        transform: 'scale(1)',
-        transition: 'all 0.2s ease-in-out'
+        animation: `fadeInSlide 0.3s ease-out ${delay} both`
       }}
       onClick={handleClick}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
-        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
-        e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)';
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.3)';
-        e.currentTarget.style.boxShadow = '';
-        e.currentTarget.style.transform = 'scale(1) translateY(0)';
       }}
     >
-      <div className="absolute top-3 right-3">
-        <Ticket className="w-6 h-6" style={{ color }} />
-      </div>
-      <div className="flex items-start justify-between mb-2 pr-8">
-        <div className="flex-1">
-          <p className="text-3xl font-bold leading-tight mb-1" style={{ color: colorSecondary }}>
-            {count}
-          </p>
-          <div className="flex items-center gap-1.5">
-            <Ticket className="w-4 h-4 flex-shrink-0" style={{ color: colorSecondary }} />
-            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: styles.text.secondary }}>
-              Casos Vencidos
-            </p>
-          </div>
-          <p className="text-[10px] mt-1" style={{ color: count > 0 ? '#ef4444' : styles.text.tertiary }}>
-            {count > 0 ? 'SLA categoría excedido' : 'En tiempo'}
-          </p>
-        </div>
-      </div>
+      <p className="text-[10px] font-bold uppercase tracking-wide text-center w-full" style={{ color: styles.text.secondary }}>
+        Casos Vencidos
+      </p>
+      <p className="text-2xl font-bold text-center flex-1 flex items-center" style={{ color: colorSecondary }}>
+        {count}
+      </p>
+      <p className="text-[9px] text-center w-full opacity-70" style={{ color: count > 0 ? '#ef4444' : styles.text.tertiary }}>
+        {count > 0 ? 'SLA categoría excedido' : 'En tiempo'}
+      </p>
     </div>
   );
 };
