@@ -407,17 +407,16 @@ const SupervisorPanel: React.FC = () => {
     });
   }, [casosAbiertos]);
 
-  // Cumplimiento SLA global: casos en tiempo / casos totales
-  // Incluye abiertos + cerrados. Un caso cerrado esta "en tiempo" si
-  // no tiene etapasVencidas (no se vencio en ninguna etapa).
+  // Cumplimiento SLA global: solo casos CERRADOS
+  // Un caso cerrado esta "en tiempo" si no tiene etapasVencidas
+  // (no se vencio en ninguna etapa del workflow).
   const casosEnTiempoGlobal = useMemo(() => {
     return casos.filter(c => {
+      const status = c.status || c.estado || '';
+      if (!['Cerrado', 'Resuelto', 'Finalizado', 'cerrado', 'resuelto', 'finalizado'].includes(status)) return false;
       const catId = (c as any).categoria_id || (c as any).categoria?.id || (c as any).categoria?.idCategoria;
       const tieneCategoriaReal = catId && String(catId) !== '1';
       if (!tieneCategoriaReal) return false;
-      // Abierto: en tiempo si !slaExpired
-      if ((c as any).slaExpired === true) return false;
-      // Cerrado con etapasVencidas: NO en tiempo
       if (Array.isArray((c as any).etapasVencidas) && (c as any).etapasVencidas.length > 0) return false;
       return true;
     });
@@ -430,9 +429,11 @@ const SupervisorPanel: React.FC = () => {
   // Para métricas: casos abiertos = casosFiltrados sin cerrados
   const casosAbiertosFiltrados = casosAbiertos;
 
-  // Total de casos con SLA real (denominador del Cumplimiento SLA Global)
+  // Total de casos CERRADOS con SLA real (denominador del Cumplimiento SLA Global)
   const totalCasosConSla = useMemo(() => {
     return casos.filter(c => {
+      const status = c.status || c.estado || '';
+      if (!['Cerrado', 'Resuelto', 'Finalizado', 'cerrado', 'resuelto', 'finalizado'].includes(status)) return false;
       const catId = (c as any).categoria_id || (c as any).categoria?.id || (c as any).categoria?.idCategoria;
       return catId && String(catId) !== '1';
     }).length;
@@ -878,7 +879,7 @@ const SupervisorPanel: React.FC = () => {
           </div>
         </Tooltip>
 
-          <Tooltip id="sla-promedio" content={`slaPromedio = round(${casosEnTiempoGlobal.length} / ${totalCasosConSla} * 100). | Actual: ${casosEnTiempoGlobal.length}/${totalCasosConSla} = ${slaPromedio ?? 'N/A'}%`}>
+          <Tooltip id="sla-promedio" content={`slaPromedio = round(${casosEnTiempoGlobal.length} / ${totalCasosConSla} * 100) = ${slaPromedio ?? 'N/A'}%. | Solo CERRADOS (sin etapasVencidas / total cerrados con SLA).`}>
            <div
              className="pt-2 px-2 pb-1 rounded border cursor-pointer transition-colors relative overflow-hidden h-full flex flex-col"
              style={{
