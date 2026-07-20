@@ -58,32 +58,53 @@ const EtapasVencidasPipeline: React.FC<Props> = ({
     [...estadosNorm].sort((a, b) => a.orden - b.orden),
     [estadosNorm]);
 
+  // Filtrar casos que se han vencido en alguna etapa. Logica:
+  // 1) Si el backend envio etapasVencidas, contar 1 en cada etapa donde
+  //    se haya vencido (no importa el estado actual ni si esta cerrado).
+  // 2) Si el caso esta actualmente vencido (slaExpired=true) y no tiene
+  //    etapasVencidas persistido, contar 1 en la etapa actual.
+  // 3) El mes es acumulativo: se cuentan vencimientos del mes en curso.
   const casosVencidos = useMemo(() => {
-    return (cases || []).filter(c => {
-      if (!c) return false;
-      if (c.slaExpired !== true) return false;
-      const estado = c.status || c.estado || '';
-      if (!estado) return false;
-      const norm = normalize(estado).replace(/\s+/g, '');
-      if (norm === 'cerrado' || norm === 'resuelto' || norm === 'finalizado') return false;
+    const out: Array<{ key: string; fecha: string }> = [];
+    for (const c of cases || []) {
+      if (!c) continue;
       const fechaRef = c.fecha_actualizacion || c.createdAt || c.fechaCreacionFormateada;
-      return isCurrentMonth(fechaRef);
-    });
+
+      // Caso 1: backend envio etapasVencidas persistido
+      if (Array.isArray(c.etapasVencidas) && c.etapasVencidas.length > 0) {
+        for (const etapa of c.etapasVencidas) {
+          out.push({ key: normalize(etapa), fecha: fechaRef });
+        }
+        continue;
+      }
+
+      // Caso 2: actualmente vencido en etapa actual
+      if (c.slaExpired === true) {
+        const estado = c.status || c.estado || '';
+        if (!estado) continue;
+        const norm = normalize(estado).replace(/\s+/g, '');
+        if (norm === 'cerrado' || norm === 'resuelto' || norm === 'finalizado') continue;
+        out.push({ key: normalize(estado), fecha: fechaRef });
+      }
+    }
+    return out;
   }, [cases]);
+
+  // Filtrar por mes en curso (acumulativo del mes)
+  const casosVencidosDelMes = useMemo(() => {
+    return casosVencidos.filter(c => isCurrentMonth(c.fecha));
+  }, [casosVencidos]);
 
   const counts = useMemo(() => {
     const map: Record<string, number> = {};
-    for (const c of casosVencidos) {
-      const estado = c.status || c.estado || '';
-      if (!estado) continue;
-      const key = normalize(estado);
+    for (const { key } of casosVencidosDelMes) {
       map[key] = (map[key] || 0) + 1;
     }
     return map;
-  }, [casosVencidos]);
+  }, [casosVencidosDelMes]);
 
   const maxCount = useMemo(() => Math.max(1, ...Object.values(counts)), [counts]);
-  const totalCount = casosVencidos.length;
+  const totalCount = casosVencidosDelMes.length;
   const monthLabel = new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
 
   const handleStageClick = (estadoNombre: string) => {

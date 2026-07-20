@@ -619,6 +619,9 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
       diasRestantes: caseData.diasRestantes ?? 0,
       // Dias habiles de atraso (viene del backend, saltando S-D y asuetos)
       daysOverdue: caseData.daysOverdue ?? 0,
+      // Lista de etapas donde el caso se ha vencido (persistido en BD).
+      // Permite que el pipeline muestre aunque cambie de estado o se finalice.
+      etapasVencidas: Array.isArray(caseData.etapasVencidas) ? caseData.etapasVencidas : [],
     };
     
     // Preservar agente_user_id del webhook en el objeto Case para comparación
