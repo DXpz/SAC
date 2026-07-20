@@ -97,7 +97,7 @@ const MedicionSlaPorEtapaCard: React.FC<Props> = ({
 
   return (
     <div
-      title="Cumplimiento de SLA por etapa (X / Y casos en tiempo)"
+      title={`FORMULA: pct = round(${enTiempo} / ${total} * 100). Cuenta 1 por cada (caso abierto en su etapa actual) + (caso cerrado con etapasVencidas: 1 por cada etapa con breach) + (caso cerrado sin breach: 1 en tiempo). | Valor actual: ${enTiempo} / ${total} casos en tiempo = ${pct ?? 'N/A'}%`}
       className="pt-2 px-2 pb-1 rounded border cursor-pointer h-full flex flex-col items-center"
       style={{
         ...styles.card,
