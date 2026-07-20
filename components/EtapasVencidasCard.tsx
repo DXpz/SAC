@@ -1,7 +1,6 @@
-import React, { useMemo, useState } from 'react';
-import { AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { AlertCircle } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
-import { CaseStatus } from '../types';
 import { api } from '../services/api';
 
 interface Props {
@@ -17,6 +16,21 @@ const isFinalStatus = (status: any): boolean => {
   return s === 'cerrado' || s === 'resuelto' || s === 'finalizado';
 };
 
+const isCurrentMonth = (dateStr: string): boolean => {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+};
+
+/**
+ * Card "Etapas Vencidas (Mes Actual)"
+ *
+ * Cuenta casos cuya etapa actual está vencida (slaExpired=true) y que
+ * ingresaron a esa etapa en el mes en curso.
+ *
+ * Siempre muestra la gráfica de barras por etapa (no requiere expandir).
+ */
 const EtapasVencidasCard: React.FC<Props> = ({
   cases,
   estados,
@@ -24,21 +38,28 @@ const EtapasVencidasCard: React.FC<Props> = ({
   onCardClick
 }) => {
   const { theme } = useTheme();
-  const [expanded, setExpanded] = useState(false);
 
   const { total, breakdown } = useMemo(() => {
     const isVencida = (c: any) => c?.slaExpired === true;
-    const filtered = (cases || []).filter(c => c && !isFinalStatus(c.status) && isVencida(c));
+
+    // Solo casos: abiertos, etapa vencida, y entrada a la etapa en mes actual
+    // (fecha del último cambio de estado o fecha_creacion)
+    const filtered = (cases || []).filter(c => {
+      if (!c || isFinalStatus(c.status || c.estado)) return false;
+      if (!isVencida(c)) return false;
+      const fechaRef = c.fecha_actualizacion || c.fechaCreacionFormateada || c.createdAt;
+      return isCurrentMonth(fechaRef);
+    });
 
     const map: Record<string, number> = {};
     filtered.forEach(c => {
-      const key = c.status || 'Sin etapa';
+      const key = c.status || c.estado || 'Sin etapa';
       map[key] = (map[key] || 0) + 1;
     });
 
     const order = estados && estados.length > 0
       ? estados.map((e: any) => e.nombre)
-      : ['Nuevo', 'Primer Contacto', 'Diagnostico', 'Ejecucion', 'Control de Calidad', 'Listo', 'Finalizado'];
+      : ['Nueva Solicitud', 'Primer Contacto', 'Diagnóstico', 'Ejecución', 'Control de Calidad', 'Listo - pendiente entrega cliente', 'Finalizado'];
 
     const breakdownList = order
       .map(name => ({ name, value: map[name] || 0 }))
@@ -90,9 +111,11 @@ const EtapasVencidasCard: React.FC<Props> = ({
     height: '100%'
   };
 
+  const monthLabel = new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+
   return (
     <div
-      title="Casos cuya etapa actual excedió su SLA. El caso puede estar en tiempo si cambia de etapa pronto."
+      title={`Casos cuya etapa actual excedió su SLA, ingresados en ${monthLabel}.`}
       className="p-4 rounded-xl border-2 transition-all duration-200 relative"
       style={cardStyle}
       onClick={handleClick}
@@ -113,56 +136,44 @@ const EtapasVencidasCard: React.FC<Props> = ({
           <p className="text-4xl font-black leading-none mb-1.5" style={{ color: colorSecondary }}>
             {total}
           </p>
-          <div className="flex items-center gap-1.5">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" style={{ color: colorSecondary }} />
-            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: styles.text.secondary }}>
-              Etapas Vencidas
-            </p>
-          </div>
-          <p className="text-[10px] mt-1" style={{ color: total > 0 ? '#ef4444' : styles.text.tertiary }}>
-            {total > 0 ? 'SLA de etapa excedido' : 'En tiempo'}
+          <p className="text-xs font-bold uppercase tracking-wide" style={{ color: styles.text.secondary }}>
+            Etapas Vencidas
+          </p>
+          <p className="text-[10px] mt-1 capitalize" style={{ color: total > 0 ? '#ef4444' : styles.text.tertiary }}>
+            {monthLabel} · {total > 0 ? 'SLA de etapa excedido' : 'En tiempo'}
           </p>
         </div>
       </div>
 
-      {breakdown.length > 0 && (
-        <div className="mt-3 pt-3 border-t" style={{ borderColor: 'rgba(71, 85, 105, 0.2)' }}>
-          <button
-            type="button"
-            className="flex items-center justify-between w-full text-[10px] font-semibold uppercase tracking-wide mb-1.5 hover:opacity-80"
-            style={{ color: styles.text.tertiary }}
-            onClick={(e) => {
-              e.stopPropagation();
-              setExpanded(v => !v);
-            }}
-          >
-            <span>Desglose por etapa</span>
-            {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-          </button>
-          {expanded && (
-            <div className="space-y-1">
-              {breakdown.map((b) => {
-                const pct = total > 0 ? Math.round((b.value / total) * 100) : 0;
-                return (
-                  <div key={b.name} className="flex items-center gap-2">
-                    <span className="text-[11px] flex-1 truncate" style={{ color: styles.text.primary }} title={b.name}>
-                      {b.name}
-                    </span>
-                    <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(71, 85, 105, 0.2)' }}>
-                      <div
-                        className="h-full rounded-full"
-                        style={{ width: `${pct}%`, backgroundColor: '#ef4444' }}
-                      />
-                    </div>
-                    <span className="text-[11px] font-bold tabular-nums w-6 text-right" style={{ color: '#ef4444' }}>
-                      {b.value}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+      {breakdown.length > 0 ? (
+        <div className="mt-3 pt-3 border-t space-y-1.5" style={{ borderColor: 'rgba(71, 85, 105, 0.2)' }}>
+          {breakdown.map((b) => {
+            const pct = total > 0 ? Math.round((b.value / total) * 100) : 0;
+            return (
+              <div key={b.name} className="flex items-center gap-2">
+                <span className="text-[11px] flex-1 truncate" style={{ color: styles.text.primary }} title={b.name}>
+                  {b.name}
+                </span>
+                <div
+                  className="h-1.5 rounded-full overflow-hidden"
+                  style={{ backgroundColor: 'rgba(71, 85, 105, 0.2)', width: '70px', flexShrink: 0 }}
+                >
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${pct}%`, backgroundColor: '#ef4444' }}
+                  />
+                </div>
+                <span className="text-[11px] font-bold tabular-nums w-6 text-right" style={{ color: '#ef4444' }}>
+                  {b.value}
+                </span>
+              </div>
+            );
+          })}
         </div>
+      ) : (
+        <p className="text-[11px] italic mt-3 pt-3 border-t" style={{ borderColor: 'rgba(71, 85, 105, 0.2)', color: styles.text.tertiary }}>
+          Sin etapas vencidas en {monthLabel}
+        </p>
       )}
     </div>
   );

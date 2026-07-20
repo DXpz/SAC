@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import StagePipeline from '../components/StagePipeline';
 import EtapasVencidasCard from '../components/EtapasVencidasCard';
 import CasosVencidosCard from '../components/CasosVencidosCard';
+import MedicionSlaPorEtapaCard from '../components/MedicionSlaPorEtapaCard';
 import { setStageSlaMap } from '../utils/slaUtils';
 import { API_CONFIG } from '../config';
 import { isClosedCase, getDiasRestantes, isSlaCritical, isSlaAtRisk, isSlaWithin } from '../utils/slaUtils';
@@ -902,7 +903,7 @@ const SupervisorPanel: React.FC = () => {
       />
 
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 items-stretch">
         <Tooltip id="casos-abiertos" content="Total de casos activos en el sistema">
           <div 
             className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
@@ -946,16 +947,6 @@ const SupervisorPanel: React.FC = () => {
           <div className="h-full">
             <CasosVencidosCard
               count={casosVencidosTotal}
-              navigate={navigate}
-            />
-          </div>
-        </Tooltip>
-
-        <Tooltip id="casos-vencidos" content="Casos cuya etapa actual excedió su SLA. El caso puede estar en tiempo si cambia de etapa pronto.">
-          <div className="h-full">
-            <EtapasVencidasCard
-              cases={casosAbiertosFiltrados}
-              estados={estados}
               navigate={navigate}
             />
           </div>
@@ -1134,6 +1125,24 @@ const SupervisorPanel: React.FC = () => {
             </div>
           </div>
         </Tooltip>
+      </div>
+
+      {/* === Sección de Gráficas === Cards primero, gráficas después === */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="h-full">
+          <EtapasVencidasCard
+            cases={casosAbiertosFiltrados}
+            estados={estados}
+            navigate={navigate}
+          />
+        </div>
+        <div className="h-full">
+          <MedicionSlaPorEtapaCard
+            cases={casosAbiertosFiltrados}
+            estados={estados}
+            navigate={navigate}
+          />
+        </div>
       </div>
 
       <div className="space-y-4">
