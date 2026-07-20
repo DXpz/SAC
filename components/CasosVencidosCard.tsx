@@ -57,7 +57,7 @@ const CasosVencidosCard: React.FC<Props> = ({
     <div
       {...dataAttr}
       title="Casos cuyo tiempo total abierto supera el SLA de la categoría. Vista global, no por etapa."
-      className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden"
+      className="p-3 rounded-lg border cursor-pointer transition-all duration-200 relative overflow-hidden"
       style={{
         ...styles.card,
         borderColor: 'rgba(71, 85, 105, 0.3)',
@@ -83,7 +83,7 @@ const CasosVencidosCard: React.FC<Props> = ({
       </div>
       <div className="flex items-start justify-between mb-2 pr-8">
         <div className="flex-1">
-          <p className="text-4xl font-black leading-none mb-1.5" style={{ color: colorSecondary }}>
+          <p className="text-3xl font-bold leading-tight mb-1" style={{ color: colorSecondary }}>
             {count}
           </p>
           <div className="flex items-center gap-1.5">

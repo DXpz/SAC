@@ -111,7 +111,7 @@ const CasosCompletadosConSlaVencidoCard: React.FC<Props> = ({
   return (
     <div
       title="Casos finalizados cuyo SLA de etapa fue excedido en algún momento del workflow"
-      className="p-4 rounded-xl border-2 transition-all duration-200 relative"
+      className="p-3 rounded-lg border transition-all duration-200 relative"
       style={cardStyle}
       onClick={handleClick}
       onMouseEnter={(e) => {
@@ -128,7 +128,7 @@ const CasosCompletadosConSlaVencidoCard: React.FC<Props> = ({
       </div>
       <div className="flex items-start justify-between mb-2 pr-8">
         <div className="flex-1">
-          <p className="text-4xl font-black leading-none mb-1.5" style={{ color: count > 0 ? '#f59e0b' : styles.text.primary }}>
+          <p className="text-3xl font-bold leading-tight mb-1" style={{ color: count > 0 ? '#f59e0b' : styles.text.primary }}>
             {count}
           </p>
           <p className="text-xs font-bold uppercase tracking-wide" style={{ color: styles.text.secondary }}>

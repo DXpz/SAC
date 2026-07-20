@@ -119,7 +119,7 @@ const MedicionSlaPorEtapaCard: React.FC<Props> = ({
   return (
     <div
       title="Cumplimiento de SLA por cada etapa. Verde >= 90%, Amarillo 70-89%, Rojo < 70%."
-      className="p-4 rounded-xl border-2 transition-all duration-200 relative"
+      className="p-3 rounded-lg border transition-all duration-200 relative"
       style={cardStyle}
       onClick={handleClick}
       onMouseEnter={(e) => {

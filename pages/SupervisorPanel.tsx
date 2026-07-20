@@ -713,7 +713,7 @@ const SupervisorPanel: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 items-stretch">
         <Tooltip id="casos-abiertos" content="Total de casos activos en el sistema">
           <div 
-            className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
+            className="p-3 rounded-lg border cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
             style={{
               ...styles.card,
               borderColor: 'rgba(71, 85, 105, 0.3)',
@@ -735,7 +735,7 @@ const SupervisorPanel: React.FC = () => {
             </div>
             <div className="flex items-start justify-between mb-2 pr-8">
               <div className="flex-1">
-                <p className="text-4xl font-black leading-none mb-1.5" style={{color: '#3b82f6'}}>
+                <p className="text-3xl font-bold leading-tight mb-1" style={{color: '#3b82f6'}}>
                   {casosAbiertosCount}
                 </p>
                 <div className="flex items-center gap-1.5">
@@ -761,7 +761,7 @@ const SupervisorPanel: React.FC = () => {
 
         <Tooltip id="casos-totales" content="Total de casos en el sistema">
           <div 
-            className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
+            className="p-3 rounded-lg border cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
             style={{
               ...styles.card,
               borderColor: 'rgba(71, 85, 105, 0.3)',
@@ -783,7 +783,7 @@ const SupervisorPanel: React.FC = () => {
             </div>
             <div className="flex items-start justify-between mb-2 pr-8">
               <div className="flex-1">
-                <p className="text-4xl font-black leading-none mb-1.5" style={{color: '#3b82f6'}}>
+                <p className="text-3xl font-bold leading-tight mb-1" style={{color: '#3b82f6'}}>
                   {casosTotalesCount}
                 </p>
                 <div className="flex items-center gap-1.5">
@@ -800,7 +800,7 @@ const SupervisorPanel: React.FC = () => {
 
         <Tooltip id="casos-criticos" content="Casos que requieren atención inmediata">
           <div 
-            className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
+            className="p-3 rounded-lg border cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
             style={{
               ...styles.card,
               borderColor: 'rgba(71, 85, 105, 0.3)',
@@ -822,7 +822,7 @@ const SupervisorPanel: React.FC = () => {
             </div>
             <div className="flex items-start justify-between mb-2 pr-8">
               <div className="flex-1">
-                <p className="text-4xl font-black leading-none mb-1.5" style={{color: casosCriticosCount > 0 ? '#f87171' : styles.text.secondary}}>
+                <p className="text-3xl font-bold leading-tight mb-1" style={{color: casosCriticosCount > 0 ? '#f87171' : styles.text.secondary}}>
                   {casosCriticosCount}
                 </p>
                 <div className="flex items-center gap-1.5">
@@ -839,7 +839,7 @@ const SupervisorPanel: React.FC = () => {
 
         <Tooltip id="sla-promedio" content="Porcentaje de casos cumpliendo SLA">
           <div 
-            className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
+            className="p-3 rounded-lg border cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
             style={{
               ...styles.card,
               borderColor: 'rgba(71, 85, 105, 0.3)',
@@ -866,7 +866,7 @@ const SupervisorPanel: React.FC = () => {
             </div>
             <div className="flex items-start justify-between mb-2 pr-8">
               <div className="flex-1">
-                <p className="text-4xl font-black leading-none mb-1.5" style={{
+                <p className="text-3xl font-bold leading-tight mb-1" style={{
                   color: slaPromedio === null ? styles.text.tertiary :
                          slaPromedio >= 90 ? '#22c55e' : 
                          slaPromedio >= 70 ? '#fbbf24' : 
