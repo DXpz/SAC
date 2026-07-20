@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import StagePipeline from '../components/StagePipeline';
 import EtapasVencidasPipeline from '../components/EtapasVencidasPipeline';
 import CasosVencidosCard from '../components/CasosVencidosCard';
+import MedicionSlaPorEtapaCard from '../components/MedicionSlaPorEtapaCard';
 import { setStageSlaMap } from '../utils/slaUtils';
 import { API_CONFIG } from '../config';
 import { isClosedCase, getDiasRestantes, isSlaCritical, isSlaAtRisk, isSlaWithin } from '../utils/slaUtils';
@@ -706,16 +707,9 @@ const SupervisorPanel: React.FC = () => {
           </button>
         )}
       </div>
-      {/* Pipeline por Etapa */}
-      <StagePipeline
-        casos={casos as any}
-        estados={estados}
-        onStageClick={(estadoNombre) => navigate('/app/casos', { state: { estadoFilter: estadoNombre } })}
-        theme={theme}
-      />
 
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
+      {/* === Grid de 5 cards: 4 numéricos + SLA por Etapa === */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-stretch">
         <Tooltip id="casos-abiertos" content="Total de casos activos en el sistema">
           <div 
             className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
@@ -899,17 +893,37 @@ const SupervisorPanel: React.FC = () => {
           </div>
         </Tooltip>
 
+        <Tooltip id="sla-por-etapa" content="Cumplimiento de SLA promedio por cada etapa del workflow">
+          <div className="h-full">
+            <MedicionSlaPorEtapaCard
+              cases={casosAbiertosFiltrados}
+              estados={estados}
+              navigate={navigate}
+            />
+          </div>
+        </Tooltip>
       </div>
 
       {/* === Sección de Gráficas ===
           Orden: Pipeline por Etapa (distribución casos) -> Etapas Vencidas === */}
-      <div className="grid grid-cols-1 gap-4">
-        <div className="h-full">
-          <EtapasVencidasPipeline
-            cases={casosAbiertosFiltrados}
-            estados={estados}
-            navigate={navigate}
-          />
+      <div className="space-y-4">
+        {/* Pipeline por Etapa (distribución de casos en cada estado) */}
+        <StagePipeline
+          casos={casos as any}
+          estados={estados}
+          onStageClick={(estadoNombre) => navigate('/app/casos', { state: { estadoFilter: estadoNombre } })}
+          theme={theme}
+        />
+
+        {/* Grid de 2 columnas: Etapas Vencidas + nueva card de SLA Completados con Vencido */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="h-full">
+            <EtapasVencidasPipeline
+              cases={casosAbiertosFiltrados}
+              estados={estados}
+              navigate={navigate}
+            />
+          </div>
         </div>
       </div>
 
