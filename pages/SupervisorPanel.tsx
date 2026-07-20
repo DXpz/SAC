@@ -733,7 +733,7 @@ const SupervisorPanel: React.FC = () => {
             <p className="text-[10px] font-bold uppercase tracking-wide text-center w-full" style={{color: styles.text.secondary}}>
               Casos Abiertos
             </p>
-            <p className="text-2xl font-bold text-center flex-1 flex items-center" style={{color: '#3b82f6'}}>
+            <p className="text-2xl font-bold text-center w-full flex-1 flex items-center justify-center" style={{color: '#3b82f6'}}>
               {casosAbiertosCount}
             </p>
             <p className="text-[9px] text-center w-full opacity-70" style={{color: styles.text.tertiary}}>
@@ -764,7 +764,7 @@ const SupervisorPanel: React.FC = () => {
             <p className="text-[10px] font-bold uppercase tracking-wide text-center w-full" style={{color: styles.text.secondary}}>
               Casos Totales
             </p>
-            <p className="text-2xl font-bold text-center flex-1 flex items-center" style={{color: '#3b82f6'}}>
+            <p className="text-2xl font-bold text-center w-full flex-1 flex items-center justify-center" style={{color: '#3b82f6'}}>
               {casosTotalesCount}
             </p>
             <p className="text-[9px] text-center w-full opacity-70" style={{color: styles.text.tertiary}}>
@@ -813,7 +813,7 @@ const SupervisorPanel: React.FC = () => {
             <p className="text-[10px] font-bold uppercase tracking-wide text-center w-full" style={{color: styles.text.secondary}}>
               Casos Críticos
             </p>
-            <p className="text-2xl font-bold text-center flex-1 flex items-center" style={{color: casosCriticosCount > 0 ? '#f87171' : styles.text.secondary}}>
+            <p className="text-2xl font-bold text-center w-full flex-1 flex items-center justify-center" style={{color: casosCriticosCount > 0 ? '#f87171' : styles.text.secondary}}>
               {casosCriticosCount}
             </p>
             <p className="text-[9px] text-center w-full opacity-70" style={{color: casosCriticosCount > 0 ? '#f87171' : styles.text.tertiary}}>
@@ -844,7 +844,7 @@ const SupervisorPanel: React.FC = () => {
             <p className="text-[10px] font-bold uppercase tracking-wide text-center w-full" style={{color: styles.text.secondary}}>
               SLA Promedio
             </p>
-            <p className="text-2xl font-bold text-center flex-1 flex items-center" style={{
+            <p className="text-2xl font-bold text-center w-full flex-1 flex items-center justify-center" style={{
               color: slaPromedio === null ? styles.text.tertiary :
                      slaPromedio >= 90 ? '#22c55e' :
                      slaPromedio >= 70 ? '#fbbf24' :
