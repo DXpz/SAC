@@ -15,19 +15,6 @@ const isFinalStatus = (status: any): boolean => {
   return s === 'cerrado' || s === 'resuelto' || s === 'finalizado';
 };
 
-/**
- * Card "Medición de SLA por Etapa"
- *
- * Para cada etapa (estado) muestra:
- *   - total de casos abiertos en esa etapa
- *   - cuántos están dentro del SLA (no vencidos)
- *   - % de cumplimiento
- *
- * Color por cumplimiento:
- *   verde  >= 90%  (en cumplimiento)
- *   amarillo 70-89% (en riesgo)
- *   rojo   < 70%  (bajo)
- */
 const MedicionSlaPorEtapaCard: React.FC<Props> = ({
   cases,
   estados,
@@ -37,13 +24,11 @@ const MedicionSlaPorEtapaCard: React.FC<Props> = ({
   const [expanded, setExpanded] = React.useState(true);
 
   const { totalGeneral, rows, peorEtapa } = useMemo(() => {
-    // Solo casos abiertos (no finales) y con categoria real (categoria_id != 1)
     const SIN_CAT = 1;
     const casosAbiertos = (cases || []).filter(c =>
       c && !isFinalStatus(c.status || c.estado) && c.categoria_id && c.categoria_id !== SIN_CAT
     );
 
-    // Agrupar por estado
     const map: Record<string, { total: number; enTiempo: number }> = {};
     casosAbiertos.forEach(c => {
       const estado = c.status || c.estado || 'Sin etapa';
@@ -52,7 +37,6 @@ const MedicionSlaPorEtapaCard: React.FC<Props> = ({
       if (c.slaExpired !== true) map[estado].enTiempo += 1;
     });
 
-    // Orden por etapa (usando lista del backend si existe)
     const order = estados && estados.length > 0
       ? estados.map((e: any) => e.nombre)
       : ['Nueva Solicitud', 'Primer Contacto', 'Diagnóstico', 'Ejecución', 'Control de Calidad', 'Listo - pendiente entrega cliente', 'Finalizado'];
@@ -65,7 +49,6 @@ const MedicionSlaPorEtapaCard: React.FC<Props> = ({
         return { name, total: r.total, enTiempo: r.enTiempo, pct };
       });
 
-    // También agregar estados que no estén en `order`
     Object.keys(map).forEach(k => {
       if (!order.includes(k) && map[k].total > 0) {
         const r = map[k];
@@ -105,73 +88,66 @@ const MedicionSlaPorEtapaCard: React.FC<Props> = ({
   };
 
   const getColorByPct = (pct: number): string => {
-    if (pct >= 90) return '#10b981'; // verde
-    if (pct >= 70) return '#f59e0b'; // amarillo
-    return '#ef4444'; // rojo
+    if (pct >= 90) return '#10b981';
+    if (pct >= 70) return '#f59e0b';
+    return '#ef4444';
   };
 
-  const cardStyle: React.CSSProperties = {
-    ...styles.card,
-    cursor: 'pointer',
-    height: '100%'
-  };
+  const overallPct = rows.length > 0
+    ? Math.round(rows.reduce((acc, r) => acc + r.pct, 0) / rows.length)
+    : null;
+
+  const overallColor = overallPct === null ? styles.text.tertiary : getColorByPct(overallPct);
 
   return (
     <div
       title="Cumplimiento de SLA por cada etapa. Verde >= 90%, Amarillo 70-89%, Rojo < 70%."
-      className="p-3 rounded-lg border transition-all duration-200 relative"
-      style={cardStyle}
+      className="p-2 rounded border cursor-pointer h-full flex flex-col"
+      style={{
+        ...styles.card,
+        borderColor: 'rgba(71, 85, 105, 0.3)',
+        backgroundColor: styles.card.backgroundColor
+      }}
       onClick={handleClick}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = '';
-      }}
     >
-      <div className="absolute top-3 right-3">
-        <TrendingUp className="w-6 h-6" style={{ color: styles.text.tertiary }} />
-      </div>
-      <div className="flex items-start justify-between mb-3 pr-8">
-        <div className="flex-1">
-          <p className="text-2xl font-black leading-none mb-1.5" style={{ color: styles.text.primary }}>
-            {rows.length > 0
-              ? `${Math.round(rows.reduce((acc, r) => acc + r.pct, 0) / rows.length)}%`
-              : '—'}
-          </p>
-          <p className="text-xs font-bold uppercase tracking-wide" style={{ color: styles.text.secondary }}>
-            Cumplimiento SLA por Etapa
-          </p>
-          <p className="text-[10px] mt-1" style={{ color: styles.text.tertiary }}>
-            {totalGeneral} caso{totalGeneral !== 1 ? 's' : ''} abierto{totalGeneral !== 1 ? 's' : ''} con SLA
-          </p>
-        </div>
+      <div className="flex items-center justify-between w-full">
+        <p className="text-[10px] font-bold uppercase tracking-wide text-center flex-1" style={{ color: styles.text.secondary }}>
+          Cumplimiento SLA por Etapa
+        </p>
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
-          className="p-1 rounded hover:bg-white/5"
+          className="p-0.5 rounded hover:bg-white/5 flex-shrink-0"
           title={expanded ? 'Ocultar detalle' : 'Ver detalle'}
         >
-          {expanded ? <ChevronUp className="w-4 h-4" style={{ color: styles.text.tertiary }} /> : <ChevronDown className="w-4 h-4" style={{ color: styles.text.tertiary }} />}
+          {expanded ? <ChevronUp className="w-3 h-3" style={{ color: styles.text.tertiary }} /> : <ChevronDown className="w-3 h-3" style={{ color: styles.text.tertiary }} />}
         </button>
       </div>
 
+      <p className="text-2xl font-bold text-center flex-1 flex items-center justify-center" style={{ color: overallColor }}>
+        {overallPct === null ? '—' : `${overallPct}%`}
+      </p>
+
+      <p className="text-[9px] text-center w-full opacity-70" style={{ color: styles.text.tertiary }}>
+        {totalGeneral} caso{totalGeneral !== 1 ? 's' : ''} abierto{totalGeneral !== 1 ? 's' : ''} con SLA
+      </p>
+
       {expanded && rows.length > 0 && (
-        <div className="space-y-1.5 mt-2">
+        <div className="space-y-1 mt-2 w-full pt-2 border-t" style={{ borderColor: 'rgba(71, 85, 105, 0.2)' }}>
           {rows.map((r, idx) => {
             const color = getColorByPct(r.pct);
             return (
               <div key={`${idx}-${r.name}`} className="space-y-0.5">
                 <div className="flex items-center justify-between gap-2">
                   <span
-                    className="text-[11px] font-medium truncate"
+                    className="text-[10px] font-medium truncate"
                     style={{ color: styles.text.primary }}
                     title={`${r.name} (${r.enTiempo}/${r.total} en tiempo)`}
                   >
                     {r.name}
                   </span>
                   <span
-                    className="text-[11px] font-bold tabular-nums flex-shrink-0"
+                    className="text-[10px] font-bold tabular-nums flex-shrink-0"
                     style={{ color }}
                   >
                     {r.pct}%
@@ -193,14 +169,14 @@ const MedicionSlaPorEtapaCard: React.FC<Props> = ({
       )}
 
       {expanded && rows.length === 0 && (
-        <p className="text-[11px] italic mt-2" style={{ color: styles.text.tertiary }}>
+        <p className="text-[10px] italic text-center mt-2" style={{ color: styles.text.tertiary }}>
           Sin casos abiertos con SLA válido
         </p>
       )}
 
       {peorEtapa && peorEtapa.pct < 70 && (
-        <p className="text-[10px] mt-2 pt-2 border-t" style={{ borderColor: 'rgba(71, 85, 105, 0.2)', color: '#ef4444' }}>
-          ⚠ Peor etapa: {peorEtapa.name} ({peorEtapa.pct}%)
+        <p className="text-[9px] mt-2 pt-1 border-t text-center" style={{ borderColor: 'rgba(71, 85, 105, 0.2)', color: '#ef4444' }}>
+          ⚠ Peor: {peorEtapa.name} ({peorEtapa.pct}%)
         </p>
       )}
     </div>
