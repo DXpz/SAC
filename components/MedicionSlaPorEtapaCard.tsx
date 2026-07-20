@@ -102,7 +102,7 @@ const MedicionSlaPorEtapaCard: React.FC<Props> = ({
   return (
     <div
       title="Cumplimiento de SLA por cada etapa. Verde >= 90%, Amarillo 70-89%, Rojo < 70%."
-      className="p-2 rounded border cursor-pointer h-full flex flex-col"
+      className="pt-2 px-2 pb-1 rounded border cursor-pointer h-full flex flex-col"
       style={{
         ...styles.card,
         borderColor: 'rgba(71, 85, 105, 0.3)',
@@ -111,7 +111,7 @@ const MedicionSlaPorEtapaCard: React.FC<Props> = ({
       onClick={handleClick}
     >
       <div className="flex items-center justify-between w-full">
-        <p className="text-[10px] font-bold uppercase tracking-wide text-center flex-1" style={{ color: styles.text.secondary }}>
+        <p className="text-[10px] font-bold uppercase tracking-wide text-center flex-1 m-0" style={{ color: styles.text.secondary }}>
           Cumplimiento SLA por Etapa
         </p>
         <button
@@ -124,11 +124,11 @@ const MedicionSlaPorEtapaCard: React.FC<Props> = ({
         </button>
       </div>
 
-      <p className="text-2xl font-bold text-center flex-1 flex items-center justify-center" style={{ color: overallColor }}>
+      <p className="text-2xl font-bold text-center w-full m-0 flex-1 flex items-center justify-center" style={{ color: overallColor }}>
         {overallPct === null ? '—' : `${overallPct}%`}
       </p>
 
-      <p className="text-[9px] text-center w-full opacity-70" style={{ color: styles.text.tertiary }}>
+      <p className="text-[9px] text-center w-full opacity-70 m-0" style={{ color: styles.text.tertiary }}>
         {totalGeneral} caso{totalGeneral !== 1 ? 's' : ''} abierto{totalGeneral !== 1 ? 's' : ''} con SLA
       </p>
 

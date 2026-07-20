@@ -713,7 +713,7 @@ const SupervisorPanel: React.FC = () => {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 items-stretch">
          <Tooltip id="casos-abiertos" content="Total de casos activos en el sistema">
           <div 
-            className="p-2 rounded border cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
+            className="pt-2 px-2 pb-1 rounded border cursor-pointer transition-colors relative overflow-hidden h-full flex flex-col"
             style={{
               ...styles.card,
               borderColor: 'rgba(71, 85, 105, 0.3)',
@@ -730,13 +730,13 @@ const SupervisorPanel: React.FC = () => {
               e.currentTarget.style.boxShadow = '';
             }}
           >
-            <p className="text-[10px] font-bold uppercase tracking-wide text-center w-full" style={{color: styles.text.secondary}}>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-center w-full m-0" style={{color: styles.text.secondary}}>
               Casos Abiertos
             </p>
-            <p className="text-2xl font-bold text-center w-full flex-1 flex items-center justify-center" style={{color: '#3b82f6'}}>
+            <p className="text-2xl font-bold text-center w-full m-0 flex-1 flex items-center justify-center" style={{color: '#3b82f6'}}>
               {casosAbiertosCount}
             </p>
-            <p className="text-[9px] text-center w-full opacity-70" style={{color: styles.text.tertiary}}>
+            <p className="text-[9px] text-center w-full opacity-70 m-0" style={{color: styles.text.tertiary}}>
               Activos
             </p>
           </div>
@@ -744,7 +744,7 @@ const SupervisorPanel: React.FC = () => {
 
          <Tooltip id="casos-totales" content="Total de casos en el sistema">
           <div 
-            className="p-2 rounded border cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
+            className="pt-2 px-2 pb-1 rounded border cursor-pointer transition-colors relative overflow-hidden h-full flex flex-col"
             style={{
               ...styles.card,
               borderColor: 'rgba(71, 85, 105, 0.3)',
@@ -761,13 +761,13 @@ const SupervisorPanel: React.FC = () => {
               e.currentTarget.style.boxShadow = '';
             }}
           >
-            <p className="text-[10px] font-bold uppercase tracking-wide text-center w-full" style={{color: styles.text.secondary}}>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-center w-full m-0" style={{color: styles.text.secondary}}>
               Casos Totales
             </p>
-            <p className="text-2xl font-bold text-center w-full flex-1 flex items-center justify-center" style={{color: '#3b82f6'}}>
+            <p className="text-2xl font-bold text-center w-full m-0 flex-1 flex items-center justify-center" style={{color: '#3b82f6'}}>
               {casosTotalesCount}
             </p>
-            <p className="text-[9px] text-center w-full opacity-70" style={{color: styles.text.tertiary}}>
+            <p className="text-[9px] text-center w-full opacity-70 m-0" style={{color: styles.text.tertiary}}>
               Todos los casos
             </p>
           </div>
@@ -793,7 +793,7 @@ const SupervisorPanel: React.FC = () => {
 
          <Tooltip id="casos-criticos" content="Casos que requieren atención inmediata">
           <div 
-            className="p-2 rounded border cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
+            className="pt-2 px-2 pb-1 rounded border cursor-pointer transition-colors relative overflow-hidden h-full flex flex-col"
             style={{
               ...styles.card,
               borderColor: 'rgba(71, 85, 105, 0.3)',
@@ -810,13 +810,13 @@ const SupervisorPanel: React.FC = () => {
               e.currentTarget.style.boxShadow = '';
             }}
           >
-            <p className="text-[10px] font-bold uppercase tracking-wide text-center w-full" style={{color: styles.text.secondary}}>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-center w-full m-0" style={{color: styles.text.secondary}}>
               Casos Críticos
             </p>
-            <p className="text-2xl font-bold text-center w-full flex-1 flex items-center justify-center" style={{color: casosCriticosCount > 0 ? '#f87171' : styles.text.secondary}}>
+            <p className="text-2xl font-bold text-center w-full m-0 flex-1 flex items-center justify-center" style={{color: casosCriticosCount > 0 ? '#f87171' : styles.text.secondary}}>
               {casosCriticosCount}
             </p>
-            <p className="text-[9px] text-center w-full opacity-70" style={{color: casosCriticosCount > 0 ? '#f87171' : styles.text.tertiary}}>
+            <p className="text-[9px] text-center w-full opacity-70 m-0" style={{color: casosCriticosCount > 0 ? '#f87171' : styles.text.tertiary}}>
               {casosCriticosCount > 0 ? 'Requiere acción' : 'Bajo control'}
             </p>
           </div>
@@ -824,7 +824,7 @@ const SupervisorPanel: React.FC = () => {
 
          <Tooltip id="sla-promedio" content="Porcentaje de casos cumpliendo SLA">
           <div 
-            className="p-2 rounded border cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
+            className="pt-2 px-2 pb-1 rounded border cursor-pointer transition-colors relative overflow-hidden h-full flex flex-col"
             style={{
               ...styles.card,
               borderColor: 'rgba(71, 85, 105, 0.3)',
@@ -841,10 +841,10 @@ const SupervisorPanel: React.FC = () => {
               e.currentTarget.style.boxShadow = '';
             }}
           >
-            <p className="text-[10px] font-bold uppercase tracking-wide text-center w-full" style={{color: styles.text.secondary}}>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-center w-full m-0" style={{color: styles.text.secondary}}>
               SLA Promedio
             </p>
-            <p className="text-2xl font-bold text-center w-full flex-1 flex items-center justify-center" style={{
+            <p className="text-2xl font-bold text-center w-full m-0 flex-1 flex items-center justify-center" style={{
               color: slaPromedio === null ? styles.text.tertiary :
                      slaPromedio >= 90 ? '#22c55e' :
                      slaPromedio >= 70 ? '#fbbf24' :
@@ -852,7 +852,7 @@ const SupervisorPanel: React.FC = () => {
             }}>
               {slaPromedio === null ? 'N/A' : `${slaPromedio}%`}
             </p>
-            <p className="text-[9px] text-center w-full opacity-70" style={{color: styles.text.tertiary}}>
+            <p className="text-[9px] text-center w-full opacity-70 m-0" style={{color: styles.text.tertiary}}>
               {slaPromedio === null ? 'Sin datos' :
                slaPromedio >= 90 ? 'Normal' :
                slaPromedio >= 70 ? 'En riesgo' :

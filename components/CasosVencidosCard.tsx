@@ -56,7 +56,7 @@ const CasosVencidosCard: React.FC<Props> = ({
     <div
       {...dataAttr}
       title="Casos cuyo tiempo total abierto supera el SLA de la categoría. Vista global, no por etapa."
-      className="p-2 rounded border cursor-pointer h-full flex flex-col items-center"
+      className="pt-2 px-2 pb-1 rounded border cursor-pointer h-full flex flex-col items-center"
       style={{
         ...styles.card,
         borderColor: 'rgba(71, 85, 105, 0.3)',
@@ -71,13 +71,13 @@ const CasosVencidosCard: React.FC<Props> = ({
         e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.3)';
       }}
     >
-      <p className="text-[10px] font-bold uppercase tracking-wide text-center w-full" style={{ color: styles.text.secondary }}>
+      <p className="text-[10px] font-bold uppercase tracking-wide text-center w-full m-0" style={{ color: styles.text.secondary }}>
         Casos Vencidos
       </p>
-      <p className="text-2xl font-bold text-center flex-1 flex items-center" style={{ color: colorSecondary }}>
+      <p className="text-2xl font-bold text-center w-full m-0 flex-1 flex items-center justify-center" style={{ color: colorSecondary }}>
         {count}
       </p>
-      <p className="text-[9px] text-center w-full opacity-70" style={{ color: count > 0 ? '#ef4444' : styles.text.tertiary }}>
+      <p className="text-[9px] text-center w-full opacity-70 m-0" style={{ color: count > 0 ? '#ef4444' : styles.text.tertiary }}>
         {count > 0 ? 'SLA categoría excedido' : 'En tiempo'}
       </p>
     </div>
