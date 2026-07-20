@@ -32,58 +32,42 @@ const CasosCompletadosConSlaVencidoCard: React.FC<Props> = ({
     return s === 'cerrado' || s === 'resuelto' || s === 'finalizado';
   };
 
-  const matchesBreach = (s: string) => /venci[oó]?/i.test(s || '');
+  const isClosed = (c: any) => isFinalStatus(c.status || c.estado);
+  const hasBreach = (c: any) => {
+    if (c.slaExpired === true || c.slaExpired === 'true' || c.slaExpired === 1) return true;
+    if (Array.isArray(c.etapasVencidas) && c.etapasVencidas.length > 0) return true;
+    return false;
+  };
 
-  const { count, totalCasos, examples } = useMemo(() => {
+  const { count, total, examples } = useMemo(() => {
+    const SIN_CAT = 1;
+    let total = 0;
     let count = 0;
-    let totalConBreach = 0;
     const examples: any[] = [];
 
     for (const c of cases || []) {
       if (!c) continue;
-      let breached = false;
+      if (!c.categoria_id || c.categoria_id === SIN_CAT) continue;
 
-      // 1) Backend ya calculo que esta vencido actualmente
-      if (c.slaExpired === true || c.slaExpired === 'true' || c.slaExpired === 1) {
-        breached = true;
-      }
+      const breach = hasBreach(c);
 
-      // 2) Backend persistio etapasVencidas (caso se vencio en alguna
-      //    etapa, no importa el estado actual)
-      if (!breached && Array.isArray(c.etapasVencidas) && c.etapasVencidas.length > 0) {
-        breached = true;
-      }
-
-      // 3) Flag directo del backend
-      if (!breached) {
-        const flagBreach = c.slaEverBreached ?? c.vencidoPorEtapa ?? c.sla_vencido_en_historial;
-        if (flagBreach === true) breached = true;
-      }
-
-      // 4) Cerrado + busqueda en historial (heuristica legacy)
-      if (!breached && isFinalStatus(c.status || c.estado)) {
-        if (Array.isArray(c.historial)) {
-          for (const h of c.historial) {
-            const detalle = String(h.detalle || '');
-            if (matchesBreach(detalle)) {
-              breached = true;
-              break;
-            }
-          }
+      if (!isClosed(c)) {
+        // Caso abierto: cuenta 1 en la etapa actual
+        total += 1;
+        if (breach) count += 1;
+      } else if (Array.isArray(c.etapasVencidas) && c.etapasVencidas.length > 0) {
+        // Caso cerrado con breach: cuenta 1 por cada etapa donde se vencio
+        for (const _ of c.etapasVencidas) {
+          total += 1;
+          count += 1; // todos con breach
         }
-        if (!breached) {
-          if (matchesBreach(c.detalle || c.descripcion)) breached = true;
-        }
-      }
-
-      if (breached) {
-        count += 1;
-        if (examples.length < 3) examples.push(c);
-        totalConBreach += 1;
+      } else {
+        // Caso cerrado sin breach: cuenta 1 (en tiempo)
+        total += 1;
       }
     }
 
-    return { count, totalCasos: totalConBreach, examples };
+    return { count, total, examples };
   }, [cases]);
 
   const handleClick = () => {
@@ -136,10 +120,10 @@ const CasosCompletadosConSlaVencidoCard: React.FC<Props> = ({
       <p className="text-2xl font-bold text-center w-full m-0 flex-1 flex items-center justify-center" style={{ color: count > 0 ? '#f59e0b' : styles.text.primary }}>
         {count}
       </p>
-      <p className="text-[9px] text-center w-full opacity-70 m-0" style={{ color: styles.text.tertiary }}>
-        {totalCasos > 0
-          ? `${count} de ${totalCasos} casos con breach`
-          : 'Sin casos'}
+      <p className="text-[9px] text-center w-full opacity-70 m-0" style={{ color: count > 0 ? '#f59e0b' : styles.text.tertiary }}>
+        {total > 0
+          ? `${count} / ${total} casos`
+          : 'Sin casos con SLA'}
       </p>
 
       {expanded && examples.length > 0 && (

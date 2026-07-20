@@ -5,6 +5,7 @@ import { api } from '../services/api';
 
 interface Props {
   count: number;
+  totalAbiertos?: number;
   navigate?: (path: string) => void;
   onCardClick?: () => void;
   filterQuery?: string;
@@ -15,6 +16,7 @@ interface Props {
 
 const CasosVencidosCard: React.FC<Props> = ({
   count,
+  totalAbiertos = 0,
   navigate,
   onCardClick,
   filterQuery = 'vencidos',
@@ -80,9 +82,9 @@ const CasosVencidosCard: React.FC<Props> = ({
         {count}
       </p>
       <p className="text-[9px] text-center w-full opacity-70 m-0" style={{ color: count > 0 ? '#ef4444' : styles.text.tertiary }}>
-        {count > 0
-          ? `Más de ${totalSlaDias ?? 6} días (SLA global)`
-          : `En tiempo (${totalSlaDias ?? 6}d global)`}
+        {totalAbiertos > 0
+          ? `${count} / ${totalAbiertos} casos`
+          : `Sin casos`}
       </p>
     </div>
   );

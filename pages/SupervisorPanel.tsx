@@ -793,6 +793,7 @@ const SupervisorPanel: React.FC = () => {
            <div className="h-full">
              <CasosVencidosCard
                count={casosVencidosTotal}
+               totalAbiertos={casosAbiertosFiltrados.length}
                totalSlaDias={totalSlaDias}
               navigate={navigate}
             />
