@@ -391,14 +391,15 @@ const SupervisorPanel: React.FC = () => {
   const metricsSummary = dashboardMetrics?.summary || {};
   const metricsKpis = dashboardMetrics?.kpis || {};
   const metricsAgents = dashboardMetrics?.agents || {};
+
+  // Para métricas: casos abiertos = casosFiltrados sin cerrados
+  const casosAbiertosFiltrados = casosAbiertos;
+
   // Cumplimiento SLA global = casos sin vencer / casos abiertos
   // (calculo directo en frontend, consistente con el subtitle)
   const slaPromedio = casosAbiertosFiltrados.length > 0
     ? Math.round((casosDentroSLA.length / casosAbiertosFiltrados.length) * 100)
     : null;
-
-  // Para métricas: casos abiertos = casosFiltrados sin cerrados
-  const casosAbiertosFiltrados = casosAbiertos;
 
   // Estados del webhook (mismo patron que AdminPanel)
   const [estados, setEstados] = useState<Array<{ id: string; name: string; order: number; isFinal: boolean }>>([]);
