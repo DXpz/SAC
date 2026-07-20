@@ -803,7 +803,7 @@ const SupervisorPanel: React.FC = () => {
           </div>
         </Tooltip>
 
-         <Tooltip id="casos-vencidos-total" content={`FORMULA GLOBAL: casosVencidosTotal = casos con (slaExpired=true OR etapasVencidas.length>0 OR diasAbierto>${totalSlaDias}). Excluye cerrados que terminaron en <=${totalSlaDias} dias calendario. | Valor actual: ${casosVencidosTotal} vencido(s) de ${casosAbiertosFiltrados.length} abierto(s).`}>
+         <Tooltip id="casos-vencidos-total" content={`FORMULA GLOBAL: casosVencidosTotal = casos con (slaExpired=true OR etapasVencidas.length>0 OR diasAbierto>${totalSlaDias}) - cerrados que terminaron en <=${totalSlaDias} dias. | Valor actual: ${casosVencidosTotal} vencido(s) de ${casosAbiertosFiltrados.length} abierto(s). | Total SLA global: ${totalSlaDias} dias = suma de SLAs por etapa.`}>
             <div className="h-full">
               <CasosVencidosCard
                 count={casosVencidosTotal}
@@ -814,7 +814,7 @@ const SupervisorPanel: React.FC = () => {
            </div>
          </Tooltip>
 
-         <Tooltip id="completados-sla-vencido" content={`FORMULA POR ETAPA: cuenta 1 por cada (caso abierto en etapa actual) + (caso cerrado con etapasVencidas: 1 por cada etapa con breach) + (caso cerrado sin breach: 1 en tiempo). | Valor actual: ver card.`}>
+         <Tooltip id="completados-sla-vencido" content={`FORMULA POR ETAPA: cuenta 1 por cada (caso abierto en etapa actual) + (cerrado con etapasVencidas: 1 por cada etapa con breach) + (cerrado sin breach: 1 en tiempo). | Valor actual: ver card. | Incluye TANTO abiertos como cerrados (a diferencia del Global que solo cuenta abiertos).`}>
            <div className="h-full">
              <CasosCompletadosConSlaVencidoCard
                cases={casos}
@@ -854,7 +854,7 @@ const SupervisorPanel: React.FC = () => {
           </div>
         </Tooltip>
 
-          <Tooltip id="sla-promedio" content={`FORMULA: slaPromedio = round(casosDentroSLA.length / casosAbiertosFiltrados.length * 100). | Valor actual: ${casosDentroSLA.length} / ${casosAbiertosFiltrados.length} casos en tiempo = ${slaPromedio ?? 'N/A'}%`}>
+          <Tooltip id="sla-promedio" content={`FORMULA: slaPromedio = round(${casosDentroSLA.length} / ${casosAbiertosFiltrados.length} * 100). | Valor actual: ${casosDentroSLA.length} en tiempo de ${casosAbiertosFiltrados.length} abiertos. | Solo cuenta casos ABIERTOS (no cerrados). | Numerador: abiertos con categoria real SIN vencer. | Denominador: total abiertos.`}>
            <div
              className="pt-2 px-2 pb-1 rounded border cursor-pointer transition-colors relative overflow-hidden h-full flex flex-col"
              style={{
