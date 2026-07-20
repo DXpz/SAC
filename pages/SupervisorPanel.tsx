@@ -407,18 +407,25 @@ const SupervisorPanel: React.FC = () => {
     });
   }, [casosAbiertos]);
 
-  // Cumplimiento SLA global: solo casos CERRADOS
-  // Un caso cerrado esta "en tiempo" si no tiene etapasVencidas
-  // (no se vencio en ninguna etapa del workflow).
+  // Cumplimiento SLA global: cerrados Y abiertos
+  // Un caso esta "en tiempo" si:
+  // - Abierto: !slaExpired
+  // - Cerrado: !etapasVencidas (no se vencio en ninguna etapa)
   const casosEnTiempoGlobal = useMemo(() => {
     return casos.filter(c => {
-      const status = c.status || c.estado || '';
-      if (!['Cerrado', 'Resuelto', 'Finalizado', 'cerrado', 'resuelto', 'finalizado'].includes(status)) return false;
       const catId = (c as any).categoria_id || (c as any).categoria?.id || (c as any).categoria?.idCategoria;
       const tieneCategoriaReal = catId && String(catId) !== '1';
       if (!tieneCategoriaReal) return false;
-      if (Array.isArray((c as any).etapasVencidas) && (c as any).etapasVencidas.length > 0) return false;
-      return true;
+      const status = c.status || c.estado || '';
+      const isClosed = ['Cerrado', 'Resuelto', 'Finalizado', 'cerrado', 'resuelto', 'finalizado'].includes(status);
+      if (isClosed) {
+        // Cerrado: en tiempo si no tiene etapasVencidas
+        if (Array.isArray((c as any).etapasVencidas) && (c as any).etapasVencidas.length > 0) return false;
+        return true;
+      } else {
+        // Abierto: en tiempo si !slaExpired
+        return (c as any).slaExpired !== true;
+      }
     });
   }, [casos]);
 
@@ -465,11 +472,10 @@ const SupervisorPanel: React.FC = () => {
   // Para métricas: casos abiertos = casosFiltrados sin cerrados
   const casosAbiertosFiltrados = casosAbiertos;
 
-  // Total de casos CERRADOS con SLA real (denominador del Cumplimiento SLA Global)
+  // Total de casos (cerrados Y abiertos) con SLA real
+  // (denominador del Cumplimiento SLA Global)
   const totalCasosConSla = useMemo(() => {
     return casos.filter(c => {
-      const status = c.status || c.estado || '';
-      if (!['Cerrado', 'Resuelto', 'Finalizado', 'cerrado', 'resuelto', 'finalizado'].includes(status)) return false;
       const catId = (c as any).categoria_id || (c as any).categoria?.id || (c as any).categoria?.idCategoria;
       return catId && String(catId) !== '1';
     }).length;
@@ -915,7 +921,7 @@ const SupervisorPanel: React.FC = () => {
           </div>
         </Tooltip>
 
-          <Tooltip id="sla-promedio" content={`slaPromedio = round(${casosEnTiempoGlobal.length} / ${totalCasosConSla} * 100) = ${slaPromedio ?? 'N/A'}%. | Solo CERRADOS (sin etapasVencidas / total cerrados con SLA).`}>
+          <Tooltip id="sla-promedio" content={`slaPromedio = round(${casosEnTiempoGlobal.length} / ${totalCasosConSla} * 100) = ${slaPromedio ?? 'N/A'}%. | Cerrados y abiertos con SLA real.`}>
            <div
              className="pt-2 px-2 pb-1 rounded border cursor-pointer transition-colors relative overflow-hidden h-full flex flex-col"
              style={{
