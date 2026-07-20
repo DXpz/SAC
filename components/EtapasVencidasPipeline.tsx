@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
-import { TrendingDown, ChevronDown, ChevronUp } from 'lucide-react';
+import { TrendingDown } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { api } from '../services/api';
+import { getStageSlaDays } from '../utils/slaUtils';
 
 interface Props {
   cases: any[];
@@ -9,25 +10,20 @@ interface Props {
   navigate?: (path: string) => void;
 }
 
-const normalize = (s: string) => String(s || '').toLowerCase().replace(/\s+/g, '');
-
 const STAGE_COLORS = [
-  { bar: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)' },   // azul
-  { bar: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },   // naranja
-  { bar: '#a855f7', glow: 'rgba(168, 85, 247, 0.4)' },   // morado
-  { bar: '#06b6d4', glow: 'rgba(6, 182, 212, 0.4)' },    // cyan
-  { bar: '#10b981', glow: 'rgba(16, 185, 129, 0.4)' },   // verde
-  { bar: '#94a3b8', glow: 'rgba(148, 163, 184, 0.4)' },  // gris
-  { bar: '#ec4899', glow: 'rgba(236, 72, 153, 0.4)' }   // rosa
+  { bar: '#3b82f6', name: '#60a5fa' },
+  { bar: '#f59e0b', name: '#fbbf24' },
+  { bar: '#8b5cf6', name: '#a78bfa' },
+  { bar: '#06b6d4', name: '#22d3ee' },
+  { bar: '#10b981', name: '#34d399' },
+  { bar: '#f97316', name: '#fb923c' },
+  { bar: '#ec4899', name: '#f472b6' },
+  { bar: '#6b7280', name: '#9ca3af' }
 ];
 
-/**
- * Pipeline "Etapas Vencidas (Mes Actual)"
- *
- * Misma estructura visual que StagePipeline (recharts) pero SOLO con
- * casos cuya etapa actual está vencida (slaExpired=true) y que ingresaron
- * a esa etapa en el mes en curso.
- */
+const normalize = (s: string) =>
+  String(s || '').toLowerCase().trim().replace(/\s+/g, ' ');
+
 const EtapasVencidasPipeline: React.FC<Props> = ({
   cases,
   estados,
@@ -42,7 +38,7 @@ const EtapasVencidasPipeline: React.FC<Props> = ({
   const textSecondary = isDark ? '#94a3b8' : '#64748b';
   const textTertiary = isDark ? '#64748b' : '#94a3b8';
   const axisColor = isDark ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.2)';
-  const labelBg = isDark ? 'rgba(30, 41, 59, 0.5)' : 'rgba(241, 245, 249, 0.8)';
+  const baselineColor = isDark ? 'rgba(148, 163, 184, 0.3)' : 'rgba(100, 116, 139, 0.4)';
 
   const isCurrentMonth = (dateStr: string): boolean => {
     if (!dateStr) return false;
@@ -51,7 +47,6 @@ const EtapasVencidasPipeline: React.FC<Props> = ({
     return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
   };
 
-  // Normalizar estados
   const estadosNorm = useMemo(() => (estados || []).map((e: any) => ({
     id: String(e.id ?? e.name ?? e.nombre ?? ''),
     nombre: String(e.nombre ?? e.name ?? ''),
@@ -63,23 +58,19 @@ const EtapasVencidasPipeline: React.FC<Props> = ({
     [...estadosNorm].sort((a, b) => a.orden - b.orden),
     [estadosNorm]);
 
-  // Filtrar solo casos VENCIDOS del mes en curso
   const casosVencidos = useMemo(() => {
     return (cases || []).filter(c => {
       if (!c) return false;
       if (c.slaExpired !== true) return false;
       const estado = c.status || c.estado || '';
       if (!estado) return false;
-      // Solo estados finales cerrados se excluyen del todo
-      const norm = normalize(estado);
+      const norm = normalize(estado).replace(/\s+/g, '');
       if (norm === 'cerrado' || norm === 'resuelto' || norm === 'finalizado') return false;
-      // Entrada a la etapa en el mes actual
       const fechaRef = c.fecha_actualizacion || c.fechaCreacionFormateada || c.createdAt;
       return isCurrentMonth(fechaRef);
     });
   }, [cases]);
 
-  // Contar casos VENCIDOS por etapa
   const counts = useMemo(() => {
     const map: Record<string, number> = {};
     for (const c of casosVencidos) {
@@ -91,26 +82,50 @@ const EtapasVencidasPipeline: React.FC<Props> = ({
     return map;
   }, [casosVencidos]);
 
+  const maxCount = useMemo(() => Math.max(1, ...Object.values(counts)), [counts]);
   const totalCount = casosVencidos.length;
   const monthLabel = new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
 
-  const handleClick = () => {
+  const handleStageClick = (estadoNombre: string) => {
     if (!navigate) return;
     const user = api.getUser();
     const role = (user?.role || '').toUpperCase();
     const path = role === 'ADMIN' || role === 'ADMINISTRADOR' || role === 'ADMIN_GLOBAL'
       ? '/app/admin/casos'
       : '/app/casos';
-    navigate(`${path}?filter=etapas-vencidas`);
+    navigate(`${path}?filter=etapas-vencidas&etapa=${encodeURIComponent(estadoNombre)}`);
   };
+
+  if (totalCount === 0) {
+    return (
+      <div
+        className="rounded-2xl border p-5 shadow-sm"
+        style={{ backgroundColor: cardBg, borderColor: cardBorder }}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <h2 className="text-lg font-bold flex items-center gap-2" style={{ color: textPrimary }}>
+              <TrendingDown className="w-5 h-5" style={{ color: '#ef4444' }} />
+              Etapas Vencidas
+            </h2>
+            <p className="text-xs mt-0.5" style={{ color: textSecondary }}>
+              Distribución de casos vencidos en cada etapa ({monthLabel})
+            </p>
+          </div>
+        </div>
+        <p className="text-sm text-center py-8" style={{ color: textTertiary }}>
+          No hay casos vencidos este mes
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div
-      className="rounded-2xl border p-5 shadow-sm cursor-pointer hover:shadow-md transition-all"
+      className="rounded-2xl border p-5 shadow-sm"
       style={{ backgroundColor: cardBg, borderColor: cardBorder }}
-      onClick={handleClick}
     >
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-lg font-bold flex items-center gap-2" style={{ color: textPrimary }}>
             <TrendingDown className="w-5 h-5" style={{ color: '#ef4444' }} />
@@ -121,65 +136,88 @@ const EtapasVencidasPipeline: React.FC<Props> = ({
           </p>
         </div>
         <div className="text-xs font-medium" style={{ color: textSecondary }}>
-          Total: <span className="font-bold" style={{ color: totalCount > 0 ? '#ef4444' : textPrimary }}>{totalCount}</span>
+          Total: <span className="font-bold" style={{ color: '#ef4444' }}>{totalCount}</span>
         </div>
       </div>
 
-      <div className="overflow-x-auto" style={{ paddingBottom: '8px' }}>
-          <div className="flex items-end justify-around gap-2" style={{ minHeight: '140px', minWidth: `${estadosOrdenados.length * 90}px` }}>
-            {estadosOrdenados.map((estado, idx) => {
-              const colorSet = STAGE_COLORS[idx % STAGE_COLORS.length];
-              const normKey = normalize(estado.nombre);
-              const count = counts[normKey] || 0;
-              const hasData = count > 0;
-              // Altura proporcional al maximo
-              const maxBarHeight = 100;
-              const minBarHeight = 12;
-              const maxCount = Math.max(1, ...Object.values(counts));
-              const barHeight = hasData
-                ? minBarHeight + (count / maxCount) * (maxBarHeight - minBarHeight)
-                : 6;
+      <div className="relative pl-36 pr-4">
+        <div
+          className="absolute bottom-0 left-36 right-0 h-0.5"
+          style={{ backgroundColor: baselineColor }}
+        />
 
-              return (
+        <div className="flex items-end justify-center gap-6 h-64 pb-16 flex-wrap">
+          {estadosOrdenados.map((estado, idx) => {
+            const key = normalize(estado.nombre);
+            const count = counts[key] || 0;
+            const hasData = count > 0;
+            const colorSet = STAGE_COLORS[idx % STAGE_COLORS.length];
+            const slaDays = getStageSlaDays(estado.nombre);
+            const heightPct = hasData ? Math.max(12, (count / maxCount) * 100) : 0;
+
+            return (
+              <div
+                key={estado.id}
+                className="flex flex-col items-center justify-end h-full relative group"
+                style={{ width: '90px' }}
+              >
                 <div
-                  key={estado.id || estado.nombre}
-                  className="flex flex-col items-center"
-                  style={{ minWidth: '70px', flex: 1 }}
-                  title={`${estado.nombre}: ${count} caso${count !== 1 ? 's' : ''} vencido${count !== 1 ? 's' : ''}`}
+                  className="absolute bottom-full mb-2 px-2 py-1 rounded text-[10px] font-bold pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10"
+                  style={{
+                    backgroundColor: isDark ? '#020617' : '#1e293b',
+                    color: '#fff',
+                    border: `1px solid ${hasData ? '#ef4444' : colorSet.bar}`
+                  }}
                 >
-                  {/* Contador encima de la barra */}
-                  <div
-                    className="text-xs font-bold mb-1"
-                    style={{ color: hasData ? '#ef4444' : textTertiary }}
+                  {count} vencido{count === 1 ? '' : 's'}
+                </div>
+
+                {hasData ? (
+                  <p
+                    className="text-lg font-black leading-none mb-1 transition-all"
+                    style={{ color: '#ef4444' }}
                   >
                     {count}
-                  </div>
-                  {/* Barra */}
-                  <div
-                    className="w-full rounded-t transition-all"
+                  </p>
+                ) : (
+                  <div className="h-6" />
+                )}
+
+                {hasData ? (
+                  <button
+                    onClick={() => handleStageClick(estado.nombre)}
+                    className="w-full rounded-t-md transition-all hover:opacity-80 cursor-pointer"
                     style={{
-                      height: `${barHeight}px`,
-                      backgroundColor: hasData ? colorSet.bar : axisColor,
-                      boxShadow: hasData ? `0 -2px 8px ${colorSet.glow}` : 'none',
-                      opacity: hasData ? 1 : 0.4
+                      height: `${heightPct}%`,
+                      minHeight: '8px',
+                      backgroundColor: '#ef4444',
+                      boxShadow: '0 -2px 8px rgba(239, 68, 68, 0.4)'
                     }}
+                    title={`${estado.nombre}: ${count} vencido${count !== 1 ? 's' : ''} · SLA ${slaDays ?? 'N/A'}`}
                   />
-                  {/* Label inferior: nombre de la etapa (siempre visible) */}
-                  <div
-                    className="text-[11px] text-center mt-2 leading-tight px-1 w-full"
-                    style={{
-                      color: textPrimary,
-                      fontWeight: 500,
-                      opacity: hasData ? 1 : 0.7
-                    }}
+                ) : (
+                  <div className="w-full h-1 opacity-30" style={{ backgroundColor: axisColor }} />
+                )}
+
+                <div className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2 w-24 text-center">
+                  <p
+                    className="text-[10px] font-bold leading-tight uppercase tracking-wide mb-0.5"
+                    style={{ color: hasData ? textPrimary : textTertiary }}
                   >
                     {estado.nombre}
-                  </div>
+                  </p>
+                  <p
+                    className="text-[9px] font-medium"
+                    style={{ color: slaDays == null ? textTertiary : '#ef4444' }}
+                  >
+                    SLA {slaDays == null ? 'N/A' : `${slaDays}d`}
+                  </p>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
+      </div>
     </div>
   );
 };
