@@ -616,6 +616,8 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
       contacto_principal: caseData.contacto_principal || caseData.contactoPrincipal || '',
       // Preserve business hours from backend SLA calculation
       diasRestantes: caseData.diasRestantes ?? 0,
+      // Dias habiles de atraso (viene del backend, saltando S-D y asuetos)
+      daysOverdue: caseData.daysOverdue ?? 0,
     };
     
     // Preservar agente_user_id del webhook en el objeto Case para comparación

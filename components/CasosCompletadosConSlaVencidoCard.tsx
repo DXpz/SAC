@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect, useState } from 'react';
-import { CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { api } from '../services/api';
 
@@ -8,6 +8,17 @@ interface Props {
   navigate?: (path: string) => void;
 }
 
+/**
+ * Card "Casos con SLA Vencidos"
+ *
+ * Cuenta TODOS los casos que tienen una o mas etapas vencidas (no importa
+ * el estado actual):
+ *   1) Casos actualmente vencidos (slaExpired=true), incluyendo los que
+ *      aun no se han cerrado.
+ *   2) Casos ya cerrados (Cerrado/Resuelto/Finalizado) cuyo historial
+ *      contiene algun detalle con 'vencido'/'venci' (heuristica hasta
+ *      que el backend exponga slaEverBreached).
+ */
 const CasosCompletadosConSlaVencidoCard: React.FC<Props> = ({
   cases,
   navigate
@@ -21,32 +32,42 @@ const CasosCompletadosConSlaVencidoCard: React.FC<Props> = ({
     return s === 'cerrado' || s === 'resuelto' || s === 'finalizado';
   };
 
-  const { count, totalFinalizados, examples } = useMemo(() => {
-    const finalizados = (cases || []).filter(c => c && isFinalStatus(c.status || c.estado));
+  const matchesBreach = (s: string) => /venci[oó]?/i.test(s || '');
 
-    const matchesBreach = (s: string) => /venci[oó]?/i.test(s || '');
-
+  const { count, totalCasos, examples } = useMemo(() => {
     let count = 0;
     const examples: any[] = [];
 
-    for (const c of finalizados) {
+    for (const c of cases || []) {
+      if (!c) continue;
       let breached = false;
 
-      const flagBreach = c.slaEverBreached ?? c.vencidoPorEtapa ?? c.sla_vencido_en_historial;
-      if (flagBreach === true) breached = true;
-
-      if (!breached && Array.isArray(c.historial)) {
-        for (const h of c.historial) {
-          const detalle = String(h.detalle || '');
-          if (matchesBreach(detalle)) {
-            breached = true;
-            break;
-          }
-        }
+      // 1) Backend ya calculo que esta vencido
+      if (c.slaExpired === true || c.slaExpired === 'true' || c.slaExpired === 1) {
+        breached = true;
       }
 
+      // 2) Flag directo del backend
       if (!breached) {
-        if (matchesBreach(c.detalle || c.descripcion)) breached = true;
+        const flagBreach = c.slaEverBreached ?? c.vencidoPorEtapa ?? c.sla_vencido_en_historial;
+        if (flagBreach === true) breached = true;
+      }
+
+      // 3) Cerrado + busqueda en historial (porque el backend no expone
+      //    el flag para los ya finalizados; usamos la heuristica)
+      if (!breached && isFinalStatus(c.status || c.estado)) {
+        if (Array.isArray(c.historial)) {
+          for (const h of c.historial) {
+            const detalle = String(h.detalle || '');
+            if (matchesBreach(detalle)) {
+              breached = true;
+              break;
+            }
+          }
+        }
+        if (!breached) {
+          if (matchesBreach(c.detalle || c.descripcion)) breached = true;
+        }
       }
 
       if (breached) {
@@ -55,7 +76,7 @@ const CasosCompletadosConSlaVencidoCard: React.FC<Props> = ({
       }
     }
 
-    return { count, totalFinalizados: finalizados.length, examples };
+    return { count, totalCasos: (cases || []).length, examples };
   }, [cases]);
 
   const handleClick = () => {
@@ -91,7 +112,7 @@ const CasosCompletadosConSlaVencidoCard: React.FC<Props> = ({
 
   return (
     <div
-      title="Casos finalizados cuyo SLA de etapa fue excedido en algún momento del workflow"
+      title="Casos con una o mas etapas vencidas (actualmente vencidos + cerrados con breach previo)"
       className="pt-2 px-2 pb-1 rounded border flex flex-col items-center"
       style={cardStyle}
       onClick={handleClick}
@@ -103,15 +124,15 @@ const CasosCompletadosConSlaVencidoCard: React.FC<Props> = ({
       }}
     >
       <p className="text-[10px] font-bold uppercase tracking-wide text-center w-full m-0" style={{ color: styles.text.secondary }}>
-        Completados con SLA Vencido
+        Casos con SLA Vencidos
       </p>
       <p className="text-2xl font-bold text-center w-full m-0 flex-1 flex items-center justify-center" style={{ color: count > 0 ? '#f59e0b' : styles.text.primary }}>
         {count}
       </p>
       <p className="text-[9px] text-center w-full opacity-70 m-0" style={{ color: styles.text.tertiary }}>
-        {totalFinalizados > 0
-          ? `${count} de ${totalFinalizados} finalizados`
-          : 'Sin finalizados'}
+        {totalCasos > 0
+          ? `${count} de ${totalCasos} casos con breach`
+          : 'Sin casos'}
       </p>
 
       {expanded && examples.length > 0 && (
@@ -119,7 +140,7 @@ const CasosCompletadosConSlaVencidoCard: React.FC<Props> = ({
           {examples.map((c, idx) => (
             <div key={c.id || c.case_id || idx} className="text-[11px] truncate" style={{ color: styles.text.tertiary }}>
               <span className="font-medium" style={{ color: styles.text.primary }}>{c.case_id || c.ticketNumber || c.id}:</span>{' '}
-              {(c.detalle || c.descripcion || '').substring(0, 50)}
+              {(c.detalle || c.descripcion || c.subject || '').substring(0, 50)}
             </div>
           ))}
         </div>
