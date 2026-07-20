@@ -1493,18 +1493,14 @@ const [requiereEquipo, setRequiereEquipo] = useState(false); // Para Diagnostico
   const diasAbierto = caso.diasAbierto ?? 0;
   const diasRestantes = caso.diasRestantes ?? caso.slaDias ?? 1;
   const slaDeadline = caso.fechaFinSla ? new Date(caso.fechaFinSla) : null;
-  const createdDateDisplay = caso.fechaCreacionFormateada 
+  const createdDateDisplay = caso.fechaCreacionFormateada
     ? caso.fechaCreacionFormateada
     : (caso.fecha_creacion ? new Date(caso.fecha_creacion).toLocaleString('es-ES', { timeZone: 'America/Guatemala', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : new Date().toLocaleString('es-ES', { timeZone: 'America/Guatemala', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
   const createdDate = caso.fecha_creacion ? new Date(caso.fecha_creacion) : new Date();
-  
-  // Calcular días de atraso (si el SLA ya venció)
-  const now = new Date();
-  let daysOverdue = 0;
-  if (slaDeadline && now > slaDeadline) {
-    const diffMs = now.getTime() - slaDeadline.getTime();
-    daysOverdue = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  }
+
+  // Dias habiles de atraso: el backend ya los calcula y envia en
+  // caso.daysOverdue (saltando S-D y asuetos). No calcular localmente.
+  const daysOverdue = caso.daysOverdue ?? 0;
   
   const slaDias = caso.slaDias ?? 1;
 
