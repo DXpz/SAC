@@ -28,7 +28,7 @@ const SupervisorPanel: React.FC = () => {
   const [agentes, setAgentes] = useState<Agente[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
-  const [periodFilter, setPeriodFilter] = useState<FilterPeriod>('hoy');
+  const [periodFilter, setPeriodFilter] = useState<FilterPeriod>('todos');
   const [typeFilter, setTypeFilter] = useState<FilterType>('todos');
   const [agentFilter, setAgentFilter] = useState<string>('todos');
   const [showTooltip, setShowTooltip] = useState<string | null>(null);
