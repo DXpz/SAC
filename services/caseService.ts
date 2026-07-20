@@ -609,6 +609,7 @@ const mapWebhookResponseToCase = (webhookData: any): Case | null => {
       clientPhone: clienteMapped?.telefono || caseData.telefono_cliente || caseData.telfono_cliente || caseData.clientPhone || '',
       agenteAsignado: agenteMapped as any,
       categoria: categoriaMapped as any,
+      categoria_id: categoriaId,
       cliente: clienteMapped as any,
       diasAbierto: diasAbierto,
       slaDias: caseData.slaDias ?? slaDiasFromBackend,

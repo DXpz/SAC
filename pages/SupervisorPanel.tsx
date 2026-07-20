@@ -357,6 +357,11 @@ const SupervisorPanel: React.FC = () => {
 
   const casosVencidosTotal = useMemo(() => {
     return casos.filter(c => {
+      // 1) Esta actualmente vencido
+      if ((c as any).slaExpired === true) return true;
+      // 2) Se vencio en alguna etapa (incluso si cambio de estado o se finalizo)
+      if (Array.isArray((c as any).etapasVencidas) && (c as any).etapasVencidas.length > 0) return true;
+      // 3) Fallback: diasAbierto > slaDias (caso legacy sin etapasVencidas)
       const status = c.status || '';
       if (['Cerrado', 'Resuelto', 'Finalizado', CaseStatus.RESUELTO, CaseStatus.CERRADO].includes(status)) return false;
       const slaDias = (c as any).categoria?.slaDias || (c as any).categoria?.sla_dias || 5;

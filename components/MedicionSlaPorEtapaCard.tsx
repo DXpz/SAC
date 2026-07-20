@@ -30,12 +30,27 @@ const MedicionSlaPorEtapaCard: React.FC<Props> = ({
     );
 
     const map: Record<string, { total: number; enTiempo: number }> = {};
+    // Caso 1: actualmente abierto en la etapa X
     casosAbiertos.forEach(c => {
       const estado = c.status || c.estado || 'Sin etapa';
       if (!map[estado]) map[estado] = { total: 0, enTiempo: 0 };
       map[estado].total += 1;
       if (c.slaExpired !== true) map[estado].enTiempo += 1;
     });
+
+    // Caso 2: cerrado/finalizado pero con etapasVencidas persistido
+    //   (se cuenta 1 por cada etapa donde se vencio, no por etapa actual)
+    for (const c of cases || []) {
+      if (!c) continue;
+      if (!isFinalStatus(c.status || c.estado)) continue; // ya contado arriba
+      if (!c.categoria_id || c.categoria_id === SIN_CAT) continue;
+      if (!Array.isArray((c as any).etapasVencidas) || (c as any).etapasVencidas.length === 0) continue;
+      for (const etapa of (c as any).etapasVencidas) {
+        if (!map[etapa]) map[etapa] = { total: 0, enTiempo: 0 };
+        map[etapa].total += 1;
+        // Un caso cerrado con breach en esta etapa cuenta como 'no en tiempo'
+      }
+    }
 
     const order = estados && estados.length > 0
       ? estados.map((e: any) => e.nombre)

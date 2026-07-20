@@ -36,25 +36,31 @@ const CasosCompletadosConSlaVencidoCard: React.FC<Props> = ({
 
   const { count, totalCasos, examples } = useMemo(() => {
     let count = 0;
+    let totalConBreach = 0;
     const examples: any[] = [];
 
     for (const c of cases || []) {
       if (!c) continue;
       let breached = false;
 
-      // 1) Backend ya calculo que esta vencido
+      // 1) Backend ya calculo que esta vencido actualmente
       if (c.slaExpired === true || c.slaExpired === 'true' || c.slaExpired === 1) {
         breached = true;
       }
 
-      // 2) Flag directo del backend
+      // 2) Backend persistio etapasVencidas (caso se vencio en alguna
+      //    etapa, no importa el estado actual)
+      if (!breached && Array.isArray(c.etapasVencidas) && c.etapasVencidas.length > 0) {
+        breached = true;
+      }
+
+      // 3) Flag directo del backend
       if (!breached) {
         const flagBreach = c.slaEverBreached ?? c.vencidoPorEtapa ?? c.sla_vencido_en_historial;
         if (flagBreach === true) breached = true;
       }
 
-      // 3) Cerrado + busqueda en historial (porque el backend no expone
-      //    el flag para los ya finalizados; usamos la heuristica)
+      // 4) Cerrado + busqueda en historial (heuristica legacy)
       if (!breached && isFinalStatus(c.status || c.estado)) {
         if (Array.isArray(c.historial)) {
           for (const h of c.historial) {
@@ -73,10 +79,11 @@ const CasosCompletadosConSlaVencidoCard: React.FC<Props> = ({
       if (breached) {
         count += 1;
         if (examples.length < 3) examples.push(c);
+        totalConBreach += 1;
       }
     }
 
-    return { count, totalCasos: (cases || []).length, examples };
+    return { count, totalCasos: totalConBreach, examples };
   }, [cases]);
 
   const handleClick = () => {
