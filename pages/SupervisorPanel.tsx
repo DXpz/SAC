@@ -716,7 +716,7 @@ const SupervisorPanel: React.FC = () => {
       />
 
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-stretch">
         <Tooltip id="casos-abiertos" content="Total de casos activos en el sistema">
           <div 
             className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
@@ -900,42 +900,13 @@ const SupervisorPanel: React.FC = () => {
           </div>
         </Tooltip>
 
-        <Tooltip id="agentes-online" content="Agentes disponibles del total">
-          <div 
-            className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
-            style={{
-              ...styles.card,
-              borderColor: 'rgba(71, 85, 105, 0.3)',
-              backgroundColor: styles.card.backgroundColor
-            }}
-            onMouseEnter={(e) => {
-              handleTooltipEnter('agentes-online');
-              e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
-            }}
-            onMouseLeave={(e) => {
-              handleTooltipLeave();
-              e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.3)';
-              e.currentTarget.style.boxShadow = '';
-            }}
-          >
-            <div className="absolute top-3 right-3">
-              <Users className="w-6 h-6" style={{color: '#22c55e'}} />
-            </div>
-            <div className="flex items-start justify-between mb-2 pr-8">
-              <div className="flex-1">
-                <p className="text-4xl font-black leading-none mb-1.5" style={{color: '#22c55e'}}>
-                  {agentesActivos}/{totalAgentes}
-                </p>
-                <div className="flex items-center gap-1.5">
-                  <Users className="w-4 h-4 flex-shrink-0" style={{color: '#22c55e'}} />
-                  <p className="text-xs font-bold uppercase tracking-wide" style={{color: styles.text.secondary}}>Agentes Online</p>
-                </div>
-                <p className="text-[10px] mt-1" style={{color: styles.text.tertiary}}>
-                  Disponibles
-                </p>
-              </div>
-            </div>
+        <Tooltip id="sla-por-etapa" content="Cumplimiento de SLA promedio por cada etapa del workflow">
+          <div className="h-full">
+            <MedicionSlaPorEtapaCard
+              cases={casosAbiertosFiltrados}
+              estados={estados}
+              navigate={navigate}
+            />
           </div>
         </Tooltip>
       </div>
