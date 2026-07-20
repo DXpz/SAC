@@ -4,7 +4,6 @@ import { api } from '../services/api';
 import StagePipeline from '../components/StagePipeline';
 import EtapasVencidasPipeline from '../components/EtapasVencidasPipeline';
 import CasosVencidosCard from '../components/CasosVencidosCard';
-import MedicionSlaPorEtapaCard from '../components/MedicionSlaPorEtapaCard';
 import { setStageSlaMap } from '../utils/slaUtils';
 import { API_CONFIG } from '../config';
 import { isClosedCase, getDiasRestantes, isSlaCritical, isSlaAtRisk, isSlaWithin } from '../utils/slaUtils';
@@ -716,7 +715,7 @@ const SupervisorPanel: React.FC = () => {
       />
 
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
         <Tooltip id="casos-abiertos" content="Total de casos activos en el sistema">
           <div 
             className="p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative overflow-hidden h-full"
@@ -900,19 +899,10 @@ const SupervisorPanel: React.FC = () => {
           </div>
         </Tooltip>
 
-        <Tooltip id="sla-por-etapa" content="Cumplimiento de SLA promedio por cada etapa del workflow">
-          <div className="h-full">
-            <MedicionSlaPorEtapaCard
-              cases={casosAbiertosFiltrados}
-              estados={estados}
-              navigate={navigate}
-            />
-          </div>
-        </Tooltip>
       </div>
 
-      {/* === Sección de Gráficas === Etapas Vencidas del mes (MedicionSlaPorEtapa
-          ya está en el grid de cards arriba) === */}
+      {/* === Sección de Gráficas ===
+          Orden: Pipeline por Etapa (distribución casos) -> Etapas Vencidas === */}
       <div className="grid grid-cols-1 gap-4">
         <div className="h-full">
           <EtapasVencidasPipeline

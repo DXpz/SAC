@@ -125,12 +125,7 @@ const EtapasVencidasPipeline: React.FC<Props> = ({
         </div>
       </div>
 
-      {totalCount === 0 ? (
-        <p className="text-sm text-center py-8" style={{ color: textTertiary }}>
-          Sin etapas vencidas en {monthLabel}
-        </p>
-      ) : (
-        <div className="overflow-x-auto" style={{ paddingBottom: '8px' }}>
+      <div className="overflow-x-auto" style={{ paddingBottom: '8px' }}>
           <div className="flex items-end justify-around gap-2" style={{ minHeight: '140px', minWidth: `${estadosOrdenados.length * 90}px` }}>
             {estadosOrdenados.map((estado, idx) => {
               const colorSet = STAGE_COLORS[idx % STAGE_COLORS.length];
@@ -185,7 +180,6 @@ const EtapasVencidasPipeline: React.FC<Props> = ({
             })}
           </div>
         </div>
-      )}
     </div>
   );
 };
