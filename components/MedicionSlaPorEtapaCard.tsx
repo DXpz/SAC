@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import { TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { api } from '../services/api';
 
@@ -15,70 +14,67 @@ const isFinalStatus = (status: any): boolean => {
   return s === 'cerrado' || s === 'resuelto' || s === 'finalizado';
 };
 
+const isClosed = (c: any) => isFinalStatus(c.status || c.estado);
+const hasBreach = (c: any) => {
+  if (c.slaExpired === true || c.slaExpired === 'true' || c.slaExpired === 1) return true;
+  if (Array.isArray(c.etapasVencidas) && c.etapasVencidas.length > 0) return true;
+  return false;
+};
+
+/**
+ * Card "Cumplimiento SLA por etapa"
+ *
+ * Mide el cumplimiento de SLA por cada etapa del workflow.
+ *
+ * Formula (acumulada por etapa, no por caso):
+ *   - Para cada caso abierto en etapa X: cuenta +1 al total de la etapa X
+ *   - Para cada caso cerrado/finalizado con etapasVencidas persistido:
+ *     cuenta +1 al total de cada etapa donde se vencio
+ *   - Un caso esta "en tiempo" si su slaExpired es false en la etapa actual
+ *     y no tiene breach previo en ninguna otra etapa
+ *
+ * Muestra un numero global (% promedio) y un subtitle "X / Y casos en tiempo"
+ * donde Y = total de casos con SLA (suma de todas las etapas).
+ */
 const MedicionSlaPorEtapaCard: React.FC<Props> = ({
   cases,
-  estados,
   navigate
 }) => {
   const { theme } = useTheme();
-  const [expanded, setExpanded] = React.useState(true);
 
-  const { totalGeneral, enTiempoTotal, rows, peorEtapa } = useMemo(() => {
+  const { enTiempo, total } = useMemo(() => {
     const SIN_CAT = 1;
-    const casosAbiertos = (cases || []).filter(c =>
-      c && !isFinalStatus(c.status || c.estado) && c.categoria_id && c.categoria_id !== SIN_CAT
-    );
+    let total = 0;
+    let enTiempo = 0;
 
-    const map: Record<string, { total: number; enTiempo: number }> = {};
-    // Caso 1: actualmente abierto en la etapa X
-    casosAbiertos.forEach(c => {
-      const estado = c.status || c.estado || 'Sin etapa';
-      if (!map[estado]) map[estado] = { total: 0, enTiempo: 0 };
-      map[estado].total += 1;
-      if (c.slaExpired !== true) map[estado].enTiempo += 1;
-    });
-
-    // Caso 2: cerrado/finalizado pero con etapasVencidas persistido
-    //   (se cuenta 1 por cada etapa donde se vencio, no por etapa actual)
     for (const c of cases || []) {
       if (!c) continue;
-      if (!isFinalStatus(c.status || c.estado)) continue; // ya contado arriba
       if (!c.categoria_id || c.categoria_id === SIN_CAT) continue;
-      if (!Array.isArray((c as any).etapasVencidas) || (c as any).etapasVencidas.length === 0) continue;
-      for (const etapa of (c as any).etapasVencidas) {
-        if (!map[etapa]) map[etapa] = { total: 0, enTiempo: 0 };
-        map[etapa].total += 1;
-        // Un caso cerrado con breach en esta etapa cuenta como 'no en tiempo'
+
+      const breach = hasBreach(c);
+
+      if (!isClosed(c)) {
+        // Caso abierto: cuenta 1 en la etapa actual
+        total += 1;
+        if (!breach) enTiempo += 1;
+      } else if (Array.isArray(c.etapasVencidas) && c.etapasVencidas.length > 0) {
+        // Caso cerrado con breach: cuenta 1 por cada etapa donde se vencio
+        for (const _ of c.etapasVencidas) {
+          total += 1;
+          enTiempo += 0; // no en tiempo (se vencio en esa etapa)
+        }
+      } else {
+        // Caso cerrado sin breach: cuenta 1 (1 etapa, en tiempo)
+        total += 1;
+        enTiempo += 1;
       }
     }
 
-    const order = estados && estados.length > 0
-      ? estados.map((e: any) => e.nombre)
-      : ['Nueva Solicitud', 'Primer Contacto', 'Diagnóstico', 'Ejecución', 'Control de Calidad', 'Listo - pendiente entrega cliente', 'Finalizado'];
+    return { enTiempo, total };
+  }, [cases]);
 
-    const list = order
-      .filter(name => map[name] && map[name].total > 0)
-      .map(name => {
-        const r = map[name];
-        const pct = r.total > 0 ? Math.round((r.enTiempo / r.total) * 100) : 0;
-        return { name, total: r.total, enTiempo: r.enTiempo, pct };
-      });
-
-    Object.keys(map).forEach(k => {
-      if (!order.includes(k) && map[k].total > 0) {
-        const r = map[k];
-        list.push({ name: k, total: r.total, enTiempo: r.enTiempo, pct: r.total > 0 ? Math.round((r.enTiempo / r.total) * 100) : 0 });
-      }
-    });
-
-    const total = list.reduce((acc, r) => acc + r.total, 0);
-    const enTiempoTotal = list.reduce((acc, r) => acc + r.enTiempo, 0);
-    const peor = list.length > 0
-      ? list.reduce((min, r) => r.pct < min.pct ? r : min, list[0])
-      : null;
-
-    return { totalGeneral: total, enTiempoTotal, rows: list, peorEtapa: peor };
-  }, [cases, estados]);
+  const pct = total > 0 ? Math.round((enTiempo / total) * 100) : null;
+  const color = pct === null ? '#94a3b8' : pct >= 90 ? '#22c55e' : pct >= 70 ? '#fbbf24' : '#f87171';
 
   const handleClick = () => {
     if (!navigate) return;
@@ -93,110 +89,39 @@ const MedicionSlaPorEtapaCard: React.FC<Props> = ({
   const styles = {
     card: {
       backgroundColor: theme === 'dark' ? '#020617' : '#ffffff',
-      borderColor: 'rgba(148, 163, 184, 0.2)',
-      color: theme === 'dark' ? '#f1f5f9' : '#0f172a'
+      borderColor: 'rgba(71, 85, 105, 0.3)',
     },
-    text: {
-      primary: theme === 'dark' ? '#f1f5f9' : '#0f172a',
-      secondary: theme === 'dark' ? '#cbd5e1' : '#475569',
-      tertiary: theme === 'dark' ? '#94a3b8' : '#64748b'
-    }
+    textSecondary: theme === 'dark' ? '#cbd5e1' : '#475569',
+    textTertiary: theme === 'dark' ? '#94a3b8' : '#64748b',
   };
-
-  const getColorByPct = (pct: number): string => {
-    if (pct >= 90) return '#10b981';
-    if (pct >= 70) return '#f59e0b';
-    return '#ef4444';
-  };
-
-  const overallPct = rows.length > 0
-    ? Math.round(rows.reduce((acc, r) => acc + r.pct, 0) / rows.length)
-    : null;
-
-  const overallColor = overallPct === null ? styles.text.tertiary : getColorByPct(overallPct);
 
   return (
     <div
-      title="Cumplimiento de SLA por cada etapa. Verde >= 90%, Amarillo 70-89%, Rojo < 70%."
-      className="pt-2 px-2 pb-1 rounded border cursor-pointer h-full flex flex-col"
+      title="Cumplimiento de SLA por etapa (X / Y casos en tiempo)"
+      className="pt-2 px-2 pb-1 rounded border cursor-pointer h-full flex flex-col items-center"
       style={{
         ...styles.card,
-        borderColor: 'rgba(71, 85, 105, 0.3)',
-        backgroundColor: styles.card.backgroundColor
+        backgroundColor: styles.card.backgroundColor,
       }}
       onClick={handleClick}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.5)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.3)';
+      }}
     >
-      <div className="flex items-center justify-between w-full">
-        <p className="text-[10px] font-bold uppercase tracking-wide text-center flex-1 m-0" style={{ color: styles.text.secondary }}>
-          Cumplimiento SLA por Etapa
-        </p>
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
-          className="p-0.5 rounded hover:bg-white/5 flex-shrink-0"
-          title={expanded ? 'Ocultar detalle' : 'Ver detalle'}
-        >
-          {expanded ? <ChevronUp className="w-3 h-3" style={{ color: styles.text.tertiary }} /> : <ChevronDown className="w-3 h-3" style={{ color: styles.text.tertiary }} />}
-        </button>
-      </div>
-
-      <p className="text-2xl font-bold text-center w-full m-0 flex-1 flex items-center justify-center" style={{ color: overallColor }}>
-        {overallPct === null ? '—' : `${overallPct}%`}
+      <p className="text-[10px] font-bold uppercase tracking-wide text-center w-full m-0" style={{ color: styles.textSecondary }}>
+        Cumplimiento SLA por etapa
       </p>
-
-      <p className="text-[9px] text-center w-full opacity-70 m-0" style={{ color: styles.text.tertiary }}>
-        {totalGeneral > 0
-          ? `${enTiempoTotal} / ${totalGeneral} casos en tiempo`
+      <p className="text-2xl font-bold text-center w-full m-0 flex-1 flex items-center justify-center" style={{ color }}>
+        {pct === null ? '—' : `${pct}%`}
+      </p>
+      <p className="text-[9px] text-center w-full opacity-70 m-0" style={{ color: styles.textTertiary }}>
+        {total > 0
+          ? `${enTiempo} / ${total} casos en tiempo`
           : 'Sin casos con SLA'}
       </p>
-
-      {expanded && rows.length > 0 && (
-        <div className="space-y-1 mt-2 w-full pt-2 border-t" style={{ borderColor: 'rgba(71, 85, 105, 0.2)' }}>
-          {rows.map((r, idx) => {
-            const color = getColorByPct(r.pct);
-            return (
-              <div key={`${idx}-${r.name}`} className="space-y-0.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span
-                    className="text-[10px] font-medium truncate"
-                    style={{ color: styles.text.primary }}
-                    title={`${r.name} (${r.enTiempo}/${r.total} en tiempo)`}
-                  >
-                    {r.name}
-                  </span>
-                  <span
-                    className="text-[10px] font-bold tabular-nums flex-shrink-0"
-                    style={{ color }}
-                  >
-                    {r.pct}%
-                  </span>
-                </div>
-                <div
-                  className="h-1 rounded-full overflow-hidden"
-                  style={{ backgroundColor: 'rgba(71, 85, 105, 0.2)' }}
-                >
-                  <div
-                    className="h-full rounded-full"
-                    style={{ width: `${r.pct}%`, backgroundColor: color }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {expanded && rows.length === 0 && (
-        <p className="text-[10px] italic text-center mt-2" style={{ color: styles.text.tertiary }}>
-          Sin casos abiertos con SLA válido
-        </p>
-      )}
-
-      {peorEtapa && peorEtapa.pct < 70 && (
-        <p className="text-[9px] mt-2 pt-1 border-t text-center" style={{ borderColor: 'rgba(71, 85, 105, 0.2)', color: '#ef4444' }}>
-          ⚠ Peor: {peorEtapa.name} ({peorEtapa.pct}%)
-        </p>
-      )}
     </div>
   );
 };

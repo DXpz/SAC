@@ -391,7 +391,11 @@ const SupervisorPanel: React.FC = () => {
   const metricsSummary = dashboardMetrics?.summary || {};
   const metricsKpis = dashboardMetrics?.kpis || {};
   const metricsAgents = dashboardMetrics?.agents || {};
-  const slaPromedio = metricsKpis.slaCompliance ?? null;
+  // Cumplimiento SLA global = casos sin vencer / casos abiertos
+  // (calculo directo en frontend, consistente con el subtitle)
+  const slaPromedio = casosAbiertosFiltrados.length > 0
+    ? Math.round((casosDentroSLA.length / casosAbiertosFiltrados.length) * 100)
+    : null;
 
   // Para métricas: casos abiertos = casosFiltrados sin cerrados
   const casosAbiertosFiltrados = casosAbiertos;
@@ -856,11 +860,11 @@ const SupervisorPanel: React.FC = () => {
              }}>
                {slaPromedio === null ? 'N/A' : `${slaPromedio}%`}
              </p>
-             <p className="text-[9px] text-center w-full opacity-70 m-0" style={{color: styles.text.tertiary}}>
-               {slaPromedio === null
-                 ? 'Sin datos'
-                 : `${casosDentroSLA.length} / ${metricsSummary.casosAbiertos ?? casosAbiertosFiltrados.length} casos`}
-             </p>
+              <p className="text-[9px] text-center w-full opacity-70 m-0" style={{color: styles.text.tertiary}}>
+                {slaPromedio === null
+                  ? 'Sin datos'
+                  : `${casosDentroSLA.length} / ${casosAbiertosFiltrados.length} casos`}
+              </p>
            </div>
          </Tooltip>
 
