@@ -16,16 +16,15 @@ export const getStoredFilters = (): StoredFilters => {
 };
 
 // Inicializa los filtros por defecto si no hay ninguno guardado.
-// Por defecto: mes actual y año actual. País queda en 'all' para ADMIN_GLOBAL
+// Por defecto: SIN filtro de mes (todos los meses). País queda en 'all' para ADMIN_GLOBAL
 // o se asigna según el país del usuario para roles normales.
 export const ensureDefaultFilters = (): StoredFilters => {
   const current = getStoredFilters();
   if (current.mesFilter || current.yearFilter) return current;
-  const now = new Date();
   const defaults: StoredFilters = {
     paisFilter: current.paisFilter || 'all',
-    mesFilter: String(now.getMonth() + 1).padStart(2, '0'),
-    yearFilter: String(now.getFullYear()),
+    mesFilter: '',   // '' = todos los meses (sin filtro)
+    yearFilter: '',  // '' = todos los años (sin filtro)
   };
   localStorage.setItem(FILTERS_KEY, JSON.stringify(defaults));
   return defaults;
@@ -38,6 +37,7 @@ export const setStoredFilters = (filters: StoredFilters) => {
 
 export const getDateFiltros = (filters: StoredFilters) => {
   const { mesFilter, yearFilter } = filters;
+  // Si ambos vacios, NO filtrar (mostrar TODOS los meses/años)
   if (!mesFilter && !yearFilter) return {};
   const y = yearFilter ? parseInt(yearFilter) : new Date().getFullYear();
   const m = mesFilter ? parseInt(mesFilter) - 1 : 0;
