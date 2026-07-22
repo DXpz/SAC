@@ -470,7 +470,7 @@ const loadCasos = async () => {
   try {
     const filtro = getDateFiltros(getStoredFilters());
     const paisFiltro = getPaisFromFilters();
-    const data = await api.getCases(false, false, { ...filtro, pais: paisFiltro });
+    const data = await api.getCases(false, true, { ...filtro, pais: paisFiltro });
     setCasos(data);
     const updateTime = new Date();
     setLastUpdate(updateTime);
