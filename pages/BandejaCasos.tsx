@@ -471,7 +471,12 @@ const loadCasos = async () => {
     const filtro = getDateFiltros(getStoredFilters());
     const paisFiltro = getPaisFromFilters();
     const data = await api.getCases(false, true, { ...filtro, pais: paisFiltro });
-    setCasos(data);
+    // Excluir Finalizados: la bandeja global no debe mostrar casos ya finalizados
+    const casosFiltrados = (data || []).filter((c: any) => {
+      const estado = (c.status || c.estado || '').toLowerCase().trim();
+      return estado !== 'finalizado';
+    });
+    setCasos(casosFiltrados);
     const updateTime = new Date();
     setLastUpdate(updateTime);
     localStorage.setItem('bandeja_last_update', updateTime.toISOString());
