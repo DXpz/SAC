@@ -20,6 +20,18 @@ export const getStoredFilters = (): StoredFilters => {
 // o se asigna según el país del usuario para roles normales.
 export const ensureDefaultFilters = (): StoredFilters => {
   const current = getStoredFilters();
+
+  // Migracion one-time: si los filtros tienen un mes especifico del
+  // anio actual guardado (default anterior), limpiarlos para que la Bandeja
+  // muestre TODOS los casos por defecto.
+  const currentYear = new Date().getFullYear();
+  const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0');
+  if (current.mesFilter === currentMonth && current.yearFilter === String(currentYear)) {
+    const migrated = { ...current, mesFilter: '', yearFilter: '' };
+    localStorage.setItem(FILTERS_KEY, JSON.stringify(migrated));
+    return migrated;
+  }
+
   if (current.mesFilter || current.yearFilter) return current;
   const defaults: StoredFilters = {
     paisFilter: current.paisFilter || 'all',
@@ -37,12 +49,13 @@ export const setStoredFilters = (filters: StoredFilters) => {
 
 export const getDateFiltros = (filters: StoredFilters) => {
   const { mesFilter, yearFilter } = filters;
-  // Si ambos vacios, NO filtrar (mostrar TODOS los meses/años)
-  if (!mesFilter && !yearFilter) return {};
+  // Si mesFilter vacio, NO filtrar (mostrar TODOS los meses/años).
+  // Asi 'Todos los meses' ignora el año y muestra todo.
+  if (!mesFilter) return {};
   const y = yearFilter ? parseInt(yearFilter) : new Date().getFullYear();
-  const m = mesFilter ? parseInt(mesFilter) - 1 : 0;
+  const m = parseInt(mesFilter) - 1;
   const inicio = new Date(y, m, 1);
-  const fin = new Date(y, mesFilter ? m + 1 : 12, 0);
+  const fin = new Date(y, m + 1, 0);
   fin.setHours(23, 59, 59, 999);
   return {
     fechaInicio: inicio.toISOString(),
