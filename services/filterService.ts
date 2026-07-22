@@ -21,12 +21,13 @@ export const getStoredFilters = (): StoredFilters => {
 export const ensureDefaultFilters = (): StoredFilters => {
   const current = getStoredFilters();
 
-  // Migracion one-time: si los filtros tienen un mes especifico del
-  // anio actual guardado (default anterior), limpiarlos para que la Bandeja
-  // muestre TODOS los casos por defecto.
+  // Migracion one-time: si los filtros guardados son del año actual
+  // (default anterior del sistema), limpiarlos a vacíos para que la
+  // Bandeja muestre TODOS los casos. Esto es seguro porque al inicio
+  // de cualquier sesión el usuario quiere ver todo, no filtrado por
+  // el default obsoleto.
   const currentYear = new Date().getFullYear();
-  const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0');
-  if (current.mesFilter === currentMonth && current.yearFilter === String(currentYear)) {
+  if (current.yearFilter === String(currentYear) && current.mesFilter) {
     const migrated = { ...current, mesFilter: '', yearFilter: '' };
     localStorage.setItem(FILTERS_KEY, JSON.stringify(migrated));
     return migrated;
