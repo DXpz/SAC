@@ -1129,7 +1129,8 @@ const [requiereEquipo, setRequiereEquipo] = useState(false); // Para Diagnostico
       const currentUserId = currentUser?.id;
       setUsuariosDisponibles(usuarios.filter((u: any) => {
         if (u.id === caso?.agente_user_id) return false;
-        if (u.estado !== 'ACTIVO') return false;
+        // NOTA: Ya NO se filtra por estado === 'ACTIVO'. Se permiten usuarios
+        // INACTIVOS en el dropdown (la administracion controla el acceso).
         // El usuario actual ADMINISTRADOR puede auto-reasignarse
         if (isCurrentUserAdmin && u.id === currentUserId) return true;
         // Para todos los demás casos, filtrar por roles reasignables
